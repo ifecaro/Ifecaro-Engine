@@ -1,4 +1,5 @@
 mod components;
+mod constants;
 mod enums;
 mod layout;
 mod pages;
@@ -6,11 +7,11 @@ mod pages;
 // import the prelude to get access to the `rsx!` macro and the `Scope` and `Element` types
 use dioxus::prelude::{component, fc_to_builder, rsx, Element, Scope};
 use dioxus_router::prelude::Router;
-// use serde::{Deserialize, Serialize};
 
 fn main() {
     // launch the web app
     dioxus_web::launch(App);
+    wasm_logger::init(wasm_logger::Config::default());
 }
 
 #[component]

@@ -8,5 +8,9 @@ edition = "2021"
 [dependencies]
 dioxus = { git = "https://github.com/DioxusLabs/dioxus.git" }
 dioxus-router = { git = "https://github.com/DioxusLabs/dioxus.git" }
+dioxus-std = { git = "https://github.com/DioxusLabs/dioxus-std.git", features = ["i18n"] }
 dioxus-web = { git = "https://github.com/DioxusLabs/dioxus.git" }
+log = "0.4.20"
+reqwest = { git = "https://github.com/seanmonstar/reqwest.git", features = ["json"] }
 serde = "1.0.193"
+wasm-logger = "0.2.0"
