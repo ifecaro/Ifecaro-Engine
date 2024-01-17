@@ -1,4 +1,25 @@
 pub mod config {
+    use serde::Deserialize;
+
+    pub struct Language<'a> {
+        pub name: &'a str,
+        pub code: &'a str,
+    }
+
     pub static BASE_API_URL: &str = "http://0.0.0.0:8090";
     pub static SETTINGS: &str = "/api/collections/settings/records";
+    pub static LANGUAGES: [Language; 3] = [
+        Language {
+            name: "English",
+            code: "en-US",
+        },
+        Language {
+            name: "English",
+            code: "en-GB",
+        },
+        Language {
+            name: "正體中文",
+            code: "zh-TW",
+        },
+    ];
 }

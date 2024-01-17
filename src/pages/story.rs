@@ -1,8 +1,8 @@
 use std::borrow::Borrow;
 
-use crate::constants::config::config::{BASE_API_URL, SETTINGS};
+use crate::{constants::config::config::{BASE_API_URL, SETTINGS}, Language};
 use dioxus::{
-    hooks::{use_callback, use_effect, use_future, use_ref, use_state, UseEffectReturn},
+    hooks::{use_callback, use_effect, use_future,  use_state, UseEffectReturn, use_shared_state, UseSharedState,  },
     prelude::{dioxus_elements, fc_to_builder, rsx, Element, IntoDynNode, Scope},
 };
 use dioxus_std::i18n;
@@ -58,7 +58,9 @@ pub fn Story(cx: Scope) -> Element {
         totalPages: 0,
         items: vec![],
     });
-    let lang = use_ref(cx, || "zh-TW");
+
+
+    let lang = use_shared_state::<Language>(cx).unwrap();
 
     {
         let data = data.clone();
@@ -87,26 +89,21 @@ pub fn Story(cx: Scope) -> Element {
                 {(*data).items.iter().map(|item| {
                     rsx!{
                         div {
-                            div {
-                                div {
-                                    {item.texts.iter().find(|text|  text.lang == "en-US" ).and_then(
-                                        |text_found| {
-                                            Some(
-                                                text_found.paragraphs.iter().map(|paragraph| 
-                                                    rsx!{
-                                                        div {
-                                                            {paragraph}
-                                                        }
-                                                    }
-                                                )
-                                            )
-                                        })
-                                    }.unwrap()
-                                }
+                            {
+                                item.texts.iter().find(|text| text.lang == lang.read().0).and_then(|text_found| {
+                                    Some(
+                                        text_found.paragraphs.iter().map(|paragraph| 
+                                            rsx!{
+                                                div {
+                                                    {paragraph}
+                                                }
+                                            }
+                                        )
+                                    )
+                                }).unwrap()
                             }
                         }
                     }
-
                 })}
             }
         }
