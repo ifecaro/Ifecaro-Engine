@@ -2,8 +2,8 @@ use std::borrow::Borrow;
 
 use crate::{constants::config::config::{BASE_API_URL, SETTINGS}, Language};
 use dioxus::{
-    hooks::{use_callback, use_effect, use_future,  use_state, UseEffectReturn, use_shared_state, UseSharedState,  },
-    prelude::{dioxus_elements, fc_to_builder, rsx, Element, IntoDynNode, Scope},
+    hooks::{use_callback, use_effect, use_future,  use_state, UseEffectReturn, use_shared_state, UseSharedState },
+    prelude::{dioxus_elements, fc_to_builder, rsx, Element, IntoDynNode, Scope, Fragment},
 };
 use dioxus_std::i18n;
 use serde::Deserialize;
@@ -21,6 +21,7 @@ struct Data {
 
 #[derive(Deserialize, Clone)]
 struct Setting {
+    order:i32,
     choice_id: String,
     texts: Vec<Text>,
     actions: Vec<Action>,
@@ -58,8 +59,7 @@ pub fn Story(cx: Scope) -> Element {
         totalPages: 0,
         items: vec![],
     });
-
-
+    let order = use_state(cx, || 0);
     let lang = use_shared_state::<Language>(cx).unwrap();
 
     {
@@ -86,24 +86,37 @@ pub fn Story(cx: Scope) -> Element {
     cx.render(rsx! {
         crate::pages::layout::Layout { title: "Story",
             if data.totalItems > 0 {
-                {(*data).items.iter().map(|item| {
-                    rsx!{
-                        div {
-                            {
-                                item.texts.iter().find(|text| text.lang == lang.read().0).and_then(|text_found| {
-                                    Some(
-                                        text_found.paragraphs.iter().map(|paragraph| 
+                {(*data).items.iter().find(|item| item.order == **order).and_then(|item| {
+                    Some(
+                        rsx!{
+                            div {
+                                {
+                                    item.texts.iter().find(|text| text.lang == lang.read().0).and_then(|text_found| {
+                                        Some(
                                             rsx!{
-                                                div {
-                                                    {paragraph}
+                                                Fragment {
+                                                    {text_found.paragraphs.iter().map(|paragraph| 
+                                                        rsx!{
+                                                            div {
+                                                                {paragraph}
+                                                            }
+                                                        }
+                                                    )},
+                                                    {text_found.choices.iter().enumerate().map(|(i,choice)| 
+                                                        rsx!{
+                                                            div {
+                                                                {format!("{}. {}",(i + 1).to_string(),&choice.caption)}
+                                                            }
+                                                        }
+                                                    )}
                                                 }
                                             }
                                         )
-                                    )
-                                }).unwrap()
+                                    }).unwrap()
+                                }
                             }
                         }
-                    }
+                    )
                 })}
             }
         }
