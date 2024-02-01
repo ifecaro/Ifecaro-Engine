@@ -102,26 +102,22 @@ pub fn Story(cx: Scope) -> Element {
                                                     )},
                                                     div {
                                                         class: "mt-8 ml-8 w-fit grid gap-y-4",
-                                                        {text_found.choices.iter().enumerate().map(|(i,choice)| 
-                                                            rsx!{
+                                                        {text_found.choices.iter().enumerate().map(|(i,choice)| {
+                                                            let index = (*data)
+                                                                .items
+                                                                .iter()
+                                                                .position(|item| item.choice_id == choice.goto);
+
+                                                            return rsx!{
                                                                 div {
-                                                                    class: "cursor-pointer",
-                                                                    onclick: |_| {
-                                                                                (*data)
-                                                                                    .items
-                                                                                    .iter()
-                                                                                    .position(|item| item.choice_id == choice.goto)
-                                                                                    .and_then(
-                                                                                        |index| {
-                                                                                            selected_paragraph_index.set(index);
-                                                                                            return Some(());
-                                                                                        }
-                                                                                    ).expect("Paragraph not found.")
-                                                                            },
+                                                                    class: if index.is_some() {"cursor-pointer"} else {"opacity-30"},
+                                                                    onclick: move |_| if index.is_some() {
+                                                                        selected_paragraph_index.set(index.unwrap());
+                                                                    },
                                                                     {format!("{}. {}",(i + 1).to_string(),&choice.caption)}
                                                                 }
                                                             }
-                                                        )}
+                                                        })}
                                                     }
                                                 }
                                             }

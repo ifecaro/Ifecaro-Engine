@@ -1246,6 +1246,14 @@ video {
   color: rgb(17 24 39 / var(--tw-text-opacity));
 }
 
+.opacity-50 {
+  opacity: 0.5;
+}
+
+.opacity-30 {
+  opacity: 0.3;
+}
+
 @media (prefers-color-scheme: dark) {
   body {
     --tw-bg-opacity: 1;
