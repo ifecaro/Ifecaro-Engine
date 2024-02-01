@@ -3,6 +3,7 @@ use crate::{constants::config::config::{BASE_API_URL, SETTINGS}, Language};
 use dioxus::{
     hooks::{ use_callback, use_future, use_shared_state, use_state, UseState }, html::GlobalAttributes, prelude::{dioxus_elements, fc_to_builder, rsx, Element, IntoDynNode, Scope }
 };
+use dioxus_markdown::Markdown;
 use serde::Deserialize;
 // use futures::future::join_all;
 
@@ -90,35 +91,38 @@ pub fn Story(cx: Scope) -> Element {
                                     item.texts.iter().find(|text| text.lang == lang.read().0).and_then(|text_found| {
                                         Some(
                                             rsx!{
-                                                {text_found.paragraphs.iter().map(|paragraph| 
-                                                    rsx!{
-                                                        div {
-                                                            {paragraph}
-                                                        }
-                                                    }
-                                                )},
-                                                div {
-                                                    class: "mt-8 ml-8 w-fit grid gap-y-4",
-                                                    {text_found.choices.iter().enumerate().map(|(i,choice)| 
+                                                article {
+                                                    class: "prose dark:prose-invert lg:prose-xl",
+                                                    {text_found.paragraphs.iter().map(|paragraph| 
                                                         rsx!{
-                                                            div {
-                                                                class: "cursor-pointer",
-                                                                onclick: |_| {
-                                                                            (*data)
-                                                                                .items
-                                                                                .iter()
-                                                                                .position(|item| item.choice_id == choice.goto)
-                                                                                .and_then(
-                                                                                    |index| {
-                                                                                        selected_paragraph_index.set(index);
-                                                                                        return Some(());
-                                                                                    }
-                                                                                ).expect("Paragraph not found.")
-                                                                        },
-                                                                {format!("{}. {}",(i + 1).to_string(),&choice.caption)}
+                                                            Markdown {
+                                                                content: paragraph,
                                                             }
                                                         }
-                                                    )}
+                                                    )},
+                                                    div {
+                                                        class: "mt-8 ml-8 w-fit grid gap-y-4",
+                                                        {text_found.choices.iter().enumerate().map(|(i,choice)| 
+                                                            rsx!{
+                                                                div {
+                                                                    class: "cursor-pointer",
+                                                                    onclick: |_| {
+                                                                                (*data)
+                                                                                    .items
+                                                                                    .iter()
+                                                                                    .position(|item| item.choice_id == choice.goto)
+                                                                                    .and_then(
+                                                                                        |index| {
+                                                                                            selected_paragraph_index.set(index);
+                                                                                            return Some(());
+                                                                                        }
+                                                                                    ).expect("Paragraph not found.")
+                                                                            },
+                                                                    {format!("{}. {}",(i + 1).to_string(),&choice.caption)}
+                                                                }
+                                                            }
+                                                        )}
+                                                    }
                                                 }
                                             }
                                         )

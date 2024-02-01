@@ -6,12 +6,13 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-dioxus = { git = "https://github.com/DioxusLabs/dioxus.git" }
-dioxus-router = { git = "https://github.com/DioxusLabs/dioxus.git" }
+# dioxus = { git = "https://github.com/DioxusLabs/dioxus.git" }
+# dioxus-router = { git = "https://github.com/DioxusLabs/dioxus.git" }
 dioxus-std = { git = "https://github.com/DioxusLabs/dioxus-std.git", features = [
     "i18n",
 ] }
-dioxus-web = { git = "https://github.com/DioxusLabs/dioxus.git" }
+# dioxus-web = { git = "https://github.com/DioxusLabs/dioxus.git" }
+dioxus_markdown = { git = "https://github.com/DioxusLabs/markdown.git" }
 log = { git = "https://github.com/rust-lang/log.git" }
 reqwest = { git = "https://github.com/seanmonstar/reqwest.git", features = [
     "json",
@@ -19,3 +20,6 @@ reqwest = { git = "https://github.com/seanmonstar/reqwest.git", features = [
 serde = "1.0.196"
 # serde = { git = "https://github.com/serde-rs/serde.git", features = ["derive"] }
 wasm-logger = { git = "https://gitlab.com/limira-rs/wasm-logger.git" }
+dioxus = "0.4.3"
+dioxus-router = "0.4.3"
+dioxus-web = "0.4.3"

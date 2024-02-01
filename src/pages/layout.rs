@@ -12,8 +12,8 @@ pub struct TitleProps<'a> {
 pub fn Layout<'a>(cx: Scope<'a, TitleProps<'a>>) -> Element {
     cx.render(rsx! {
 
-        div { class: "dark:bg-black dark:text-white h-screen bg-cover bg-center pt-16 px-16",
-            if cx.props.title.is_some() {crate::components::title::Title { title: cx.props.title.unwrap() }}
+        div { class: "h-screen bg-cover bg-center pt-16 px-16",
+            // if cx.props.title.is_some() {crate::components::title::Title { title: cx.props.title.unwrap() }}
             {&cx.props.children}
         }
     })
