@@ -23,6 +23,5 @@ fn main() {
 #[allow(non_snake_case)]
 fn App(cx: Scope) -> Element {
     use_shared_state_provider(cx, || Language("zh-TW"));
-
     cx.render(rsx! { Router::<enums::route::Route> {} })
 }

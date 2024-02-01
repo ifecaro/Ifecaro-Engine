@@ -556,6 +556,10 @@ video {
   top: 0px;
 }
 
+.mt-4 {
+  margin-top: 1rem;
+}
+
 .grid {
   display: grid;
 }
@@ -601,9 +605,8 @@ video {
   padding-bottom: 0.75rem;
 }
 
-.py-4 {
-  padding-top: 1rem;
-  padding-bottom: 1rem;
+.pb-8 {
+  padding-bottom: 2rem;
 }
 
 .pt-16 {
@@ -612,10 +615,6 @@ video {
 
 .pt-4 {
   padding-top: 1rem;
-}
-
-.pb-8 {
-  padding-bottom: 2rem;
 }
 
 .text-center {

@@ -4,15 +4,16 @@ use dioxus::prelude::{
 
 #[derive(Props)]
 pub struct TitleProps<'a> {
-    title: &'a str,
+    title: Option<&'a str>,
     children: Element<'a>,
 }
 
 #[allow(non_snake_case)]
 pub fn Layout<'a>(cx: Scope<'a, TitleProps<'a>>) -> Element {
     cx.render(rsx! {
+
         div { class: "dark:bg-black dark:text-white h-screen bg-cover bg-center pt-16 px-16",
-            crate::components::title::Title { title: cx.props.title }
+            if cx.props.title.is_some() {crate::components::title::Title { title: cx.props.title.unwrap() }}
             {&cx.props.children}
         }
     })
