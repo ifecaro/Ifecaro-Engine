@@ -1,7 +1,7 @@
 
 use crate::{constants::config::config::{BASE_API_URL, SETTINGS}, Language};
 use dioxus::{
-    hooks::{ use_future, use_state, use_shared_state }, html::GlobalAttributes, prelude::{dioxus_elements, fc_to_builder, rsx, Element, IntoDynNode, Scope }
+    hooks::{ use_callback, use_future, use_shared_state, use_state, UseState }, html::GlobalAttributes, prelude::{dioxus_elements, fc_to_builder, rsx, Element, IntoDynNode, Scope }
 };
 use serde::Deserialize;
 // use futures::future::join_all;
@@ -13,13 +13,13 @@ struct Data {
     // perPage: i32,
     totalItems: i32,
     // totalPages: i32,
-    items: Vec<Setting>,
+    items: Vec<Paragraph>,
 }
 
 #[derive(Deserialize, Clone,Debug)]
-struct Setting {
-    order:i32,
-    // choice_id: String,
+struct Paragraph {
+    order: usize,
+    choice_id: String,
     texts: Vec<Text>,
     // actions: Vec<Action>,
 }
@@ -44,7 +44,7 @@ struct Text {
 #[derive(Deserialize, Clone,Debug)]
 struct Choice {
     caption: String,
-    // goto: String,
+    goto: String,
 }
 
 #[allow(non_snake_case)]
@@ -56,7 +56,7 @@ pub fn Story(cx: Scope) -> Element {
         // totalPages: 0,
         items: vec![],
     });
-    let order = use_state(cx, || 0);
+    let paragraph_order: &UseState<usize> = use_state(cx, || 0);
     let lang = use_shared_state::<Language>(cx).unwrap();
 
     {
@@ -83,14 +83,14 @@ pub fn Story(cx: Scope) -> Element {
     cx.render(rsx! {
         crate::pages::layout::Layout { 
             if data.totalItems > 0 {
-                {(*data).items.iter().find(|item| item.order == **order).and_then(|item| {
+                {(*data).items.iter().find(|item| item.order == **paragraph_order).and_then(|item| {
                     Some(
                         rsx!{
                             div {
                                 {
                                     item.texts.iter().find(|text| text.lang == lang.read().0).and_then(|text_found| {
                                         Some(
-                                            rsx!{   
+                                            rsx!{
                                                 {text_found.paragraphs.iter().map(|paragraph| 
                                                     rsx!{
                                                         div {
@@ -99,15 +99,28 @@ pub fn Story(cx: Scope) -> Element {
                                                     }
                                                 )},
                                                 div {
-                                                    class: "mt-4"
-                                                }
-                                                {text_found.choices.iter().enumerate().map(|(i,choice)| 
-                                                    rsx!{
-                                                        div {
-                                                            {format!("{}. {}",(i + 1).to_string(),&choice.caption)}
+                                                    class: "mt-8 ml-8 w-fit grid gap-y-4",
+                                                    {text_found.choices.iter().enumerate().map(|(i,choice)| 
+                                                        rsx!{
+                                                            div {
+                                                                class: "cursor-pointer",
+                                                                onclick: |_| {
+                                                                            (*data)
+                                                                                .items
+                                                                                .iter()
+                                                                                .position(|item| item.choice_id == choice.goto)
+                                                                                .and_then(
+                                                                                    |index| {
+                                                                                        paragraph_order.set(index);
+                                                                                        return Some(());
+                                                                                    }
+                                                                                ).expect("Paragraph not found.")
+                                                                        },
+                                                                {format!("{}. {}",(i + 1).to_string(),&choice.caption)}
+                                                            }
                                                         }
-                                                    }
-                                                )}
+                                                    )}
+                                                }
                                             }
                                         )
                                     }).unwrap()
