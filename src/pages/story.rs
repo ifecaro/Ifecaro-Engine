@@ -18,7 +18,7 @@ struct Data {
 
 #[derive(Deserialize, Clone,Debug)]
 struct Paragraph {
-    order: usize,
+    index: usize,
     choice_id: String,
     texts: Vec<Text>,
     // actions: Vec<Action>,
@@ -27,7 +27,6 @@ struct Paragraph {
 #[derive(Deserialize, Clone,Debug)]
 struct Action {
     // action: String,
-    // target: String,
     // name: String,
     // method: String,
     // key: String,
@@ -56,7 +55,7 @@ pub fn Story(cx: Scope) -> Element {
         // totalPages: 0,
         items: vec![],
     });
-    let paragraph_order: &UseState<usize> = use_state(cx, || 0);
+    let selected_paragraph_index: &UseState<usize> = use_state(cx, || 0);
     let lang = use_shared_state::<Language>(cx).unwrap();
 
     {
@@ -83,7 +82,7 @@ pub fn Story(cx: Scope) -> Element {
     cx.render(rsx! {
         crate::pages::layout::Layout { 
             if data.totalItems > 0 {
-                {(*data).items.iter().find(|item| item.order == **paragraph_order).and_then(|item| {
+                {(*data).items.iter().find(|item| item.index == **selected_paragraph_index).and_then(|item| {
                     Some(
                         rsx!{
                             div {
@@ -111,7 +110,7 @@ pub fn Story(cx: Scope) -> Element {
                                                                                 .position(|item| item.choice_id == choice.goto)
                                                                                 .and_then(
                                                                                     |index| {
-                                                                                        paragraph_order.set(index);
+                                                                                        selected_paragraph_index.set(index);
                                                                                         return Some(());
                                                                                     }
                                                                                 ).expect("Paragraph not found.")
