@@ -2,6 +2,11 @@
 @tailwind components;
 @tailwind utilities;
 
+li {
+    text-indent: 0;
+    margin-left: 80px;
+}
+
 @media (prefers-color-scheme: dark) {
     body {
         --tw-bg-opacity: 1;

@@ -1,10 +1,13 @@
 
 use crate::{constants::config::config::{BASE_API_URL, SETTINGS}, Language};
 use dioxus::{
-    hooks::{ use_callback, use_future, use_shared_state, use_state, UseState }, html::GlobalAttributes, prelude::{dioxus_elements, fc_to_builder, rsx, Element, IntoDynNode, Scope }
+    hooks::{ use_effect, use_future, use_memo, use_shared_state, use_state, UseState }, html::GlobalAttributes, prelude::{dioxus_elements, fc_to_builder, rsx, Element, IntoDynNode, Scope }
 };
 use dioxus_markdown::Markdown;
 use serde::Deserialize;
+use web_sys::window;
+use wasm_bindgen::{ JsCast, prelude::Closure };
+use regex::Regex;
 // use futures::future::join_all;
 
 #[allow(non_snake_case)]
@@ -34,14 +37,14 @@ struct Action {
     // value: bool,
 }
 
-#[derive(Deserialize, Clone,Debug)]
+#[derive(Deserialize, Clone,Debug,PartialEq)]
 struct Text {
     lang: String,
-    paragraphs: Vec<String>,
+    paragraphs: String,
     choices: Vec<Choice>,
 }
 
-#[derive(Deserialize, Clone,Debug)]
+#[derive(Deserialize, Clone,Debug,PartialEq)]
 struct Choice {
     caption: String,
     goto: String,
@@ -58,6 +61,10 @@ pub fn Story(cx: Scope) -> Element {
     });
     let selected_paragraph_index: &UseState<usize> = use_state(cx, || 0);
     let lang = use_shared_state::<Language>(cx).unwrap();
+    let text_found =  use_memo(cx, (data, selected_paragraph_index), |_| (*data).items.iter()
+            .find(|item| item.index == **selected_paragraph_index)
+            .and_then(|item| item.texts.iter().find(|text| text.lang == lang.read().0).cloned()));
+    let paragraph = use_memo(cx, text_found, |_| text_found.as_ref().and_then(|text| Some(text.paragraphs.clone())));
 
     {
         let data = data.clone();
@@ -80,54 +87,105 @@ pub fn Story(cx: Scope) -> Element {
         });
     }
 
+
+    {
+
+        let text_found = text_found.clone();
+        let data = data.clone();
+        let selected_paragraph_index = selected_paragraph_index.clone();
+        use_effect(cx, &text_found.clone(), |_| async move {
+            window().and_then(|win| {
+                let callback = Closure::<dyn Fn(web_sys::KeyboardEvent)>::new(move |e: web_sys::KeyboardEvent| {
+                    let data = data.clone();
+                    let text_found = text_found.clone();
+                    let selected_paragraph_index = selected_paragraph_index.clone();
+
+                    let key = e.key();
+                    let key_str = key.as_str();
+                    let re = Regex::new(r"[1-9]").unwrap();
+                    if re.is_match(key_str) {
+                        let option_index = key_str.parse::<usize>().unwrap() - 1;
+                        text_found
+                            .and_then(|text| if option_index < text.choices.len() {Some(text.choices[option_index].clone())} else {None})
+                            .and_then(move |choice| {
+                                log::info!("{}", choice.goto);
+                                let index = (*data)
+                                    .items
+                                    .iter()
+                                    .position(|item| item.choice_id == choice.goto);
+
+                                if index.is_some() {selected_paragraph_index.set(index.unwrap())};
+
+                                // win
+                                //     .remove_event_listener_with_callback("keydown", callback.as_ref().unchecked_ref())
+                                //     .unwrap();
+
+                                Some(())
+                            }
+                        );
+                    };
+                });
+                win.add_event_listener_with_callback("keydown", callback.as_ref().dyn_ref().unwrap())
+                .unwrap();
+                
+                callback.forget();
+    
+                // std::mem::forget(callback);
+                Some(())
+            });
+    
+            // move || {
+            //     window().and_then(|win| {
+            //         win.remove_event_listener_with_callback("keydown", callback.as_ref().dyn_ref().unwrap())
+            //         .unwrap();
+            //         Some(())
+            //     });
+            // }
+        });
+    }
+
+
     cx.render(rsx! {
         crate::pages::layout::Layout { 
             if data.totalItems > 0 {
-                {(*data).items.iter().find(|item| item.index == **selected_paragraph_index).and_then(|item| {
-                    Some(
-                        rsx!{
-                            div {
-                                {
-                                    item.texts.iter().find(|text| text.lang == lang.read().0).and_then(|text_found| {
-                                        Some(
-                                            rsx!{
-                                                article {
-                                                    class: "prose dark:prose-invert lg:prose-xl",
-                                                    {text_found.paragraphs.iter().map(|paragraph| 
-                                                        rsx!{
-                                                            Markdown {
-                                                                content: paragraph,
-                                                            }
-                                                        }
-                                                    )},
-                                                    div {
-                                                        class: "mt-8 ml-8 w-fit grid gap-y-4",
-                                                        {text_found.choices.iter().enumerate().map(|(i,choice)| {
-                                                            let index = (*data)
-                                                                .items
-                                                                .iter()
-                                                                .position(|item| item.choice_id == choice.goto);
+                rsx!{
+                    div {
+                        {
+                            text_found.clone().and_then(|text_found| {
+                                Some(
+                                    rsx!{
+                                        article {
+                                            class: "prose dark:prose-invert lg:prose-xl indent-10",
 
-                                                            return rsx!{
-                                                                div {
-                                                                    class: if index.is_some() {"cursor-pointer"} else {"opacity-30"},
-                                                                    onclick: move |_| if index.is_some() {
-                                                                        selected_paragraph_index.set(index.unwrap());
-                                                                    },
-                                                                    {format!("{}. {}",(i + 1).to_string(),&choice.caption)}
-                                                                }
-                                                            }
-                                                        })}
+                                                    Markdown {
+                                                        content: &paragraph.as_ref().unwrap(),
                                                     }
-                                                }
+                                            ol {
+                                                class: "mt-10 w-fit",
+                                                {text_found.choices.iter().map(|choice| {
+                                                    let index = (*data)
+                                                        .items
+                                                        .iter()
+                                                        .position(|item| item.choice_id == choice.goto);
+
+                                                    return rsx!{
+                                                        li {
+                                                            class: if index.is_some() {"cursor-pointer"} else {"opacity-30"},
+                                                            onclick: move |_| if index.is_some() {
+                                                                selected_paragraph_index.set(index.unwrap());
+                                                            },
+                                                            {choice.caption.clone()}
+                                                        }
+                                                    }
+                                                })}
                                             }
-                                        )
-                                    }).unwrap()
-                                }
-                            }
+                                        }
+                                    }
+                                )
+                            }).unwrap()
                         }
-                    )
-                })}
+                    }
+                }
             }
         }
     })

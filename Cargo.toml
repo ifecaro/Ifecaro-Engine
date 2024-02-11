@@ -8,12 +8,12 @@ edition = "2021"
 [dependencies]
 # dioxus = { git = "https://github.com/DioxusLabs/dioxus.git" }
 # dioxus-router = { git = "https://github.com/DioxusLabs/dioxus.git" }
-dioxus-std = { git = "https://github.com/DioxusLabs/dioxus-std.git", features = [
-    "i18n",
-] }
+# dioxus-std = { git = "https://github.com/DioxusLabs/dioxus-std.git", features = [
+#     "i18n",
+# ] }
 # dioxus-web = { git = "https://github.com/DioxusLabs/dioxus.git" }
 dioxus_markdown = { git = "https://github.com/DioxusLabs/markdown.git" }
-log = { git = "https://github.com/rust-lang/log.git" }
+log = "0.4.20"
 reqwest = { git = "https://github.com/seanmonstar/reqwest.git", features = [
     "json",
 ] }
@@ -23,3 +23,7 @@ wasm-logger = { git = "https://gitlab.com/limira-rs/wasm-logger.git" }
 dioxus = "0.4.3"
 dioxus-router = "0.4.3"
 dioxus-web = "0.4.3"
+web-sys = "0.3.67"
+wasm-bindgen = "0.2.90"
+regex = "1.10.3"
+js-sys = "0.3.68"
