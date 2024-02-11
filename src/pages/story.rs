@@ -106,33 +106,34 @@ pub fn Story(cx: Scope) -> Element {
                 window().and_then(|win| {
                     let callback_temp = {
                         let callback = callback.clone();
-                        let win = win.clone();
 
                         Closure::<dyn Fn(web_sys::KeyboardEvent)>::new(move |e: web_sys::KeyboardEvent| {
-                            let callback = callback.clone();
+                            let _ = callback.clone();
                             let data = data.clone();
                             let text_found = text_found.clone();
                             let selected_paragraph_index = selected_paragraph_index.clone();
-                            let win = win.clone();
 
                             let key = e.key();
                             let key_str = key.as_str();
                             let re = Regex::new(r"[1-9]").unwrap();
                             if re.is_match(key_str) {
-                                let option_index = key_str.parse::<usize>().unwrap() - 1;
-                                text_found
-                                    .and_then(|text| if option_index < text.choices.len() {Some(text.choices[option_index].clone())} else {None})
-                                    .and_then(move |choice| {
-                                        log::info!("{}", choice.goto);
-                                        let index = (*data)
-                                            .items
-                                            .iter()
-                                            .position(|item| item.choice_id == choice.goto);
+                                key_str.parse::<usize>().and_then(|option_index| {
+                                    let option_index = option_index - 1;
+                                    text_found
+                                        .and_then(|text| if option_index < text.choices.len() {Some(text.choices[option_index].clone())} else {None})
+                                        .and_then(move |choice| {
+                                            let index = (*data)
+                                                .items
+                                                .iter()
+                                                .position(|item| item.choice_id == choice.goto);
 
-                                        if index.is_some() {selected_paragraph_index.set(index.unwrap())};
-                                        Some(())
-                                    }
-                                );
+                                            if index.is_some() {selected_paragraph_index.set(index.unwrap())};
+                                            Some(())
+                                        }
+                                    );
+                                    Ok(())
+                                }).err();
+                                
                             };
                         })
                     };
@@ -155,7 +156,6 @@ pub fn Story(cx: Scope) -> Element {
             let callback = callback.clone();
             let selected_paragraph_index = selected_paragraph_index.clone();
             use_effect(cx, &selected_paragraph_index.clone(), |_| async move {
-                let selected_paragraph_index = selected_paragraph_index.clone();
                 if *selected_paragraph_index > 0 {
                     window().and_then(|win| {
                         (*callback).as_ref().and_then(|cb| {
