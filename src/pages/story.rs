@@ -1,7 +1,7 @@
 
 use crate::{constants::config::config::{BASE_API_URL, SETTINGS}, Language};
 use dioxus::{
-    hooks::{ use_effect, use_future, use_memo, use_shared_state, use_state, UseState }, html::GlobalAttributes, prelude::{dioxus_elements, fc_to_builder, rsx, Element, IntoDynNode, Scope }
+    hooks::{ use_callback, use_effect, use_future, use_memo, use_shared_state, use_state, UseState }, html::GlobalAttributes, prelude::{dioxus_elements, fc_to_builder, rsx, Element, IntoDynNode, Scope }
 };
 use dioxus_markdown::Markdown;
 use serde::Deserialize;
@@ -66,6 +66,9 @@ pub fn Story(cx: Scope) -> Element {
             .and_then(|item| item.texts.iter().find(|text| text.lang == lang.read().0).cloned()));
     let paragraph = use_memo(cx, text_found, |_| text_found.as_ref().and_then(|text| Some(text.paragraphs.clone())));
 
+
+    let callback: &UseState<Option<Closure<dyn Fn(web_sys::KeyboardEvent)>>> = use_state(cx, || None);
+
     {
         let data = data.clone();
 
@@ -90,58 +93,82 @@ pub fn Story(cx: Scope) -> Element {
 
     {
 
-        let text_found = text_found.clone();
-        let data = data.clone();
-        let selected_paragraph_index = selected_paragraph_index.clone();
-        use_effect(cx, &text_found.clone(), |_| async move {
-            window().and_then(|win| {
-                let callback = Closure::<dyn Fn(web_sys::KeyboardEvent)>::new(move |e: web_sys::KeyboardEvent| {
-                    let data = data.clone();
-                    let text_found = text_found.clone();
-                    let selected_paragraph_index = selected_paragraph_index.clone();
 
-                    let key = e.key();
-                    let key_str = key.as_str();
-                    let re = Regex::new(r"[1-9]").unwrap();
-                    if re.is_match(key_str) {
-                        let option_index = key_str.parse::<usize>().unwrap() - 1;
-                        text_found
-                            .and_then(|text| if option_index < text.choices.len() {Some(text.choices[option_index].clone())} else {None})
-                            .and_then(move |choice| {
-                                log::info!("{}", choice.goto);
-                                let index = (*data)
-                                    .items
-                                    .iter()
-                                    .position(|item| item.choice_id == choice.goto);
 
-                                if index.is_some() {selected_paragraph_index.set(index.unwrap())};
 
-                                // win
-                                //     .remove_event_listener_with_callback("keydown", callback.as_ref().unchecked_ref())
-                                //     .unwrap();
+        {
+            let callback = callback.clone();
+            let data = data.clone();
+            let text_found = text_found.clone();
+            let selected_paragraph_index = selected_paragraph_index.clone();
+            
+            use_effect(cx, &text_found.clone(), |_| async move {
+                window().and_then(|win| {
+                    let callback_temp = {
+                        let callback = callback.clone();
+                        let win = win.clone();
 
-                                Some(())
-                            }
-                        );
+                        Closure::<dyn Fn(web_sys::KeyboardEvent)>::new(move |e: web_sys::KeyboardEvent| {
+                            let callback = callback.clone();
+                            let data = data.clone();
+                            let text_found = text_found.clone();
+                            let selected_paragraph_index = selected_paragraph_index.clone();
+                            let win = win.clone();
+
+                            let key = e.key();
+                            let key_str = key.as_str();
+                            let re = Regex::new(r"[1-9]").unwrap();
+                            if re.is_match(key_str) {
+                                let option_index = key_str.parse::<usize>().unwrap() - 1;
+                                text_found
+                                    .and_then(|text| if option_index < text.choices.len() {Some(text.choices[option_index].clone())} else {None})
+                                    .and_then(move |choice| {
+                                        log::info!("{}", choice.goto);
+                                        let index = (*data)
+                                            .items
+                                            .iter()
+                                            .position(|item| item.choice_id == choice.goto);
+
+                                        if index.is_some() {selected_paragraph_index.set(index.unwrap())};
+                                        Some(())
+                                    }
+                                );
+                            };
+                        })
                     };
+                    win.add_event_listener_with_callback(
+                        "keydown",
+                        callback_temp.as_ref().unchecked_ref()
+                    ).unwrap();
+                    callback.set(Some(callback_temp));
+
+                    // callback_temp.forget();
+
+                    // std::mem::forget(callback);s
+                    Some(())
                 });
-                win.add_event_listener_with_callback("keydown", callback.as_ref().dyn_ref().unwrap())
-                .unwrap();
-                
-                callback.forget();
-    
-                // std::mem::forget(callback);
-                Some(())
             });
-    
-            // move || {
-            //     window().and_then(|win| {
-            //         win.remove_event_listener_with_callback("keydown", callback.as_ref().dyn_ref().unwrap())
-            //         .unwrap();
-            //         Some(())
-            //     });
-            // }
-        });
+        }
+    }
+
+    {
+            let callback = callback.clone();
+            let selected_paragraph_index = selected_paragraph_index.clone();
+            use_effect(cx, &selected_paragraph_index.clone(), |_| async move {
+                let selected_paragraph_index = selected_paragraph_index.clone();
+                if *selected_paragraph_index > 0 {
+                    window().and_then(|win| {
+                        (*callback).as_ref().and_then(|cb| {
+                            win.remove_event_listener_with_callback(
+                                "keydown",
+                                (*cb).as_ref().unchecked_ref()
+                            ).unwrap();
+                            Some(())
+                        })
+                    });
+                }
+            })
+                            
     }
 
 
