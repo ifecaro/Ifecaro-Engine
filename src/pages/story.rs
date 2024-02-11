@@ -61,7 +61,7 @@ pub fn Story(cx: Scope) -> Element {
     });
     let selected_paragraph_index: &UseState<usize> = use_state(cx, || 0);
     let lang = use_shared_state::<Language>(cx).unwrap();
-    let text_found =  use_memo(cx, (data, selected_paragraph_index), |_| (*data).items.iter()
+    let text_found =  use_memo(cx, (data, selected_paragraph_index, lang), |_| (*data).items.iter()
             .find(|item| item.index == **selected_paragraph_index)
             .and_then(|item| item.texts.iter().find(|text| text.lang == lang.read().0).cloned()));
     let paragraph = use_memo(cx, text_found, |_| text_found.as_ref().and_then(|text| Some(text.paragraphs.clone())));
