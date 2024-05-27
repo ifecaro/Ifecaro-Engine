@@ -1,21 +1,19 @@
-use dioxus::prelude::{
-    dioxus_elements, fc_to_builder, rsx, Element, GlobalAttributes, IntoDynNode, Props, Scope,
-};
+use dioxus::prelude::{component, dioxus_core, Element, Props, rsx, IntoDynNode, dioxus_elements, fc_to_builder};
 
-#[derive(Props)]
-pub struct TitleProps<'a> {
-    title: Option<&'a str>,
-    children: Element<'a>,
+#[derive(Props, Clone, PartialEq)]
+pub struct TitleProps {
+    title: Option<String>,
+    children: Element,
 }
 
-#[allow(non_snake_case)]
-pub fn Layout<'a>(cx: Scope<'a, TitleProps<'a>>) -> Element {
-    cx.render(rsx! {
+#[component]
+pub fn Layout(props: TitleProps) -> Element {
+    rsx! {
         div { class: "h-screen bg-cover bg-center pt-16 px-16",
-            if cx.props.title.is_some() {
-                rsx!{crate::components::title::Title { title: cx.props.title.unwrap() }}
+            if props.title.is_some() {
+                {rsx!{crate::components::title::Title { title: props.title.unwrap() }}}
             }
-            {&cx.props.children}
+            {props.children}
         }
-    })
+    }
 }

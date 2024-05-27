@@ -1,13 +1,13 @@
-use dioxus::prelude::{dioxus_elements, rsx, Element, GlobalAttributes, IntoDynNode, Props, Scope};
+use dioxus::prelude::{dioxus_elements, rsx, Element, IntoDynNode, Props, component, dioxus_core};
 
-#[derive(Props)]
-pub struct TitleProps<'a> {
-    title: &'a str,
+#[derive(Props, Clone, PartialEq)]
+pub struct TitleProps {
+    title: String
 }
 
-#[allow(non_snake_case)]
-pub fn Title<'a>(cx: Scope<'a, TitleProps<'a>>) -> Element {
-    cx.render(rsx! {
-        h1 { class: "text-5xl pt-4 pb-8 dark:text-white", {cx.props.title} }
-    })
+#[component]
+pub fn Title(props:TitleProps) -> Element {
+    rsx! {
+        h1 { class: "text-5xl pt-4 pb-8 dark:text-white", {props.title} }
+    }
 }

@@ -1,12 +1,10 @@
 use crate::enums::route::Route;
-use dioxus::prelude::{component, fc_to_builder, rsx, Element, Scope};
-use dioxus_router::prelude::Outlet;
+use dioxus::prelude::{component, dioxus_core, fc_to_builder, rsx, Element, Outlet};
 
 #[component]
-#[allow(non_snake_case)]
-pub fn Layout(cx: Scope) -> Element {
-    cx.render(rsx! {
+pub fn Layout() -> Element {
+    rsx! {
         crate::components::navbar::Navbar {}
         Outlet::<Route> {}
-    })
+    }
 }

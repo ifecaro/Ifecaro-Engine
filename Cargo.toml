@@ -12,18 +12,21 @@ edition = "2021"
 #     "i18n",
 # ] }
 # dioxus-web = { git = "https://github.com/DioxusLabs/dioxus.git" }
-dioxus_markdown = { git = "https://github.com/DioxusLabs/markdown.git" }
-log = "0.4.20"
+# dioxus_markdown = { git = "https://github.com/DioxusLabs/markdown.git" }
 reqwest = { git = "https://github.com/seanmonstar/reqwest.git", features = [
     "json",
 ] }
 serde = "1.0.196"
-# serde = { git = "https://github.com/serde-rs/serde.git", features = ["derive"] }
-wasm-logger = { git = "https://gitlab.com/limira-rs/wasm-logger.git" }
-dioxus = "0.4.3"
-dioxus-router = "0.4.3"
-dioxus-web = "0.4.3"
+# serde = { git = "https://github.com/serde-rs/serde.git" }
+# wasm-logger = { git = "https://gitlab.com/limira-rs/wasm-logger.git" }
+dioxus = { git = "https://github.com/DioxusLabs/dioxus.git", features = ["web", "router"] }
+# dioxus-markdown = "0.5.0"
 web-sys = "0.3.67"
 wasm-bindgen = "0.2.90"
 regex = "1.10.3"
 js-sys = "0.3.68"
+# reqwest = { version = "0.12.4", features = ["json"] }
+
+# Debug
+tracing = "0.1.40"
+dioxus-logger = { git = "https://github.com/DogeDark/dioxus-logger.git" }

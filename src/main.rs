@@ -4,24 +4,28 @@ mod enums;
 mod layout;
 mod pages;
 
-// import the prelude to get access to the `rsx!` macro and the `Scope` and `Element` types
+// // import the prelude to get access to the `rsx!` macro and the `Scope` and `Element` types
 use dioxus::{
-    hooks::use_shared_state_provider,
-    prelude::{component, fc_to_builder, rsx, Element, Scope},
+    hooks::use_context_provider,
+    prelude::{launch, rsx, Element, component, Router, dioxus_core, fc_to_builder},
 };
-use dioxus_router::prelude::Router;
+use tracing::Level;
 
-struct Language<'a>(&'a str);
+// use dioxus_router::prelude::Router;
 
 fn main() {
-    // launch the web app
-    dioxus_web::launch(App);
-    wasm_logger::init(wasm_logger::Config::default());
+    //     // launch the web app
+    dioxus_logger::init(Level::INFO).expect("failed to init logger");
+    launch(App);
+
+    //     dioxus_web::launch(App);
+    //     wasm_logger::init(wasm_logger::Config::default());
 }
 
 #[component]
-#[allow(non_snake_case)]
-fn App(cx: Scope) -> Element {
-    use_shared_state_provider(cx, || Language("zh-TW"));
-    cx.render(rsx! { Router::<enums::route::Route> {} })
+fn App() -> Element {
+    use_context_provider(|| "zh-TW");
+    rsx! {
+        Router::<enums::route::Route> {}
+    }
 }

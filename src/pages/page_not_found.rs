@@ -1,10 +1,9 @@
-use dioxus::prelude::{component, dioxus_elements, rsx, Element, GlobalAttributes, Props, Scope};
+use dioxus::prelude::{dioxus_core, dioxus_elements, rsx, Element, component, Props};
 
 #[component]
-#[allow(non_snake_case)]
-pub fn PageNotFound(cx: Scope, route: Vec<String>) -> Element {
-    cx.render(rsx! {
+pub fn PageNotFound(route: Vec<String>) -> Element {
+    rsx! {
         div { "404" }
         pre { color: "red", "log:\nattemped to navigate to: {route:?}" }
-    })
+    }
 }
