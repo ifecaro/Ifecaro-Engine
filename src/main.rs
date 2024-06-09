@@ -7,7 +7,7 @@ mod pages;
 // // import the prelude to get access to the `rsx!` macro and the `Scope` and `Element` types
 use dioxus::{
     hooks::use_context_provider,
-    prelude::{launch, rsx, Element, component, Router, dioxus_core, fc_to_builder},
+    prelude::{component, dioxus_core, fc_to_builder, launch, rsx, Element, Router}, signals::Signal,
 };
 use tracing::Level;
 
@@ -24,7 +24,7 @@ fn main() {
 
 #[component]
 fn App() -> Element {
-    use_context_provider(|| "zh-TW");
+    use_context_provider(|| Signal::new("zh-TW"));
     rsx! {
         Router::<enums::route::Route> {}
     }

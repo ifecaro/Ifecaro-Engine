@@ -62,13 +62,15 @@ pub fn Story() -> Element {
         items: vec![],
     });
     let mut selected_paragraph_index: Signal<usize> = use_signal(|| 0);
-    let lang = use_context::<&str>();
+    let lang = use_context::<Signal<&str>>();
+    tracing::info!("{}", lang);
+
     let text_found = use_memo(move || {
         (*data.read())
             .items
             .iter()
             .find(|item| item.index == *selected_paragraph_index.read())
-            .and_then(|item| item.texts.iter().find(|text| text.lang == lang).cloned())
+            .and_then(|item| item.texts.iter().find(|text| text.lang == lang()).cloned())
     });
     let paragraph = use_memo(move || {
         text_found

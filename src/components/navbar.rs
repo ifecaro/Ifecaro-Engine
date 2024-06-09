@@ -1,13 +1,16 @@
 use crate::{constants::config::config::LANGUAGES, enums::route::Route};
 use dioxus::{
     hooks::use_context,
-    prelude::{dioxus_core, dioxus_elements, fc_to_builder, rsx, Element, IntoDynNode, Link, component},
+    prelude::{
+        component, dioxus_core, dioxus_elements, fc_to_builder, rsx, Element, IntoDynNode, Link,
+    },
+    signals::{Signal, Writable},
 };
 // use dioxus_router::prelude::Link;
 
 #[component]
 pub fn Navbar() -> Element {
-    let mut lang = use_context::<&str>();
+    let mut lang = use_context::<Signal<&str>>();
 
     rsx! {
         div { class: "fixed top-0 right-0 px-6 py-3",
@@ -15,8 +18,11 @@ pub fn Navbar() -> Element {
                 Link { to: Route::Story {}, "Story" }
                 Link { to: Route::Dashboard {}, "Dashboard" }
                 button { "Settings" }
-                button { onclick: move |_| { lang = if lang == "zh-TW" { "en-US" } else { "zh-TW" } },
-                    {LANGUAGES.iter().find(|language| language.code == lang).and_then(|lang_found| {
+                button { onclick: move |_| {
+                    lang.set(if lang() == "zh-TW" { "en-US" } else { "zh-TW" }) ;
+                    // tracing::info!("{}", lang);
+                },
+                    {LANGUAGES.iter().find(|language| language.code == lang()).and_then(|lang_found| {
                         Some(
                             lang_found.name
                         )
