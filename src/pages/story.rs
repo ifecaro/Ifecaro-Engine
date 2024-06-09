@@ -1,7 +1,7 @@
 use crate::constants::config::config::{BASE_API_URL, SETTINGS};
 use dioxus::{
     dioxus_core,
-    hooks::{use_context, use_future, use_memo, use_signal},
+    hooks::{use_callback, use_context, use_effect, use_future, use_memo, use_signal},
     prelude::{component, dioxus_elements, fc_to_builder, rsx, Element, IntoDynNode},
     signals::{Readable, Signal, Writable},
 };
@@ -79,8 +79,6 @@ pub fn Story() -> Element {
             .and_then(|text| Some(text.paragraphs.clone()))
     });
 
-    let callback: Signal<Option<Closure<dyn Fn(web_sys::KeyboardEvent)>>> = use_signal(|| None);
-
     {
         let mut data = data.clone();
 
@@ -102,102 +100,90 @@ pub fn Story() -> Element {
         });
     }
 
-    {
-        {
-            let mut callback = callback.clone();
-            let data = data.clone();
-            let text_found = text_found.clone();
-            let selected_paragraph_index = selected_paragraph_index.clone();
+    // {
+    //     {
+    //         // let mut callback = callback.clone();
+    //         let data = data.clone();
+    //         let text_found = text_found.clone();
+    //         let selected_paragraph_index = selected_paragraph_index.clone();
+    //         let callback =
+    //             Closure::<dyn Fn(web_sys::KeyboardEvent)>::new(move );
 
-            use_future(move || async move {
-                window().and_then(|win| {
-                    let callback_temp = {
-                        let callback = callback.clone();
+    //         window().and_then(|win| {
+    //             win.add_event_listener_with_callback("keydown", callback.as_ref().unchecked_ref())
+    //                 .unwrap();
+    //             // callback.set(Some(callback_temp));
 
-                        Closure::<dyn Fn(web_sys::KeyboardEvent)>::new(
-                            move |e: web_sys::KeyboardEvent| {
-                                let _ = callback.clone();
-                                let data = data.clone();
-                                let text_found = text_found.clone();
-                                let mut selected_paragraph_index = selected_paragraph_index.clone();
+    //             callback.forget();
 
-                                let key = e.key();
-                                let key_str = key.as_str();
-                                let re = Regex::new(r"[1-9]").unwrap();
-                                if re.is_match(key_str) {
-                                    key_str
-                                        .parse::<usize>()
-                                        .and_then(|option_index| {
-                                            let option_index = option_index - 1;
-                                            text_found
-                                                .read()
-                                                .as_ref()
-                                                .and_then(|text| {
-                                                    if option_index < text.choices.len() {
-                                                        Some(text.choices[option_index].clone())
-                                                    } else {
-                                                        None
-                                                    }
-                                                })
-                                                .and_then(move |choice| {
-                                                    let index =
-                                                        (*data.read()).items.iter().position(
-                                                            |item| item.choice_id == choice.goto,
-                                                        );
+    //             // std::mem::forget(callback);s
+    //             Some(())
+    //         });
+    //     }
+    // }
 
-                                                    if index.is_some() {
-                                                        *selected_paragraph_index.write() =
-                                                            index.unwrap()
-                                                    };
-                                                    Some(())
-                                                });
-                                            Ok(())
-                                        })
-                                        .err();
-                                };
-                            },
-                        )
-                    };
-                    win.add_event_listener_with_callback(
-                        "keydown",
-                        callback_temp.as_ref().unchecked_ref(),
-                    )
-                    .unwrap();
-                    callback.set(Some(callback_temp));
-
-                    // callback_temp.forget();
-
-                    // std::mem::forget(callback);s
-                    Some(())
-                });
-            });
-        }
-    }
-
-    {
-        let callback = callback.clone();
-        let selected_paragraph_index = selected_paragraph_index.clone();
-        use_future(move || async move {
-            if *selected_paragraph_index.read() > 0 {
-                window().and_then(|win| {
-                    (*callback.read()).as_ref().and_then(|cb| {
-                        win.remove_event_listener_with_callback(
-                            "keydown",
-                            (*cb).as_ref().unchecked_ref(),
-                        )
-                        .unwrap();
-                        Some(())
-                    })
-                });
-            }
-        });
-    }
+    // {
+    //     let callback = callback.clone();
+    //     let selected_paragraph_index = selected_paragraph_index.clone();
+    //     use_future(move || async move {
+    //         if *selected_paragraph_index.read() > 0 {
+    //             window().and_then(|win| {
+    //                 (*callback.read()).as_ref().and_then(|cb| {
+    //                     win.remove_event_listener_with_callback(
+    //                         "keydown",
+    //                         (*cb).as_ref().unchecked_ref(),
+    //                     )
+    //                     .unwrap();
+    //                     Some(())
+    //                 })
+    //             });
+    //         }
+    //     });
+    // }
 
     rsx! {
         crate::pages::layout::Layout {
             if data.read().totalItems > 0 {
                 { rsx!{
                     div {
+                        class: "h-[calc(100%_-_48px)]",
+                        tabindex: "0",
+                        onkeydown: move |e| {
+                            // let _ = callback.clone();
+                            let data = data.clone();
+                            let text_found = text_found.clone();
+                            let mut selected_paragraph_index = selected_paragraph_index.clone();
+
+                            // let key = e.key();
+                            // let key_str = key.as_str();
+                            // let re = Regex::new(r"[1-9]").unwrap();
+                            if let dioxus::events::Key::Character(key_char) = e.key() {
+                            if let Some(digit) = key_char.chars().next().and_then(|c| c.to_digit(10)) {
+                                let option_index = digit as usize - 1;
+                                text_found
+                                    .read()
+                                    .as_ref()
+                                    .and_then(|text| {
+                                        if option_index < text.choices.len() {
+                                            Some(text.choices[option_index].clone())
+                                        } else {
+                                            None
+                                        }
+                                    })
+                                    .and_then(move |choice| {
+                                        let index = (*data.read())
+                                            .items
+                                            .iter()
+                                            .position(|item| item.choice_id == choice.goto);
+
+                                        if let Some(idx) = index {
+                                            *selected_paragraph_index.write() = idx;
+                                        }
+                                        Some(())
+                                    });
+                                }
+                            }
+                        },
                         {
                             text_found.read().clone().and_then(|text_found| {
                                 Some(
@@ -232,9 +218,10 @@ pub fn Story() -> Element {
                                 )
                             }).unwrap()
                         }
+
                     }
                 }
-            }
+                }
             }
         }
     }

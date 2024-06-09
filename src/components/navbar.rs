@@ -18,10 +18,10 @@ pub fn Navbar() -> Element {
                 Link { to: Route::Story {}, "Story" }
                 Link { to: Route::Dashboard {}, "Dashboard" }
                 button { "Settings" }
-                button { onclick: move |_| {
-                    lang.set(if lang() == "zh-TW" { "en-US" } else { "zh-TW" }) ;
-                    // tracing::info!("{}", lang);
-                },
+                button {
+                    onclick: move |_| {
+                        lang.set(if lang() == "zh-TW" { "en-US" } else { "zh-TW" });
+                    },
                     {LANGUAGES.iter().find(|language| language.code == lang()).and_then(|lang_found| {
                         Some(
                             lang_found.name
