@@ -96,63 +96,18 @@ pub fn Story() -> Element {
         });
     }
 
-    // {
-    //     {
-    //         // let mut callback = callback.clone();
-    //         let data = data.clone();
-    //         let text_found = text_found.clone();
-    //         let selected_paragraph_index = selected_paragraph_index.clone();
-    //         let callback =
-    //             Closure::<dyn Fn(web_sys::KeyboardEvent)>::new(move );
-
-    //         window().and_then(|win| {
-    //             win.add_event_listener_with_callback("keydown", callback.as_ref().unchecked_ref())
-    //                 .unwrap();
-    //             // callback.set(Some(callback_temp));
-
-    //             callback.forget();
-
-    //             // std::mem::forget(callback);s
-    //             Some(())
-    //         });
-    //     }
-    // }
-
-    // {
-    //     let callback = callback.clone();
-    //     let selected_paragraph_index = selected_paragraph_index.clone();
-    //     use_future(move || async move {
-    //         if *selected_paragraph_index.read() > 0 {
-    //             window().and_then(|win| {
-    //                 (*callback.read()).as_ref().and_then(|cb| {
-    //                     win.remove_event_listener_with_callback(
-    //                         "keydown",
-    //                         (*cb).as_ref().unchecked_ref(),
-    //                     )
-    //                     .unwrap();
-    //                     Some(())
-    //                 })
-    //             });
-    //         }
-    //     });
-    // }
-
     rsx! {
-        crate::pages::layout::Layout {
+        crate::pages::layout::Layout { 
             if data.read().totalItems > 0 {
                 { rsx!{
                     div {
                         class: "h-[calc(100%_-_48px)]",
                         tabindex: "0",
                         onkeydown: move |e| {
-                            // let _ = callback.clone();
                             let data = data.clone();
                             let text_found = text_found.clone();
                             let mut selected_paragraph_index = selected_paragraph_index.clone();
-
-                            // let key = e.key();
-                            // let key_str = key.as_str();
-                            // let re = Regex::new(r"[1-9]").unwrap();
+                
                             if let dioxus::events::Key::Character(key_char) = e.key() {
                             if let Some(digit) = key_char.chars().next().and_then(|c| c.to_digit(10)) {
                                 let option_index = digit as usize - 1;
@@ -171,7 +126,7 @@ pub fn Story() -> Element {
                                             .items
                                             .iter()
                                             .position(|item| item.choice_id == choice.goto);
-
+                
                                         if let Some(idx) = index {
                                             selected_paragraph_index.set(idx);
                                         }
@@ -197,7 +152,7 @@ pub fn Story() -> Element {
                                                         .items
                                                         .iter()
                                                         .position(|item| item.choice_id == choice.goto);
-
+                
                                                     return rsx!{
                                                         li {
                                                             class: if index.is_some() {"cursor-pointer"} else {"opacity-30"},
@@ -214,7 +169,7 @@ pub fn Story() -> Element {
                                 )
                             }).unwrap()
                         }
-
+                
                     }
                 }
                 }
