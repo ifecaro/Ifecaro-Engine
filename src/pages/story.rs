@@ -1,16 +1,12 @@
 use crate::constants::config::config::{BASE_API_URL, SETTINGS};
 use dioxus::{
     dioxus_core,
-    hooks::{use_callback, use_context, use_effect, use_future, use_memo, use_signal},
+    hooks::{use_context, use_future, use_memo, use_signal},
     prelude::{component, dioxus_elements, fc_to_builder, rsx, Element, IntoDynNode},
     signals::{Readable, Signal, Writable},
 };
 // use dioxus_markdown::Markdown;
-use regex::Regex;
 use serde::Deserialize;
-use wasm_bindgen::{prelude::Closure, JsCast};
-use web_sys::window;
-// use futures::future::join_all;
 
 #[allow(non_snake_case)]
 #[derive(Deserialize, Clone, Debug)]
@@ -177,7 +173,7 @@ pub fn Story() -> Element {
                                             .position(|item| item.choice_id == choice.goto);
 
                                         if let Some(idx) = index {
-                                            *selected_paragraph_index.write() = idx;
+                                            selected_paragraph_index.set(idx);
                                         }
                                         Some(())
                                     });
