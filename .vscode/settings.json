@@ -8,15 +8,16 @@
     "editor.formatOnSave": true,
     "editor.formatOnPaste": true,
     "rust-analyzer.server.extraEnv": {
-        "CARGO": "/home/togekk/.cargo/bin/cargo",
-        "RUSTC": "/home/togekk/.cargo/bin/rustc",
+        "CARGO": "/home/deck/.cargo/bin/cargo",
+        "RUSTC": "/home/deck/.cargo/bin/rustc",
     },
+    "rust-analyzer.cargo.autoReload": true,
     "rust-analyzer.diagnostics.disabled": [
         "unresolved-proc-macro"
     ],
     "rust-analyzer.procMacro.attributes.enable": true,
     "rust-analyzer.rustfmt.overrideCommand": [
-        "/home/togekk/.cargo/bin/rustfmt",
+        "/home/deck/.cargo/bin/rustfmt",
         "--edition=2021",
     ],
     "rust-analyzer.linkedProjects": [

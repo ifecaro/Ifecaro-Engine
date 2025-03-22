@@ -2,8 +2,8 @@ use crate::constants::config::config::{BASE_API_URL, SETTINGS};
 use dioxus::{
     dioxus_core,
     hooks::{use_context, use_future, use_memo, use_signal},
-    prelude::{component, dioxus_elements, fc_to_builder, rsx, Element, IntoDynNode},
-    signals::{Readable, Signal, Writable},
+    prelude::{component, dioxus_elements, fc_to_builder, rsx, Element, IntoDynNode, GlobalSignal, Readable},
+    signals::{Signal, Writable},
 };
 // use dioxus_markdown::Markdown;
 use serde::Deserialize;
@@ -138,7 +138,7 @@ pub fn Story() -> Element {
     // }
 
     rsx! {
-        crate::pages::layout::Layout {
+        crate::pages::layout::Layout { 
             if data.read().totalItems > 0 {
                 { rsx!{
                     div {
@@ -149,7 +149,7 @@ pub fn Story() -> Element {
                             let data = data.clone();
                             let text_found = text_found.clone();
                             let mut selected_paragraph_index = selected_paragraph_index.clone();
-
+                
                             // let key = e.key();
                             // let key_str = key.as_str();
                             // let re = Regex::new(r"[1-9]").unwrap();
@@ -171,7 +171,7 @@ pub fn Story() -> Element {
                                             .items
                                             .iter()
                                             .position(|item| item.choice_id == choice.goto);
-
+                
                                         if let Some(idx) = index {
                                             selected_paragraph_index.set(idx);
                                         }
@@ -197,7 +197,7 @@ pub fn Story() -> Element {
                                                         .items
                                                         .iter()
                                                         .position(|item| item.choice_id == choice.goto);
-
+                
                                                     return rsx!{
                                                         li {
                                                             class: if index.is_some() {"cursor-pointer"} else {"opacity-30"},
@@ -214,7 +214,7 @@ pub fn Story() -> Element {
                                 )
                             }).unwrap()
                         }
-
+                
                     }
                 }
                 }

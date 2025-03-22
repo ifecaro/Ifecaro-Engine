@@ -4,10 +4,10 @@ mod enums;
 mod layout;
 mod pages;
 
-// // import the prelude to get access to the `rsx!` macro and the `Scope` and `Element` types
+// import the prelude to get access to the `rsx!` macro and the `Scope` and `Element` types
 use dioxus::{
-    hooks::use_context_provider,
-    prelude::{component, dioxus_core, fc_to_builder, launch, rsx, Element, Router}, signals::Signal,
+    prelude::*,
+    document::Stylesheet,
 };
 use tracing::Level;
 
@@ -26,6 +26,9 @@ fn main() {
 fn App() -> Element {
     use_context_provider(|| Signal::new("zh-TW"));
     rsx! {
+        head {
+            Stylesheet { href: asset!("public/tailwind.css") }
+        }
         Router::<enums::route::Route> {}
     }
 }

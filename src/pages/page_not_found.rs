@@ -1,4 +1,4 @@
-use dioxus::prelude::{dioxus_core, dioxus_elements, rsx, Element, component, Props};
+use dioxus::prelude::{dioxus_core, dioxus_elements, rsx, Element, component, Props, GlobalSignal, Readable};
 
 #[component]
 pub fn PageNotFound(route: Vec<String>) -> Element {

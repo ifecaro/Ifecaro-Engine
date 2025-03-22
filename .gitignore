@@ -1,2 +1,6 @@
 /target
 dist
+pocketbase/hooks
+pocketbase/public
+pocketbase/data
+pocketbase/.env

@@ -1,4 +1,4 @@
-use dioxus::prelude::{dioxus_elements, rsx, Element, IntoDynNode, Props, component, dioxus_core};
+use dioxus::prelude::{dioxus_elements, rsx, Element, IntoDynNode, Props, component, dioxus_core, GlobalSignal, Readable};
 
 #[derive(Props, Clone, PartialEq)]
 pub struct TitleProps {
