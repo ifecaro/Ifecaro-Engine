@@ -188,7 +188,15 @@ pub fn Story() -> Element {
                                             class: "prose dark:prose-invert lg:prose-xl indent-10",
                                             div {
                                                 class: "whitespace-pre-line",
-                                                { paragraph.read().as_ref().unwrap().clone() }
+                                                {
+                                                    paragraph.read()
+                                                        .as_ref()
+                                                        .unwrap()
+                                                        .split("\n")
+                                                        .map(|p| rsx! {
+                                                            p { class: "mb-6", { p } }
+                                                        })
+                                                }
                                             }
                                                     // Markdown {
                                                     //     content: &paragraph.as_ref().unwrap(),

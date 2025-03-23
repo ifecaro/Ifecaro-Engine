@@ -584,6 +584,9 @@
   .mt-10 {
     margin-top: calc(var(--spacing) * 10);
   }
+  .mb-6 {
+    margin-bottom: calc(var(--spacing) * 6);
+  }
   .grid {
     display: grid;
   }
@@ -883,6 +886,14 @@
       --tw-prose-td-borders: var(--tw-prose-invert-td-borders);
     }
   }
+}
+.whitespace-pre-line {
+  white-space: pre-line;
+}
+.whitespace-pre-line br+br {
+  content: "";
+  display: block;
+  margin-bottom: 1.5em;
 }
 li {
   text-indent: 0;

@@ -1,8 +1,16 @@
-/* @tailwind base;
-@tailwind components;
-@tailwind utilities; */
 @import "tailwindcss";
 @plugin "@tailwindcss/typography";
+
+/* 添加段落間距樣式 */
+.whitespace-pre-line {
+    white-space: pre-line;
+}
+
+.whitespace-pre-line br {
+    content: "";
+    display: block;
+    margin-bottom: 1.5em;
+}
 
 li {
     text-indent: 0;
