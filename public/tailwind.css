@@ -166,6 +166,9 @@
   .right-0 {
     right: calc(var(--spacing) * 0);
   }
+  .mx-auto {
+    margin-inline: auto;
+  }
   .prose {
     color: var(--tw-prose-body);
     max-width: 65ch;
@@ -890,7 +893,7 @@
 .whitespace-pre-line {
   white-space: pre-line;
 }
-.whitespace-pre-line br+br {
+.whitespace-pre-line br {
   content: "";
   display: block;
   margin-bottom: 1.5em;

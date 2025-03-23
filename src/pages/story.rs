@@ -185,7 +185,7 @@ pub fn Story() -> Element {
                                 Some(
                                     rsx!{
                                         article {
-                                            class: "prose dark:prose-invert lg:prose-xl indent-10",
+                                            class: "prose dark:prose-invert lg:prose-xl indent-10 mx-auto",
                                             div {
                                                 class: "whitespace-pre-line",
                                                 {
