@@ -186,7 +186,10 @@ pub fn Story() -> Element {
                                     rsx!{
                                         article {
                                             class: "prose dark:prose-invert lg:prose-xl indent-10",
-                                            { paragraph.read().as_ref().unwrap().clone() }
+                                            div {
+                                                class: "whitespace-pre-line",
+                                                { paragraph.read().as_ref().unwrap().clone() }
+                                            }
                                                     // Markdown {
                                                     //     content: &paragraph.as_ref().unwrap(),
                                                     // }
