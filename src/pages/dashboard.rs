@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use wasm_bindgen_futures::spawn_local;
 use wasm_bindgen::prelude::*;
 use crate::constants::config::config::{BASE_API_URL, SETTINGS};
-use crate::enums::translations::DashboardTranslations;
+use crate::enums::translations::Translations;
 use crate::components::toast::Toast;
 use crate::components::form::{InputField, TextareaField};
 use dioxus::events::{FormEvent, FocusEvent};
@@ -33,47 +33,6 @@ struct Data {
     items: Vec<Paragraph>,
 }
 
-#[derive(Clone)]
-struct Translations {
-    choice_id: &'static str,
-    paragraph: &'static str,
-    options: &'static str,
-    option_text: &'static str,
-    goto_target: &'static str,
-    add: &'static str,
-    submit: &'static str,
-    submit_success: &'static str,
-}
-
-impl Translations {
-    fn get(lang: &str) -> Self {
-        match lang {
-            "en" => Self {
-                choice_id: "Choice ID",
-                paragraph: "Paragraph",
-                options: "Options",
-                option_text: "Option Text",
-                goto_target: "Go to Target",
-                add: "Add",
-                submit: "Submit",
-                submit_success: "Successfully submitted!",
-            },
-            "zh-TW" => Self {
-                choice_id: "Choice ID",
-                paragraph: "段落",
-                options: "選項",
-                option_text: "選項文字",
-                goto_target: "跳轉目標",
-                add: "新增",
-                submit: "送出",
-                submit_success: "資料送出成功！",
-            },
-            // Default to English
-            _ => Self::get("en"),
-        }
-    }
-}
-
 #[component]
 pub fn Dashboard() -> Element {
     let mut choices = use_signal(Vec::<Choice>::new);
@@ -87,7 +46,7 @@ pub fn Dashboard() -> Element {
     let mut show_toast = use_signal(|| false);
     let mut toast_visible = use_signal(|| false);
     let lang = use_context::<Signal<&str>>();
-    let t = DashboardTranslations::get(lang());
+    let t = Translations::get(lang());
 
     // 新增錯誤提示的signals
     let mut choice_id_error = use_signal(|| false);
