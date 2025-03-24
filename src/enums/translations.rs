@@ -7,6 +7,7 @@ pub struct DashboardTranslations {
     pub goto_target: &'static str,
     pub add: &'static str,
     pub submit: &'static str,
+    pub submit_success: &'static str,
 }
 
 impl DashboardTranslations {
@@ -20,6 +21,7 @@ impl DashboardTranslations {
                 goto_target: "Go to Target",
                 add: "Add",
                 submit: "Submit",
+                submit_success: "Successfully submitted!",
             },
             "zh-TW" => Self {
                 choice_id: "選項代號",
@@ -29,6 +31,7 @@ impl DashboardTranslations {
                 goto_target: "跳轉目標",
                 add: "新增",
                 submit: "送出",
+                submit_success: "資料送出成功！",
             },
             _ => Self::get("en"),
         }

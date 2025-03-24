@@ -1,9 +1,10 @@
-use dioxus::prelude::{fc_to_builder, rsx, Element, component, dioxus_core, GlobalSignal, Readable};
 use dioxus::prelude::*;
 use serde::{Deserialize, Serialize};
 use wasm_bindgen_futures::spawn_local;
+use wasm_bindgen::prelude::*;
 use crate::constants::config::config::{BASE_API_URL, SETTINGS};
 use crate::enums::translations::DashboardTranslations;
+use crate::components::toast::Toast;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 struct Text {
@@ -39,6 +40,7 @@ struct Translations {
     goto_target: &'static str,
     add: &'static str,
     submit: &'static str,
+    submit_success: &'static str,
 }
 
 impl Translations {
@@ -52,6 +54,7 @@ impl Translations {
                 goto_target: "Go to Target",
                 add: "Add",
                 submit: "Submit",
+                submit_success: "Successfully submitted!",
             },
             "zh-TW" => Self {
                 choice_id: "Choice ID",
@@ -60,7 +63,8 @@ impl Translations {
                 option_text: "選項文字",
                 goto_target: "跳轉目標",
                 add: "新增",
-                submit: "提交",
+                submit: "送出",
+                submit_success: "資料送出成功！",
             },
             // Default to English
             _ => Self::get("en"),
@@ -78,6 +82,8 @@ pub fn Dashboard() -> Element {
     let mut extra_captions = use_signal(Vec::<String>::new);
     let mut extra_gotos = use_signal(Vec::<String>::new);
     let mut show_extra_options = use_signal(Vec::<()>::new);
+    let mut show_toast = use_signal(|| false);
+    let mut toast_visible = use_signal(|| false);
     let lang = use_context::<Signal<&str>>();
     let t = DashboardTranslations::get(lang());
 
@@ -145,6 +151,50 @@ pub fn Dashboard() -> Element {
                                     extra_captions.write().clear();
                                     extra_gotos.write().clear();
                                     show_extra_options.write().clear();
+                                    show_toast.set(true);
+                                    
+                                    let mut toast_visible = toast_visible.clone();
+                                    spawn_local(async move {
+                                        let window = web_sys::window().unwrap();
+                                        let promise = js_sys::Promise::new(&mut |resolve, _| {
+                                            window
+                                                .set_timeout_with_callback_and_timeout_and_arguments_0(
+                                                    &resolve,
+                                                    50,
+                                                )
+                                                .unwrap();
+                                        });
+                                        let _ = wasm_bindgen_futures::JsFuture::from(promise).await;
+                                        toast_visible.set(true);
+                                    });
+                                    
+                                    let mut show_toast = show_toast.clone();
+                                    let mut toast_visible = toast_visible.clone();
+                                    spawn_local(async move {
+                                        let window = web_sys::window().unwrap();
+                                        let promise = js_sys::Promise::new(&mut |resolve, _| {
+                                            window
+                                                .set_timeout_with_callback_and_timeout_and_arguments_0(
+                                                    &resolve,
+                                                    2700,
+                                                )
+                                                .unwrap();
+                                        });
+                                        let _ = wasm_bindgen_futures::JsFuture::from(promise).await;
+                                        
+                                        toast_visible.set(false);
+                                        
+                                        let promise = js_sys::Promise::new(&mut |resolve, _| {
+                                            window
+                                                .set_timeout_with_callback_and_timeout_and_arguments_0(
+                                                    &resolve,
+                                                    300,
+                                                )
+                                                .unwrap();
+                                        });
+                                        let _ = wasm_bindgen_futures::JsFuture::from(promise).await;
+                                        show_toast.set(false);
+                                    });
                                 }
                             }
                             Err(_) => {}
@@ -159,6 +209,14 @@ pub fn Dashboard() -> Element {
     rsx! {
         crate::pages::layout::Layout { 
             title: "Dashboard",
+            {show_toast.read().then(|| {
+                rsx!(
+                    Toast {
+                        visible: *toast_visible.read(),
+                        message: t.submit_success.to_string()
+                    }
+                )
+            })}
             form { 
                 class: "max-w-2xl mx-auto p-6 bg-white rounded-lg shadow-md",
                 onsubmit: handle_submit,
