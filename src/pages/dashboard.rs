@@ -1,8 +1,219 @@
 use dioxus::prelude::{fc_to_builder, rsx, Element, component, dioxus_core, GlobalSignal, Readable};
+use dioxus::prelude::*;
+use serde::{Deserialize, Serialize};
+use wasm_bindgen_futures::spawn_local;
+use crate::constants::config::config::{BASE_API_URL, SETTINGS};
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+struct Text {
+    lang: String,
+    paragraphs: String,
+    choices: Vec<Choice>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+struct Choice {
+    caption: String,
+    goto: String,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+struct Paragraph {
+    index: usize,
+    choice_id: String,
+    texts: Vec<Text>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+struct Data {
+    items: Vec<Paragraph>,
+}
 
 #[component]
 pub fn Dashboard() -> Element {
+    let mut choices = use_signal(Vec::<Choice>::new);
+    let mut choice_id = use_signal(String::new);
+    let mut paragraphs = use_signal(String::new);
+    let mut new_caption = use_signal(String::new);
+    let mut new_goto = use_signal(String::new);
+    let mut extra_captions = use_signal(Vec::<String>::new);
+    let mut extra_gotos = use_signal(Vec::<String>::new);
+    let mut show_extra_options = use_signal(Vec::<()>::new);
+    let lang = use_context::<Signal<&str>>();
+
+    let add_choice = move |_| {
+        show_extra_options.write().push(());
+        extra_captions.write().push(String::new());
+        extra_gotos.write().push(String::new());
+    };
+
+    let handle_submit = move |evt: Event<FormData>| {
+        evt.stop_propagation();
+        
+        let mut all_choices = Vec::new();
+        
+        if !new_caption.read().is_empty() && !new_goto.read().is_empty() {
+            all_choices.push(Choice {
+                caption: new_caption.read().clone(),
+                goto: new_goto.read().clone(),
+            });
+        }
+
+        for i in 0..extra_captions.read().len() {
+            let caption = &extra_captions.read()[i];
+            let goto = &extra_gotos.read()[i];
+            if !caption.is_empty() && !goto.is_empty() {
+                all_choices.push(Choice {
+                    caption: caption.clone(),
+                    goto: goto.clone(),
+                });
+            }
+        }
+
+        let text = Text {
+            lang: lang().to_string(),
+            paragraphs: paragraphs.read().clone(),
+            choices: all_choices,
+        };
+
+        spawn_local(async move {
+            let client = reqwest::Client::new();
+            let url = format!("{}{}", BASE_API_URL, SETTINGS);
+            
+            match client.get(&url).send().await {
+                Ok(response) => {
+                    if let Ok(data) = response.json::<Data>().await {
+                        let max_index = data.items.iter()
+                            .map(|item| item.index)
+                            .max()
+                            .unwrap_or(0);
+                        
+                        let record = Paragraph {
+                            index: max_index + 1,
+                            choice_id: choice_id.read().clone(),
+                            texts: vec![text],
+                        };
+
+                        match client.post(&url).json(&record).send().await {
+                            Ok(response) => {
+                                if response.status().is_success() {
+                                    choice_id.set("".to_string());
+                                    paragraphs.set("".to_string());
+                                    choices.write().clear();
+                                    new_caption.set("".to_string());
+                                    new_goto.set("".to_string());
+                                    extra_captions.write().clear();
+                                    extra_gotos.write().clear();
+                                    show_extra_options.write().clear();
+                                }
+                            }
+                            Err(_) => {}
+                        }
+                    }
+                }
+                Err(_) => {}
+            }
+        });
+    };
+
     rsx! {
-        crate::pages::layout::Layout { title: "Dashboard" }
+        crate::pages::layout::Layout { 
+            title: "Dashboard",
+            form { 
+                class: "max-w-2xl mx-auto p-6 bg-white rounded-lg shadow-md",
+                onsubmit: handle_submit,
+                "onsubmit": "event.preventDefault();",
+                
+                div { class: "mb-6",
+                    label { class: "block text-gray-700 text-sm font-bold mb-2",
+                        "Choice ID"
+                    }
+                    input {
+                        class: "shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline",
+                        r#type: "text",
+                        placeholder: "請輸入 Choice ID",
+                        value: "{choice_id}",
+                        oninput: move |evt| choice_id.set(evt.value().clone())
+                    }
+                }
+
+                div { class: "mb-6",
+                    label { class: "block text-gray-700 text-sm font-bold mb-2",
+                        "段落"
+                    }
+                    textarea {
+                        class: "shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline",
+                        rows: "4",
+                        placeholder: "請輸入段落內容",
+                        value: "{paragraphs}",
+                        oninput: move |evt| paragraphs.set(evt.value().clone())
+                    }
+                }
+
+                div { class: "mb-6",
+                    label { class: "block text-gray-700 text-sm font-bold mb-2",
+                        "選項"
+                    }
+                    div { class: "flex gap-2 mb-2",
+                        input {
+                            class: "shadow appearance-none border rounded flex-1 py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline",
+                            r#type: "text",
+                            placeholder: "選項文字",
+                            value: "{new_caption}",
+                            oninput: move |evt| new_caption.set(evt.value().clone())
+                        }
+                        input {
+                            class: "shadow appearance-none border rounded flex-1 py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline",
+                            r#type: "text",
+                            placeholder: "跳轉目標",
+                            value: "{new_goto}",
+                            oninput: move |evt| new_goto.set(evt.value().clone())
+                        }
+                    }
+                    
+                    {show_extra_options.read().iter().enumerate().map(|(i, _)| rsx!(
+                        div { 
+                            class: "flex gap-2 mb-2",
+                            key: "{i}",
+                            input {
+                                class: "shadow appearance-none border rounded flex-1 py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline",
+                                r#type: "text",
+                                placeholder: "選項文字",
+                                value: "{extra_captions.read()[i]}",
+                                oninput: move |evt| {
+                                    let mut captions = extra_captions.write();
+                                    captions[i] = evt.value().clone();
+                                }
+                            }
+                            input {
+                                class: "shadow appearance-none border rounded flex-1 py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline",
+                                r#type: "text",
+                                placeholder: "跳轉目標",
+                                value: "{extra_gotos.read()[i]}",
+                                oninput: move |evt| {
+                                    let mut gotos = extra_gotos.write();
+                                    gotos[i] = evt.value().clone();
+                                }
+                            }
+                        }
+                    ))}
+
+                    div { class: "flex justify-end",
+                        button {
+                            class: "bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline",
+                            r#type: "button",
+                            onclick: add_choice,
+                            "新增"
+                        }
+                    }
+                }
+
+                button {
+                    class: "bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline",
+                    r#type: "submit",
+                    "送出"
+                }
+            }
+        }
     }
 }
