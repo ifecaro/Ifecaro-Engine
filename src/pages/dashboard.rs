@@ -5,6 +5,8 @@ use wasm_bindgen::prelude::*;
 use crate::constants::config::config::{BASE_API_URL, SETTINGS};
 use crate::enums::translations::DashboardTranslations;
 use crate::components::toast::Toast;
+use crate::components::form::{InputField, TextareaField};
+use dioxus::events::{FormEvent, FocusEvent};
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 struct Text {
@@ -257,66 +259,31 @@ pub fn Dashboard() -> Element {
                 onsubmit: handle_submit,
                 "onsubmit": "event.preventDefault();",
                 
-                div { class: "mb-6",
-                    label { class: "block text-gray-700 text-sm font-bold mb-2",
-                        span { "{t.choice_id}" }
-                        span { class: "text-red-500 ml-1", "*" }
-                    }
-                    input {
-                        class: {
-                            let mut classes = "shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline".to_string();
-                            if *choice_id_error.read() {
-                                classes.push_str(" border-red-500");
-                            }
-                            classes
-                        },
-                        required: true,
-                        r#type: "text",
-                        placeholder: "{t.choice_id}",
-                        value: "{choice_id}",
-                        onblur: move |_| validate_field(&choice_id.read(), &mut choice_id_error),
-                        oninput: move |evt| {
-                            choice_id.set(evt.value().clone());
-                            validate_field(&evt.value(), &mut choice_id_error);
-                        }
-                    }
-                    {choice_id_error.read().then(|| rsx!(
-                        div { 
-                            class: "text-red-500 text-sm mt-1",
-                            "請填寫此欄位"
-                        }
-                    ))}
+                InputField {
+                    label: t.choice_id.to_string(),
+                    placeholder: t.choice_id.to_string(),
+                    value: choice_id.read().to_string(),
+                    required: true,
+                    has_error: *choice_id_error.read(),
+                    on_input: move |evt: FormEvent| {
+                        choice_id.set(evt.value().clone());
+                        validate_field(&evt.value(), &mut choice_id_error);
+                    },
+                    on_blur: move |evt: FocusEvent| validate_field(&choice_id.read(), &mut choice_id_error)
                 }
 
-                div { class: "mb-6",
-                    label { class: "block text-gray-700 text-sm font-bold mb-2",
-                        span { "{t.paragraph}" }
-                        span { class: "text-red-500 ml-1", "*" }
-                    }
-                    textarea {
-                        class: {
-                            let mut classes = "shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline".to_string();
-                            if *paragraphs_error.read() {
-                                classes.push_str(" border-red-500");
-                            }
-                            classes
-                        },
-                        required: true,
-                        rows: "4",
-                        placeholder: "{t.paragraph}",
-                        value: "{paragraphs}",
-                        onblur: move |_| validate_field(&paragraphs.read(), &mut paragraphs_error),
-                        oninput: move |evt| {
-                            paragraphs.set(evt.value().clone());
-                            validate_field(&evt.value(), &mut paragraphs_error);
-                        }
-                    }
-                    {paragraphs_error.read().then(|| rsx!(
-                        div { 
-                            class: "text-red-500 text-sm mt-1",
-                            "請填寫此欄位"
-                        }
-                    ))}
+                TextareaField {
+                    label: t.paragraph.to_string(),
+                    placeholder: t.paragraph.to_string(),
+                    value: paragraphs.read().to_string(),
+                    required: true,
+                    has_error: *paragraphs_error.read(),
+                    rows: 4,
+                    on_input: move |evt: FormEvent| {
+                        paragraphs.set(evt.value().clone());
+                        validate_field(&evt.value(), &mut paragraphs_error);
+                    },
+                    on_blur: move |evt: FocusEvent| validate_field(&paragraphs.read(), &mut paragraphs_error)
                 }
 
                 div { class: "mb-6",
@@ -326,56 +293,32 @@ pub fn Dashboard() -> Element {
                     }
                     div { class: "flex gap-2 mb-2",
                         div { class: "flex-1",
-                            input {
-                                class: {
-                                    let mut classes = "shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline".to_string();
-                                    if *new_caption_error.read() {
-                                        classes.push_str(" border-red-500");
-                                    }
-                                    classes
-                                },
+                            InputField {
+                                label: "".to_string(),
+                                placeholder: t.option_text.to_string(),
+                                value: new_caption.read().to_string(),
                                 required: true,
-                                r#type: "text",
-                                placeholder: "{t.option_text}",
-                                value: "{new_caption}",
-                                onblur: move |_| validate_field(&new_caption.read(), &mut new_caption_error),
-                                oninput: move |evt| {
+                                has_error: *new_caption_error.read(),
+                                on_input: move |evt: FormEvent| {
                                     new_caption.set(evt.value().clone());
                                     validate_field(&evt.value(), &mut new_caption_error);
-                                }
+                                },
+                                on_blur: move |evt: FocusEvent| validate_field(&new_caption.read(), &mut new_caption_error)
                             }
-                            {new_caption_error.read().then(|| rsx!(
-                                div { 
-                                    class: "text-red-500 text-sm mt-1",
-                                    "請填寫此欄位"
-                                }
-                            ))}
                         }
                         div { class: "flex-1",
-                            input {
-                                class: {
-                                    let mut classes = "shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline".to_string();
-                                    if *new_goto_error.read() {
-                                        classes.push_str(" border-red-500");
-                                    }
-                                    classes
-                                },
+                            InputField {
+                                label: "".to_string(),
+                                placeholder: t.goto_target.to_string(),
+                                value: new_goto.read().to_string(),
                                 required: true,
-                                r#type: "text",
-                                placeholder: "{t.goto_target}",
-                                value: "{new_goto}",
-                                onblur: move |_| validate_field(&new_goto.read(), &mut new_goto_error),
-                                oninput: move |evt| {
+                                has_error: *new_goto_error.read(),
+                                on_input: move |evt: FormEvent| {
                                     new_goto.set(evt.value().clone());
                                     validate_field(&evt.value(), &mut new_goto_error);
-                                }
+                                },
+                                on_blur: move |evt: FocusEvent| validate_field(&new_goto.read(), &mut new_goto_error)
                             }
-                            {new_goto_error.read().then(|| rsx!(
-                                div { 
-                                    class: "text-red-500 text-sm mt-1",
-                                    "請填寫此欄位"
-                                }
-                            ))}
                         }
                     }
                     
@@ -383,24 +326,32 @@ pub fn Dashboard() -> Element {
                         div { 
                             class: "flex gap-2 mb-2",
                             key: "{i}",
-                            input {
-                                class: "shadow appearance-none border rounded flex-1 py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline",
-                                r#type: "text",
-                                placeholder: "{t.option_text}",
-                                value: "{extra_captions.read()[i]}",
-                                oninput: move |evt| {
-                                    let mut captions = extra_captions.write();
-                                    captions[i] = evt.value().clone();
+                            div { class: "flex-1",
+                                InputField {
+                                    label: "".to_string(),
+                                    placeholder: t.option_text.to_string(),
+                                    value: extra_captions.read()[i].clone(),
+                                    required: false,
+                                    has_error: false,
+                                    on_input: move |evt: FormEvent| {
+                                        let mut captions = extra_captions.write();
+                                        captions[i] = evt.value().clone();
+                                    },
+                                    on_blur: move |_| {}
                                 }
                             }
-                            input {
-                                class: "shadow appearance-none border rounded flex-1 py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline",
-                                r#type: "text",
-                                placeholder: "{t.goto_target}",
-                                value: "{extra_gotos.read()[i]}",
-                                oninput: move |evt| {
-                                    let mut gotos = extra_gotos.write();
-                                    gotos[i] = evt.value().clone();
+                            div { class: "flex-1",
+                                InputField {
+                                    label: "".to_string(),
+                                    placeholder: t.goto_target.to_string(),
+                                    value: extra_gotos.read()[i].clone(),
+                                    required: false,
+                                    has_error: false,
+                                    on_input: move |evt: FormEvent| {
+                                        let mut gotos = extra_gotos.write();
+                                        gotos[i] = evt.value().clone();
+                                    },
+                                    on_blur: move |_| {}
                                 }
                             }
                         }
