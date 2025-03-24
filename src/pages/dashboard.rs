@@ -29,6 +29,44 @@ struct Data {
     items: Vec<Paragraph>,
 }
 
+#[derive(Clone)]
+struct Translations {
+    choice_id: &'static str,
+    paragraph: &'static str,
+    options: &'static str,
+    option_text: &'static str,
+    goto_target: &'static str,
+    add: &'static str,
+    submit: &'static str,
+}
+
+impl Translations {
+    fn get(lang: &str) -> Self {
+        match lang {
+            "en" => Self {
+                choice_id: "Choice ID",
+                paragraph: "Paragraph",
+                options: "Options",
+                option_text: "Option Text",
+                goto_target: "Go to Target",
+                add: "Add",
+                submit: "Submit",
+            },
+            "zh-TW" => Self {
+                choice_id: "Choice ID",
+                paragraph: "段落",
+                options: "選項",
+                option_text: "選項文字",
+                goto_target: "跳轉目標",
+                add: "新增",
+                submit: "提交",
+            },
+            // Default to English
+            _ => Self::get("en"),
+        }
+    }
+}
+
 #[component]
 pub fn Dashboard() -> Element {
     let mut choices = use_signal(Vec::<Choice>::new);
@@ -40,6 +78,7 @@ pub fn Dashboard() -> Element {
     let mut extra_gotos = use_signal(Vec::<String>::new);
     let mut show_extra_options = use_signal(Vec::<()>::new);
     let lang = use_context::<Signal<&str>>();
+    let t = Translations::get(lang());
 
     let add_choice = move |_| {
         show_extra_options.write().push(());
@@ -126,12 +165,12 @@ pub fn Dashboard() -> Element {
                 
                 div { class: "mb-6",
                     label { class: "block text-gray-700 text-sm font-bold mb-2",
-                        "Choice ID"
+                        "{t.choice_id}"
                     }
                     input {
                         class: "shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline",
                         r#type: "text",
-                        placeholder: "請輸入 Choice ID",
+                        placeholder: "{t.choice_id}",
                         value: "{choice_id}",
                         oninput: move |evt| choice_id.set(evt.value().clone())
                     }
@@ -139,12 +178,12 @@ pub fn Dashboard() -> Element {
 
                 div { class: "mb-6",
                     label { class: "block text-gray-700 text-sm font-bold mb-2",
-                        "段落"
+                        "{t.paragraph}"
                     }
                     textarea {
                         class: "shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline",
                         rows: "4",
-                        placeholder: "請輸入段落內容",
+                        placeholder: "{t.paragraph}",
                         value: "{paragraphs}",
                         oninput: move |evt| paragraphs.set(evt.value().clone())
                     }
@@ -152,20 +191,20 @@ pub fn Dashboard() -> Element {
 
                 div { class: "mb-6",
                     label { class: "block text-gray-700 text-sm font-bold mb-2",
-                        "選項"
+                        "{t.options}"
                     }
                     div { class: "flex gap-2 mb-2",
                         input {
                             class: "shadow appearance-none border rounded flex-1 py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline",
                             r#type: "text",
-                            placeholder: "選項文字",
+                            placeholder: "{t.option_text}",
                             value: "{new_caption}",
                             oninput: move |evt| new_caption.set(evt.value().clone())
                         }
                         input {
                             class: "shadow appearance-none border rounded flex-1 py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline",
                             r#type: "text",
-                            placeholder: "跳轉目標",
+                            placeholder: "{t.goto_target}",
                             value: "{new_goto}",
                             oninput: move |evt| new_goto.set(evt.value().clone())
                         }
@@ -178,7 +217,7 @@ pub fn Dashboard() -> Element {
                             input {
                                 class: "shadow appearance-none border rounded flex-1 py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline",
                                 r#type: "text",
-                                placeholder: "選項文字",
+                                placeholder: "{t.option_text}",
                                 value: "{extra_captions.read()[i]}",
                                 oninput: move |evt| {
                                     let mut captions = extra_captions.write();
@@ -188,7 +227,7 @@ pub fn Dashboard() -> Element {
                             input {
                                 class: "shadow appearance-none border rounded flex-1 py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline",
                                 r#type: "text",
-                                placeholder: "跳轉目標",
+                                placeholder: "{t.goto_target}",
                                 value: "{extra_gotos.read()[i]}",
                                 oninput: move |evt| {
                                     let mut gotos = extra_gotos.write();
@@ -203,7 +242,7 @@ pub fn Dashboard() -> Element {
                             class: "bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline",
                             r#type: "button",
                             onclick: add_choice,
-                            "新增"
+                            "{t.add}"
                         }
                     }
                 }
@@ -211,7 +250,7 @@ pub fn Dashboard() -> Element {
                 button {
                     class: "bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline",
                     r#type: "submit",
-                    "送出"
+                    "{t.submit}"
                 }
             }
         }
