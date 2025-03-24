@@ -2,6 +2,7 @@
 pub struct Translations {
     pub add: &'static str,
     pub choice_id: &'static str,
+    pub coming_soon: &'static str,
     pub dashboard: &'static str,
     pub goto_target: &'static str,
     pub options: &'static str,
@@ -16,9 +17,10 @@ pub struct Translations {
 impl Translations {
     pub fn get(lang: &str) -> Self {
         match lang {
-            "en" => Self {
+            "en-US" | "en-GB" => Self {
                 add: "Add",
                 choice_id: "Choice ID",
+                coming_soon: "Coming soon...",
                 dashboard: "Dashboard",
                 goto_target: "Go to Target",
                 options: "Options",
@@ -29,9 +31,38 @@ impl Translations {
                 submit: "Submit",
                 submit_success: "Successfully submitted!",
             },
+            "es-ES" => Self {
+                add: "Añadir",
+                choice_id: "ID de Opción",
+                coming_soon: "Próximamente...",
+                dashboard: "Panel de Control",
+                goto_target: "Ir a Destino",
+                options: "Opciones",
+                option_text: "Texto de Opción",
+                paragraph: "Párrafo",
+                settings: "Configuración",
+                story: "Historia",
+                submit: "Enviar",
+                submit_success: "¡Enviado con éxito!",
+            },
+            "es-CL" => Self {
+                add: "Agregar",
+                choice_id: "ID de Opción",
+                coming_soon: "Próximamente...",
+                dashboard: "Panel de Control",
+                goto_target: "Ir a Destino",
+                options: "Opciones",
+                option_text: "Texto de Opción",
+                paragraph: "Párrafo",
+                settings: "Configuración",
+                story: "Historia",
+                submit: "Enviar",
+                submit_success: "¡Enviado exitosamente!",
+            },
             "zh-TW" => Self {
                 add: "新增",
                 choice_id: "選項代號",
+                coming_soon: "即將推出...",
                 dashboard: "儀表板",
                 goto_target: "跳轉目標",
                 options: "選項",
@@ -42,7 +73,7 @@ impl Translations {
                 submit: "送出",
                 submit_success: "資料送出成功！",
             },
-            _ => Self::get("en"),
+            _ => Self::get("en-US"),
         }
     }
 } 
