@@ -3,6 +3,7 @@ use dioxus::prelude::*;
 use serde::{Deserialize, Serialize};
 use wasm_bindgen_futures::spawn_local;
 use crate::constants::config::config::{BASE_API_URL, SETTINGS};
+use crate::enums::translations::DashboardTranslations;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 struct Text {
@@ -78,7 +79,7 @@ pub fn Dashboard() -> Element {
     let mut extra_gotos = use_signal(Vec::<String>::new);
     let mut show_extra_options = use_signal(Vec::<()>::new);
     let lang = use_context::<Signal<&str>>();
-    let t = Translations::get(lang());
+    let t = DashboardTranslations::get(lang());
 
     let add_choice = move |_| {
         show_extra_options.write().push(());
