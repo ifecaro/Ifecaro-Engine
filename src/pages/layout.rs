@@ -2,7 +2,7 @@ use dioxus::prelude::{component, dioxus_core, Element, Props, rsx, IntoDynNode, 
 
 #[derive(Props, Clone, PartialEq)]
 pub struct TitleProps {
-    title: Option<String>,
+    title: Option<&'static str>,
     children: Element,
 }
 
@@ -10,12 +10,8 @@ pub struct TitleProps {
 pub fn Layout(props: TitleProps) -> Element {
     rsx! {
         div { class: "h-screen bg-cover bg-center pt-16 px-16",
-            if props.title.is_some() {
-                {
-                    rsx! {
-                        crate::components::title::Title { title: props.title.unwrap() }
-                    }
-                }
+            if let Some(title) = props.title {
+                crate::components::title::Title { title }
             }
             {props.children}
         }

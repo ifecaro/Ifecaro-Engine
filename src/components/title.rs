@@ -2,7 +2,7 @@ use dioxus::prelude::{dioxus_elements, rsx, Element, IntoDynNode, Props, compone
 
 #[derive(Props, Clone, PartialEq)]
 pub struct TitleProps {
-    title: String
+    title: &'static str
 }
 
 #[component]

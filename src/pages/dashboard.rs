@@ -172,11 +172,11 @@ pub fn Dashboard() -> Element {
                         match client.post(&url).json(&record).send().await {
                             Ok(response) => {
                                 if response.status().is_success() {
-                                    choice_id.set("".to_string());
-                                    paragraphs.set("".to_string());
+                                    choice_id.set(String::new());
+                                    paragraphs.set(String::new());
                                     choices.write().clear();
-                                    new_caption.set("".to_string());
-                                    new_goto.set("".to_string());
+                                    new_caption.set(String::new());
+                                    new_goto.set(String::new());
                                     extra_captions.write().clear();
                                     extra_gotos.write().clear();
                                     show_extra_options.write().clear();
@@ -245,7 +245,7 @@ pub fn Dashboard() -> Element {
 
     rsx! {
         crate::pages::layout::Layout { 
-            title: "Dashboard",
+            title: Some("Dashboard"),
             {show_toast.read().then(|| {
                 rsx!(
                     Toast {
@@ -260,8 +260,8 @@ pub fn Dashboard() -> Element {
                 "onsubmit": "event.preventDefault();",
                 
                 InputField {
-                    label: t.choice_id.to_string(),
-                    placeholder: t.choice_id.to_string(),
+                    label: t.choice_id,
+                    placeholder: t.choice_id,
                     value: choice_id.read().to_string(),
                     required: true,
                     has_error: *choice_id_error.read(),
@@ -273,8 +273,8 @@ pub fn Dashboard() -> Element {
                 }
 
                 TextareaField {
-                    label: t.paragraph.to_string(),
-                    placeholder: t.paragraph.to_string(),
+                    label: t.paragraph,
+                    placeholder: t.paragraph,
                     value: paragraphs.read().to_string(),
                     required: true,
                     has_error: *paragraphs_error.read(),
@@ -294,8 +294,8 @@ pub fn Dashboard() -> Element {
                     div { class: "flex gap-2 mb-2",
                         div { class: "flex-1",
                             InputField {
-                                label: "".to_string(),
-                                placeholder: t.option_text.to_string(),
+                                label: "",
+                                placeholder: t.option_text,
                                 value: new_caption.read().to_string(),
                                 required: true,
                                 has_error: *new_caption_error.read(),
@@ -308,8 +308,8 @@ pub fn Dashboard() -> Element {
                         }
                         div { class: "flex-1",
                             InputField {
-                                label: "".to_string(),
-                                placeholder: t.goto_target.to_string(),
+                                label: "",
+                                placeholder: t.goto_target,
                                 value: new_goto.read().to_string(),
                                 required: true,
                                 has_error: *new_goto_error.read(),
@@ -328,8 +328,8 @@ pub fn Dashboard() -> Element {
                             key: "{i}",
                             div { class: "flex-1",
                                 InputField {
-                                    label: "".to_string(),
-                                    placeholder: t.option_text.to_string(),
+                                    label: "",
+                                    placeholder: t.option_text,
                                     value: extra_captions.read()[i].clone(),
                                     required: false,
                                     has_error: false,
@@ -342,8 +342,8 @@ pub fn Dashboard() -> Element {
                             }
                             div { class: "flex-1",
                                 InputField {
-                                    label: "".to_string(),
-                                    placeholder: t.goto_target.to_string(),
+                                    label: "",
+                                    placeholder: t.goto_target,
                                     value: extra_gotos.read()[i].clone(),
                                     required: false,
                                     has_error: false,

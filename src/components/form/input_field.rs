@@ -3,8 +3,8 @@ use dioxus::events::{FormEvent, FocusEvent};
 
 #[component]
 pub fn InputField(
-    label: String,
-    placeholder: String,
+    label: &'static str,
+    placeholder: &'static str,
     value: String,
     required: bool,
     has_error: bool,
@@ -25,11 +25,12 @@ pub fn InputField(
             ))}
             input {
                 class: {
-                    let mut classes = "shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline".to_string();
+                    let base_classes = "shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline";
                     if has_error {
-                        classes.push_str(" border-red-500");
+                        format!("{} border-red-500", base_classes)
+                    } else {
+                        base_classes.to_string()
                     }
-                    classes
                 },
                 required: required,
                 r#type: "text",
