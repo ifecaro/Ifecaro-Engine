@@ -87,15 +87,42 @@ pub fn Dashboard() -> Element {
     let lang = use_context::<Signal<&str>>();
     let t = DashboardTranslations::get(lang());
 
+    // 新增錯誤提示的signals
+    let mut choice_id_error = use_signal(|| false);
+    let mut paragraphs_error = use_signal(|| false);
+    let mut new_caption_error = use_signal(|| false);
+    let mut new_goto_error = use_signal(|| false);
+
     let add_choice = move |_| {
         show_extra_options.write().push(());
         extra_captions.write().push(String::new());
         extra_gotos.write().push(String::new());
     };
 
+    // 修改驗證函數的參數類型
+    let validate_field = |value: &str, error_signal: &mut Signal<bool>| {
+        if value.trim().is_empty() {
+            error_signal.set(true);
+        } else {
+            error_signal.set(false);
+        }
+    };
+
     let handle_submit = move |evt: Event<FormData>| {
         evt.stop_propagation();
         
+        if choice_id.read().trim().is_empty() {
+            return;
+        }
+        
+        if paragraphs.read().trim().is_empty() {
+            return;
+        }
+        
+        if new_caption.read().trim().is_empty() || new_goto.read().trim().is_empty() {
+            return;
+        }
+
         let mut all_choices = Vec::new();
         
         if !new_caption.read().is_empty() && !new_goto.read().is_empty() {
@@ -206,6 +233,14 @@ pub fn Dashboard() -> Element {
         });
     };
 
+    // 檢查所有必填欄位是否都已填寫
+    let is_form_valid = move || {
+        !choice_id.read().trim().is_empty() &&
+        !paragraphs.read().trim().is_empty() &&
+        !new_caption.read().trim().is_empty() &&
+        !new_goto.read().trim().is_empty()
+    };
+
     rsx! {
         crate::pages::layout::Layout { 
             title: "Dashboard",
@@ -224,48 +259,123 @@ pub fn Dashboard() -> Element {
                 
                 div { class: "mb-6",
                     label { class: "block text-gray-700 text-sm font-bold mb-2",
-                        "{t.choice_id}"
+                        span { "{t.choice_id}" }
+                        span { class: "text-red-500 ml-1", "*" }
                     }
                     input {
-                        class: "shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline",
+                        class: {
+                            let mut classes = "shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline".to_string();
+                            if *choice_id_error.read() {
+                                classes.push_str(" border-red-500");
+                            }
+                            classes
+                        },
+                        required: true,
                         r#type: "text",
                         placeholder: "{t.choice_id}",
                         value: "{choice_id}",
-                        oninput: move |evt| choice_id.set(evt.value().clone())
+                        onblur: move |_| validate_field(&choice_id.read(), &mut choice_id_error),
+                        oninput: move |evt| {
+                            choice_id.set(evt.value().clone());
+                            validate_field(&evt.value(), &mut choice_id_error);
+                        }
                     }
+                    {choice_id_error.read().then(|| rsx!(
+                        div { 
+                            class: "text-red-500 text-sm mt-1",
+                            "請填寫此欄位"
+                        }
+                    ))}
                 }
 
                 div { class: "mb-6",
                     label { class: "block text-gray-700 text-sm font-bold mb-2",
-                        "{t.paragraph}"
+                        span { "{t.paragraph}" }
+                        span { class: "text-red-500 ml-1", "*" }
                     }
                     textarea {
-                        class: "shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline",
+                        class: {
+                            let mut classes = "shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline".to_string();
+                            if *paragraphs_error.read() {
+                                classes.push_str(" border-red-500");
+                            }
+                            classes
+                        },
+                        required: true,
                         rows: "4",
                         placeholder: "{t.paragraph}",
                         value: "{paragraphs}",
-                        oninput: move |evt| paragraphs.set(evt.value().clone())
+                        onblur: move |_| validate_field(&paragraphs.read(), &mut paragraphs_error),
+                        oninput: move |evt| {
+                            paragraphs.set(evt.value().clone());
+                            validate_field(&evt.value(), &mut paragraphs_error);
+                        }
                     }
+                    {paragraphs_error.read().then(|| rsx!(
+                        div { 
+                            class: "text-red-500 text-sm mt-1",
+                            "請填寫此欄位"
+                        }
+                    ))}
                 }
 
                 div { class: "mb-6",
                     label { class: "block text-gray-700 text-sm font-bold mb-2",
-                        "{t.options}"
+                        span { "{t.options}" }
+                        span { class: "text-red-500 ml-1", "*" }
                     }
                     div { class: "flex gap-2 mb-2",
-                        input {
-                            class: "shadow appearance-none border rounded flex-1 py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline",
-                            r#type: "text",
-                            placeholder: "{t.option_text}",
-                            value: "{new_caption}",
-                            oninput: move |evt| new_caption.set(evt.value().clone())
+                        div { class: "flex-1",
+                            input {
+                                class: {
+                                    let mut classes = "shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline".to_string();
+                                    if *new_caption_error.read() {
+                                        classes.push_str(" border-red-500");
+                                    }
+                                    classes
+                                },
+                                required: true,
+                                r#type: "text",
+                                placeholder: "{t.option_text}",
+                                value: "{new_caption}",
+                                onblur: move |_| validate_field(&new_caption.read(), &mut new_caption_error),
+                                oninput: move |evt| {
+                                    new_caption.set(evt.value().clone());
+                                    validate_field(&evt.value(), &mut new_caption_error);
+                                }
+                            }
+                            {new_caption_error.read().then(|| rsx!(
+                                div { 
+                                    class: "text-red-500 text-sm mt-1",
+                                    "請填寫此欄位"
+                                }
+                            ))}
                         }
-                        input {
-                            class: "shadow appearance-none border rounded flex-1 py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline",
-                            r#type: "text",
-                            placeholder: "{t.goto_target}",
-                            value: "{new_goto}",
-                            oninput: move |evt| new_goto.set(evt.value().clone())
+                        div { class: "flex-1",
+                            input {
+                                class: {
+                                    let mut classes = "shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline".to_string();
+                                    if *new_goto_error.read() {
+                                        classes.push_str(" border-red-500");
+                                    }
+                                    classes
+                                },
+                                required: true,
+                                r#type: "text",
+                                placeholder: "{t.goto_target}",
+                                value: "{new_goto}",
+                                onblur: move |_| validate_field(&new_goto.read(), &mut new_goto_error),
+                                oninput: move |evt| {
+                                    new_goto.set(evt.value().clone());
+                                    validate_field(&evt.value(), &mut new_goto_error);
+                                }
+                            }
+                            {new_goto_error.read().then(|| rsx!(
+                                div { 
+                                    class: "text-red-500 text-sm mt-1",
+                                    "請填寫此欄位"
+                                }
+                            ))}
                         }
                     }
                     
@@ -307,8 +417,16 @@ pub fn Dashboard() -> Element {
                 }
 
                 button {
-                    class: "bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline",
+                    class: {
+                        let base_classes = "font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline";
+                        if is_form_valid() {
+                            format!("bg-green-500 hover:bg-green-700 text-white {}", base_classes)
+                        } else {
+                            format!("bg-gray-300 text-gray-200 cursor-not-allowed {}", base_classes)
+                        }
+                    },
                     r#type: "submit",
+                    disabled: !is_form_valid(),
                     "{t.submit}"
                 }
             }
