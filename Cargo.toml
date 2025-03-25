@@ -27,6 +27,8 @@ regex = "1.10.3"
 js-sys = "0.3.68"
 # reqwest = { version = "0.12.4", features = ["json"] }
 wasm-bindgen-futures = "0.4.40"
+dioxus-i18n = { git = "https://github.com/dioxus-community/dioxus-i18n.git" }
+unic-langid = { version = "0.9.1", features = ["unic-langid-macros"] }
 
 # Debug
 tracing = "0.1.40"
