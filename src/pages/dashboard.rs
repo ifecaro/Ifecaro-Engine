@@ -8,6 +8,11 @@ use crate::components::toast::Toast;
 use crate::components::form::{InputField, TextareaField};
 use dioxus::events::{FormEvent, FocusEvent};
 
+#[derive(Props, Clone, PartialEq)]
+pub struct DashboardProps {
+    lang: String,
+}
+
 #[derive(Debug, Serialize, Deserialize, Clone)]
 struct Text {
     lang: String,
@@ -34,19 +39,18 @@ struct Data {
 }
 
 #[component]
-pub fn Dashboard() -> Element {
-    let mut choices = use_signal(Vec::<Choice>::new);
-    let mut choice_id = use_signal(String::new);
-    let mut paragraphs = use_signal(String::new);
-    let mut new_caption = use_signal(String::new);
-    let mut new_goto = use_signal(String::new);
-    let mut extra_captions = use_signal(Vec::<String>::new);
-    let mut extra_gotos = use_signal(Vec::<String>::new);
-    let mut show_extra_options = use_signal(Vec::<()>::new);
+pub fn Dashboard(props: DashboardProps) -> Element {
+    let mut choices = use_signal(|| Vec::<Choice>::new());
+    let mut choice_id = use_signal(|| String::new());
+    let mut paragraphs = use_signal(|| String::new());
+    let mut new_caption = use_signal(|| String::new());
+    let mut new_goto = use_signal(|| String::new());
+    let mut extra_captions = use_signal(|| Vec::<String>::new());
+    let mut extra_gotos = use_signal(|| Vec::<String>::new());
+    let mut show_extra_options = use_signal(|| Vec::<()>::new());
     let mut show_toast = use_signal(|| false);
     let mut toast_visible = use_signal(|| false);
-    let lang = use_context::<Signal<&str>>();
-    let t = Translations::get(lang());
+    let t = Translations::get(&props.lang);
 
     // 新增錯誤提示的signals
     let mut choice_id_error = use_signal(|| false);
@@ -105,7 +109,7 @@ pub fn Dashboard() -> Element {
         }
 
         let text = Text {
-            lang: lang().to_string(),
+            lang: props.lang.clone(),
             paragraphs: paragraphs.read().clone(),
             choices: all_choices,
         };
@@ -201,7 +205,7 @@ pub fn Dashboard() -> Element {
         !new_caption.read().trim().is_empty() &&
         !new_goto.read().trim().is_empty()
     };
-
+    
     rsx! {
         crate::pages::layout::Layout { 
             title: Some("Dashboard"),
@@ -214,7 +218,7 @@ pub fn Dashboard() -> Element {
                 )
             })}
             form { 
-                class: "max-w-2xl mx-auto p-6 bg-white rounded-lg shadow-md",
+                class: "max-w-2xl mx-auto p-6 bg-white dark:bg-gray-800 rounded-lg shadow-md",
                 onsubmit: handle_submit,
                 "onsubmit": "event.preventDefault();",
                 
@@ -245,15 +249,14 @@ pub fn Dashboard() -> Element {
                     on_blur: move |evt: FocusEvent| validate_field(&paragraphs.read(), &mut paragraphs_error)
                 }
 
-                div { class: "mb-6",
-                    label { class: "block text-gray-700 text-sm font-bold mb-2",
-                        span { "{t.options}" }
-                        span { class: "text-red-500 ml-1", "*" }
+                div { class: "mb-4",
+                    label { class: "block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2",
+                        "{t.options}"
                     }
-                    div { class: "flex gap-2 mb-2",
-                        div { class: "flex-1",
+                    div { class: "space-y-4",
+                        div { class: "grid grid-cols-2 gap-4",
                             InputField {
-                                label: "",
+                                label: t.option_text,
                                 placeholder: t.option_text,
                                 value: new_caption.read().to_string(),
                                 required: true,
@@ -264,10 +267,8 @@ pub fn Dashboard() -> Element {
                                 },
                                 on_blur: move |evt: FocusEvent| validate_field(&new_caption.read(), &mut new_caption_error)
                             }
-                        }
-                        div { class: "flex-1",
                             InputField {
-                                label: "",
+                                label: t.goto_target,
                                 placeholder: t.goto_target,
                                 value: new_goto.read().to_string(),
                                 required: true,
@@ -280,14 +281,14 @@ pub fn Dashboard() -> Element {
                             }
                         }
                     }
-                    
-                    {show_extra_options.read().iter().enumerate().map(|(i, _)| rsx!(
-                        div { 
-                            class: "flex gap-2 mb-2",
-                            key: "{i}",
-                            div { class: "flex-1",
+                }
+
+                {show_extra_options.read().iter().enumerate().map(|(i, _)| {
+                    rsx! {
+                        div { class: "mb-4",
+                            div { class: "grid grid-cols-2 gap-4",
                                 InputField {
-                                    label: "",
+                                    label: t.option_text,
                                     placeholder: t.option_text,
                                     value: extra_captions.read()[i].clone(),
                                     required: false,
@@ -296,12 +297,10 @@ pub fn Dashboard() -> Element {
                                         let mut captions = extra_captions.write();
                                         captions[i] = evt.value().clone();
                                     },
-                                    on_blur: move |_| {}
+                                    on_blur: move |_: FocusEvent| {}
                                 }
-                            }
-                            div { class: "flex-1",
                                 InputField {
-                                    label: "",
+                                    label: t.goto_target,
                                     placeholder: t.goto_target,
                                     value: extra_gotos.read()[i].clone(),
                                     required: false,
@@ -310,31 +309,21 @@ pub fn Dashboard() -> Element {
                                         let mut gotos = extra_gotos.write();
                                         gotos[i] = evt.value().clone();
                                     },
-                                    on_blur: move |_| {}
+                                    on_blur: move |_: FocusEvent| {}
                                 }
                             }
                         }
-                    ))}
-
-                    div { class: "flex justify-end",
-                        button {
-                            class: "bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline",
-                            r#type: "button",
-                            onclick: add_choice,
-                            "{t.add}"
-                        }
                     }
+                })}
+
+                button {
+                    class: "mb-4 px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors duration-200",
+                    onclick: add_choice,
+                    "{t.add}"
                 }
 
                 button {
-                    class: {
-                        let base_classes = "font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline";
-                        if is_form_valid() {
-                            format!("bg-green-500 hover:bg-green-700 text-white {}", base_classes)
-                        } else {
-                            format!("bg-gray-300 text-gray-200 cursor-not-allowed {}", base_classes)
-                        }
-                    },
+                    class: "w-full px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed",
                     r#type: "submit",
                     disabled: !is_form_valid(),
                     "{t.submit}"

@@ -10,8 +10,8 @@ pub struct TitleProps {
 
 #[component]
 pub fn Title(props: TitleProps) -> Element {
-    let lang = use_context::<Signal<&str>>();
-    let t = Translations::get(lang());
+    let lang = use_context::<Signal<String>>();
+    let t = Translations::get(&lang.read());
 
     let title = match props.title {
         "Dashboard" => t.dashboard,

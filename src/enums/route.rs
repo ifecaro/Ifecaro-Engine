@@ -1,18 +1,28 @@
-use crate::pages;
-
 use dioxus::prelude::*;
-// use dioxus::prelude::{Routable, rsx, fc_to_builder};
-// use dioxus_router::prelude::{Routable, ToRouteSegments};
-use pages::{dashboard::Dashboard, page_not_found::PageNotFound, story::Story};
+use crate::{
+    pages::{dashboard::Dashboard, page_not_found::PageNotFound, story::Story},
+    Layout,
+    Home,
+};
 
-#[derive(Routable, Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Routable)]
 pub enum Route {
-    #[layout(crate::layout::Layout)]
+    #[layout(Layout)]
     #[route("/")]
-    Story {},
-    #[route("/dashboard")]
-    Dashboard {},
-    #[end_layout]
+    Home {},
+    
+    #[route("/:lang")]
+    Story { lang: String },
+    
+    #[route("/:lang/dashboard")]
+    Dashboard { lang: String },
+    
     #[route("/:..route")]
-    PageNotFound { route: Vec<String> },
+    PageNotFound { route: Vec<String> }
+}
+
+impl Route {
+    pub fn default_language() -> String {
+        "zh-TW".to_string()
+    }
 }

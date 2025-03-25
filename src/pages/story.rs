@@ -3,11 +3,12 @@ use crate::enums::translations::Translations;
 use dioxus::{
     dioxus_core,
     hooks::{use_context, use_future, use_memo, use_signal},
-    prelude::{component, dioxus_elements, fc_to_builder, rsx, Element, IntoDynNode, GlobalSignal, Readable},
+    prelude::{component, dioxus_elements, fc_to_builder, rsx, Element, IntoDynNode, GlobalSignal, Readable, Props},
     signals::{Signal, Writable},
 };
 // use dioxus_markdown::Markdown;
 use serde::Deserialize;
+use crate::enums::route::Route;
 
 #[allow(non_snake_case)]
 #[derive(Deserialize, Clone, Debug)]
@@ -49,25 +50,28 @@ struct Choice {
     goto: String,
 }
 
+#[derive(Props, PartialEq, Clone)]
+pub struct StoryProps {
+    pub lang: String,
+}
+
 #[component]
-pub fn Story() -> Element {
+pub fn Story(props: StoryProps) -> Element {
+    tracing::info!("Story component rendering with lang: {}", props.lang);
+    
     let data = use_signal(|| Data {
-        // page: 0,
-        // perPage: 0,
         totalItems: 0,
-        // totalPages: 0,
         items: vec![],
     });
     let mut selected_paragraph_index: Signal<usize> = use_signal(|| 0);
-    let lang = use_context::<Signal<&str>>();
-    let t = Translations::get(lang());
+    let t = Translations::get(&props.lang);
 
     let text_found = use_memo(move || {
         (*data.read())
             .items
             .iter()
             .find(|item| item.index == *selected_paragraph_index.read())
-            .and_then(|item| item.texts.iter().find(|text| text.lang == lang()).cloned())
+            .and_then(|item| item.texts.iter().find(|text| text.lang == props.lang).cloned())
     });
     let paragraph = use_memo(move || {
         text_found
@@ -96,47 +100,6 @@ pub fn Story() -> Element {
             return resp;
         });
     }
-
-    // {
-    //     {
-    //         // let mut callback = callback.clone();
-    //         let data = data.clone();
-    //         let text_found = text_found.clone();
-    //         let selected_paragraph_index = selected_paragraph_index.clone();
-    //         let callback =
-    //             Closure::<dyn Fn(web_sys::KeyboardEvent)>::new(move );
-
-    //         window().and_then(|win| {
-    //             win.add_event_listener_with_callback("keydown", callback.as_ref().unchecked_ref())
-    //                 .unwrap();
-    //             // callback.set(Some(callback_temp));
-
-    //             callback.forget();
-
-    //             // std::mem::forget(callback);s
-    //             Some(())
-    //         });
-    //     }
-    // }
-
-    // {
-    //     let callback = callback.clone();
-    //     let selected_paragraph_index = selected_paragraph_index.clone();
-    //     use_future(move || async move {
-    //         if *selected_paragraph_index.read() > 0 {
-    //             window().and_then(|win| {
-    //                 (*callback.read()).as_ref().and_then(|cb| {
-    //                     win.remove_event_listener_with_callback(
-    //                         "keydown",
-    //                         (*cb).as_ref().unchecked_ref(),
-    //                     )
-    //                     .unwrap();
-    //                     Some(())
-    //                 })
-    //             });
-    //         }
-    //     });
-    // }
 
     rsx! {
         crate::pages::layout::Layout { 
