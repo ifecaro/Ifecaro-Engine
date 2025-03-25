@@ -218,115 +218,121 @@ pub fn Dashboard(props: DashboardProps) -> Element {
                 )
             })}
             form { 
-                class: "max-w-2xl mx-auto p-6 bg-white dark:bg-gray-800 rounded-lg shadow-md",
+                class: "max-w-3xl mx-auto p-8 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-100 dark:border-gray-700",
                 onsubmit: handle_submit,
                 "onsubmit": "event.preventDefault();",
                 
-                InputField {
-                    label: t.choice_id,
-                    placeholder: t.choice_id,
-                    value: choice_id.read().to_string(),
-                    required: true,
-                    has_error: *choice_id_error.read(),
-                    on_input: move |evt: FormEvent| {
-                        choice_id.set(evt.value().clone());
-                        validate_field(&evt.value(), &mut choice_id_error);
-                    },
-                    on_blur: move |evt: FocusEvent| validate_field(&choice_id.read(), &mut choice_id_error)
-                }
-
-                TextareaField {
-                    label: t.paragraph,
-                    placeholder: t.paragraph,
-                    value: paragraphs.read().to_string(),
-                    required: true,
-                    has_error: *paragraphs_error.read(),
-                    rows: 4,
-                    on_input: move |evt: FormEvent| {
-                        paragraphs.set(evt.value().clone());
-                        validate_field(&evt.value(), &mut paragraphs_error);
-                    },
-                    on_blur: move |evt: FocusEvent| validate_field(&paragraphs.read(), &mut paragraphs_error)
-                }
-
-                div { class: "mb-4",
-                    label { class: "block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2",
-                        "{t.options}"
+                div { class: "space-y-8",
+                    InputField {
+                        label: t.choice_id,
+                        placeholder: t.choice_id,
+                        value: choice_id.read().to_string(),
+                        required: true,
+                        has_error: *choice_id_error.read(),
+                        on_input: move |evt: FormEvent| {
+                            choice_id.set(evt.value().clone());
+                            validate_field(&evt.value(), &mut choice_id_error);
+                        },
+                        on_blur: move |evt: FocusEvent| validate_field(&choice_id.read(), &mut choice_id_error)
                     }
-                    div { class: "space-y-4",
-                        div { class: "grid grid-cols-2 gap-4",
-                            InputField {
-                                label: t.option_text,
-                                placeholder: t.option_text,
-                                value: new_caption.read().to_string(),
-                                required: true,
-                                has_error: *new_caption_error.read(),
-                                on_input: move |evt: FormEvent| {
-                                    new_caption.set(evt.value().clone());
-                                    validate_field(&evt.value(), &mut new_caption_error);
-                                },
-                                on_blur: move |evt: FocusEvent| validate_field(&new_caption.read(), &mut new_caption_error)
-                            }
-                            InputField {
-                                label: t.goto_target,
-                                placeholder: t.goto_target,
-                                value: new_goto.read().to_string(),
-                                required: true,
-                                has_error: *new_goto_error.read(),
-                                on_input: move |evt: FormEvent| {
-                                    new_goto.set(evt.value().clone());
-                                    validate_field(&evt.value(), &mut new_goto_error);
-                                },
-                                on_blur: move |evt: FocusEvent| validate_field(&new_goto.read(), &mut new_goto_error)
-                            }
+
+                    div { class: "space-y-2",
+                        TextareaField {
+                            label: t.paragraph,
+                            placeholder: t.paragraph,
+                            value: paragraphs.read().to_string(),
+                            required: true,
+                            has_error: *paragraphs_error.read(),
+                            rows: 6,
+                            on_input: move |evt: FormEvent| {
+                                paragraphs.set(evt.value().clone());
+                                validate_field(&evt.value(), &mut paragraphs_error);
+                            },
+                            on_blur: move |evt: FocusEvent| validate_field(&paragraphs.read(), &mut paragraphs_error)
                         }
                     }
-                }
 
-                {show_extra_options.read().iter().enumerate().map(|(i, _)| {
-                    rsx! {
-                        div { class: "mb-4",
-                            div { class: "grid grid-cols-2 gap-4",
+                    div { class: "space-y-4",
+                        label { class: "block text-gray-700 dark:text-gray-300 text-sm font-semibold mb-3",
+                            "{t.options}"
+                        }
+                        div { class: "space-y-6",
+                            div { class: "grid grid-cols-2 gap-6",
                                 InputField {
                                     label: t.option_text,
                                     placeholder: t.option_text,
-                                    value: extra_captions.read()[i].clone(),
-                                    required: false,
-                                    has_error: false,
+                                    value: new_caption.read().to_string(),
+                                    required: true,
+                                    has_error: *new_caption_error.read(),
                                     on_input: move |evt: FormEvent| {
-                                        let mut captions = extra_captions.write();
-                                        captions[i] = evt.value().clone();
+                                        new_caption.set(evt.value().clone());
+                                        validate_field(&evt.value(), &mut new_caption_error);
                                     },
-                                    on_blur: move |_: FocusEvent| {}
+                                    on_blur: move |evt: FocusEvent| validate_field(&new_caption.read(), &mut new_caption_error)
                                 }
                                 InputField {
                                     label: t.goto_target,
                                     placeholder: t.goto_target,
-                                    value: extra_gotos.read()[i].clone(),
-                                    required: false,
-                                    has_error: false,
+                                    value: new_goto.read().to_string(),
+                                    required: true,
+                                    has_error: *new_goto_error.read(),
                                     on_input: move |evt: FormEvent| {
-                                        let mut gotos = extra_gotos.write();
-                                        gotos[i] = evt.value().clone();
+                                        new_goto.set(evt.value().clone());
+                                        validate_field(&evt.value(), &mut new_goto_error);
                                     },
-                                    on_blur: move |_: FocusEvent| {}
+                                    on_blur: move |evt: FocusEvent| validate_field(&new_goto.read(), &mut new_goto_error)
                                 }
                             }
                         }
                     }
-                })}
 
-                button {
-                    class: "mb-4 px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors duration-200",
-                    onclick: add_choice,
-                    "{t.add}"
-                }
+                    {show_extra_options.read().iter().enumerate().map(|(i, _)| {
+                        rsx! {
+                            div { class: "space-y-4",
+                                div { class: "grid grid-cols-2 gap-6",
+                                    InputField {
+                                        label: t.option_text,
+                                        placeholder: t.option_text,
+                                        value: extra_captions.read()[i].clone(),
+                                        required: false,
+                                        has_error: false,
+                                        on_input: move |evt: FormEvent| {
+                                            let mut captions = extra_captions.write();
+                                            captions[i] = evt.value().clone();
+                                        },
+                                        on_blur: move |_: FocusEvent| {}
+                                    }
+                                    InputField {
+                                        label: t.goto_target,
+                                        placeholder: t.goto_target,
+                                        value: extra_gotos.read()[i].clone(),
+                                        required: false,
+                                        has_error: false,
+                                        on_input: move |evt: FormEvent| {
+                                            let mut gotos = extra_gotos.write();
+                                            gotos[i] = evt.value().clone();
+                                        },
+                                        on_blur: move |_: FocusEvent| {}
+                                    }
+                                }
+                            }
+                        }
+                    })}
 
-                button {
-                    class: "w-full px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed",
-                    r#type: "submit",
-                    disabled: !is_form_valid(),
-                    "{t.submit}"
+                    div { class: "flex flex-col space-y-4",
+                        button {
+                            class: "px-6 py-2.5 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-md hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors duration-200 font-medium",
+                            onclick: add_choice,
+                            "{t.add}"
+                        }
+
+                        button {
+                            class: "w-full px-6 py-3 bg-green-500 text-white rounded-md hover:bg-green-600 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed font-medium text-lg",
+                            r#type: "submit",
+                            disabled: !is_form_valid(),
+                            "{t.submit}"
+                        }
+                    }
                 }
             }
         }
