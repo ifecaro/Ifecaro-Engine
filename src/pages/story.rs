@@ -76,6 +76,21 @@ pub fn Story(props: StoryProps) -> Element {
             .map(|text| text.paragraphs.clone())
     });
 
+    let enabled_choices = use_memo(move || {
+        let mut enabled = Vec::new();
+        let current_data = data.read();
+        if let Some(data) = current_data.items.iter().find(|item| item.index == *selected_paragraph_index.read()) {
+            if let Some(text) = data.texts.iter().find(|t| t.lang == state.read().current_language) {
+                for choice in &text.choices {
+                    if current_data.items.iter().any(|item| item.choice_id == choice.goto) {
+                        enabled.push(choice.goto.clone());
+                    }
+                }
+            }
+        }
+        enabled
+    });
+
     {
         let mut data = data.clone();
 
@@ -108,9 +123,12 @@ pub fn Story(props: StoryProps) -> Element {
                             paragraph: paragraph.clone(),
                             choices: text.choices.clone(),
                             on_choice_click: move |goto: String| {
-                                selected_paragraph_index.set(goto.parse().unwrap_or(0));
+                                if let Some(item) = data.read().items.iter().find(|item| item.choice_id == goto) {
+                                    selected_paragraph_index.set(item.index);
+                                }
                             },
-                            t: t.clone()
+                            t: t.clone(),
+                            enabled_choices: enabled_choices.read().clone()
                         }
                     }
                 } else {
