@@ -10,6 +10,7 @@ use dioxus::{
 use serde::Deserialize;
 use crate::enums::route::Route;
 use crate::contexts::language_context::LanguageState;
+use crate::components::story_content::{StoryContent, Choice};
 
 #[allow(non_snake_case)]
 #[derive(Deserialize, Clone, Debug)]
@@ -43,12 +44,6 @@ struct Text {
     lang: String,
     paragraphs: String,
     choices: Vec<Choice>,
-}
-
-#[derive(Deserialize, Clone, Debug, PartialEq)]
-struct Choice {
-    caption: String,
-    goto: String,
 }
 
 #[derive(Props, PartialEq, Clone)]
@@ -108,32 +103,14 @@ pub fn Story(props: StoryProps) -> Element {
             div { 
                 class: "max-w-2xl mx-auto",
                 if let Some(paragraph) = paragraph_clone.read().as_ref() {
-                    article {
-                        class: "prose dark:prose-invert lg:prose-xl indent-10 mx-auto",
-                        div {
-                            class: "whitespace-pre-line",
-                            p { class: "mb-6", {paragraph.clone()} }
-                        }
-                        if let Some(text) = text_found_clone.read().as_ref() {
-                            ol {
-                                class: "mt-10 w-fit",
-                                {text.choices.iter().map(|choice| {
-                                    let caption = choice.caption.clone();
-                                    let goto = choice.goto.clone();
-                                    rsx! {
-                                        li { 
-                                            class: "opacity-30",
-                                            button {
-                                                class: "text-left hover:opacity-100 transition-opacity duration-200",
-                                                onclick: move |_| {
-                                                    selected_paragraph_index.set(goto.parse().unwrap_or(0));
-                                                },
-                                                {caption}
-                                            }
-                                        }
-                                    }
-                                })}
-                            }
+                    if let Some(text) = text_found_clone.read().as_ref() {
+                        StoryContent {
+                            paragraph: paragraph.clone(),
+                            choices: text.choices.clone(),
+                            on_choice_click: move |goto: String| {
+                                selected_paragraph_index.set(goto.parse().unwrap_or(0));
+                            },
+                            t: t.clone()
                         }
                     }
                 } else {

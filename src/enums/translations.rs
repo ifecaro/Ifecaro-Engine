@@ -14,6 +14,23 @@ pub struct Translations {
     pub submit_success: &'static str,
 }
 
+impl PartialEq for Translations {
+    fn eq(&self, other: &Self) -> bool {
+        self.add == other.add &&
+        self.choice_id == other.choice_id &&
+        self.coming_soon == other.coming_soon &&
+        self.dashboard == other.dashboard &&
+        self.goto_target == other.goto_target &&
+        self.options == other.options &&
+        self.option_text == other.option_text &&
+        self.paragraph == other.paragraph &&
+        self.settings == other.settings &&
+        self.story == other.story &&
+        self.submit == other.submit &&
+        self.submit_success == other.submit_success
+    }
+}
+
 impl Translations {
     pub fn get(lang: &str) -> Self {
         match lang {
