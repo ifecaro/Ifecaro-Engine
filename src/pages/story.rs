@@ -9,6 +9,7 @@ use dioxus::{
 // use dioxus_markdown::Markdown;
 use serde::Deserialize;
 use crate::enums::route::Route;
+use crate::contexts::language_context::LanguageState;
 
 #[allow(non_snake_case)]
 #[derive(Deserialize, Clone, Debug)]
@@ -57,22 +58,22 @@ pub struct StoryProps {
 
 #[component]
 pub fn Story(props: StoryProps) -> Element {
-    tracing::info!("Story component rendering with lang: {}", props.lang);
-    
     let data = use_signal(|| Data {
         totalItems: 0,
         items: vec![],
     });
     let mut selected_paragraph_index: Signal<usize> = use_signal(|| 0);
-    let t = Translations::get(&props.lang);
+    let state = use_context::<Signal<LanguageState>>();
+    let t = Translations::get(&state.read().current_language);
 
     let text_found = use_memo(move || {
         (*data.read())
             .items
             .iter()
             .find(|item| item.index == *selected_paragraph_index.read())
-            .and_then(|item| item.texts.iter().find(|text| text.lang == props.lang).cloned())
+            .and_then(|item| item.texts.iter().find(|text| text.lang == state.read().current_language).cloned())
     });
+
     let paragraph = use_memo(move || {
         text_found
             .read()
@@ -89,9 +90,6 @@ pub fn Story(props: StoryProps) -> Element {
                 .await?
                 .json::<Data>()
                 .await
-                .inspect_err(|err| {
-                    tracing::error!("{}", err);
-                })
                 .and_then(|data2| {
                     data.set(data2.clone());
                     return Ok(data2);
@@ -101,107 +99,53 @@ pub fn Story(props: StoryProps) -> Element {
         });
     }
 
+    let text_found_clone = text_found.clone();
+    let paragraph_clone = paragraph.clone();
+
     rsx! {
-        crate::pages::layout::Layout { 
-            if data.read().totalItems > 0 {
-                div {
-                    class: "h-[calc(100%_-_48px)]",
-                    tabindex: "0",
-                    onkeydown: move |e| {
-                        let data = data.clone();
-                        let text_found = text_found.clone();
-                        let mut selected_paragraph_index = selected_paragraph_index.clone();
-            
-                        if let dioxus::events::Key::Character(key_char) = e.key() {
-                            if let Some(digit) = key_char.chars().next().and_then(|c| c.to_digit(10)) {
-                                let option_index = digit as usize - 1;
-                                text_found
-                                    .read()
-                                    .as_ref()
-                                    .and_then(|text| {
-                                        if option_index < text.choices.len() {
-                                            Some(text.choices[option_index].clone())
-                                        } else {
-                                            None
+        div { 
+            class: "container mx-auto px-4 pt-16",
+            div { 
+                class: "max-w-2xl mx-auto",
+                if let Some(paragraph) = paragraph_clone.read().as_ref() {
+                    article {
+                        class: "prose dark:prose-invert lg:prose-xl indent-10 mx-auto",
+                        div {
+                            class: "whitespace-pre-line",
+                            p { class: "mb-6", {paragraph.clone()} }
+                        }
+                        if let Some(text) = text_found_clone.read().as_ref() {
+                            ol {
+                                class: "mt-10 w-fit",
+                                {text.choices.iter().map(|choice| {
+                                    let caption = choice.caption.clone();
+                                    let goto = choice.goto.clone();
+                                    rsx! {
+                                        li { 
+                                            class: "opacity-30",
+                                            button {
+                                                class: "text-left hover:opacity-100 transition-opacity duration-200",
+                                                onclick: move |_| {
+                                                    selected_paragraph_index.set(goto.parse().unwrap_or(0));
+                                                },
+                                                {caption}
+                                            }
                                         }
-                                    })
-                                    .and_then(move |choice| {
-                                        let index = (*data.read())
-                                            .items
-                                            .iter()
-                                            .position(|item| item.choice_id == choice.goto);
-            
-                                        if let Some(idx) = index {
-                                            selected_paragraph_index.set(idx);
-                                        }
-                                        Some(())
-                                    });
+                                    }
+                                })}
                             }
                         }
-                    },
-                    {
-                        text_found.read().clone().map(|text_found| {
-                            rsx! {
-                                article {
-                                    class: "prose dark:prose-invert lg:prose-xl indent-10 mx-auto",
-                                    div {
-                                        class: "whitespace-pre-line",
-                                        {
-                                            paragraph.read()
-                                                .as_ref()
-                                                .unwrap_or(&"".to_string())
-                                                .split("\n")
-                                                .map(|p| rsx! {
-                                                    p { class: "mb-6", { p } }
-                                                })
-                                        }
-                                    }
-                                    ol {
-                                        class: "mt-10 w-fit",
-                                        {text_found.choices.iter().map(|choice| {
-                                            let index = (*data.read())
-                                                .items
-                                                .iter()
-                                                .position(|item| item.choice_id == choice.goto);
-        
-                                            return rsx! {
-                                                li {
-                                                    class: if index.is_some() {"cursor-pointer"} else {"opacity-30"},
-                                                    onclick: move |_| if index.is_some() {
-                                                        selected_paragraph_index.set(index.unwrap());
-                                                    },
-                                                    {choice.caption.clone()}
-                                                }
-                                            }
-                                        })}
-                                    }
-                                }
-                            }
-                        }).unwrap_or_else(|| {
-                            rsx! {
-                                article {
-                                    class: "prose dark:prose-invert lg:prose-xl indent-10 mx-auto",
-                                    div {
-                                        class: "whitespace-pre-line",
-                                        p { class: "mb-6", { t.coming_soon } }
-                                    }
-                                    ol {
-                                        class: "mt-10 w-fit",
-                                        li { class: "opacity-30", { t.coming_soon } }
-                                    }
-                                }
-                            }
-                        })
                     }
-                }
-            } else {
-                div { 
-                    class: "container mx-auto px-4 pt-16",
-                    div { 
-                        class: "max-w-2xl mx-auto",
-                        p { 
-                            class: "text-lg leading-relaxed text-center text-gray-500 dark:text-gray-400", 
-                            "{t.coming_soon}" 
+                } else {
+                    article {
+                        class: "prose dark:prose-invert lg:prose-xl indent-10 mx-auto",
+                        div {
+                            class: "whitespace-pre-line",
+                            p { class: "mb-6", { t.coming_soon } }
+                        }
+                        ol {
+                            class: "mt-10 w-fit",
+                            li { class: "opacity-30", { t.coming_soon } }
                         }
                     }
                 }

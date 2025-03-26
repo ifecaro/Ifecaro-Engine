@@ -1,6 +1,6 @@
-use dioxus::prelude::{dioxus_elements, rsx, Element, IntoDynNode, Props, component, dioxus_core, GlobalSignal, Readable};
+use dioxus::prelude::*;
 use dioxus::hooks::use_context;
-use dioxus::signals::Signal;
+use crate::contexts::language_context::LanguageState;
 use crate::enums::translations::Translations;
 
 #[derive(Props, Clone, PartialEq)]
@@ -10,8 +10,8 @@ pub struct TitleProps {
 
 #[component]
 pub fn Title(props: TitleProps) -> Element {
-    let lang = use_context::<Signal<String>>();
-    let t = Translations::get(&lang.read());
+    let state = use_context::<Signal<LanguageState>>();
+    let t = Translations::get(&state.read().current_language);
 
     let title = match props.title {
         "Dashboard" => t.dashboard,

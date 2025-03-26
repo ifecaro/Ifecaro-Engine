@@ -4,6 +4,7 @@ use crate::enums::route::Route;
 use dioxus_i18n::{prelude::*, t};
 use wasm_bindgen::{closure::Closure, JsCast};
 use web_sys::Event;
+use crate::contexts::language_context::LanguageState;
 
 struct Language {
     code: &'static str,
@@ -19,13 +20,10 @@ const LANGUAGES: &[Language] = &[
 
 #[component]
 pub fn Navbar() -> Element {
-    let i18n = use_init_i18n(|| crate::i18n::create_i18n_store());
     let navigator = use_navigator();
     let route: Route = use_route();
-    let current_lang = match &route {
-        Route::Story { lang } | Route::Dashboard { lang } => lang.clone(),
-        _ => "zh-TW".to_string()
-    };
+    let mut state = use_context::<Signal<LanguageState>>();
+    let current_lang = state.read().current_language.clone();
     
     let mut is_open = use_signal(|| false);
     let mut closure_signal = use_signal(|| None);
@@ -77,7 +75,7 @@ pub fn Navbar() -> Element {
                         class: "text-gray-700 dark:text-white hover:text-gray-900 dark:hover:text-gray-300 transition-colors duration-200",
                         "{t!(\"dashboard\")}" 
                     }
-                    div { 
+                    div {
                         class: "relative language-dropdown",
                         button {
                             class: "bg-transparent border-none text-sm font-medium text-gray-700 dark:text-white hover:text-gray-900 dark:hover:text-gray-300 outline-none focus:outline-none focus:ring-0 focus:ring-offset-0 transition-all duration-200 ease-in-out transform hover:scale-105",
@@ -91,16 +89,18 @@ pub fn Navbar() -> Element {
                             class: "absolute right-0 mt-2 w-48 rounded-md shadow-lg bg-white dark:bg-gray-800 ring-1 ring-black ring-opacity-5 transition-all duration-200 ease-in-out transform origin-top-right {dropdown_class}",
                             {LANGUAGES.iter().map(|language| {
                                 let route = route.clone();
+                                let lang_code = language.code.to_string();
                                 rsx! {
                                     button {
                                         class: "block w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors duration-150",
                                         onclick: move |_| {
+                                            state.write().set_language(&lang_code);
                                             match route {
                                                 Route::Story { .. } => {
-                                                    let _ = navigator.push(Route::Story { lang: language.code.to_string() });
+                                                    let _ = navigator.push(Route::Story { lang: lang_code.clone() });
                                                 }
                                                 Route::Dashboard { .. } => {
-                                                    let _ = navigator.push(Route::Dashboard { lang: language.code.to_string() });
+                                                    let _ = navigator.push(Route::Dashboard { lang: lang_code.clone() });
                                                 }
                                                 _ => {}
                                             };

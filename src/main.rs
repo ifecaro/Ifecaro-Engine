@@ -4,79 +4,56 @@ mod enums;
 mod i18n;
 mod layout;
 mod pages;
+mod contexts;
 
 use dioxus::{
     prelude::*,
     document::Stylesheet,
 };
 use dioxus_i18n::prelude::*;
-use tracing::Level;
 use dioxus_router::prelude::*;
 use crate::{
     enums::route::Route,
     components::navbar::Navbar,
     pages::{story::Story, dashboard::Dashboard},
+    contexts::language_context::{LanguageProvider, LanguageState},
 };
 use unic_langid::langid;
-use tracing as log;
 
 fn main() {
-    dioxus_logger::init(Level::INFO).expect("failed to init logger");
     launch(App);
 }
 
 #[component]
 fn App() -> Element {
-    let i18n = use_init_i18n(|| i18n::create_i18n_store());
-    let mut lang = use_signal(|| i18n.language().to_string());
-    
-    provide_context(lang.clone());
-    
     rsx! {
         head {
             Stylesheet { href: asset!("public/tailwind.css") }
         }
-        Router::<Route> {}
+        LanguageProvider {
+            Router::<Route> {}
+        }
     }
 }
 
 #[component]
 pub fn Layout() -> Element {
     let route = use_route::<Route>();
-    log::info!("Current route: {:?}", route);
-    
-    let mut i18n = use_init_i18n(|| i18n::create_i18n_store());
-    let mut lang = use_context::<Signal<String>>();
+    let mut state = use_context::<Signal<LanguageState>>();
     
     use_effect(move || {
         match &route {
             Route::Home {} => {
-                i18n.set_language(langid!("zh-TW"));
-                lang.set(i18n.language().to_string());
+                state.write().set_language("zh-TW");
             }
-            Route::Story { lang: route_lang } => {
-                match route_lang.as_str() {
-                    "zh-TW" => i18n.set_language(langid!("zh-TW")),
-                    "en-US" => i18n.set_language(langid!("en-US")),
-                    "es-ES" => i18n.set_language(langid!("es-ES")),
-                    "es-CL" => i18n.set_language(langid!("es-CL")),
-                    _ => i18n.set_language(langid!("zh-TW")),
-                }
-                lang.set(i18n.language().to_string());
+            Route::Story { lang } => {
+                state.write().set_language(lang);
             }
-            Route::Dashboard { lang: route_lang } => {
-                match route_lang.as_str() {
-                    "zh-TW" => i18n.set_language(langid!("zh-TW")),
-                    "en-US" => i18n.set_language(langid!("en-US")),
-                    "es-ES" => i18n.set_language(langid!("es-ES")),
-                    "es-CL" => i18n.set_language(langid!("es-CL")),
-                    _ => i18n.set_language(langid!("zh-TW")),
-                }
-                lang.set(i18n.language().to_string());
+            Route::Dashboard { lang } => {
+                state.write().set_language(lang);
             }
             Route::PageNotFound { .. } => {
-                i18n.set_language(langid!("zh-TW"));
-                lang.set(i18n.language().to_string());
+                state.write().set_language("zh-TW");
             }
         }
     });
