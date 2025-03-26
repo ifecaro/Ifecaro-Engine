@@ -8,6 +8,7 @@ pub struct StoryContentProps {
     choices: Vec<Choice>,
     on_choice_click: EventHandler<String>,
     t: Translations,
+    enabled_choices: Vec<String>,
 }
 
 #[derive(Clone, PartialEq, Debug, Serialize, Deserialize)]
@@ -18,25 +19,40 @@ pub struct Choice {
 
 #[component]
 pub fn StoryContent(props: StoryContentProps) -> Element {
+    let paragraphs: Vec<String> = props.paragraph.split('\n').map(|s| s.to_string()).collect();
+    
     rsx! {
         article {
             class: "prose dark:prose-invert lg:prose-xl indent-10 mx-auto",
             div {
-                class: "whitespace-pre-line",
-                p { class: "mb-6", {props.paragraph} }
+                class: "whitespace-pre-wrap",
+                {paragraphs.iter().map(|p| {
+                    rsx! {
+                        p { class: "mb-6", {p.clone()} }
+                    }
+                })}
             }
             ol {
                 class: "mt-10 w-fit",
                 {props.choices.iter().map(|choice| {
                     let caption = choice.caption.clone();
                     let goto = choice.goto.clone();
+                    let is_enabled = props.enabled_choices.contains(&goto);
                     rsx! {
                         li { 
-                            class: "opacity-30",
+                            class: if is_enabled { "" } else { "opacity-30" },
                             button {
-                                class: "text-left hover:opacity-100 transition-opacity duration-200",
+                                class: if is_enabled {
+                                    "text-left cursor-pointer"
+                                } else {
+                                    "text-left cursor-not-allowed"
+                                },
+                                disabled: !is_enabled,
                                 onclick: move |_| {
-                                    props.on_choice_click.call(goto.clone());
+                                    if is_enabled {
+                                        println!("Clicked choice with goto: {}", goto);
+                                        props.on_choice_click.call(goto.clone());
+                                    }
                                 },
                                 {caption}
                             }
