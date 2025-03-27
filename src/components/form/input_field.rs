@@ -1,50 +1,39 @@
 use dioxus::prelude::*;
-use dioxus::events::{FormEvent, FocusEvent};
 
-#[component]
-pub fn InputField(
-    label: &'static str,
-    placeholder: &'static str,
+#[derive(Props, Clone, PartialEq)]
+pub struct InputFieldProps {
+    label: String,
+    placeholder: String,
     value: String,
     required: bool,
     has_error: bool,
-    on_input: EventHandler<FormEvent>,
-    on_blur: EventHandler<FocusEvent>,
-) -> Element {
+    on_input: EventHandler<String>,
+    on_blur: EventHandler<()>,
+}
+
+#[component]
+pub fn InputField(props: InputFieldProps) -> Element {
+    let error_class = if props.has_error { "border-red-500" } else { "" };
+    
     rsx! {
-        div { 
-            class: "mb-6",
-            {(!label.is_empty()).then(|| rsx!(
-                label { 
-                    class: "block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2",
-                    span { "{label}" }
-                    {required.then(|| rsx!(
-                        span { class: "text-red-500 ml-1", "*" }
-                    ))}
-                }
-            ))}
-            input {
-                class: {
-                    let base_classes = "shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-gray-300 dark:bg-gray-700 dark:border-gray-600 leading-tight focus:outline-none focus:shadow-outline dark:focus:border-gray-500";
-                    if has_error {
-                        format!("{} border-red-500", base_classes)
-                    } else {
-                        base_classes.to_string()
-                    }
-                },
-                required: required,
-                r#type: "text",
-                placeholder: "{placeholder}",
-                value: "{value}",
-                onblur: move |evt| on_blur.call(evt),
-                oninput: move |evt| on_input.call(evt)
+        div { class: "space-y-2",
+            label { class: "block text-sm font-medium text-gray-700 dark:text-gray-300",
+                "{props.label}"
             }
-            {has_error.then(|| rsx!(
-                div { 
-                    class: "text-red-500 text-sm mt-1",
-                    "請填寫此欄位"
+            input {
+                class: "block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 dark:bg-gray-700 dark:text-white {error_class}",
+                r#type: "text",
+                placeholder: "{props.placeholder}",
+                required: props.required,
+                value: "{props.value}",
+                oninput: move |evt| props.on_input.call(evt.value().to_string()),
+                onblur: move |_| props.on_blur.call(())
+            }
+            {props.has_error.then(|| {
+                rsx! {
+                    p { class: "text-sm text-red-500", "此欄位為必填" }
                 }
-            ))}
+            })}
         }
     }
 } 

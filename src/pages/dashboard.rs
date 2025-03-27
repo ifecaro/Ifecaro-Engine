@@ -16,22 +16,22 @@ pub struct DashboardProps {
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
-struct Text {
-    lang: String,
-    paragraphs: String,
-    choices: Vec<Choice>,
+pub struct Data {
+    pub items: Vec<Paragraph>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
-struct Paragraph {
-    index: usize,
-    choice_id: String,
-    texts: Vec<Text>,
+pub struct Paragraph {
+    pub index: usize,
+    pub choice_id: String,
+    pub texts: Vec<Text>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
-struct Data {
-    items: Vec<Paragraph>,
+pub struct Text {
+    pub lang: String,
+    pub paragraphs: String,
+    pub choices: Vec<Choice>,
 }
 
 #[derive(Clone, PartialEq)]
@@ -136,6 +136,10 @@ struct ChoiceOption {
     preview: String,
 }
 
+fn display_language(lang: &&Language) -> String {
+    lang.name.to_string()
+}
+
 #[component]
 pub fn Dashboard(props: DashboardProps) -> Element {
     let mut choices = use_signal(|| Vec::<Choice>::new());
@@ -154,33 +158,80 @@ pub fn Dashboard(props: DashboardProps) -> Element {
     let mut is_goto_open = use_signal(|| false);
     let mut goto_search_query = use_signal(|| String::new());
     let mut available_choices = use_signal(|| Vec::<ChoiceOption>::new());
+    let mut available_paragraphs = use_signal(|| Vec::<crate::components::paragraph_list::Paragraph>::new());
     let t = Translations::get(&props.lang);
 
     let mut choice_id_error = use_signal(|| false);
     let mut paragraphs_error = use_signal(|| false);
     let mut new_caption_error = use_signal(|| false);
     let mut new_goto_error = use_signal(|| false);
+    let has_loaded = use_signal(|| false);
+
+    use_effect(move || {
+        if !*has_loaded.read() {
+            let mut available_choices = available_choices.clone();
+            let mut available_paragraphs = available_paragraphs.clone();
+            let mut has_loaded = has_loaded.clone();
+            spawn_local(async move {
+                let url = format!("{}{}", BASE_API_URL, SETTINGS);
+                if let Ok(response) = reqwest::get(&url).await {
+                    if let Ok(data) = response.json::<Data>().await {
+                        let choices = data.items.iter()
+                            .map(|item| ChoiceOption {
+                                id: item.choice_id.clone(),
+                                preview: item.texts.first()
+                                    .map(|t| t.paragraphs.lines().next().unwrap_or("").to_string())
+                                    .unwrap_or_default(),
+                            })
+                            .collect();
+                        let paragraphs = data.items.iter()
+                            .map(|item| crate::components::paragraph_list::Paragraph {
+                                id: item.choice_id.clone(),
+                                preview: item.texts.first()
+                                    .map(|t| t.paragraphs.lines().next().unwrap_or("").to_string())
+                                    .unwrap_or_default(),
+                            })
+                            .collect();
+                        available_choices.set(choices);
+                        available_paragraphs.set(paragraphs);
+                        has_loaded.set(true);
+                    }
+                }
+            });
+        }
+    });
 
     let filtered_languages = use_memo(move || {
+        let query = search_query.read().to_lowercase();
         AVAILABLE_LANGUAGES.iter()
             .filter(|l| {
-                let query = search_query.read().to_lowercase();
                 l.name.to_lowercase().contains(&query) || 
                 l.code.to_lowercase().contains(&query)
             })
             .collect::<Vec<_>>()
     });
 
-    let dropdown_class = if *is_open.read() {
-        "translate-y-0 opacity-100"
-    } else {
-        "-translate-y-2 opacity-0 pointer-events-none"
-    };
+    let dropdown_class = use_memo(move || {
+        if *is_open.read() {
+            "translate-y-0 opacity-100"
+        } else {
+            "-translate-y-2 opacity-0 pointer-events-none"
+        }
+    });
 
-    let current_language = AVAILABLE_LANGUAGES.iter()
-        .find(|l| l.code == *selected_lang.read())
-        .map(|l| l.name)
-        .unwrap_or("繁體中文");
+    let current_language = use_memo(move || {
+        AVAILABLE_LANGUAGES.iter()
+            .find(|l| l.code == *selected_lang.read())
+            .map(|l| l.name)
+            .unwrap_or("繁體中文")
+    });
+
+    let is_form_valid = use_memo(move || {
+        !choice_id.read().trim().is_empty() &&
+        !paragraphs.read().trim().is_empty() &&
+        !new_caption.read().trim().is_empty() &&
+        !new_goto.read().trim().is_empty()
+    });
 
     let validate_field = |value: &str, error_signal: &mut Signal<bool>| {
         if value.trim().is_empty() {
@@ -190,24 +241,14 @@ pub fn Dashboard(props: DashboardProps) -> Element {
         }
     };
 
-    let handle_submit = move |evt: Event<FormData>| {
-        evt.stop_propagation();
-        
-        if choice_id.read().trim().is_empty() {
-            return;
-        }
-        
-        if paragraphs.read().trim().is_empty() {
-            return;
-        }
-        
-        if new_caption.read().trim().is_empty() || new_goto.read().trim().is_empty() {
+    let handle_submit = move |_| {
+        if !*is_form_valid.read() {
             return;
         }
 
         let mut all_choices = Vec::new();
         
-        if !new_caption.read().is_empty() && !new_goto.read().is_empty() {
+        if !new_caption.read().trim().is_empty() && !new_goto.read().trim().is_empty() {
             all_choices.push(Choice {
                 caption: new_caption.read().clone(),
                 goto: new_goto.read().clone(),
@@ -217,7 +258,7 @@ pub fn Dashboard(props: DashboardProps) -> Element {
         for i in 0..extra_captions.read().len() {
             let caption = &extra_captions.read()[i];
             let goto = &extra_gotos.read()[i];
-            if !caption.is_empty() && !goto.is_empty() {
+            if !caption.trim().is_empty() && !goto.trim().is_empty() {
                 all_choices.push(Choice {
                     caption: caption.clone(),
                     goto: goto.clone(),
@@ -315,36 +356,6 @@ pub fn Dashboard(props: DashboardProps) -> Element {
         });
     };
 
-    let is_form_valid = move || {
-        !choice_id.read().trim().is_empty() &&
-        !paragraphs.read().trim().is_empty() &&
-        !new_caption.read().trim().is_empty() &&
-        !new_goto.read().trim().is_empty()
-    };
-    
-    // 獲取現有選項
-    spawn_local(async move {
-        let client = reqwest::Client::new();
-        let url = format!("{}{}", BASE_API_URL, SETTINGS);
-        
-        match client.get(&url).send().await {
-            Ok(response) => {
-                if let Ok(data) = response.json::<Data>().await {
-                    let choices: Vec<ChoiceOption> = data.items.iter()
-                        .map(|item| ChoiceOption {
-                            id: item.choice_id.clone(),
-                            preview: item.texts.first()
-                                .map(|t| t.paragraphs.lines().next().unwrap_or("").to_string())
-                                .unwrap_or_default(),
-                        })
-                        .collect();
-                    available_choices.set(choices);
-                }
-            }
-            Err(_) => {}
-        }
-    });
-
     rsx! {
         crate::pages::layout::Layout { 
             title: Some("Dashboard"),
@@ -356,16 +367,13 @@ pub fn Dashboard(props: DashboardProps) -> Element {
                     }
                 )
             })}
-            form { 
+            div { 
                 class: "max-w-3xl mx-auto p-8 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-100 dark:border-gray-700",
-                onsubmit: handle_submit,
-                "onsubmit": "event.preventDefault();",
-                
                 div { class: "space-y-8",
                     Dropdown {
                         label: t.select_language.to_string(),
-                        value: current_language.to_string(),
-                        options: AVAILABLE_LANGUAGES.to_vec(),
+                        value: current_language.read().to_string(),
+                        options: filtered_languages.read().clone(),
                         is_open: *is_open.read(),
                         search_query: search_query.read().to_string(),
                         on_toggle: move |_| {
@@ -373,41 +381,38 @@ pub fn Dashboard(props: DashboardProps) -> Element {
                             is_open.set(!current);
                         },
                         on_search: move |query| search_query.set(query),
-                        on_select: move |lang: Language| {
+                        on_select: move |lang: &Language| {
                             selected_lang.set(lang.code.to_string());
                             is_open.set(false);
                             search_query.set(String::new());
                         },
-                        display_fn: |lang: &Language| lang.name.to_string()
+                        display_fn: display_language
                     }
 
                     InputField {
-                        label: t.choice_id,
-                        placeholder: t.choice_id,
+                        label: t.choice_id.clone(),
+                        placeholder: t.choice_id.clone(),
                         value: choice_id.read().to_string(),
                         required: true,
                         has_error: *choice_id_error.read(),
-                        on_input: move |evt: FormEvent| {
-                            choice_id.set(evt.value().clone());
-                            validate_field(&evt.value(), &mut choice_id_error);
+                        on_input: move |value: String| {
+                            choice_id.set(value.clone());
+                            validate_field(&value, &mut choice_id_error);
                         },
-                        on_blur: move |evt: FocusEvent| validate_field(&choice_id.read(), &mut choice_id_error)
+                        on_blur: move |_| validate_field(&choice_id.read(), &mut choice_id_error)
                     }
 
-                    div { class: "space-y-2",
-                        TextareaField {
-                            label: t.paragraph,
-                            placeholder: t.paragraph,
-                            value: paragraphs.read().to_string(),
-                            required: true,
-                            has_error: *paragraphs_error.read(),
-                            rows: 6,
-                            on_input: move |evt: FormEvent| {
-                                paragraphs.set(evt.value().clone());
-                                validate_field(&evt.value(), &mut paragraphs_error);
-                            },
-                            on_blur: move |evt: FocusEvent| validate_field(&paragraphs.read(), &mut paragraphs_error)
-                        }
+                    InputField {
+                        label: t.paragraph.clone(),
+                        placeholder: t.paragraph.clone(),
+                        value: paragraphs.read().to_string(),
+                        required: true,
+                        has_error: *paragraphs_error.read(),
+                        on_input: move |value: String| {
+                            paragraphs.set(value.clone());
+                            validate_field(&value, &mut paragraphs_error);
+                        },
+                        on_blur: move |_| validate_field(&paragraphs.read(), &mut paragraphs_error)
                     }
 
                     ChoiceOptions {
@@ -418,23 +423,22 @@ pub fn Dashboard(props: DashboardProps) -> Element {
                         extra_gotos: extra_gotos.read().clone(),
                         new_caption_error: *new_caption_error.read(),
                         new_goto_error: *new_goto_error.read(),
-                        on_new_caption_change: move |evt: FormEvent| {
-                            let value = evt.value().to_string();
+                        available_paragraphs: available_paragraphs.read().clone(),
+                        on_new_caption_change: move |value: String| {
                             validate_field(&value, &mut new_caption_error);
                             new_caption.set(value);
                         },
-                        on_new_goto_change: move |evt: FormEvent| {
-                            let value = evt.value().to_string();
+                        on_new_goto_change: move |value: String| {
                             validate_field(&value, &mut new_goto_error);
                             new_goto.set(value);
                         },
-                        on_extra_caption_change: move |(i, evt): (usize, FormEvent)| {
+                        on_extra_caption_change: move |(i, value): (usize, String)| {
                             let mut captions = extra_captions.write();
-                            captions[i] = evt.value().to_string();
+                            captions[i] = value;
                         },
-                        on_extra_goto_change: move |(i, evt): (usize, FormEvent)| {
+                        on_extra_goto_change: move |(i, value): (usize, String)| {
                             let mut gotos = extra_gotos.write();
-                            gotos[i] = evt.value().to_string();
+                            gotos[i] = value;
                         },
                         on_add_choice: move |_| {
                             show_extra_options.write().push(());
@@ -445,8 +449,8 @@ pub fn Dashboard(props: DashboardProps) -> Element {
 
                     button {
                         class: "w-full px-6 py-3 bg-green-500 text-white rounded-md hover:bg-green-600 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed font-medium text-lg",
-                        r#type: "submit",
-                        disabled: !is_form_valid(),
+                        disabled: !*is_form_valid.read(),
+                        onclick: handle_submit,
                         "{t.submit}"
                     }
                 }
