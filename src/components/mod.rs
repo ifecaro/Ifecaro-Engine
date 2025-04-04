@@ -5,3 +5,6 @@ pub mod form;
 pub mod story_content;
 pub mod dropdown;
 pub mod paragraph_list;
+pub mod language_selector;
+pub mod paragraph_form;
+pub mod translation_form;

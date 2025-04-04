@@ -686,9 +686,6 @@
   .mb-6 {
     margin-bottom: calc(var(--spacing) * 6);
   }
-  .mb-\[2px\] {
-    margin-bottom: 2px;
-  }
   .ml-1 {
     margin-left: calc(var(--spacing) * 1);
   }
@@ -698,23 +695,8 @@
   .flex {
     display: flex;
   }
-  .inline-block {
-    display: inline-block;
-  }
-  .inline-flex {
-    display: inline-flex;
-  }
   .h-4 {
     height: calc(var(--spacing) * 4);
-  }
-  .h-5 {
-    height: calc(var(--spacing) * 5);
-  }
-  .h-10 {
-    height: calc(var(--spacing) * 10);
-  }
-  .h-\[42px\] {
-    height: 42px;
   }
   .h-screen {
     height: 100vh;
@@ -727,12 +709,6 @@
   }
   .w-4 {
     width: calc(var(--spacing) * 4);
-  }
-  .w-5 {
-    width: calc(var(--spacing) * 5);
-  }
-  .w-10 {
-    width: calc(var(--spacing) * 10);
   }
   .w-48 {
     width: calc(var(--spacing) * 48);
@@ -751,6 +727,9 @@
   }
   .flex-1 {
     flex: 1;
+  }
+  .origin-top {
+    transform-origin: top;
   }
   .origin-top-right {
     transform-origin: top right;
@@ -787,9 +766,6 @@
   }
   .justify-between {
     justify-content: space-between;
-  }
-  .justify-center {
-    justify-content: center;
   }
   .justify-end {
     justify-content: flex-end;
@@ -871,8 +847,8 @@
   .bg-gray-100 {
     background-color: var(--color-gray-100);
   }
-  .bg-gray-700 {
-    background-color: var(--color-gray-700);
+  .bg-gray-600 {
+    background-color: var(--color-gray-600);
   }
   .bg-green-50 {
     background-color: var(--color-green-50);
@@ -1093,10 +1069,10 @@
       }
     }
   }
-  .hover\:bg-gray-800 {
+  .hover\:bg-gray-700 {
     &:hover {
       @media (hover: hover) {
-        background-color: var(--color-gray-800);
+        background-color: var(--color-gray-700);
       }
     }
   }
@@ -1150,9 +1126,9 @@
       box-shadow: var(--tw-inset-shadow), var(--tw-inset-ring-shadow), var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow);
     }
   }
-  .focus\:ring-gray-600 {
+  .focus\:ring-gray-500 {
     &:focus {
-      --tw-ring-color: var(--color-gray-600);
+      --tw-ring-color: var(--color-gray-500);
     }
   }
   .focus\:ring-green-500 {
