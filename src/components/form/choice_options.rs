@@ -31,8 +31,13 @@ pub fn ChoiceOptions(props: ChoiceOptionsProps) -> Element {
     // 當 extra_gotos 長度改變時，更新 extra_goto_open 和 extra_goto_search
     let extra_gotos_len = props.extra_gotos.len();
     use_effect(move || {
-        extra_goto_open.set(vec![false; extra_gotos_len]);
-        extra_goto_search.set(vec![String::new(); extra_gotos_len]);
+        if extra_gotos_len > 0 {
+            extra_goto_open.set(vec![false; extra_gotos_len]);
+            extra_goto_search.set(vec![String::new(); extra_gotos_len]);
+        } else {
+            extra_goto_open.set(Vec::new());
+            extra_goto_search.set(Vec::new());
+        }
     });
 
     let extra_captions = props.extra_captions.clone();
@@ -94,22 +99,30 @@ pub fn ChoiceOptions(props: ChoiceOptionsProps) -> Element {
                             label: goto_label.clone(),
                             value: goto,
                             paragraphs: props.available_paragraphs.clone(),
-                            is_open: extra_goto_open.read()[i],
-                            search_query: extra_goto_search.read()[i].clone(),
+                            is_open: if i < extra_goto_open.read().len() { extra_goto_open.read()[i] } else { false },
+                            search_query: if i < extra_goto_search.read().len() { extra_goto_search.read()[i].clone() } else { String::new() },
                             on_toggle: move |_| {
                                 let mut open = extra_goto_open.write();
-                                open[i] = !open[i];
+                                if i < open.len() {
+                                    open[i] = !open[i];
+                                }
                             },
                             on_search: move |query| {
                                 let mut search = extra_goto_search.write();
-                                search[i] = query;
+                                if i < search.len() {
+                                    search[i] = query;
+                                }
                             },
                             on_select: move |id: String| {
                                 props.on_extra_goto_change.call((i, id));
                                 let mut open = extra_goto_open.write();
-                                open[i] = false;
+                                if i < open.len() {
+                                    open[i] = false;
+                                }
                                 let mut search = extra_goto_search.write();
-                                search[i] = String::new();
+                                if i < search.len() {
+                                    search[i] = String::new();
+                                }
                             }
                         }
                     }

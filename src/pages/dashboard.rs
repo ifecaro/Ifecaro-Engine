@@ -136,6 +136,7 @@ pub fn Dashboard(props: DashboardProps) -> Element {
     let mut selected_chapter = use_signal(|| String::new());
     let mut selected_paragraph = use_signal(|| None::<TranslationParagraph>);
     let mut is_edit_mode = use_signal(|| false);
+    let mut paragraph_data = use_signal(|| Vec::<Paragraph>::new());
     let t = Translations::get(&props.lang);
 
     let mut choice_id_error = use_signal(|| false);
@@ -186,6 +187,7 @@ pub fn Dashboard(props: DashboardProps) -> Element {
         let mut has_loaded = has_loaded.clone();
         let current_lang = selected_lang.read().to_string();
         let mut available_chapters = available_chapters.clone();
+        let mut paragraph_data = paragraph_data.clone();
 
         wasm_bindgen_futures::spawn_local(async move {
             // 載入 chapters
@@ -251,31 +253,34 @@ pub fn Dashboard(props: DashboardProps) -> Element {
                 Ok(response) => {
                     match response.json::<Data>().await {
                         Ok(data) => {
-                        let choices = data.items.iter()
-                            .map(|item| ChoiceOption {
-                                id: item.choice_id.clone(),
-                                preview: item.texts.first()
-                                    .map(|t| t.paragraphs.lines().next().unwrap_or("").to_string())
-                                    .unwrap_or_default(),
-                            })
-                            .collect();
-                        let paragraphs = data.items.iter()
-                            .map(|item| crate::components::paragraph_list::Paragraph {
-                                id: item.choice_id.clone(),
-                                preview: item.texts.first()
-                                    .map(|t| t.paragraphs.lines().next().unwrap_or("").to_string())
-                                    .unwrap_or_default(),
-                            })
-                            .collect();
-                        available_choices.set(choices);
-                        available_paragraphs.set(paragraphs);
-                        has_loaded.set(true);
+                            // 保存完整的段落資料
+                            paragraph_data.set(data.items.clone());
+                            
+                            let choices = data.items.iter()
+                                .map(|item| ChoiceOption {
+                                    id: item.choice_id.clone(),
+                                    preview: item.texts.first()
+                                        .map(|t| t.paragraphs.lines().next().unwrap_or("").to_string())
+                                        .unwrap_or_default(),
+                                })
+                                .collect();
+                            let paragraphs = data.items.iter()
+                                .map(|item| crate::components::paragraph_list::Paragraph {
+                                    id: item.choice_id.clone(),
+                                    preview: item.texts.first()
+                                        .map(|t| t.paragraphs.lines().next().unwrap_or("").to_string())
+                                        .unwrap_or_default(),
+                                })
+                                .collect();
+                            available_choices.set(choices);
+                            available_paragraphs.set(paragraphs);
+                            has_loaded.set(true);
                         }
                         Err(_) => {}
                     }
                 }
                 Err(_) => {}
-        }
+            }
         });
         
         // 返回一個清理函數
@@ -443,16 +448,64 @@ pub fn Dashboard(props: DashboardProps) -> Element {
     };
 
     let handle_paragraph_select = move |id: String| {
-        if let Some(paragraph) = available_paragraphs.read().iter().find(|p| p.id == id) {
-            // 將 paragraph_list::Paragraph 轉換為 translation_form::Paragraph
+        // 從完整的段落資料中尋找選中的段落
+        if let Some(paragraph) = paragraph_data.read().iter().find(|p| p.choice_id == id) {
+            // 將 dashboard::Paragraph 轉換為 translation_form::Paragraph
             let dashboard_paragraph = TranslationParagraph {
                 id: paragraph.id.clone(),
-                index: 0, // 這裡需要從 API 獲取正確的索引
-                choice_id: paragraph.id.clone(),
-                chapter_id: String::new(),
-                texts: Vec::new(),
+                index: paragraph.index,
+                choice_id: paragraph.choice_id.clone(),
+                chapter_id: paragraph.chapter_id.clone(),
+                texts: paragraph.texts.iter().map(|text| TranslationText {
+                    lang: text.lang.clone(),
+                    paragraphs: text.paragraphs.clone(),
+                    choices: text.choices.clone(),
+                }).collect(),
             };
-            selected_paragraph.set(Some(dashboard_paragraph));
+            selected_paragraph.set(Some(dashboard_paragraph.clone()));
+
+            // 檢查是否有已存在的翻譯
+            let current_lang = selected_lang.read().to_string();
+            if let Some(existing_text) = paragraph.texts.iter().find(|text| text.lang == current_lang) {
+                // 填充段落內容
+                paragraphs.set(existing_text.paragraphs.clone());
+                
+                // 填充選項
+                if !existing_text.choices.is_empty() {
+                    // 設置第一個選項
+                    new_caption.set(existing_text.choices[0].caption.clone());
+                    new_goto.set(existing_text.choices[0].goto.clone());
+                    
+                    // 設置額外選項
+                    let mut captions = Vec::new();
+                    let mut gotos = Vec::new();
+                    let mut options = Vec::new();
+                    
+                    for choice in existing_text.choices.iter().skip(1) {
+                        captions.push(choice.caption.clone());
+                        gotos.push(choice.goto.clone());
+                        options.push(());
+                    }
+                    
+                    // 確保所有向量都有相同的長度
+                    let len = captions.len();
+                    if len > 0 {
+                        extra_captions.set(captions);
+                        extra_gotos.set(gotos);
+                        show_extra_options.set(options);
+                    } else {
+                        // 如果沒有額外選項，清空所有向量
+                        extra_captions.set(Vec::new());
+                        extra_gotos.set(Vec::new());
+                        show_extra_options.set(Vec::new());
+                    }
+                } else {
+                    // 如果沒有選項，清空所有向量
+                    extra_captions.set(Vec::new());
+                    extra_gotos.set(Vec::new());
+                    show_extra_options.set(Vec::new());
+                }
+            }
         }
     };
 
