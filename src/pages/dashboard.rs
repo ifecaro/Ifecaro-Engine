@@ -5,24 +5,11 @@ use wasm_bindgen::prelude::*;
 use crate::constants::config::config::{BASE_API_URL, SETTINGS, COLLECTIONS, AUTH_TOKEN};
 use crate::enums::translations::Translations;
 use crate::components::toast::Toast;
-use crate::components::language_selector::LanguageSelector;
-use crate::components::paragraph_form::ParagraphForm;
-use crate::components::translation_form::{TranslationForm, Paragraph as TranslationParagraph, Text as TranslationText, Choice as TranslationChoice};
-use dioxus::events::{FormEvent, FocusEvent};
+use crate::components::form::{InputField, TextareaField, ChoiceOptions};
+use crate::components::story_content::Choice;
 use crate::components::dropdown::Dropdown;
-
-// 從 chapter_selector.rs 移動過來的結構和組件
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub struct Chapter {
-    pub id: String,
-    pub title: String,
-    #[serde(default)]
-    pub titles: std::collections::HashMap<String, String>,
-}
-
-fn display_chapter(chapter: &Chapter) -> String {
-    chapter.title.clone()
-}
+use crate::components::paragraph_list::ParagraphList;
+use dioxus::events::{FormEvent, FocusEvent};
 
 #[derive(Props, Clone, PartialEq)]
 pub struct DashboardProps {
@@ -48,7 +35,15 @@ pub struct Paragraph {
 pub struct Text {
     pub lang: String,
     pub paragraphs: String,
-    pub choices: Vec<TranslationChoice>,
+    pub choices: Vec<Choice>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
+pub struct Chapter {
+    pub id: String,
+    pub title: String,
+    #[serde(default)]
+    pub titles: std::collections::HashMap<String, String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -111,15 +106,115 @@ pub struct SystemDataResponse {
     pub total_pages: i32,
 }
 
+#[derive(Clone, PartialEq)]
+struct Language {
+    code: &'static str,
+    name: &'static str,
+}
+
+const AVAILABLE_LANGUAGES: &[Language] = &[
+    Language { code: "zh-TW", name: "繁體中文" },
+    Language { code: "zh-CN", name: "簡體中文" },
+    Language { code: "en", name: "English" },
+    Language { code: "ja", name: "日本語" },
+    Language { code: "ko", name: "한국어" },
+    Language { code: "es", name: "Español" },
+    Language { code: "fr", name: "Français" },
+    Language { code: "de", name: "Deutsch" },
+    Language { code: "it", name: "Italiano" },
+    Language { code: "pt", name: "Português" },
+    Language { code: "ru", name: "Русский" },
+    Language { code: "ar", name: "العربية" },
+    Language { code: "hi", name: "हिंदी" },
+    Language { code: "bn", name: "বাংলা" },
+    Language { code: "id", name: "Bahasa Indonesia" },
+    Language { code: "ms", name: "Bahasa Melayu" },
+    Language { code: "th", name: "ไทย" },
+    Language { code: "vi", name: "Tiếng Việt" },
+    Language { code: "nl", name: "Nederlands" },
+    Language { code: "pl", name: "Polski" },
+    Language { code: "uk", name: "Українська" },
+    Language { code: "el", name: "Ελληνικά" },
+    Language { code: "he", name: "עברית" },
+    Language { code: "tr", name: "Türkçe" },
+    Language { code: "sv", name: "Svenska" },
+    Language { code: "da", name: "Dansk" },
+    Language { code: "fi", name: "Suomi" },
+    Language { code: "no", name: "Norsk" },
+    Language { code: "cs", name: "Čeština" },
+    Language { code: "ro", name: "Română" },
+    Language { code: "hu", name: "Magyar" },
+    Language { code: "sk", name: "Slovenčina" },
+    Language { code: "hr", name: "Hrvatski" },
+    Language { code: "ca", name: "Català" },
+    Language { code: "fil", name: "Filipino" },
+    Language { code: "fa", name: "فارسی" },
+    Language { code: "lv", name: "Latviešu" },
+    Language { code: "af", name: "Afrikaans" },
+    Language { code: "sw", name: "Kiswahili" },
+    Language { code: "ga", name: "Gaeilge" },
+    Language { code: "et", name: "Eesti" },
+    Language { code: "eu", name: "Euskara" },
+    Language { code: "is", name: "Íslenska" },
+    Language { code: "mk", name: "Македонски" },
+    Language { code: "hy", name: "Հայերեն" },
+    Language { code: "ne", name: "नेपाली" },
+    Language { code: "lb", name: "Lëtzebuergesch" },
+    Language { code: "my", name: "မြန်မာဘာသာ" },
+    Language { code: "gl", name: "Galego" },
+    Language { code: "mr", name: "मराठी" },
+    Language { code: "ka", name: "ქართული" },
+    Language { code: "mn", name: "Монгол" },
+    Language { code: "si", name: "සිංහල" },
+    Language { code: "km", name: "ខ្មែរ" },
+    Language { code: "sn", name: "chiShona" },
+    Language { code: "yo", name: "Yorùbá" },
+    Language { code: "so", name: "Soomaali" },
+    Language { code: "ha", name: "Hausa" },
+    Language { code: "zu", name: "isiZulu" },
+    Language { code: "xh", name: "isiXhosa" },
+    Language { code: "am", name: "አማርኛ" },
+    Language { code: "be", name: "Беларуская" },
+    Language { code: "az", name: "Azərbaycan" },
+    Language { code: "uz", name: "O'zbek" },
+    Language { code: "kk", name: "Қазақ" },
+    Language { code: "ky", name: "Кыргызча" },
+    Language { code: "tg", name: "Тоҷикӣ" },
+    Language { code: "tk", name: "Türkmen" },
+    Language { code: "ur", name: "اردو" },
+    Language { code: "pa", name: "ਪੰਜਾਬੀ" },
+    Language { code: "gu", name: "ગુજરાતી" },
+    Language { code: "or", name: "ଓଡ଼ିଆ" },
+    Language { code: "ta", name: "தமிழ்" },
+    Language { code: "te", name: "తెలుగు" },
+    Language { code: "kn", name: "ಕನ್ನಡ" },
+    Language { code: "ml", name: "മലയാളം" },
+    Language { code: "as", name: "অসমীয়া" },
+    Language { code: "mai", name: "मैथिली" },
+    Language { code: "mni", name: "মৈতৈলোন্" },
+    Language { code: "doi", name: "डोगरी" },
+    Language { code: "bho", name: "भोजपुरी" },
+    Language { code: "sat", name: "ᱥᱟᱱᱛᱟᱲᱤ" },
+    Language { code: "ks", name: "کٲشُر" },
+    Language { code: "sa", name: "संस्कृतम्" },
+    Language { code: "sd", name: "سنڌي" },
+    Language { code: "kok", name: "कोंकणी" },
+    Language { code: "gom", name: "कोंकणी" },
+];
+
 #[derive(Debug, Clone, PartialEq)]
 struct ChoiceOption {
     id: String,
     preview: String,
 }
 
+fn display_language(lang: &&Language) -> String {
+    lang.name.to_string()
+}
+
 #[component]
 pub fn Dashboard(props: DashboardProps) -> Element {
-    let mut choices = use_signal(|| Vec::<TranslationChoice>::new());
+    let mut choices = use_signal(|| Vec::<Choice>::new());
     let mut choice_id = use_signal(|| String::new());
     let mut paragraphs = use_signal(|| String::new());
     let mut new_caption = use_signal(|| String::new());
@@ -130,13 +225,20 @@ pub fn Dashboard(props: DashboardProps) -> Element {
     let mut show_toast = use_signal(|| false);
     let mut toast_visible = use_signal(|| false);
     let mut selected_lang = use_signal(|| props.lang.clone());
+    let mut is_open = use_signal(|| false);
+    let mut search_query = use_signal(|| String::new());
+    let mut is_goto_open = use_signal(|| false);
+    let mut goto_search_query = use_signal(|| String::new());
     let mut available_choices = use_signal(|| Vec::<ChoiceOption>::new());
     let mut available_paragraphs = use_signal(|| Vec::<crate::components::paragraph_list::Paragraph>::new());
     let mut available_chapters = use_signal(|| Vec::<Chapter>::new());
     let mut selected_chapter = use_signal(|| String::new());
-    let mut selected_paragraph = use_signal(|| None::<TranslationParagraph>);
+    let mut is_chapter_open = use_signal(|| false);
+    let mut chapter_search_query = use_signal(|| String::new());
+    let mut selected_paragraph = use_signal(|| None::<Paragraph>);
     let mut is_edit_mode = use_signal(|| false);
-    let mut paragraph_data = use_signal(|| Vec::<Paragraph>::new());
+    let mut is_paragraph_open = use_signal(|| false);
+    let mut paragraph_search_query = use_signal(|| String::new());
     let t = Translations::get(&props.lang);
 
     let mut choice_id_error = use_signal(|| false);
@@ -146,53 +248,16 @@ pub fn Dashboard(props: DashboardProps) -> Element {
     let mut chapter_error = use_signal(|| false);
     let has_loaded = use_signal(|| false);
 
-    // 章節選擇器的狀態
-    let mut chapter_is_open = use_signal(|| false);
-    let mut chapter_search_query = use_signal(|| String::new());
-
-    let filtered_chapters = {
-        let chapters = available_chapters.read().clone();
-        let query = chapter_search_query.read().to_lowercase();
-        chapters.iter()
-            .filter(|chapter| {
-                chapter.title.to_lowercase().contains(&query)
-            })
-            .cloned()
-            .collect::<Vec<_>>()
-    };
-
-    let current_chapter = {
-        let chapters = available_chapters.read().clone();
-        let selected_id = selected_chapter.read().clone();
-        if selected_id.is_empty() {
-            t.select_chapter.to_string()
-        } else {
-            chapters.iter()
-                .find(|c| c.id == selected_id)
-                .map(|c| c.title.clone())
-                .unwrap_or_else(|| t.select_chapter.to_string())
-        }
-    };
-
-    let chapter_dropdown_class = if *chapter_is_open.read() {
-        "translate-y-0 opacity-100"
-    } else {
-        "-translate-y-2 opacity-0 pointer-events-none"
-    };
-
     use_effect(move || {
         let chapters_url = format!("{}{}", BASE_API_URL, COLLECTIONS);
         let settings_url = format!("{}{}", BASE_API_URL, SETTINGS);
         let client = reqwest::Client::new();
         let mut has_loaded = has_loaded.clone();
         let current_lang = selected_lang.read().to_string();
-        let mut available_chapters = available_chapters.clone();
-        let mut paragraph_data = paragraph_data.clone();
 
         wasm_bindgen_futures::spawn_local(async move {
             // 載入 chapters
             match client.get(&chapters_url)
-                .header("Authorization", format!("Bearer {}", AUTH_TOKEN))
                 .send()
                 .await {
                 Ok(response) => {
@@ -253,38 +318,67 @@ pub fn Dashboard(props: DashboardProps) -> Element {
                 Ok(response) => {
                     match response.json::<Data>().await {
                         Ok(data) => {
-                            // 保存完整的段落資料
-                            paragraph_data.set(data.items.clone());
-                            
-                            let choices = data.items.iter()
-                                .map(|item| ChoiceOption {
-                                    id: item.choice_id.clone(),
-                                    preview: item.texts.first()
-                                        .map(|t| t.paragraphs.lines().next().unwrap_or("").to_string())
-                                        .unwrap_or_default(),
-                                })
-                                .collect();
-                            let paragraphs = data.items.iter()
-                                .map(|item| crate::components::paragraph_list::Paragraph {
-                                    id: item.choice_id.clone(),
-                                    preview: item.texts.first()
-                                        .map(|t| t.paragraphs.lines().next().unwrap_or("").to_string())
-                                        .unwrap_or_default(),
-                                })
-                                .collect();
-                            available_choices.set(choices);
-                            available_paragraphs.set(paragraphs);
-                            has_loaded.set(true);
+                        let choices = data.items.iter()
+                            .map(|item| ChoiceOption {
+                                id: item.choice_id.clone(),
+                                preview: item.texts.first()
+                                    .map(|t| t.paragraphs.lines().next().unwrap_or("").to_string())
+                                    .unwrap_or_default(),
+                            })
+                            .collect();
+                        let paragraphs = data.items.iter()
+                            .map(|item| crate::components::paragraph_list::Paragraph {
+                                id: item.choice_id.clone(),
+                                preview: item.texts.first()
+                                    .map(|t| t.paragraphs.lines().next().unwrap_or("").to_string())
+                                    .unwrap_or_default(),
+                            })
+                            .collect();
+                        available_choices.set(choices);
+                        available_paragraphs.set(paragraphs);
+                        has_loaded.set(true);
                         }
                         Err(_) => {}
                     }
                 }
                 Err(_) => {}
-            }
+        }
         });
         
         // 返回一個清理函數
         (move || {})()
+    });
+
+    let filtered_languages = use_memo(move || {
+        let query = search_query.read().to_lowercase();
+        AVAILABLE_LANGUAGES.iter()
+            .filter(|l| {
+                l.name.to_lowercase().contains(&query) || 
+                l.code.to_lowercase().contains(&query)
+            })
+            .collect::<Vec<_>>()
+    });
+
+    let dropdown_class = use_memo(move || {
+        if *is_open.read() {
+            "translate-y-0 opacity-100"
+        } else {
+            "-translate-y-2 opacity-0 pointer-events-none"
+        }
+    });
+
+    let current_language = use_memo(move || {
+        AVAILABLE_LANGUAGES.iter()
+            .find(|l| l.code == *selected_lang.read())
+            .map(|l| l.name)
+            .unwrap_or("繁體中文")
+    });
+
+    let is_form_valid = use_memo(move || {
+        !choice_id.read().trim().is_empty() &&
+        !paragraphs.read().trim().is_empty() &&
+        !new_caption.read().trim().is_empty() &&
+        !new_goto.read().trim().is_empty()
     });
 
     let validate_field = |value: &str, error_signal: &mut Signal<bool>| {
@@ -296,17 +390,14 @@ pub fn Dashboard(props: DashboardProps) -> Element {
     };
 
     let handle_submit = move |_| {
-        if choice_id.read().trim().is_empty() || 
-           paragraphs.read().trim().is_empty() || 
-           new_caption.read().trim().is_empty() || 
-           new_goto.read().trim().is_empty() {
+        if !*is_form_valid.read() {
             return;
         }
 
         let mut all_choices = Vec::new();
         
         if !new_caption.read().trim().is_empty() && !new_goto.read().trim().is_empty() {
-            all_choices.push(TranslationChoice {
+            all_choices.push(Choice {
                 caption: new_caption.read().clone(),
                 goto: new_goto.read().clone(),
             });
@@ -316,14 +407,14 @@ pub fn Dashboard(props: DashboardProps) -> Element {
             let caption = &extra_captions.read()[i];
             let goto = &extra_gotos.read()[i];
             if !caption.trim().is_empty() && !goto.trim().is_empty() {
-                all_choices.push(TranslationChoice {
+                all_choices.push(Choice {
                     caption: caption.clone(),
                     goto: goto.clone(),
                 });
             }
         }
 
-        let text = TranslationText {
+        let text = Text {
             lang: selected_lang.read().clone(),
             paragraphs: paragraphs.read().clone(),
             choices: all_choices,
@@ -333,12 +424,12 @@ pub fn Dashboard(props: DashboardProps) -> Element {
             let client = reqwest::Client::new();
             
             // 檢查是否選擇了章節
-            let chapter_id = selected_chapter.read().clone();
-            if chapter_id.is_empty() {
+            if selected_chapter.read().is_empty() {
                 return;
             }
             
             // 建立一個足夠長的 id
+            let chapter_id = selected_chapter.read().clone();
             let choice_id_value = choice_id.read().clone();
             let timestamp = js_sys::Date::new_0().get_time();
             let unique_id = format!("{}_{}_{}", chapter_id, choice_id_value, timestamp);
@@ -347,7 +438,7 @@ pub fn Dashboard(props: DashboardProps) -> Element {
             let new_paragraph = serde_json::json!({
                 "id": unique_id,
                 "choice_id": choice_id.read().clone(),
-                "chapter_id": chapter_id,
+                "chapter_id": selected_chapter.read().clone(),
                 "texts": [
                     {
                         "lang": selected_lang.read().clone(),
@@ -401,7 +492,7 @@ pub fn Dashboard(props: DashboardProps) -> Element {
     let handle_add_translation = move |_| {
         if let Some(paragraph) = selected_paragraph.read().as_ref() {
             let mut updated_texts = paragraph.texts.clone();
-            updated_texts.push(TranslationText {
+            updated_texts.push(Text {
                 lang: selected_lang.read().clone(),
                 paragraphs: paragraphs.read().clone(),
                 choices: choices.read().clone(),
@@ -444,68 +535,6 @@ pub fn Dashboard(props: DashboardProps) -> Element {
                             Err(_) => {}
                         }
             });
-            }
-    };
-
-    let handle_paragraph_select = move |id: String| {
-        // 從完整的段落資料中尋找選中的段落
-        if let Some(paragraph) = paragraph_data.read().iter().find(|p| p.choice_id == id) {
-            // 將 dashboard::Paragraph 轉換為 translation_form::Paragraph
-            let dashboard_paragraph = TranslationParagraph {
-                id: paragraph.id.clone(),
-                index: paragraph.index,
-                choice_id: paragraph.choice_id.clone(),
-                chapter_id: paragraph.chapter_id.clone(),
-                texts: paragraph.texts.iter().map(|text| TranslationText {
-                    lang: text.lang.clone(),
-                    paragraphs: text.paragraphs.clone(),
-                    choices: text.choices.clone(),
-                }).collect(),
-            };
-            selected_paragraph.set(Some(dashboard_paragraph.clone()));
-
-            // 檢查是否有已存在的翻譯
-            let current_lang = selected_lang.read().to_string();
-            if let Some(existing_text) = paragraph.texts.iter().find(|text| text.lang == current_lang) {
-                // 填充段落內容
-                paragraphs.set(existing_text.paragraphs.clone());
-                
-                // 填充選項
-                if !existing_text.choices.is_empty() {
-                    // 設置第一個選項
-                    new_caption.set(existing_text.choices[0].caption.clone());
-                    new_goto.set(existing_text.choices[0].goto.clone());
-                    
-                    // 設置額外選項
-                    let mut captions = Vec::new();
-                    let mut gotos = Vec::new();
-                    let mut options = Vec::new();
-                    
-                    for choice in existing_text.choices.iter().skip(1) {
-                        captions.push(choice.caption.clone());
-                        gotos.push(choice.goto.clone());
-                        options.push(());
-                    }
-                    
-                    // 確保所有向量都有相同的長度
-                    let len = captions.len();
-                    if len > 0 {
-                        extra_captions.set(captions);
-                        extra_gotos.set(gotos);
-                        show_extra_options.set(options);
-                    } else {
-                        // 如果沒有額外選項，清空所有向量
-                        extra_captions.set(Vec::new());
-                        extra_gotos.set(Vec::new());
-                        show_extra_options.set(Vec::new());
-                    }
-                } else {
-                    // 如果沒有選項，清空所有向量
-                    extra_captions.set(Vec::new());
-                    extra_gotos.set(Vec::new());
-                    show_extra_options.set(Vec::new());
-                }
-            }
         }
     };
 
@@ -523,60 +552,128 @@ pub fn Dashboard(props: DashboardProps) -> Element {
             div { 
                 class: "max-w-3xl mx-auto p-8 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-100 dark:border-gray-700",
                 div { class: "space-y-8",
-                    // 語言選擇器
-                    LanguageSelector {
-                        t: t.clone(),
-                        selected_lang: selected_lang.read().to_string(),
-                        on_language_change: move |lang: String| selected_lang.set(lang)
+                    Dropdown {
+                        label: t.select_language.to_string(),
+                        value: current_language.read().to_string(),
+                        options: filtered_languages.read().clone(),
+                        is_open: *is_open.read(),
+                        search_query: search_query.read().to_string(),
+                        on_toggle: move |_| {
+                            let current = *is_open.read();
+                            is_open.set(!current);
+                        },
+                        on_search: move |query| search_query.set(query),
+                        on_select: move |lang: &Language| {
+                            selected_lang.set(lang.code.to_string());
+                            is_open.set(false);
+                            search_query.set(String::new());
+                        },
+                        display_fn: display_language
                     }
 
                     // 章節選擇器
-                    crate::components::dropdown::Dropdown {
+                    Dropdown {
                         label: t.select_chapter.to_string(),
-                        value: current_chapter,
-                        options: filtered_chapters,
-                        is_open: *chapter_is_open.read(),
+                        value: if selected_chapter.read().is_empty() {
+                            t.select_chapter.to_string()
+                        } else {
+                            available_chapters.read().iter()
+                                .find(|c| c.id == *selected_chapter.read())
+                                .map(|c| c.title.clone())
+                                .unwrap_or_else(|| t.select_chapter.to_string())
+                        },
+                        options: available_chapters.read().iter()
+                            .filter(|chapter| {
+                                let query = chapter_search_query.read().to_lowercase();
+                                chapter.title.to_lowercase().contains(&query)
+                            })
+                            .cloned()
+                            .collect::<Vec<_>>(),
+                        is_open: *is_chapter_open.read(),
                         search_query: chapter_search_query.read().to_string(),
                         on_toggle: move |_| {
-                            let current = *chapter_is_open.read();
-                            chapter_is_open.set(!current);
+                            let current = *is_chapter_open.read();
+                            is_chapter_open.set(!current);
                         },
                         on_search: move |query| chapter_search_query.set(query),
                         on_select: move |chapter: Chapter| {
-                            let chapter_id = chapter.id.clone();
-                            selected_chapter.set(chapter_id.clone());
-                            validate_field(&chapter_id, &mut chapter_error);
-                            chapter_is_open.set(false);
+                            selected_chapter.set(chapter.id.clone());
+                            is_chapter_open.set(false);
                             chapter_search_query.set(String::new());
+                            validate_field(&chapter.id, &mut chapter_error);
                         },
-                        display_fn: display_chapter
+                        display_fn: |chapter: &Chapter| chapter.title.clone()
                     }
 
                     // 根據模式顯示不同的表單
                     if !*is_edit_mode.read() {
                         // 新增段落表單
-                        ParagraphForm {
+                        div { class: "space-y-2",
+                            div { class: "flex items-end space-x-4",
+                                div { class: "flex-1",
+                                    InputField {
+                                        label: t.choice_id.clone(),
+                                        placeholder: t.choice_id.clone(),
+                                        value: choice_id.read().to_string(),
+                                        required: true,
+                                        has_error: *choice_id_error.read(),
+                                        on_input: move |value: String| {
+                                            choice_id.set(value.clone());
+                                            validate_field(&value, &mut choice_id_error);
+                                        },
+                                        on_blur: move |_| validate_field(&choice_id.read(), &mut choice_id_error),
+                                        children: rsx! {
+                                            button {
+                                                class: "inline-flex items-center justify-center w-10 h-10 text-sm font-medium text-white bg-gray-700 rounded-lg hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-600 transition-colors duration-200 shadow-sm mb-[2px]",
+                                                onclick: move |_| {
+                                                    let current_mode = *is_edit_mode.read();
+                                                    is_edit_mode.set(!current_mode);
+                                                },
+                                                // 使用鉛筆圖標表示「新增段落」
+                                                svg { 
+                                                    xmlns: "http://www.w3.org/2000/svg",
+                                                    class: "h-5 w-5",
+                                                    fill: "none",
+                                                    view_box: "0 0 24 24",
+                                                    stroke: "currentColor",
+                                                    stroke_width: "2",
+                                                    path { 
+                                                        stroke_linecap: "round",
+                                                        stroke_linejoin: "round",
+                                                        d: "M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        TextareaField {
+                            label: t.paragraph.clone(),
+                            placeholder: t.paragraph.clone(),
+                            value: paragraphs.read().to_string(),
+                            required: true,
+                            has_error: *paragraphs_error.read(),
+                            rows: 5,
+                            on_input: move |event: FormEvent| {
+                                let value = event.value().clone();
+                                paragraphs.set(value.clone());
+                                validate_field(&value, &mut paragraphs_error);
+                            },
+                            on_blur: move |_| validate_field(&paragraphs.read(), &mut paragraphs_error)
+                        }
+
+                        ChoiceOptions {
                             t: t.clone(),
-                            choice_id: choice_id.read().to_string(),
-                            paragraphs: paragraphs.read().to_string(),
                             new_caption: new_caption.read().to_string(),
                             new_goto: new_goto.read().to_string(),
                             extra_captions: extra_captions.read().clone(),
                             extra_gotos: extra_gotos.read().clone(),
-                            show_extra_options: show_extra_options.read().clone(),
-                            choice_id_error: *choice_id_error.read(),
-                            paragraphs_error: *paragraphs_error.read(),
                             new_caption_error: *new_caption_error.read(),
                             new_goto_error: *new_goto_error.read(),
                             available_paragraphs: available_paragraphs.read().clone(),
-                            on_choice_id_change: move |value: String| {
-                                choice_id.set(value.clone());
-                                validate_field(&value, &mut choice_id_error);
-                            },
-                            on_paragraphs_change: move |value: String| {
-                                paragraphs.set(value.clone());
-                                validate_field(&value, &mut paragraphs_error);
-                            },
                             on_new_caption_change: move |value: String| {
                                 validate_field(&value, &mut new_caption_error);
                                 new_caption.set(value);
@@ -585,11 +682,11 @@ pub fn Dashboard(props: DashboardProps) -> Element {
                                 validate_field(&value, &mut new_goto_error);
                                 new_goto.set(value);
                             },
-                            on_extra_caption_change: move |(i, value)| {
+                            on_extra_caption_change: move |(i, value): (usize, String)| {
                                 let mut captions = extra_captions.write();
                                 captions[i] = value;
                             },
-                            on_extra_goto_change: move |(i, value)| {
+                            on_extra_goto_change: move |(i, value): (usize, String)| {
                                 let mut gotos = extra_gotos.write();
                                 gotos[i] = value;
                             },
@@ -597,28 +694,95 @@ pub fn Dashboard(props: DashboardProps) -> Element {
                                 show_extra_options.write().push(());
                                 extra_captions.write().push(String::new());
                                 extra_gotos.write().push(String::new());
-                            },
-                            on_submit: handle_submit
+                            }
+                        }
+
+                        button {
+                            class: "w-full px-6 py-3 bg-green-500 text-white rounded-md hover:bg-green-600 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed font-medium text-lg",
+                            disabled: !*is_form_valid.read() || selected_paragraph.read().is_none(),
+                            onclick: handle_submit,
+                            "{t.submit}"
                         }
                     } else {
                         // 新增翻譯表單
-                        TranslationForm {
+                        // 段落選擇器和取消按鈕
+                        div { class: "flex items-end space-x-4",
+                            div { class: "flex-1",
+                                ParagraphList {
+                                    label: "選擇段落".to_string(),
+                                    value: selected_paragraph.read().as_ref().map(|p| p.id.clone()).unwrap_or("選擇段落".to_string()),
+                                    paragraphs: available_paragraphs.read().clone(),
+                                    is_open: *is_paragraph_open.read(),
+                                    search_query: paragraph_search_query.read().to_string(),
+                                    on_toggle: move |_| {
+                                        let current = *is_paragraph_open.read();
+                                        is_paragraph_open.set(!current);
+                                    },
+                                    on_search: move |query| paragraph_search_query.set(query),
+                                    on_select: move |id: String| {
+                                        if let Some(paragraph) = available_paragraphs.read().iter().find(|p| p.id == id) {
+                                            // 將 paragraph_list::Paragraph 轉換為 dashboard::Paragraph
+                                            let dashboard_paragraph = Paragraph {
+                                                id: paragraph.id.clone(),
+                                                index: 0, // 這裡需要從 API 獲取正確的索引
+                                                choice_id: paragraph.id.clone(),
+                                                chapter_id: String::new(),
+                                                texts: Vec::new(),
+                                            };
+                                            selected_paragraph.set(Some(dashboard_paragraph));
+                                        }
+                                        is_paragraph_open.set(false);
+                                        paragraph_search_query.set(String::new());
+                                    }
+                                }
+                            }
+                            button {
+                                class: "inline-flex items-center justify-center w-10 h-10 text-sm font-medium text-white bg-gray-700 rounded-lg hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-600 transition-colors duration-200 shadow-sm mb-[2px]",
+                                onclick: move |_| {
+                                    let current_mode = *is_edit_mode.read();
+                                    is_edit_mode.set(!current_mode);
+                                },
+                                // 使用加號圖標表示「取消新增段落」
+                                svg {
+                                    xmlns: "http://www.w3.org/2000/svg",
+                                    class: "h-5 w-5",
+                                    fill: "none",
+                                    view_box: "0 0 24 24",
+                                    stroke: "currentColor",
+                                    stroke_width: "2",
+                                    path {
+                                        stroke_linecap: "round",
+                                        stroke_linejoin: "round",
+                                        d: "M12 4v16m8-8H4"
+                                    }
+                                }
+                            }
+                        }
+
+                        TextareaField {
+                            label: t.paragraph,
+                            placeholder: t.paragraph,
+                            value: paragraphs.read().to_string(),
+                            required: true,
+                            has_error: *paragraphs_error.read(),
+                            rows: 5,
+                            on_input: move |event: FormEvent| {
+                                let value = event.value().to_string();
+                                validate_field(&value, &mut paragraphs_error);
+                                paragraphs.set(value);
+                            },
+                            on_blur: move |_| {}
+                        }
+
+                        ChoiceOptions {
                             t: t.clone(),
-                            paragraphs: paragraphs.read().to_string(),
                             new_caption: new_caption.read().to_string(),
                             new_goto: new_goto.read().to_string(),
                             extra_captions: extra_captions.read().clone(),
                             extra_gotos: extra_gotos.read().clone(),
-                            show_extra_options: show_extra_options.read().clone(),
-                            paragraphs_error: *paragraphs_error.read(),
                             new_caption_error: *new_caption_error.read(),
                             new_goto_error: *new_goto_error.read(),
                             available_paragraphs: available_paragraphs.read().clone(),
-                            selected_paragraph: selected_paragraph.read().clone(),
-                            on_paragraphs_change: move |value: String| {
-                                paragraphs.set(value.clone());
-                                validate_field(&value, &mut paragraphs_error);
-                            },
                             on_new_caption_change: move |value: String| {
                                 validate_field(&value, &mut new_caption_error);
                                 new_caption.set(value);
@@ -627,11 +791,11 @@ pub fn Dashboard(props: DashboardProps) -> Element {
                                 validate_field(&value, &mut new_goto_error);
                                 new_goto.set(value);
                             },
-                            on_extra_caption_change: move |(i, value)| {
+                            on_extra_caption_change: move |(i, value): (usize, String)| {
                                 let mut captions = extra_captions.write();
                                 captions[i] = value;
                             },
-                            on_extra_goto_change: move |(i, value)| {
+                            on_extra_goto_change: move |(i, value): (usize, String)| {
                                 let mut gotos = extra_gotos.write();
                                 gotos[i] = value;
                             },
@@ -639,23 +803,14 @@ pub fn Dashboard(props: DashboardProps) -> Element {
                                 show_extra_options.write().push(());
                                 extra_captions.write().push(String::new());
                                 extra_gotos.write().push(String::new());
-                            },
-                            on_submit: handle_add_translation,
-                            on_paragraph_select: handle_paragraph_select
                         }
                     }
 
-                    // 切換模式按鈕
                     button {
-                        class: "w-full px-4 py-2 text-sm font-medium text-white bg-gray-600 rounded-md hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500",
-                        onclick: move |_| {
-                            let current_mode = *is_edit_mode.read();
-                            is_edit_mode.set(!current_mode);
-                        },
-                        if *is_edit_mode.read() {
-                            "切換到新增段落模式"
-                        } else {
-                            "切換到新增翻譯模式"
+                            class: "w-full px-6 py-3 bg-green-500 text-white rounded-md hover:bg-green-600 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed font-medium text-lg",
+                            disabled: !*is_form_valid.read() || selected_paragraph.read().is_none(),
+                            onclick: handle_add_translation,
+                            "{t.submit}"
                         }
                     }
                 }
