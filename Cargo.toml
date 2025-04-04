@@ -17,6 +17,7 @@ reqwest = { git = "https://github.com/seanmonstar/reqwest.git", features = [
     "json",
 ] }
 serde = "1.0.197"
+serde_json = "1.0.114"
 # serde = { git = "https://github.com/serde-rs/serde.git" }
 # wasm-logger = { git = "https://gitlab.com/limira-rs/wasm-logger.git" }
 dioxus = { version = "0.6.3", features = ["web", "router"] }

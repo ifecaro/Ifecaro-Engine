@@ -15,4 +15,6 @@ option_text = Option Text
 paragraph = Paragraph
 story = Story
 submit = Submit
-submit_success = Successfully submitted! 
+submit_success = Successfully submitted!
+select_language = Select Language
+select_chapter = Select Chapter 

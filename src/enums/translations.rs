@@ -13,6 +13,7 @@ pub struct Translations {
     pub submit: &'static str,
     pub submit_success: &'static str,
     pub select_language: &'static str,
+    pub select_chapter: &'static str,
 }
 
 impl PartialEq for Translations {
@@ -29,7 +30,8 @@ impl PartialEq for Translations {
         self.story == other.story &&
         self.submit == other.submit &&
         self.submit_success == other.submit_success &&
-        self.select_language == other.select_language
+        self.select_language == other.select_language &&
+        self.select_chapter == other.select_chapter
     }
 }
 
@@ -50,6 +52,7 @@ impl Translations {
                 submit: "Submit",
                 submit_success: "Successfully submitted!",
                 select_language: "Select Language",
+                select_chapter: "Select Chapter",
             },
             "es-ES" => Self {
                 add: "Añadir",
@@ -65,6 +68,7 @@ impl Translations {
                 submit: "Enviar",
                 submit_success: "¡Enviado con éxito!",
                 select_language: "Seleccionar Idioma",
+                select_chapter: "Seleccionar Capítulo",
             },
             "es-CL" => Self {
                 add: "Agregar",
@@ -80,6 +84,7 @@ impl Translations {
                 submit: "Enviar",
                 submit_success: "¡Enviado exitosamente!",
                 select_language: "Seleccionar Idioma",
+                select_chapter: "Seleccionar Capítulo",
             },
             "zh-TW" => Self {
                 add: "新增",
@@ -95,6 +100,7 @@ impl Translations {
                 submit: "送出",
                 submit_success: "資料送出成功！",
                 select_language: "選擇語言",
+                select_chapter: "選擇章節",
             },
             _ => Self::get("en-US"),
         }

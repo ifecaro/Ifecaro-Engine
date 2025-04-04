@@ -15,4 +15,6 @@ option_text = 選項文字
 paragraph = 段落
 story = 故事
 submit = 送出
-submit_success = 資料送出成功！ 
+submit_success = 資料送出成功！
+select_language = 選擇語言
+select_chapter = 選擇章節 
