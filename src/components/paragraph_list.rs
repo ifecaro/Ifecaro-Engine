@@ -38,7 +38,7 @@ pub fn ParagraphList(props: ParagraphListProps) -> Element {
             div { 
                 class: "relative inline-block w-full",
                 button {
-                    class: "w-full px-4 py-2.5 text-base border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent cursor-pointer transition-all duration-200 ease-in-out hover:border-green-500 dark:hover:border-green-500 flex justify-between items-center",
+                    class: "w-full px-4 py-2 text-base border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent cursor-pointer transition-all duration-200 ease-in-out hover:border-green-500 dark:hover:border-green-500 flex justify-between items-center h-[42px]",
                     onclick: move |_| props.on_toggle.call(()),
                     span { "{props.value}" }
                     svg { 

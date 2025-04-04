@@ -8,6 +8,7 @@ use crate::components::toast::Toast;
 use crate::components::form::{InputField, TextareaField, ChoiceOptions};
 use crate::components::story_content::Choice;
 use crate::components::dropdown::Dropdown;
+use crate::components::paragraph_list::ParagraphList;
 use dioxus::events::{FormEvent, FocusEvent};
 
 #[derive(Props, Clone, PartialEq)]
@@ -22,6 +23,7 @@ pub struct Data {
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Paragraph {
+    pub id: String,
     pub index: usize,
     pub choice_id: String,
     #[serde(default)]
@@ -233,6 +235,10 @@ pub fn Dashboard(props: DashboardProps) -> Element {
     let mut selected_chapter = use_signal(|| String::new());
     let mut is_chapter_open = use_signal(|| false);
     let mut chapter_search_query = use_signal(|| String::new());
+    let mut selected_paragraph = use_signal(|| None::<Paragraph>);
+    let mut is_edit_mode = use_signal(|| false);
+    let mut is_paragraph_open = use_signal(|| false);
+    let mut paragraph_search_query = use_signal(|| String::new());
     let t = Translations::get(&props.lang);
 
     let mut choice_id_error = use_signal(|| false);
@@ -246,7 +252,7 @@ pub fn Dashboard(props: DashboardProps) -> Element {
         let chapters_url = format!("{}{}", BASE_API_URL, COLLECTIONS);
         let settings_url = format!("{}{}", BASE_API_URL, SETTINGS);
         let client = reqwest::Client::new();
-        let mut has_loaded = has_loaded.clone();
+            let mut has_loaded = has_loaded.clone();
         let current_lang = selected_lang.read().to_string();
 
         wasm_bindgen_futures::spawn_local(async move {
@@ -312,31 +318,31 @@ pub fn Dashboard(props: DashboardProps) -> Element {
                 Ok(response) => {
                     match response.json::<Data>().await {
                         Ok(data) => {
-                            let choices = data.items.iter()
-                                .map(|item| ChoiceOption {
-                                    id: item.choice_id.clone(),
-                                    preview: item.texts.first()
-                                        .map(|t| t.paragraphs.lines().next().unwrap_or("").to_string())
-                                        .unwrap_or_default(),
-                                })
-                                .collect();
-                            let paragraphs = data.items.iter()
-                                .map(|item| crate::components::paragraph_list::Paragraph {
-                                    id: item.choice_id.clone(),
-                                    preview: item.texts.first()
-                                        .map(|t| t.paragraphs.lines().next().unwrap_or("").to_string())
-                                        .unwrap_or_default(),
-                                })
-                                .collect();
-                            available_choices.set(choices);
-                            available_paragraphs.set(paragraphs);
-                            has_loaded.set(true);
+                        let choices = data.items.iter()
+                            .map(|item| ChoiceOption {
+                                id: item.choice_id.clone(),
+                                preview: item.texts.first()
+                                    .map(|t| t.paragraphs.lines().next().unwrap_or("").to_string())
+                                    .unwrap_or_default(),
+                            })
+                            .collect();
+                        let paragraphs = data.items.iter()
+                            .map(|item| crate::components::paragraph_list::Paragraph {
+                                id: item.choice_id.clone(),
+                                preview: item.texts.first()
+                                    .map(|t| t.paragraphs.lines().next().unwrap_or("").to_string())
+                                    .unwrap_or_default(),
+                            })
+                            .collect();
+                        available_choices.set(choices);
+                        available_paragraphs.set(paragraphs);
+                        has_loaded.set(true);
                         }
                         Err(_) => {}
                     }
                 }
                 Err(_) => {}
-            }
+        }
         });
         
         // 返回一個清理函數
@@ -416,24 +422,39 @@ pub fn Dashboard(props: DashboardProps) -> Element {
 
         spawn_local(async move {
             let client = reqwest::Client::new();
-            let url = format!("{}{}", BASE_API_URL, SETTINGS);
             
-            match client.get(&url).send().await {
-                Ok(response) => {
-                    if let Ok(data) = response.json::<Data>().await {
-                        let max_index = data.items.iter()
-                            .map(|item| item.index)
-                            .max()
-                            .unwrap_or(0);
-                        
-                        let record = Paragraph {
-                            index: max_index + 1,
-                            choice_id: choice_id.read().clone(),
-                            chapter_id: selected_chapter.read().clone(),
-                            texts: vec![text],
-                        };
-
-                        match client.post(&url).json(&record).send().await {
+            // 檢查是否選擇了章節
+            if selected_chapter.read().is_empty() {
+                return;
+            }
+            
+            // 建立一個足夠長的 id
+            let chapter_id = selected_chapter.read().clone();
+            let choice_id_value = choice_id.read().clone();
+            let timestamp = js_sys::Date::new_0().get_time();
+            let unique_id = format!("{}_{}_{}", chapter_id, choice_id_value, timestamp);
+            
+            // 建立新的段落資料
+            let new_paragraph = serde_json::json!({
+                "id": unique_id,
+                "choice_id": choice_id.read().clone(),
+                "chapter_id": selected_chapter.read().clone(),
+                "texts": [
+                    {
+                        "lang": selected_lang.read().clone(),
+                        "paragraphs": paragraphs.read().clone(),
+                        "choices": choices.read().clone()
+                    }
+                ]
+            });
+            
+            // 發布到段落集合
+            let paragraphs_url = format!("{}/api/collections/paragraphs/records", BASE_API_URL);
+            
+            match client.post(&paragraphs_url)
+                .json(&new_paragraph)
+                .send()
+                .await {
                             Ok(response) => {
                                 if response.status().is_success() {
                                     choice_id.set(String::new());
@@ -444,7 +465,7 @@ pub fn Dashboard(props: DashboardProps) -> Element {
                                     extra_captions.write().clear();
                                     extra_gotos.write().clear();
                                     show_extra_options.write().clear();
-                                    selected_chapter.set(String::new());
+                        selected_chapter.set(String::new());
                                     show_toast.set(true);
                                     
                                     let mut toast_visible = toast_visible.clone();
@@ -461,8 +482,40 @@ pub fn Dashboard(props: DashboardProps) -> Element {
                                         let _ = wasm_bindgen_futures::JsFuture::from(promise).await;
                                         toast_visible.set(true);
                                     });
-                                    
-                                    let mut show_toast = show_toast.clone();
+                    }
+                }
+                Err(_) => {}
+            }
+        });
+    };
+
+    let handle_add_translation = move |_| {
+        if let Some(paragraph) = selected_paragraph.read().as_ref() {
+            let mut updated_texts = paragraph.texts.clone();
+            updated_texts.push(Text {
+                lang: selected_lang.read().clone(),
+                paragraphs: paragraphs.read().clone(),
+                choices: choices.read().clone(),
+            });
+
+            let updated_paragraph = serde_json::json!({
+                "texts": updated_texts
+            });
+
+            let client = reqwest::Client::new();
+            let paragraphs_url = format!("{}/api/collections/paragraphs/records/{}", BASE_API_URL, paragraph.id);
+
+            spawn_local(async move {
+                match client.patch(&paragraphs_url)
+                    .json(&updated_paragraph)
+                    .send()
+                    .await {
+                    Ok(response) => {
+                        if response.status().is_success() {
+                            paragraphs.set(String::new());
+                            choices.write().clear();
+                            show_toast.set(true);
+                            
                                     let mut toast_visible = toast_visible.clone();
                                     spawn_local(async move {
                                         let window = web_sys::window().unwrap();
@@ -470,23 +523,19 @@ pub fn Dashboard(props: DashboardProps) -> Element {
                                             window
                                                 .set_timeout_with_callback_and_timeout_and_arguments_0(
                                                     &resolve,
-                                                    3000,
+                                            50,
                                                 )
                                                 .unwrap();
                                         });
                                         let _ = wasm_bindgen_futures::JsFuture::from(promise).await;
-                                        show_toast.set(false);
-                                        toast_visible.set(false);
+                                toast_visible.set(true);
                                     });
                                 }
                             }
                             Err(_) => {}
                         }
-                    }
-                }
-                Err(_) => {}
+            });
             }
-        });
     };
 
     rsx! {
@@ -522,6 +571,7 @@ pub fn Dashboard(props: DashboardProps) -> Element {
                         display_fn: display_language
                     }
 
+                    // 章節選擇器
                     Dropdown {
                         label: t.select_chapter.to_string(),
                         value: if selected_chapter.read().is_empty() {
@@ -555,71 +605,210 @@ pub fn Dashboard(props: DashboardProps) -> Element {
                         display_fn: |chapter: &Chapter| chapter.title.clone()
                     }
 
-                    InputField {
-                        label: t.choice_id.clone(),
-                        placeholder: t.choice_id.clone(),
-                        value: choice_id.read().to_string(),
-                        required: true,
-                        has_error: *choice_id_error.read(),
-                        on_input: move |value: String| {
-                            choice_id.set(value.clone());
-                            validate_field(&value, &mut choice_id_error);
-                        },
-                        on_blur: move |_| validate_field(&choice_id.read(), &mut choice_id_error)
-                    }
-
-                    TextareaField {
-                        label: t.paragraph.clone(),
-                        placeholder: t.paragraph.clone(),
-                        value: paragraphs.read().to_string(),
-                        required: true,
-                        has_error: *paragraphs_error.read(),
-                        rows: 5,
-                        on_input: move |event: FormEvent| {
-                            let value = event.value().clone();
-                            paragraphs.set(value.clone());
-                            validate_field(&value, &mut paragraphs_error);
-                        },
-                        on_blur: move |_| validate_field(&paragraphs.read(), &mut paragraphs_error)
-                    }
-
-                    ChoiceOptions {
-                        t: t.clone(),
-                        new_caption: new_caption.read().to_string(),
-                        new_goto: new_goto.read().to_string(),
-                        extra_captions: extra_captions.read().clone(),
-                        extra_gotos: extra_gotos.read().clone(),
-                        new_caption_error: *new_caption_error.read(),
-                        new_goto_error: *new_goto_error.read(),
-                        available_paragraphs: available_paragraphs.read().clone(),
-                        on_new_caption_change: move |value: String| {
-                            validate_field(&value, &mut new_caption_error);
-                            new_caption.set(value);
-                        },
-                        on_new_goto_change: move |value: String| {
-                            validate_field(&value, &mut new_goto_error);
-                            new_goto.set(value);
-                        },
-                        on_extra_caption_change: move |(i, value): (usize, String)| {
-                            let mut captions = extra_captions.write();
-                            captions[i] = value;
-                        },
-                        on_extra_goto_change: move |(i, value): (usize, String)| {
-                            let mut gotos = extra_gotos.write();
-                            gotos[i] = value;
-                        },
-                        on_add_choice: move |_| {
-                            show_extra_options.write().push(());
-                            extra_captions.write().push(String::new());
-                            extra_gotos.write().push(String::new());
+                    // 根據模式顯示不同的表單
+                    if !*is_edit_mode.read() {
+                        // 新增段落表單
+                        // Choice ID 欄位和新增段落按鈕
+                        div { class: "flex items-end space-x-4",
+                            div { class: "flex-1",
+                                InputField {
+                                    label: t.choice_id.clone(),
+                                    placeholder: t.choice_id.clone(),
+                                    value: choice_id.read().to_string(),
+                                    required: true,
+                                    has_error: *choice_id_error.read(),
+                                    on_input: move |value: String| {
+                                        choice_id.set(value.clone());
+                                        validate_field(&value, &mut choice_id_error);
+                                    },
+                                    on_blur: move |_| validate_field(&choice_id.read(), &mut choice_id_error)
+                                }
+                            }
+                            button {
+                                class: "inline-flex items-center justify-center w-10 h-10 text-sm font-medium text-white bg-gray-700 rounded-lg hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-600 transition-colors duration-200 shadow-sm mb-[2px]",
+                                onclick: move |_| {
+                                    let current_mode = *is_edit_mode.read();
+                                    is_edit_mode.set(!current_mode);
+                                },
+                                // 使用鉛筆圖標表示「新增段落」
+                                svg {
+                                    xmlns: "http://www.w3.org/2000/svg",
+                                    class: "h-5 w-5",
+                                    fill: "none",
+                                    view_box: "0 0 24 24",
+                                    stroke: "currentColor",
+                                    stroke_width: "2",
+                                    path {
+                                        stroke_linecap: "round",
+                                        stroke_linejoin: "round",
+                                        d: "M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"
+                                    }
+                                }
+                            }
                         }
-                    }
 
-                    button {
-                        class: "w-full px-6 py-3 bg-green-500 text-white rounded-md hover:bg-green-600 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed font-medium text-lg",
-                        disabled: !*is_form_valid.read(),
-                        onclick: handle_submit,
-                        "{t.submit}"
+                        TextareaField {
+                            label: t.paragraph.clone(),
+                            placeholder: t.paragraph.clone(),
+                            value: paragraphs.read().to_string(),
+                            required: true,
+                            has_error: *paragraphs_error.read(),
+                            rows: 5,
+                            on_input: move |event: FormEvent| {
+                                let value = event.value().clone();
+                                paragraphs.set(value.clone());
+                                validate_field(&value, &mut paragraphs_error);
+                            },
+                            on_blur: move |_| validate_field(&paragraphs.read(), &mut paragraphs_error)
+                        }
+
+                        ChoiceOptions {
+                            t: t.clone(),
+                            new_caption: new_caption.read().to_string(),
+                            new_goto: new_goto.read().to_string(),
+                            extra_captions: extra_captions.read().clone(),
+                            extra_gotos: extra_gotos.read().clone(),
+                            new_caption_error: *new_caption_error.read(),
+                            new_goto_error: *new_goto_error.read(),
+                            available_paragraphs: available_paragraphs.read().clone(),
+                            on_new_caption_change: move |value: String| {
+                                validate_field(&value, &mut new_caption_error);
+                                new_caption.set(value);
+                            },
+                            on_new_goto_change: move |value: String| {
+                                validate_field(&value, &mut new_goto_error);
+                                new_goto.set(value);
+                            },
+                            on_extra_caption_change: move |(i, value): (usize, String)| {
+                                let mut captions = extra_captions.write();
+                                captions[i] = value;
+                            },
+                            on_extra_goto_change: move |(i, value): (usize, String)| {
+                                let mut gotos = extra_gotos.write();
+                                gotos[i] = value;
+                            },
+                            on_add_choice: move |_| {
+                                show_extra_options.write().push(());
+                                extra_captions.write().push(String::new());
+                                extra_gotos.write().push(String::new());
+                            }
+                        }
+
+                        button {
+                            class: "w-full px-6 py-3 bg-green-500 text-white rounded-md hover:bg-green-600 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed font-medium text-lg",
+                            disabled: !*is_form_valid.read(),
+                            onclick: handle_submit,
+                            "{t.submit}"
+                        }
+                    } else {
+                        // 新增翻譯表單
+                        // 段落選擇器和取消按鈕
+                        div { class: "flex items-end space-x-4",
+                            div { class: "flex-1",
+                                ParagraphList {
+                                    label: "選擇段落".to_string(),
+                                    value: selected_paragraph.read().as_ref().map(|p| p.id.clone()).unwrap_or("選擇段落".to_string()),
+                                    paragraphs: available_paragraphs.read().clone(),
+                                    is_open: *is_paragraph_open.read(),
+                                    search_query: paragraph_search_query.read().to_string(),
+                                    on_toggle: move |_| {
+                                        let current = *is_paragraph_open.read();
+                                        is_paragraph_open.set(!current);
+                                    },
+                                    on_search: move |query| paragraph_search_query.set(query),
+                                    on_select: move |id: String| {
+                                        if let Some(paragraph) = available_paragraphs.read().iter().find(|p| p.id == id) {
+                                            // 將 paragraph_list::Paragraph 轉換為 dashboard::Paragraph
+                                            let dashboard_paragraph = Paragraph {
+                                                id: paragraph.id.clone(),
+                                                index: 0, // 這裡需要從 API 獲取正確的索引
+                                                choice_id: paragraph.id.clone(),
+                                                chapter_id: String::new(),
+                                                texts: Vec::new(),
+                                            };
+                                            selected_paragraph.set(Some(dashboard_paragraph));
+                                        }
+                                        is_paragraph_open.set(false);
+                                        paragraph_search_query.set(String::new());
+                                    }
+                                }
+                            }
+                            button {
+                                class: "inline-flex items-center justify-center w-10 h-10 text-sm font-medium text-white bg-gray-700 rounded-lg hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-600 transition-colors duration-200 shadow-sm mb-[2px]",
+                                onclick: move |_| {
+                                    let current_mode = *is_edit_mode.read();
+                                    is_edit_mode.set(!current_mode);
+                                },
+                                // 使用加號圖標表示「取消新增段落」
+                                svg {
+                                    xmlns: "http://www.w3.org/2000/svg",
+                                    class: "h-5 w-5",
+                                    fill: "none",
+                                    view_box: "0 0 24 24",
+                                    stroke: "currentColor",
+                                    stroke_width: "2",
+                                    path {
+                                        stroke_linecap: "round",
+                                        stroke_linejoin: "round",
+                                        d: "M12 4v16m8-8H4"
+                                    }
+                                }
+                            }
+                        }
+
+                        TextareaField {
+                            label: t.paragraph,
+                            placeholder: t.paragraph,
+                            value: paragraphs.read().to_string(),
+                            required: true,
+                            has_error: *paragraphs_error.read(),
+                            rows: 5,
+                            on_input: move |event: FormEvent| {
+                                let value = event.value().to_string();
+                                validate_field(&value, &mut paragraphs_error);
+                                paragraphs.set(value);
+                            },
+                            on_blur: move |_| {}
+                        }
+
+                        ChoiceOptions {
+                            t: t.clone(),
+                            new_caption: new_caption.read().to_string(),
+                            new_goto: new_goto.read().to_string(),
+                            extra_captions: extra_captions.read().clone(),
+                            extra_gotos: extra_gotos.read().clone(),
+                            new_caption_error: *new_caption_error.read(),
+                            new_goto_error: *new_goto_error.read(),
+                            available_paragraphs: available_paragraphs.read().clone(),
+                            on_new_caption_change: move |value: String| {
+                                validate_field(&value, &mut new_caption_error);
+                                new_caption.set(value);
+                            },
+                            on_new_goto_change: move |value: String| {
+                                validate_field(&value, &mut new_goto_error);
+                                new_goto.set(value);
+                            },
+                            on_extra_caption_change: move |(i, value): (usize, String)| {
+                                let mut captions = extra_captions.write();
+                                captions[i] = value;
+                            },
+                            on_extra_goto_change: move |(i, value): (usize, String)| {
+                                let mut gotos = extra_gotos.write();
+                                gotos[i] = value;
+                            },
+                            on_add_choice: move |_| {
+                                show_extra_options.write().push(());
+                                extra_captions.write().push(String::new());
+                                extra_gotos.write().push(String::new());
+                            }
+                        }
+
+                        button {
+                            class: "w-full px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:opacity-50 disabled:cursor-not-allowed",
+                            disabled: !*is_form_valid.read() || selected_paragraph.read().is_none(),
+                            onclick: handle_add_translation,
+                            "{t.submit}"
+                        }
                     }
                 }
             }
