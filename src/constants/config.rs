@@ -8,6 +8,10 @@ pub mod config {
 
     pub static BASE_API_URL: &str = "http://0.0.0.0:8090";
     pub static SETTINGS: &str = "/api/collections/settings/records";
+    pub static CHAPTERS: &str = "/api/collections/chapters/records";
+    pub static COLLECTIONS: &str = "/api/collections/system/records?filter=(key='chapters')";
+    pub static PUBLIC_COLLECTIONS: &str = "/api/collections/public";
+    pub static AUTH_TOKEN: &str = ""; // 不需要認證 token，因為 collections 應該可以被任何用戶訪問
     pub static LANGUAGES: [Language; 5] = [
         Language {
             name: "English (US)",

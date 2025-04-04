@@ -2,7 +2,7 @@ use dioxus::prelude::*;
 use serde::{Deserialize, Serialize};
 use wasm_bindgen_futures::spawn_local;
 use wasm_bindgen::prelude::*;
-use crate::constants::config::config::{BASE_API_URL, SETTINGS};
+use crate::constants::config::config::{BASE_API_URL, SETTINGS, COLLECTIONS, AUTH_TOKEN};
 use crate::enums::translations::Translations;
 use crate::components::toast::Toast;
 use crate::components::form::{InputField, TextareaField, ChoiceOptions};
@@ -24,6 +24,8 @@ pub struct Data {
 pub struct Paragraph {
     pub index: usize,
     pub choice_id: String,
+    #[serde(default)]
+    pub chapter_id: String,
     pub texts: Vec<Text>,
 }
 
@@ -32,6 +34,74 @@ pub struct Text {
     pub lang: String,
     pub paragraphs: String,
     pub choices: Vec<Choice>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
+pub struct Chapter {
+    pub id: String,
+    pub title: String,
+    #[serde(default)]
+    pub titles: std::collections::HashMap<String, String>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct Collection {
+    pub id: String,
+    pub name: String,
+    #[serde(rename = "type")]
+    pub collection_type: String,
+    pub system: bool,
+    pub schema: String,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct CollectionsData {
+    pub items: Vec<Collection>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct ChapterData {
+    pub id: String,
+    pub title: String,
+    #[serde(rename = "type")]
+    pub chapter_type: String,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct ChaptersData {
+    pub items: Vec<ChapterData>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct ChapterInfo {
+    pub id: String,
+    pub titles: std::collections::HashMap<String, String>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct SystemData {
+    pub id: String,
+    pub key: String,
+    #[serde(rename = "value")]
+    pub value_raw: serde_json::Value,
+    #[serde(rename = "collectionId")]
+    pub collection_id: String,
+    #[serde(rename = "collectionName")]
+    pub collection_name: String,
+    pub created: String,
+    pub updated: String,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct SystemDataResponse {
+    pub items: Vec<SystemData>,
+    pub page: i32,
+    #[serde(rename = "perPage")]
+    pub per_page: i32,
+    #[serde(rename = "totalItems")]
+    pub total_items: i32,
+    #[serde(rename = "totalPages")]
+    pub total_pages: i32,
 }
 
 #[derive(Clone, PartialEq)]
@@ -159,46 +229,118 @@ pub fn Dashboard(props: DashboardProps) -> Element {
     let mut goto_search_query = use_signal(|| String::new());
     let mut available_choices = use_signal(|| Vec::<ChoiceOption>::new());
     let mut available_paragraphs = use_signal(|| Vec::<crate::components::paragraph_list::Paragraph>::new());
+    let mut available_chapters = use_signal(|| Vec::<Chapter>::new());
+    let mut selected_chapter = use_signal(|| String::new());
+    let mut is_chapter_open = use_signal(|| false);
+    let mut chapter_search_query = use_signal(|| String::new());
     let t = Translations::get(&props.lang);
 
     let mut choice_id_error = use_signal(|| false);
     let mut paragraphs_error = use_signal(|| false);
     let mut new_caption_error = use_signal(|| false);
     let mut new_goto_error = use_signal(|| false);
+    let mut chapter_error = use_signal(|| false);
     let has_loaded = use_signal(|| false);
 
     use_effect(move || {
-        if !*has_loaded.read() {
-            let mut available_choices = available_choices.clone();
-            let mut available_paragraphs = available_paragraphs.clone();
-            let mut has_loaded = has_loaded.clone();
-            spawn_local(async move {
-                let url = format!("{}{}", BASE_API_URL, SETTINGS);
-                if let Ok(response) = reqwest::get(&url).await {
-                    if let Ok(data) = response.json::<Data>().await {
-                        let choices = data.items.iter()
-                            .map(|item| ChoiceOption {
-                                id: item.choice_id.clone(),
-                                preview: item.texts.first()
-                                    .map(|t| t.paragraphs.lines().next().unwrap_or("").to_string())
-                                    .unwrap_or_default(),
-                            })
-                            .collect();
-                        let paragraphs = data.items.iter()
-                            .map(|item| crate::components::paragraph_list::Paragraph {
-                                id: item.choice_id.clone(),
-                                preview: item.texts.first()
-                                    .map(|t| t.paragraphs.lines().next().unwrap_or("").to_string())
-                                    .unwrap_or_default(),
-                            })
-                            .collect();
-                        available_choices.set(choices);
-                        available_paragraphs.set(paragraphs);
-                        has_loaded.set(true);
+        let chapters_url = format!("{}{}", BASE_API_URL, COLLECTIONS);
+        let settings_url = format!("{}{}", BASE_API_URL, SETTINGS);
+        let client = reqwest::Client::new();
+        let mut has_loaded = has_loaded.clone();
+        let current_lang = selected_lang.read().to_string();
+
+        wasm_bindgen_futures::spawn_local(async move {
+            // 載入 chapters
+            match client.get(&chapters_url)
+                .send()
+                .await {
+                Ok(response) => {
+                    match response.json::<SystemDataResponse>().await {
+                        Ok(data) => {
+                            // 尋找 key 為 "chapters" 的記錄
+                            if let Some(chapters_data) = data.items.iter().find(|item| item.key == "chapters") {
+                                // 直接從 JSON 值中獲取陣列
+                                if let Some(chapter_infos) = chapters_data.value_raw.as_array() {
+                                    // 將每個章節資訊轉換為 Chapter 結構
+                                    let chapters: Vec<Chapter> = chapter_infos.iter()
+                                        .filter_map(|info| {
+                                            match serde_json::from_value::<ChapterInfo>(info.clone()) {
+                                                Ok(chapter_info) => {
+                                                    // 獲取當前語言的標題，如果沒有則使用其他可用的語言
+                                                    let title = chapter_info.titles.get(&current_lang)
+                                                        .cloned()
+                                                        .unwrap_or_else(|| {
+                                                            // 如果找不到當前語言的標題，嘗試使用其他語言的標題
+                                                            // 優先使用英文，然後是中文，最後是任何可用的語言
+                                                            chapter_info.titles.get("en-US")
+                                                                .or_else(|| chapter_info.titles.get("zh-TW"))
+                                                                .or_else(|| chapter_info.titles.get("es-ES"))
+                                                                .or_else(|| chapter_info.titles.get("es-CL"))
+                                                                .or_else(|| {
+                                                                    // 如果以上都沒有，則使用任何可用的語言
+                                                                    chapter_info.titles.values().next()
+                                                                })
+                                                                .cloned()
+                                                                .unwrap_or_else(|| chapter_info.id.clone())
+                                                        });
+                                                    
+                                                    Some(Chapter {
+                                                        id: chapter_info.id,
+                                                        title,
+                                                        titles: chapter_info.titles,
+                                                    })
+                                                },
+                                                Err(_) => None
+                                            }
+                                        })
+                                        .collect();
+                                    available_chapters.set(chapters);
+                                }
+                            }
+                        }
+                        Err(_) => {}
                     }
                 }
-            });
-        }
+                Err(_) => {}
+            }
+
+            // 載入設定
+            match client.get(&settings_url)
+                .header("Authorization", format!("Bearer {}", AUTH_TOKEN))
+                .send()
+                .await {
+                Ok(response) => {
+                    match response.json::<Data>().await {
+                        Ok(data) => {
+                            let choices = data.items.iter()
+                                .map(|item| ChoiceOption {
+                                    id: item.choice_id.clone(),
+                                    preview: item.texts.first()
+                                        .map(|t| t.paragraphs.lines().next().unwrap_or("").to_string())
+                                        .unwrap_or_default(),
+                                })
+                                .collect();
+                            let paragraphs = data.items.iter()
+                                .map(|item| crate::components::paragraph_list::Paragraph {
+                                    id: item.choice_id.clone(),
+                                    preview: item.texts.first()
+                                        .map(|t| t.paragraphs.lines().next().unwrap_or("").to_string())
+                                        .unwrap_or_default(),
+                                })
+                                .collect();
+                            available_choices.set(choices);
+                            available_paragraphs.set(paragraphs);
+                            has_loaded.set(true);
+                        }
+                        Err(_) => {}
+                    }
+                }
+                Err(_) => {}
+            }
+        });
+        
+        // 返回一個清理函數
+        (move || {})()
     });
 
     let filtered_languages = use_memo(move || {
@@ -287,6 +429,7 @@ pub fn Dashboard(props: DashboardProps) -> Element {
                         let record = Paragraph {
                             index: max_index + 1,
                             choice_id: choice_id.read().clone(),
+                            chapter_id: selected_chapter.read().clone(),
                             texts: vec![text],
                         };
 
@@ -301,6 +444,7 @@ pub fn Dashboard(props: DashboardProps) -> Element {
                                     extra_captions.write().clear();
                                     extra_gotos.write().clear();
                                     show_extra_options.write().clear();
+                                    selected_chapter.set(String::new());
                                     show_toast.set(true);
                                     
                                     let mut toast_visible = toast_visible.clone();
@@ -326,24 +470,13 @@ pub fn Dashboard(props: DashboardProps) -> Element {
                                             window
                                                 .set_timeout_with_callback_and_timeout_and_arguments_0(
                                                     &resolve,
-                                                    2700,
-                                                )
-                                                .unwrap();
-                                        });
-                                        let _ = wasm_bindgen_futures::JsFuture::from(promise).await;
-                                        
-                                        toast_visible.set(false);
-                                        
-                                        let promise = js_sys::Promise::new(&mut |resolve, _| {
-                                            window
-                                                .set_timeout_with_callback_and_timeout_and_arguments_0(
-                                                    &resolve,
-                                                    300,
+                                                    3000,
                                                 )
                                                 .unwrap();
                                         });
                                         let _ = wasm_bindgen_futures::JsFuture::from(promise).await;
                                         show_toast.set(false);
+                                        toast_visible.set(false);
                                     });
                                 }
                             }
@@ -387,6 +520,39 @@ pub fn Dashboard(props: DashboardProps) -> Element {
                             search_query.set(String::new());
                         },
                         display_fn: display_language
+                    }
+
+                    Dropdown {
+                        label: t.select_chapter.to_string(),
+                        value: if selected_chapter.read().is_empty() {
+                            t.select_chapter.to_string()
+                        } else {
+                            available_chapters.read().iter()
+                                .find(|c| c.id == *selected_chapter.read())
+                                .map(|c| c.title.clone())
+                                .unwrap_or_else(|| t.select_chapter.to_string())
+                        },
+                        options: available_chapters.read().iter()
+                            .filter(|chapter| {
+                                let query = chapter_search_query.read().to_lowercase();
+                                chapter.title.to_lowercase().contains(&query)
+                            })
+                            .cloned()
+                            .collect::<Vec<_>>(),
+                        is_open: *is_chapter_open.read(),
+                        search_query: chapter_search_query.read().to_string(),
+                        on_toggle: move |_| {
+                            let current = *is_chapter_open.read();
+                            is_chapter_open.set(!current);
+                        },
+                        on_search: move |query| chapter_search_query.set(query),
+                        on_select: move |chapter: Chapter| {
+                            selected_chapter.set(chapter.id.clone());
+                            is_chapter_open.set(false);
+                            chapter_search_query.set(String::new());
+                            validate_field(&chapter.id, &mut chapter_error);
+                        },
+                        display_fn: |chapter: &Chapter| chapter.title.clone()
                     }
 
                     InputField {
