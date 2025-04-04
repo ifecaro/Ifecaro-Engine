@@ -84,26 +84,24 @@ pub fn TranslationForm(props: TranslationFormProps) -> Element {
     };
 
     rsx! {
-        div { class: "space-y-8",
-            // 段落選擇器和取消按鈕
-            div { class: "flex items-end space-x-4",
-                div { class: "flex-1",
-                    ParagraphList {
-                        label: "選擇段落".to_string(),
-                        value: selected_paragraph.as_ref().map(|p| p.id.clone()).unwrap_or("選 擇 段 落 ".to_string()),
-                        paragraphs: available_paragraphs.clone(),
-                        is_open: *is_paragraph_open.read(),
-                        search_query: paragraph_search_query.read().to_string(),
-                        on_toggle: move |_| {
-                            let current = *is_paragraph_open.read();
-                            is_paragraph_open.set(!current);
-                        },
-                        on_search: move |query| paragraph_search_query.set(query),
-                        on_select: move |id: String| {
-                            props.on_paragraph_select.call(id);
-                            is_paragraph_open.set(false);
-                            paragraph_search_query.set(String::new());
-                        }
+        div { 
+            class: "max-w-3xl mx-auto p-8 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-100 dark:border-gray-700",
+            div { class: "space-y-4",
+                ParagraphList {
+                    label: props.t.paragraph.clone(),
+                    value: props.paragraphs,
+                    paragraphs: props.available_paragraphs.clone(),
+                    is_open: *is_paragraph_open.read(),
+                    search_query: paragraph_search_query.read().to_string(),
+                    on_toggle: move |_| {
+                        let current = *is_paragraph_open.read();
+                        is_paragraph_open.set(!current);
+                    },
+                    on_search: move |query| paragraph_search_query.set(query),
+                    on_select: move |id: String| {
+                        props.on_paragraph_select.call(id);
+                        is_paragraph_open.set(false);
+                        paragraph_search_query.set(String::new());
                     }
                 }
             }
