@@ -402,13 +402,15 @@ pub fn Dashboard(props: DashboardProps) -> Element {
                         on_blur: move |_| validate_field(&choice_id.read(), &mut choice_id_error)
                     }
 
-                    InputField {
+                    TextareaField {
                         label: t.paragraph.clone(),
                         placeholder: t.paragraph.clone(),
                         value: paragraphs.read().to_string(),
                         required: true,
                         has_error: *paragraphs_error.read(),
-                        on_input: move |value: String| {
+                        rows: 5,
+                        on_input: move |event: FormEvent| {
+                            let value = event.value().clone();
                             paragraphs.set(value.clone());
                             validate_field(&value, &mut paragraphs_error);
                         },
