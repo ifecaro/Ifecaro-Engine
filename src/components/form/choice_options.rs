@@ -58,82 +58,99 @@ pub fn ChoiceOptions(props: ChoiceOptionsProps) -> Element {
                     on_blur: move |_| {}
                 }
 
-                ParagraphList {
-                    label: t.goto_target.clone(),
-                    value: props.new_goto,
-                    paragraphs: props.available_paragraphs.clone(),
-                    is_open: *is_goto_open.read(),
-                    search_query: goto_search_query.read().to_string(),
-                    on_toggle: move |_| {
-                        let current = *is_goto_open.read();
-                        is_goto_open.set(!current);
-                    },
-                    on_search: move |query| goto_search_query.set(query),
-                    on_select: move |id: String| {
-                        props.on_new_goto_change.call(id);
-                        is_goto_open.set(false);
-                        goto_search_query.set(String::new());
-                    }
-                }
-            }
-
-            {extra_captions.iter().enumerate().map(|(i, caption)| {
-                let label = format!("{} {}", t.choice_id, i + 2);
-                let goto_label = format!("{} {}", t.goto_target, i + 2);
-                let caption = caption.clone();
-                let goto = extra_gotos[i].clone();
-                
-                rsx! {
-                    div { class: "space-y-4",
-                        InputField {
-                            label: label.clone(),
-                            placeholder: t.choice_id.clone(),
-                            value: caption,
-                            required: true,
-                            has_error: false,
-                            on_input: move |value| props.on_extra_caption_change.call((i, value)),
-                            on_blur: move |_| {}
+                div { class: "space-y-2",
+                    div { class: "flex items-center space-x-4",
+                        div { class: "flex-1",
+                            ParagraphList {
+                                label: t.goto_target.clone(),
+                                value: props.new_goto,
+                                paragraphs: props.available_paragraphs.clone(),
+                                is_open: *is_goto_open.read(),
+                                search_query: goto_search_query.read().to_string(),
+                                on_toggle: move |_| {
+                                    let current = *is_goto_open.read();
+                                    is_goto_open.set(!current);
+                                },
+                                on_search: move |query| goto_search_query.set(query),
+                                on_select: move |id: String| {
+                                    props.on_new_goto_change.call(id);
+                                    is_goto_open.set(false);
+                                    goto_search_query.set(String::new());
+                                }
+                            }
                         }
+                        div { class: "flex-shrink-0 mt-8", // Matches the height of the label + some spacing
+                            button {
+                                class: "inline-flex items-center justify-center w-10 h-10 text-sm font-medium text-white bg-gray-700 rounded-lg hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-600 transition-colors duration-200 shadow-sm",
+                                onclick: move |_| props.on_add_choice.call(()),
+                                svg {
+                                    xmlns: "http://www.w3.org/2000/svg",
+                                    class: "h-5 w-5",
+                                    fill: "none",
+                                    view_box: "0 0 24 24",
+                                    stroke: "currentColor",
+                                    stroke_width: "2",
+                                    path {
+                                        stroke_linecap: "round",
+                                        stroke_linejoin: "round",
+                                        d: "M12 4v16m8-8H4"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    
+                    {props.new_goto_error.then(|| {
+                        rsx! {
+                            p { class: "text-sm text-red-500", "此欄位為必填" }
+                        }
+                    })}
+                }
 
-                        ParagraphList {
-                            label: goto_label.clone(),
-                            value: goto,
-                            paragraphs: props.available_paragraphs.clone(),
-                            is_open: if i < extra_goto_open.read().len() { extra_goto_open.read()[i] } else { false },
-                            search_query: if i < extra_goto_search.read().len() { extra_goto_search.read()[i].clone() } else { String::new() },
-                            on_toggle: move |_| {
-                                let mut open = extra_goto_open.write();
-                                if i < open.len() {
+                {extra_captions.iter().enumerate().map(|(i, caption)| {
+                    let label = format!("{} {}", t.choice_id, i + 2);
+                    let goto_label = format!("{} {}", t.goto_target, i + 2);
+                    let caption = caption.clone();
+                    let goto = extra_gotos[i].clone();
+                    
+                    rsx! {
+                        div { class: "space-y-4",
+                            InputField {
+                                label: label.clone(),
+                                placeholder: t.choice_id.clone(),
+                                value: caption,
+                                required: true,
+                                has_error: false,
+                                on_input: move |value| props.on_extra_caption_change.call((i, value)),
+                                on_blur: move |_| {}
+                            }
+
+                            ParagraphList {
+                                label: goto_label.clone(),
+                                value: goto,
+                                paragraphs: props.available_paragraphs.clone(),
+                                is_open: extra_goto_open.read()[i],
+                                search_query: extra_goto_search.read()[i].clone(),
+                                on_toggle: move |_| {
+                                    let mut open = extra_goto_open.write();
                                     open[i] = !open[i];
-                                }
-                            },
-                            on_search: move |query| {
-                                let mut search = extra_goto_search.write();
-                                if i < search.len() {
+                                },
+                                on_search: move |query| {
+                                    let mut search = extra_goto_search.write();
                                     search[i] = query;
-                                }
-                            },
-                            on_select: move |id: String| {
-                                props.on_extra_goto_change.call((i, id));
-                                let mut open = extra_goto_open.write();
-                                if i < open.len() {
+                                },
+                                on_select: move |id: String| {
+                                    props.on_extra_goto_change.call((i, id));
+                                    let mut open = extra_goto_open.write();
                                     open[i] = false;
-                                }
-                                let mut search = extra_goto_search.write();
-                                if i < search.len() {
+                                    let mut search = extra_goto_search.write();
                                     search[i] = String::new();
                                 }
                             }
                         }
                     }
-                }
-            })}
-
-            button {
-                class: "w-full px-4 py-2 text-sm font-medium text-green-600 bg-green-50 border border-green-200 rounded-md hover:bg-green-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500",
-                onclick: move |_| props.on_add_choice.call(()),
-                "{t.add}"
+                })}
             }
         }
     }
-} 
+}

@@ -28,13 +28,13 @@ pub struct ParagraphListProps {
 pub fn ParagraphList(props: ParagraphListProps) -> Element {
     rsx! {
         div { class: "relative",
-            label { class: "block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1",
+            label { class: "block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2",
                 "{props.label}"
             }
             div {
                 class: "relative",
                 button {
-                    class: "w-full px-4 py-2 text-left text-sm bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors duration-150",
+                    class: "w-full px-4 py-2.5 text-left text-sm bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors duration-150",
                     onclick: move |_| props.on_toggle.call(()),
                     div { class: "flex justify-between items-center",
                         span { class: "block truncate text-gray-900 dark:text-gray-100",
@@ -51,13 +51,13 @@ pub fn ParagraphList(props: ParagraphListProps) -> Element {
                 }
                 div {
                     class: if props.is_open {
-                        "absolute z-10 mt-1 w-full bg-white dark:bg-gray-700 shadow-lg max-h-60 rounded-md py-1 text-base overflow-auto focus:outline-none sm:text-sm border border-gray-200 dark:border-gray-600"
+                        "absolute z-10 mt-1 w-full bg-white dark:bg-gray-700 shadow-lg max-h-60 rounded-md py-1 text-sm overflow-auto focus:outline-none border border-gray-200 dark:border-gray-600"
                     } else {
                         "hidden"
                     },
                     div { class: "sticky top-0 z-10 bg-white dark:bg-gray-700 px-3 py-2 border-b border-gray-200 dark:border-gray-600",
                         input {
-                            class: "w-full px-3 py-2 text-sm bg-gray-50 dark:bg-gray-600 border border-gray-300 dark:border-gray-500 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400",
+                            class: "w-full px-4 py-2.5 text-sm bg-gray-50 dark:bg-gray-600 border border-gray-300 dark:border-gray-500 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400",
                             placeholder: "搜尋...",
                             value: "{props.search_query}",
                             oninput: move |event: FormEvent| props.on_search.call(event.value().clone())

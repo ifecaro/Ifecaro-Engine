@@ -17,7 +17,7 @@ pub fn TextareaField(
             class: "mb-6",
             {(!label.is_empty()).then(|| rsx!(
                 label { 
-                    class: "block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2",
+                    class: "block text-gray-700 dark:text-gray-300 text-sm font-medium mb-2",
                     span { "{label}" }
                     {required.then(|| rsx!(
                         span { class: "text-red-500 ml-1", "*" }
@@ -26,7 +26,7 @@ pub fn TextareaField(
             ))}
             textarea {
                 class: {
-                    let base_classes = "shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-gray-300 dark:bg-gray-700 dark:border-gray-600 leading-tight focus:outline-none focus:shadow-outline dark:focus:border-gray-500";
+                    let base_classes = "shadow appearance-none border rounded-lg w-full py-2.5 px-4 text-sm text-gray-700 dark:text-gray-300 dark:bg-gray-700 dark:border-gray-600 leading-tight focus:outline-none focus:shadow-outline dark:focus:border-gray-500";
                     if has_error {
                         format!("{} border-red-500", base_classes)
                     } else {
