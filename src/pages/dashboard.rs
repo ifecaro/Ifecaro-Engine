@@ -25,7 +25,6 @@ pub struct Data {
 pub struct Paragraph {
     pub id: String,
     pub index: usize,
-    pub choice_id: String,
     #[serde(default)]
     pub chapter_id: String,
     pub texts: Vec<Text>,
@@ -215,7 +214,6 @@ fn display_language(lang: &&Language) -> String {
 #[component]
 pub fn Dashboard(props: DashboardProps) -> Element {
     let mut choices = use_signal(|| Vec::<Choice>::new());
-    let mut choice_id = use_signal(|| String::new());
     let mut paragraphs = use_signal(|| String::new());
     let mut new_caption = use_signal(|| String::new());
     let mut new_goto = use_signal(|| String::new());
@@ -239,6 +237,7 @@ pub fn Dashboard(props: DashboardProps) -> Element {
     let mut is_edit_mode = use_signal(|| false);
     let mut is_paragraph_open = use_signal(|| false);
     let mut paragraph_search_query = use_signal(|| String::new());
+    let mut paragraph_data = use_signal(|| Vec::<Paragraph>::new());
     let t = Translations::get(&props.lang);
 
     let mut choice_id_error = use_signal(|| false);
@@ -254,6 +253,7 @@ pub fn Dashboard(props: DashboardProps) -> Element {
         let client = reqwest::Client::new();
         let mut has_loaded = has_loaded.clone();
         let current_lang = selected_lang.read().to_string();
+        let mut paragraph_data = paragraph_data.clone();
 
         wasm_bindgen_futures::spawn_local(async move {
             // 載入 chapters
@@ -318,31 +318,39 @@ pub fn Dashboard(props: DashboardProps) -> Element {
                 Ok(response) => {
                     match response.json::<Data>().await {
                         Ok(data) => {
-                        let choices = data.items.iter()
-                            .map(|item| ChoiceOption {
-                                id: item.choice_id.clone(),
-                                preview: item.texts.first()
-                                    .map(|t| t.paragraphs.lines().next().unwrap_or("").to_string())
-                                    .unwrap_or_default(),
-                            })
-                            .collect();
-                        let paragraphs = data.items.iter()
-                            .map(|item| crate::components::paragraph_list::Paragraph {
-                                id: item.choice_id.clone(),
-                                preview: item.texts.first()
-                                    .map(|t| t.paragraphs.lines().next().unwrap_or("").to_string())
-                                    .unwrap_or_default(),
-                            })
-                            .collect();
-                        available_choices.set(choices);
-                        available_paragraphs.set(paragraphs);
-                        has_loaded.set(true);
+                            // 將完整的段落資料載入到 paragraph_data 中
+                            paragraph_data.set(data.items.clone());
+                            
+                            let paragraphs: Vec<crate::components::paragraph_list::Paragraph> = data.items.iter()
+                                .map(|item| {
+                                    let preview = item.texts.iter()
+                                        .find(|t| t.lang == current_lang)
+                                        .or_else(|| item.texts.first())
+                                        .map(|t| t.paragraphs.lines().next().unwrap_or("").to_string())
+                                        .unwrap_or_default();
+                                    
+                                    println!("Loading paragraph: id={}, preview={}", item.id, preview);
+                                    
+                                    crate::components::paragraph_list::Paragraph {
+                                        id: item.id.clone(),
+                                        preview,
+                                    }
+                                })
+                                .collect();
+                            
+                            println!("Total paragraphs loaded: {}", paragraphs.len());
+                            available_paragraphs.set(paragraphs);
+                            has_loaded.set(true);
                         }
-                        Err(_) => {}
+                        Err(e) => {
+                            println!("Error parsing response: {:?}", e);
+                        }
                     }
                 }
-                Err(_) => {}
-        }
+                Err(e) => {
+                    println!("Error loading settings: {:?}", e);
+                }
+            }
         });
         
         // 返回一個清理函數
@@ -375,7 +383,6 @@ pub fn Dashboard(props: DashboardProps) -> Element {
     });
 
     let is_form_valid = use_memo(move || {
-        !choice_id.read().trim().is_empty() &&
         !paragraphs.read().trim().is_empty() &&
         !new_caption.read().trim().is_empty() &&
         !new_goto.read().trim().is_empty()
@@ -430,14 +437,12 @@ pub fn Dashboard(props: DashboardProps) -> Element {
             
             // 建立一個足夠長的 id
             let chapter_id = selected_chapter.read().clone();
-            let choice_id_value = choice_id.read().clone();
             let timestamp = js_sys::Date::new_0().get_time();
-            let unique_id = format!("{}_{}_{}", chapter_id, choice_id_value, timestamp);
+            let unique_id = format!("{}_{}", chapter_id, timestamp);
             
             // 建立新的段落資料
             let new_paragraph = serde_json::json!({
                 "id": unique_id,
-                "choice_id": choice_id.read().clone(),
                 "chapter_id": selected_chapter.read().clone(),
                 "texts": [
                     {
@@ -457,7 +462,6 @@ pub fn Dashboard(props: DashboardProps) -> Element {
                 .await {
                             Ok(response) => {
                                 if response.status().is_success() {
-                                    choice_id.set(String::new());
                                     paragraphs.set(String::new());
                                     choices.write().clear();
                                     new_caption.set(String::new());
@@ -465,7 +469,7 @@ pub fn Dashboard(props: DashboardProps) -> Element {
                                     extra_captions.write().clear();
                                     extra_gotos.write().clear();
                                     show_extra_options.write().clear();
-                        selected_chapter.set(String::new());
+                                    selected_chapter.set(String::new());
                                     show_toast.set(true);
                                     
                                     let mut toast_visible = toast_visible.clone();
@@ -535,6 +539,70 @@ pub fn Dashboard(props: DashboardProps) -> Element {
                             Err(_) => {}
                         }
             });
+        }
+    };
+
+    let handle_paragraph_select = move |id: String| {
+        // 從完整的段落資料中尋找選中的段落
+        if let Some(paragraph) = paragraph_data.read().iter().find(|p| p.id == id) {
+            // 將 dashboard::Paragraph 轉換為 translation_form::Paragraph
+            let dashboard_paragraph = crate::components::translation_form::Paragraph {
+                id: paragraph.id.clone(),
+                index: paragraph.index,
+                chapter_id: paragraph.chapter_id.clone(),
+                texts: paragraph.texts.iter().map(|text| crate::components::translation_form::Text {
+                    lang: text.lang.clone(),
+                    paragraphs: text.paragraphs.clone(),
+                    choices: text.choices.iter().map(|choice| crate::components::translation_form::Choice {
+                        caption: choice.caption.clone(),
+                        goto: choice.goto.clone(),
+                    }).collect(),
+                }).collect(),
+            };
+            selected_paragraph.set(Some(paragraph.clone()));
+
+            // 檢查是否有已存在的翻譯
+            let current_lang = selected_lang.read().to_string();
+            if let Some(existing_text) = paragraph.texts.iter().find(|text| text.lang == current_lang) {
+                // 填充段落內容
+                paragraphs.set(existing_text.paragraphs.clone());
+                
+                // 填充選項
+                if !existing_text.choices.is_empty() {
+                    // 設置第一個選項
+                    new_caption.set(existing_text.choices[0].caption.clone());
+                    new_goto.set(existing_text.choices[0].goto.clone());
+                    
+                    // 設置額外選項
+                    let mut captions = Vec::new();
+                    let mut gotos = Vec::new();
+                    let mut options = Vec::new();
+                    
+                    for choice in existing_text.choices.iter().skip(1) {
+                        captions.push(choice.caption.clone());
+                        gotos.push(choice.goto.clone());
+                        options.push(());
+                    }
+                    
+                    // 確保所有向量都有相同的長度
+                    let len = captions.len();
+                    if len > 0 {
+                        extra_captions.set(captions);
+                        extra_gotos.set(gotos);
+                        show_extra_options.set(options);
+                    } else {
+                        // 如果沒有額外選項，清空所有向量
+                        extra_captions.set(Vec::new());
+                        extra_gotos.set(Vec::new());
+                        show_extra_options.set(Vec::new());
+                    }
+                } else {
+                    // 如果沒有選項，清空所有向量
+                    extra_captions.set(Vec::new());
+                    extra_gotos.set(Vec::new());
+                    show_extra_options.set(Vec::new());
+                }
+            }
         }
     };
 
@@ -612,16 +680,16 @@ pub fn Dashboard(props: DashboardProps) -> Element {
                             div { class: "flex items-end space-x-4",
                                 div { class: "flex-1",
                                     InputField {
-                                        label: t.choice_id.clone(),
-                                        placeholder: t.choice_id.clone(),
-                                        value: choice_id.read().to_string(),
+                                        label: t.option_text.clone(),
+                                        placeholder: t.option_text.clone(),
+                                        value: new_caption.read().to_string(),
                                         required: true,
-                                        has_error: *choice_id_error.read(),
+                                        has_error: *new_caption_error.read(),
                                         on_input: move |value: String| {
-                                            choice_id.set(value.clone());
-                                            validate_field(&value, &mut choice_id_error);
+                                            new_caption.set(value.clone());
+                                            validate_field(&value, &mut new_caption_error);
                                         },
-                                        on_blur: move |_| validate_field(&choice_id.read(), &mut choice_id_error),
+                                        on_blur: move |_| validate_field(&new_caption.read(), &mut new_caption_error),
                                         children: rsx! {
                                             button {
                                                 class: "inline-flex items-center justify-center w-10 h-10 text-sm font-medium text-white bg-gray-700 rounded-lg hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-600 transition-colors duration-200 shadow-sm mb-[2px]",
@@ -719,21 +787,7 @@ pub fn Dashboard(props: DashboardProps) -> Element {
                                         is_paragraph_open.set(!current);
                                     },
                                     on_search: move |query| paragraph_search_query.set(query),
-                                    on_select: move |id: String| {
-                                        if let Some(paragraph) = available_paragraphs.read().iter().find(|p| p.id == id) {
-                                            // 將 paragraph_list::Paragraph 轉換為 dashboard::Paragraph
-                                            let dashboard_paragraph = Paragraph {
-                                                id: paragraph.id.clone(),
-                                                index: 0, // 這裡需要從 API 獲取正確的索引
-                                                choice_id: paragraph.id.clone(),
-                                                chapter_id: String::new(),
-                                                texts: Vec::new(),
-                                            };
-                                            selected_paragraph.set(Some(dashboard_paragraph));
-                                        }
-                                        is_paragraph_open.set(false);
-                                        paragraph_search_query.set(String::new());
-                                    }
+                                    on_select: handle_paragraph_select,
                                 }
                             }
                             button {

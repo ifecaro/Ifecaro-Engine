@@ -3,6 +3,7 @@ use crate::enums::translations::Translations;
 use crate::components::form::InputField;
 use crate::components::paragraph_list::{Paragraph, ParagraphList};
 use wasm_bindgen_futures::spawn_local;
+use web_sys::console;
 
 #[derive(Props, Clone, PartialEq)]
 pub struct ChoiceOptionsProps {
@@ -44,13 +45,28 @@ pub fn ChoiceOptions(props: ChoiceOptionsProps) -> Element {
     let extra_gotos = props.extra_gotos.clone();
     let t = props.t.clone();
 
+    // 找到目標段落的預覽文字
+    let target_preview = props.available_paragraphs.iter()
+        .find(|p| p.id == props.new_goto)
+        .map(|p| p.preview.clone())
+        .unwrap_or_else(|| props.new_goto.clone());
+
+    // 輸出 new_goto 的值
+    console::log_1(&format!("New Goto: {}", props.new_goto).into());
+    console::log_1(&format!("Available Paragraphs: {:?}", props.available_paragraphs).into());
+    
+    // 輸出每個段落的 id 和 preview
+    for paragraph in &props.available_paragraphs {
+        console::log_1(&format!("Paragraph ID: {}, Preview: {}", paragraph.id, paragraph.preview).into());
+    }
+
     rsx! {
         div { 
             class: "max-w-3xl mx-auto p-8 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-100 dark:border-gray-700",
             div { class: "space-y-4",
                 InputField {
-                    label: t.choice_id.clone(),
-                    placeholder: t.choice_id.clone(),
+                    label: t.option_text.clone(),
+                    placeholder: t.option_text.clone(),
                     value: props.new_caption,
                     required: true,
                     has_error: props.new_caption_error,
@@ -63,8 +79,10 @@ pub fn ChoiceOptions(props: ChoiceOptionsProps) -> Element {
                         div { class: "flex-1",
                             ParagraphList {
                                 label: t.goto_target.clone(),
-                                value: props.new_goto,
-                                paragraphs: props.available_paragraphs.clone(),
+                                value: target_preview,
+                                paragraphs: props.available_paragraphs.clone().into_iter()
+                                    .filter(|p| p.id != props.new_goto)
+                                    .collect(),
                                 is_open: *is_goto_open.read(),
                                 search_query: goto_search_query.read().to_string(),
                                 on_toggle: move |_| {
@@ -73,6 +91,7 @@ pub fn ChoiceOptions(props: ChoiceOptionsProps) -> Element {
                                 },
                                 on_search: move |query| goto_search_query.set(query),
                                 on_select: move |id: String| {
+                                    console::log_1(&format!("Selected Paragraph ID: {}", id).into());
                                     props.on_new_goto_change.call(id);
                                     is_goto_open.set(false);
                                     goto_search_query.set(String::new());
@@ -108,16 +127,35 @@ pub fn ChoiceOptions(props: ChoiceOptionsProps) -> Element {
                 }
 
                 {extra_captions.iter().enumerate().map(|(i, caption)| {
-                    let label = format!("{} {}", t.choice_id, i + 2);
+                    let label = format!("{} {}", t.option_text, i + 2);
                     let goto_label = format!("{} {}", t.goto_target, i + 2);
                     let caption = caption.clone();
                     let goto = extra_gotos[i].clone();
+                    
+                    // 找到目標段落的預覽文字
+                    let target_preview = props.available_paragraphs.iter()
+                        .find(|p| p.id == goto)
+                        .map(|p| p.preview.clone())
+                        .unwrap_or_else(|| goto.clone());
+                    
+                    // 確保 i 在 extra_goto_open 和 extra_goto_search 的範圍內
+                    let is_open = if i < extra_goto_open.read().len() {
+                        extra_goto_open.read()[i]
+                    } else {
+                        false
+                    };
+                    
+                    let search_query = if i < extra_goto_search.read().len() {
+                        extra_goto_search.read()[i].clone()
+                    } else {
+                        String::new()
+                    };
                     
                     rsx! {
                         div { class: "space-y-4",
                             InputField {
                                 label: label.clone(),
-                                placeholder: t.choice_id.clone(),
+                                placeholder: t.option_text.clone(),
                                 value: caption,
                                 required: true,
                                 has_error: false,
@@ -127,24 +165,35 @@ pub fn ChoiceOptions(props: ChoiceOptionsProps) -> Element {
 
                             ParagraphList {
                                 label: goto_label.clone(),
-                                value: goto,
-                                paragraphs: props.available_paragraphs.clone(),
-                                is_open: extra_goto_open.read()[i],
-                                search_query: extra_goto_search.read()[i].clone(),
+                                value: target_preview,
+                                paragraphs: props.available_paragraphs.clone().into_iter()
+                                    .filter(|p| p.id != goto)
+                                    .collect(),
+                                is_open: is_open,
+                                search_query: search_query,
                                 on_toggle: move |_| {
-                                    let mut open = extra_goto_open.write();
-                                    open[i] = !open[i];
+                                    if i < extra_goto_open.read().len() {
+                                        let mut open = extra_goto_open.write();
+                                        open[i] = !open[i];
+                                    }
                                 },
                                 on_search: move |query| {
-                                    let mut search = extra_goto_search.write();
-                                    search[i] = query;
+                                    if i < extra_goto_search.read().len() {
+                                        let mut search = extra_goto_search.write();
+                                        search[i] = query;
+                                    }
                                 },
                                 on_select: move |id: String| {
+                                    console::log_1(&format!("Selected Extra Paragraph ID: {}", id).into());
                                     props.on_extra_goto_change.call((i, id));
-                                    let mut open = extra_goto_open.write();
-                                    open[i] = false;
-                                    let mut search = extra_goto_search.write();
-                                    search[i] = String::new();
+                                    if i < extra_goto_open.read().len() {
+                                        let mut open = extra_goto_open.write();
+                                        open[i] = false;
+                                    }
+                                    if i < extra_goto_search.read().len() {
+                                        let mut search = extra_goto_search.write();
+                                        search[i] = String::new();
+                                    }
                                 }
                             }
                         }

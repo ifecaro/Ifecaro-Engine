@@ -9,7 +9,6 @@ use std::sync::Arc;
 pub struct Paragraph {
     pub id: String,
     pub index: usize,
-    pub choice_id: String,
     #[serde(default)]
     pub chapter_id: String,
     pub texts: Vec<Text>,

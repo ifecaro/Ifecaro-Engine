@@ -26,6 +26,12 @@ pub struct ParagraphListProps {
 
 #[component]
 pub fn ParagraphList(props: ParagraphListProps) -> Element {
+    // 找到當前選中的段落
+    let selected_preview = props.paragraphs.iter()
+        .find(|p| p.id == props.value)
+        .map(|p| p.preview.clone())
+        .unwrap_or_else(|| props.value.clone());
+
     rsx! {
         div { class: "relative",
             label { class: "block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2",
@@ -38,7 +44,7 @@ pub fn ParagraphList(props: ParagraphListProps) -> Element {
                     onclick: move |_| props.on_toggle.call(()),
                     div { class: "flex justify-between items-center",
                         span { class: "block truncate text-gray-900 dark:text-gray-100",
-                            "{props.value}"
+                            "{selected_preview}"
                         }
                         span { class: "ml-2 pointer-events-none text-gray-500 dark:text-gray-400",
                             if props.is_open {
@@ -73,7 +79,10 @@ pub fn ParagraphList(props: ParagraphListProps) -> Element {
                                 rsx! {
                                     div {
                                         class: "cursor-pointer select-none relative py-2 pl-3 pr-9 hover:bg-gray-100 dark:hover:bg-gray-600 text-gray-900 dark:text-gray-100 transition-colors duration-150",
-                                        onclick: move |_| props.on_select.call(id.clone()),
+                                        onclick: move |_| {
+                                            props.on_select.call(id.clone());
+                                            props.on_toggle.call(());
+                                        },
                                         span { class: "block truncate",
                                             "{paragraph.preview}"
                                         }

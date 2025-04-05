@@ -7,19 +7,16 @@ use std::sync::Arc;
 #[derive(Props, Clone, PartialEq)]
 pub struct ParagraphFormProps {
     t: Translations,
-    choice_id: String,
     paragraphs: String,
     new_caption: String,
     new_goto: String,
     extra_captions: Vec<String>,
     extra_gotos: Vec<String>,
     show_extra_options: Vec<()>,
-    choice_id_error: bool,
     paragraphs_error: bool,
     new_caption_error: bool,
     new_goto_error: bool,
     available_paragraphs: Vec<Paragraph>,
-    on_choice_id_change: EventHandler<String>,
     on_paragraphs_change: EventHandler<String>,
     on_new_caption_change: EventHandler<String>,
     on_new_goto_change: EventHandler<String>,
@@ -31,14 +28,12 @@ pub struct ParagraphFormProps {
 
 #[component]
 pub fn ParagraphForm(props: ParagraphFormProps) -> Element {
-    let choice_id = Arc::new(props.choice_id.clone());
     let paragraphs = Arc::new(props.paragraphs.clone());
     let new_caption = Arc::new(props.new_caption.clone());
     let new_goto = Arc::new(props.new_goto.clone());
     let extra_captions = props.extra_captions.clone();
     let extra_gotos = props.extra_gotos.clone();
     let show_extra_options = props.show_extra_options.clone();
-    let choice_id_error = props.choice_id_error;
     let paragraphs_error = props.paragraphs_error;
     let new_caption_error = props.new_caption_error;
     let new_goto_error = props.new_goto_error;
@@ -46,12 +41,10 @@ pub fn ParagraphForm(props: ParagraphFormProps) -> Element {
     let t = props.t.clone();
 
     let is_form_valid = {
-        let choice_id = choice_id.clone();
         let paragraphs = paragraphs.clone();
         let new_caption = new_caption.clone();
         let new_goto = new_goto.clone();
         use_memo(move || {
-            !choice_id.trim().is_empty() &&
             !paragraphs.trim().is_empty() &&
             !new_caption.trim().is_empty() &&
             !new_goto.trim().is_empty()
@@ -60,19 +53,6 @@ pub fn ParagraphForm(props: ParagraphFormProps) -> Element {
 
     rsx! {
         div { class: "space-y-8",
-            // Choice ID 欄位
-            div { class: "flex-1",
-                InputField {
-                    label: t.choice_id.clone(),
-                    placeholder: t.choice_id.clone(),
-                    value: choice_id.to_string(),
-                    required: true,
-                    has_error: choice_id_error,
-                    on_input: props.on_choice_id_change,
-                    on_blur: move |_| {}
-                }
-            }
-
             // 段落內容欄位
             TextareaField {
                 label: t.paragraph.clone(),
@@ -107,10 +87,10 @@ pub fn ParagraphForm(props: ParagraphFormProps) -> Element {
 
             // 提交按鈕
             button {
-                class: "w-full px-6 py-3 bg-green-500 text-white rounded-md hover:bg-green-600 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed font-medium text-lg",
+                class: "w-full px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed",
                 disabled: !*is_form_valid.read(),
                 onclick: move |_| props.on_submit.call(()),
-                "{t.submit}"
+                {t.submit}
             }
         }
     }
