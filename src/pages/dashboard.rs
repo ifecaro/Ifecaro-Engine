@@ -138,7 +138,6 @@ const AVAILABLE_LANGUAGES: &[Language] = &[
     Language { code: "tr", name: "Türkçe" },
     Language { code: "sv", name: "Svenska" },
     Language { code: "da", name: "Dansk" },
-    Language { code: "fi", name: "Suomi" },
     Language { code: "no", name: "Norsk" },
     Language { code: "cs", name: "Čeština" },
     Language { code: "ro", name: "Română" },
@@ -329,8 +328,6 @@ pub fn Dashboard(props: DashboardProps) -> Element {
                                         .map(|t| t.paragraphs.lines().next().unwrap_or("").to_string())
                                         .unwrap_or_default();
                                     
-                                    println!("Loading paragraph: id={}, preview={}", item.id, preview);
-                                    
                                     crate::components::paragraph_list::Paragraph {
                                         id: item.id.clone(),
                                         preview,
@@ -338,18 +335,13 @@ pub fn Dashboard(props: DashboardProps) -> Element {
                                 })
                                 .collect();
                             
-                            println!("Total paragraphs loaded: {}", paragraphs.len());
                             available_paragraphs.set(paragraphs);
                             has_loaded.set(true);
                         }
-                        Err(e) => {
-                            println!("Error parsing response: {:?}", e);
-                        }
+                        Err(e) => {}
                     }
                 }
-                Err(e) => {
-                    println!("Error loading settings: {:?}", e);
-                }
+                Err(_) => {}
             }
         });
         
@@ -383,9 +375,68 @@ pub fn Dashboard(props: DashboardProps) -> Element {
     });
 
     let is_form_valid = use_memo(move || {
-        !paragraphs.read().trim().is_empty() &&
-        !new_caption.read().trim().is_empty() &&
-        !new_goto.read().trim().is_empty()
+        // 檢查主要欄位
+        let main_fields_valid = !paragraphs.read().trim().is_empty() &&
+            !new_caption.read().trim().is_empty() &&
+            !new_goto.read().trim().is_empty();
+
+        // 檢查額外選項
+        let extra_choices_valid = extra_captions.read().iter().zip(extra_gotos.read().iter())
+            .all(|(caption, goto)| !caption.trim().is_empty() && !goto.trim().is_empty());
+
+        main_fields_valid && extra_choices_valid
+    });
+
+    // 檢查翻譯是否有變化
+    let has_changes = use_memo(move || {
+        if let Some(paragraph) = selected_paragraph.read().as_ref() {
+            // 檢查當前語言的翻譯是否存在
+            if let Some(existing_text) = paragraph.texts.iter().find(|text| text.lang == *selected_lang.read()) {
+                // 比較段落內容
+                let paragraphs_changed = existing_text.paragraphs != *paragraphs.read();
+                
+                // 比較選項
+                let choices_changed = if !existing_text.choices.is_empty() {
+                    // 檢查第一個選項
+                    let first_choice_changed = existing_text.choices[0].caption != *new_caption.read() ||
+                                            existing_text.choices[0].goto != *new_goto.read();
+                    
+                    // 檢查額外選項
+                    let extra_choices_changed = if existing_text.choices.len() > 1 {
+                        let existing_extra = &existing_text.choices[1..];
+                        let current_extra_captions = &extra_captions.read();
+                        let current_extra_gotos = &extra_gotos.read();
+                        
+                        if existing_extra.len() != current_extra_captions.len() {
+                            true
+                        } else {
+                            existing_extra.iter().zip(current_extra_captions.iter().zip(current_extra_gotos.iter()))
+                                .any(|(existing, (current_caption, current_goto))| {
+                                    existing.caption != *current_caption || existing.goto != *current_goto
+                                })
+                        }
+                    } else {
+                        !extra_captions.read().is_empty() || !extra_gotos.read().is_empty()
+                    };
+                    
+                    first_choice_changed || extra_choices_changed
+                } else {
+                    !new_caption.read().is_empty() || !new_goto.read().is_empty() ||
+                    !extra_captions.read().is_empty() || !extra_gotos.read().is_empty()
+                };
+                
+                paragraphs_changed || choices_changed
+            } else {
+                // 如果是新翻譯，只要有任何內容就表示有變化
+                !paragraphs.read().trim().is_empty() ||
+                !new_caption.read().trim().is_empty() ||
+                !new_goto.read().trim().is_empty() ||
+                !extra_captions.read().is_empty() ||
+                !extra_gotos.read().is_empty()
+            }
+        } else {
+            false
+        }
     });
 
     let validate_field = |value: &str, error_signal: &mut Signal<bool>| {
@@ -767,7 +818,7 @@ pub fn Dashboard(props: DashboardProps) -> Element {
 
                         button {
                             class: "w-full px-6 py-3 bg-green-500 text-white rounded-md hover:bg-green-600 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed font-medium text-lg",
-                            disabled: !*is_form_valid.read() || selected_paragraph.read().is_none(),
+                            disabled: !*is_form_valid.read() || selected_paragraph.read().is_none() || !*has_changes.read(),
                             onclick: handle_submit,
                             "{t.submit}"
                         }
@@ -862,7 +913,7 @@ pub fn Dashboard(props: DashboardProps) -> Element {
 
                     button {
                             class: "w-full px-6 py-3 bg-green-500 text-white rounded-md hover:bg-green-600 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed font-medium text-lg",
-                            disabled: !*is_form_valid.read() || selected_paragraph.read().is_none(),
+                            disabled: !*is_form_valid.read() || selected_paragraph.read().is_none() || !*has_changes.read(),
                             onclick: handle_add_translation,
                             "{t.submit}"
                         }

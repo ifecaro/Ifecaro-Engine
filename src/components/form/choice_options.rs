@@ -3,7 +3,6 @@ use crate::enums::translations::Translations;
 use crate::components::form::InputField;
 use crate::components::paragraph_list::{Paragraph, ParagraphList};
 use wasm_bindgen_futures::spawn_local;
-use web_sys::console;
 
 #[derive(Props, Clone, PartialEq)]
 pub struct ChoiceOptionsProps {
