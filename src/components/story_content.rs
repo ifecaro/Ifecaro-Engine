@@ -21,6 +21,13 @@ pub struct Choice {
 pub fn StoryContent(props: StoryContentProps) -> Element {
     let paragraphs: Vec<String> = props.paragraph.split('\n').map(|s| s.to_string()).collect();
     
+    let handle_choice_click = move |goto: String| {
+        // println!("Clicked choice with goto: {}", goto);
+        if let Some(on_choice_click) = props.on_choice_click {
+            on_choice_click.call(goto);
+        }
+    };
+    
     rsx! {
         article {
             class: "prose dark:prose-invert lg:prose-xl indent-10 mx-auto",
@@ -50,8 +57,7 @@ pub fn StoryContent(props: StoryContentProps) -> Element {
                                 disabled: !is_enabled,
                                 onclick: move |_| {
                                     if is_enabled {
-                                        println!("Clicked choice with goto: {}", goto);
-                                        props.on_choice_click.call(goto.clone());
+                                        handle_choice_click(goto.clone());
                                     }
                                 },
                                 {caption}
