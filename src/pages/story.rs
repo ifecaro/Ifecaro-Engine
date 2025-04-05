@@ -1,4 +1,4 @@
-use crate::constants::config::config::{BASE_API_URL, SETTINGS};
+use crate::constants::{BASE_API_URL, PARAGRAPHS};
 use crate::enums::translations::Translations;
 use dioxus::{
     dioxus_core,
@@ -24,10 +24,11 @@ struct Data {
 
 #[derive(Deserialize, Clone, Debug)]
 struct Paragraph {
+    id: String,
     index: usize,
-    choice_id: String,
+    #[serde(default)]
+    chapter_id: String,
     texts: Vec<Text>,
-    // actions: Vec<Action>,
 }
 
 #[derive(Deserialize, Clone, Debug)]
@@ -82,7 +83,7 @@ pub fn Story(props: StoryProps) -> Element {
         if let Some(data) = current_data.items.iter().find(|item| item.index == *selected_paragraph_index.read()) {
             if let Some(text) = data.texts.iter().find(|t| t.lang == state.read().current_language) {
                 for choice in &text.choices {
-                    if current_data.items.iter().any(|item| item.choice_id == choice.goto) {
+                    if current_data.items.iter().any(|item| item.id == choice.goto) {
                         enabled.push(choice.goto.clone());
                     }
                 }
@@ -95,7 +96,7 @@ pub fn Story(props: StoryProps) -> Element {
         let mut data = data.clone();
 
         use_future(move || async move {
-            let url = format!("{}{}", BASE_API_URL, SETTINGS);
+            let url = format!("{}{}", BASE_API_URL, PARAGRAPHS);
             let resp = reqwest::get(&url)
                 .await?
                 .json::<Data>()
@@ -123,7 +124,7 @@ pub fn Story(props: StoryProps) -> Element {
                             paragraph: paragraph.clone(),
                             choices: text.choices.clone(),
                             on_choice_click: move |goto: String| {
-                                if let Some(item) = data.read().items.iter().find(|item| item.choice_id == goto) {
+                                if let Some(item) = data.read().items.iter().find(|item| item.id == goto) {
                                     selected_paragraph_index.set(item.index);
                                 }
                             },
