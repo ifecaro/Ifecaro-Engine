@@ -10,6 +10,9 @@ use crate::components::story_content::Choice;
 use crate::components::dropdown::Dropdown;
 use crate::components::paragraph_list::ParagraphList;
 use dioxus::events::{FormEvent, FocusEvent};
+use web_sys::console;
+use dioxus::hooks::use_context;
+use crate::contexts::language_context::LanguageState;
 
 #[derive(Props, Clone, PartialEq)]
 pub struct DashboardProps {
@@ -212,6 +215,7 @@ fn display_language(lang: &&Language) -> String {
 
 #[component]
 pub fn Dashboard(props: DashboardProps) -> Element {
+    let state = use_context::<Signal<LanguageState>>();
     let mut choices = use_signal(|| Vec::<Choice>::new());
     let mut paragraphs = use_signal(|| String::new());
     let mut new_caption = use_signal(|| String::new());
@@ -221,7 +225,7 @@ pub fn Dashboard(props: DashboardProps) -> Element {
     let mut show_extra_options = use_signal(|| Vec::<()>::new());
     let mut show_toast = use_signal(|| false);
     let mut toast_visible = use_signal(|| false);
-    let mut selected_lang = use_signal(|| props.lang.clone());
+    let mut selected_lang = use_signal(|| state.read().current_language.clone());
     let mut is_open = use_signal(|| false);
     let mut search_query = use_signal(|| String::new());
     let mut is_goto_open = use_signal(|| false);
@@ -237,7 +241,7 @@ pub fn Dashboard(props: DashboardProps) -> Element {
     let mut is_paragraph_open = use_signal(|| false);
     let mut paragraph_search_query = use_signal(|| String::new());
     let mut paragraph_data = use_signal(|| Vec::<Paragraph>::new());
-    let t = Translations::get(&props.lang);
+    let t = Translations::get(&state.read().current_language);
 
     let mut choice_id_error = use_signal(|| false);
     let mut paragraphs_error = use_signal(|| false);
@@ -245,6 +249,65 @@ pub fn Dashboard(props: DashboardProps) -> Element {
     let mut new_goto_error = use_signal(|| false);
     let mut chapter_error = use_signal(|| false);
     let has_loaded = use_signal(|| false);
+
+    // 監聽語言變化
+    use_effect(move || {
+        let current_lang = state.read().current_language.clone();
+        selected_lang.set(current_lang.clone());
+        
+        // 重新載入章節數據
+        let chapters_url = format!("{}{}", BASE_API_URL, COLLECTIONS);
+        let client = reqwest::Client::new();
+        let mut available_chapters = available_chapters.clone();
+        
+        wasm_bindgen_futures::spawn_local(async move {
+            match client.get(&chapters_url)
+                .send()
+                .await {
+                Ok(response) => {
+                    match response.json::<SystemDataResponse>().await {
+                        Ok(data) => {
+                            if let Some(chapters_data) = data.items.iter().find(|item| item.key == "chapters") {
+                                if let Some(chapter_infos) = chapters_data.value_raw.as_array() {
+                                    let chapters: Vec<Chapter> = chapter_infos.iter()
+                                        .filter_map(|info| {
+                                            match serde_json::from_value::<ChapterInfo>(info.clone()) {
+                                                Ok(chapter_info) => {
+                                                    let title = chapter_info.titles.get(&current_lang)
+                                                        .cloned()
+                                                        .unwrap_or_else(|| {
+                                                            chapter_info.titles.get("en-US")
+                                                                .or_else(|| chapter_info.titles.get("zh-TW"))
+                                                                .or_else(|| chapter_info.titles.get("es-ES"))
+                                                                .or_else(|| chapter_info.titles.get("es-CL"))
+                                                                .or_else(|| chapter_info.titles.values().next())
+                                                                .cloned()
+                                                                .unwrap_or_else(|| chapter_info.id.clone())
+                                                        });
+                                                    
+                                                    Some(Chapter {
+                                                        id: chapter_info.id,
+                                                        title,
+                                                        titles: chapter_info.titles,
+                                                    })
+                                                },
+                                                Err(_) => None
+                                            }
+                                        })
+                                        .collect();
+                                    available_chapters.set(chapters);
+                                }
+                            }
+                        }
+                        Err(_) => {}
+                    }
+                }
+                Err(_) => {}
+            }
+        });
+        
+        (move || {})()
+    });
 
     use_effect(move || {
         let chapters_url = format!("{}{}", BASE_API_URL, COLLECTIONS);
@@ -275,8 +338,6 @@ pub fn Dashboard(props: DashboardProps) -> Element {
                                                     let title = chapter_info.titles.get(&current_lang)
                                                         .cloned()
                                                         .unwrap_or_else(|| {
-                                                            // 如果找不到當前語言的標題，嘗試使用其他語言的標題
-                                                            // 優先使用英文，然後是中文，最後是任何可用的語言
                                                             chapter_info.titles.get("en-US")
                                                                 .or_else(|| chapter_info.titles.get("zh-TW"))
                                                                 .or_else(|| chapter_info.titles.get("es-ES"))
@@ -286,7 +347,9 @@ pub fn Dashboard(props: DashboardProps) -> Element {
                                                                     chapter_info.titles.values().next()
                                                                 })
                                                                 .cloned()
-                                                                .unwrap_or_else(|| chapter_info.id.clone())
+                                                                .unwrap_or_else(|| {
+                                                                    chapter_info.id.clone()
+                                                                })
                                                         });
                                                     
                                                     Some(Chapter {
@@ -686,12 +749,65 @@ pub fn Dashboard(props: DashboardProps) -> Element {
                             selected_lang.set(lang.code.to_string());
                             is_open.set(false);
                             search_query.set(String::new());
+                            
+                            // 重新載入章節數據
+                            let chapters_url = format!("{}{}", BASE_API_URL, COLLECTIONS);
+                            let client = reqwest::Client::new();
+                            let current_lang = lang.code.to_string();
+                            let mut available_chapters = available_chapters.clone();
+                            
+                            wasm_bindgen_futures::spawn_local(async move {
+                                match client.get(&chapters_url)
+                                    .send()
+                                    .await {
+                                    Ok(response) => {
+                                        match response.json::<SystemDataResponse>().await {
+                                            Ok(data) => {
+                                                if let Some(chapters_data) = data.items.iter().find(|item| item.key == "chapters") {
+                                                    if let Some(chapter_infos) = chapters_data.value_raw.as_array() {
+                                                        let chapters: Vec<Chapter> = chapter_infos.iter()
+                                                            .filter_map(|info| {
+                                                                match serde_json::from_value::<ChapterInfo>(info.clone()) {
+                                                                    Ok(chapter_info) => {
+                                                                        let title = chapter_info.titles.get(&current_lang)
+                                                                            .cloned()
+                                                                            .unwrap_or_else(|| {
+                                                                                chapter_info.titles.get("en-US")
+                                                                                    .or_else(|| chapter_info.titles.get("zh-TW"))
+                                                                                    .or_else(|| chapter_info.titles.get("es-ES"))
+                                                                                    .or_else(|| chapter_info.titles.get("es-CL"))
+                                                                                    .or_else(|| chapter_info.titles.values().next())
+                                                                                    .cloned()
+                                                                                    .unwrap_or_else(|| chapter_info.id.clone())
+                                                                            });
+                                                                        
+                                                                        Some(Chapter {
+                                                                            id: chapter_info.id,
+                                                                            title,
+                                                                            titles: chapter_info.titles,
+                                                                        })
+                                                                    },
+                                                                    Err(_) => None
+                                                                }
+                                                            })
+                                                            .collect();
+                                                        available_chapters.set(chapters);
+                                                    }
+                                                }
+                                            }
+                                            Err(_) => {}
+                                        }
+                                    }
+                                    Err(_) => {}
+                                }
+                            });
                         },
                         display_fn: display_language
                     }
 
                     // 章節選擇器
                     Dropdown {
+                        key: format!("chapter-dropdown-{}", selected_lang.read()),
                         label: t.select_chapter.to_string(),
                         value: if selected_chapter.read().is_empty() {
                             t.select_chapter.to_string()
