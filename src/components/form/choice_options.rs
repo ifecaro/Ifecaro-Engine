@@ -26,20 +26,8 @@ pub struct ChoiceOptionsProps {
 pub fn ChoiceOptions(props: ChoiceOptionsProps) -> Element {
     let mut is_goto_open = use_signal(|| false);
     let mut goto_search_query = use_signal(|| String::new());
-    let mut extra_goto_open = use_signal(|| vec![false; props.extra_gotos.len()]);
-    let mut extra_goto_search = use_signal(|| vec![String::new(); props.extra_gotos.len()]);
-
-    // 當 extra_gotos 長度改變時，更新 extra_goto_open 和 extra_goto_search
-    let extra_gotos_len = props.extra_gotos.len();
-    use_effect(move || {
-        if extra_gotos_len > 0 {
-            extra_goto_open.set(vec![false; extra_gotos_len]);
-            extra_goto_search.set(vec![String::new(); extra_gotos_len]);
-        } else {
-            extra_goto_open.set(Vec::new());
-            extra_goto_search.set(Vec::new());
-        }
-    });
+    let mut extra_goto_open = use_signal(|| false);
+    let mut extra_goto_search = use_signal(|| String::new());
 
     let extra_captions = props.extra_captions.clone();
     let extra_gotos = props.extra_gotos.clone();
@@ -50,15 +38,6 @@ pub fn ChoiceOptions(props: ChoiceOptionsProps) -> Element {
         .find(|p| p.id == props.new_goto)
         .map(|p| p.preview.clone())
         .unwrap_or_else(|| props.new_goto.clone());
-
-    // 輸出 new_goto 的值
-    console::log_1(&format!("New Goto: {}", props.new_goto).into());
-    console::log_1(&format!("Available Paragraphs: {:?}", props.available_paragraphs).into());
-    
-    // 輸出每個段落的 id 和 preview
-    for paragraph in &props.available_paragraphs {
-        console::log_1(&format!("Paragraph ID: {}, Preview: {}", paragraph.id, paragraph.preview).into());
-    }
 
     rsx! {
         div { 
@@ -81,7 +60,7 @@ pub fn ChoiceOptions(props: ChoiceOptionsProps) -> Element {
                                 label: t.goto_target.clone(),
                                 value: target_preview,
                                 paragraphs: props.available_paragraphs.clone().into_iter()
-                                    .filter(|p| p.id != props.new_goto)
+                                    .filter(|p| p.id != props.available_paragraphs[0].id)
                                     .collect(),
                                 is_open: *is_goto_open.read(),
                                 search_query: goto_search_query.read().to_string(),
@@ -91,14 +70,13 @@ pub fn ChoiceOptions(props: ChoiceOptionsProps) -> Element {
                                 },
                                 on_search: move |query| goto_search_query.set(query),
                                 on_select: move |id: String| {
-                                    console::log_1(&format!("Selected Paragraph ID: {}", id).into());
                                     props.on_new_goto_change.call(id);
                                     is_goto_open.set(false);
                                     goto_search_query.set(String::new());
                                 }
                             }
                         }
-                        div { class: "flex-shrink-0 mt-8", // Matches the height of the label + some spacing
+                        div { class: "flex-shrink-0 mt-8",
                             button {
                                 class: "inline-flex items-center justify-center w-10 h-10 text-sm font-medium text-white bg-gray-700 rounded-lg hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-600 transition-colors duration-200 shadow-sm",
                                 onclick: move |_| props.on_add_choice.call(()),
@@ -131,25 +109,13 @@ pub fn ChoiceOptions(props: ChoiceOptionsProps) -> Element {
                     let goto_label = format!("{} {}", t.goto_target, i + 2);
                     let caption = caption.clone();
                     let goto = extra_gotos[i].clone();
+                    let i = i.clone();
                     
                     // 找到目標段落的預覽文字
                     let target_preview = props.available_paragraphs.iter()
                         .find(|p| p.id == goto)
                         .map(|p| p.preview.clone())
                         .unwrap_or_else(|| goto.clone());
-                    
-                    // 確保 i 在 extra_goto_open 和 extra_goto_search 的範圍內
-                    let is_open = if i < extra_goto_open.read().len() {
-                        extra_goto_open.read()[i]
-                    } else {
-                        false
-                    };
-                    
-                    let search_query = if i < extra_goto_search.read().len() {
-                        extra_goto_search.read()[i].clone()
-                    } else {
-                        String::new()
-                    };
                     
                     rsx! {
                         div { class: "space-y-4",
@@ -163,36 +129,24 @@ pub fn ChoiceOptions(props: ChoiceOptionsProps) -> Element {
                                 on_blur: move |_| {}
                             }
 
-                            ParagraphList {
-                                label: goto_label.clone(),
-                                value: target_preview,
-                                paragraphs: props.available_paragraphs.clone().into_iter()
-                                    .filter(|p| p.id != goto)
-                                    .collect(),
-                                is_open: is_open,
-                                search_query: search_query,
-                                on_toggle: move |_| {
-                                    if i < extra_goto_open.read().len() {
-                                        let mut open = extra_goto_open.write();
-                                        open[i] = !open[i];
-                                    }
-                                },
-                                on_search: move |query| {
-                                    if i < extra_goto_search.read().len() {
-                                        let mut search = extra_goto_search.write();
-                                        search[i] = query;
-                                    }
-                                },
-                                on_select: move |id: String| {
-                                    console::log_1(&format!("Selected Extra Paragraph ID: {}", id).into());
-                                    props.on_extra_goto_change.call((i, id));
-                                    if i < extra_goto_open.read().len() {
-                                        let mut open = extra_goto_open.write();
-                                        open[i] = false;
-                                    }
-                                    if i < extra_goto_search.read().len() {
-                                        let mut search = extra_goto_search.write();
-                                        search[i] = String::new();
+                            div { class: "space-y-2",
+                                ParagraphList {
+                                    label: goto_label.clone(),
+                                    value: target_preview,
+                                    paragraphs: props.available_paragraphs.clone().into_iter()
+                                        .filter(|p| p.id != props.available_paragraphs[0].id)
+                                        .collect(),
+                                    is_open: *extra_goto_open.read(),
+                                    search_query: extra_goto_search.read().to_string(),
+                                    on_toggle: move |_| {
+                                        let current = *extra_goto_open.read();
+                                        extra_goto_open.set(!current);
+                                    },
+                                    on_search: move |query| extra_goto_search.set(query),
+                                    on_select: move |id: String| {
+                                        props.on_extra_goto_change.call((i, id));
+                                        extra_goto_open.set(false);
+                                        extra_goto_search.set(String::new());
                                     }
                                 }
                             }
