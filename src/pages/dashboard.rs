@@ -222,6 +222,7 @@ fn display_language(lang: &&Language) -> String {
     lang.name.to_string()
 }
 
+#[allow(non_snake_case)]
 pub fn Dashboard(_props: DashboardProps) -> Element {
     let language_state = use_context::<Signal<LanguageState>>();
     let current_lang = language_state.read().current_language.clone();

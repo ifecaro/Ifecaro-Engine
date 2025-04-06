@@ -3,7 +3,7 @@ use crate::enums::translations::Translations;
 use dioxus::{
     dioxus_core,
     hooks::{use_context, use_future, use_memo, use_signal},
-    prelude::{component, dioxus_elements, fc_to_builder, rsx, Element, IntoDynNode, GlobalSignal, Readable, Props},
+    prelude::{dioxus_elements, fc_to_builder, rsx, Element, IntoDynNode, GlobalSignal, Readable, Props},
     signals::{Signal, Writable},
 };
 // use dioxus_markdown::Markdown;
@@ -122,7 +122,7 @@ async fn record_choice(choice: &Choice, text: &mut Text, paragraph_id: &str) -> 
 }
 
 // 修改 save_choice_to_indexeddb 函數
-async fn save_choice_to_indexeddb(paragraph_id: &str, chapter_id: &str, choice: &Choice) -> Result<(), JsValue> {
+async fn save_choice_to_indexeddb(paragraph_id: &str, _chapter_id: &str, choice: &Choice) -> Result<(), JsValue> {
     web_sys::console::log_1(&JsValue::from_str(&format!("開始保存選擇: {:?}", choice)));
     
     // 如果 action type 為空字串，不記錄選擇
@@ -559,6 +559,7 @@ async fn read_indexeddb_data() -> Result<(), JsValue> {
     Ok(())
 }
 
+#[allow(non_snake_case)]
 pub fn Story(_props: StoryProps) -> Element {
     let data = use_signal(|| Data {
         totalItems: 0,
