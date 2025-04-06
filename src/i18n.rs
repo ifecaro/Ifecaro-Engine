@@ -11,11 +11,13 @@ pub fn create_i18n_store() -> I18nConfig {
 }
 
 // 輔助函數：獲取當前語言的翻譯
+#[allow(dead_code)]
 pub fn get_translations(lang: &str) -> Translations {
     Translations::get(lang)
 }
 
 // 獲取所有可用的語言列表
+#[allow(dead_code)]
 pub fn get_available_languages() -> Vec<&'static str> {
     vec!["en-US", "zh-TW", "es-ES", "es-CL"]
 } 

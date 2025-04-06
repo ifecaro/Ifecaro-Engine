@@ -6,6 +6,7 @@ pub struct Paragraph {
     pub preview: String,
 }
 
+#[allow(dead_code)]
 fn display_paragraph(paragraph: &Paragraph) -> String {
     paragraph.preview.clone()
 }

@@ -7,6 +7,7 @@ pub struct Language {
     name: &'static str,
 }
 
+#[allow(dead_code)]
 pub const AVAILABLE_LANGUAGES: &[Language] = &[
     Language { code: "zh-TW", name: "繁體中文" },
     Language { code: "zh-CN", name: "簡體中文" },
@@ -97,6 +98,7 @@ pub const AVAILABLE_LANGUAGES: &[Language] = &[
     Language { code: "gom", name: "कोंकणी" },
 ];
 
+#[allow(dead_code)]
 fn display_language(lang: &&Language) -> String {
     lang.name.to_string()
 }

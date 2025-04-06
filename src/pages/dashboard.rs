@@ -20,7 +20,7 @@ thread_local! {
 
 #[derive(Props, Clone, PartialEq)]
 pub struct DashboardProps {
-    lang: String,
+    pub lang: String,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -222,8 +222,7 @@ fn display_language(lang: &&Language) -> String {
     lang.name.to_string()
 }
 
-#[component]
-pub fn Dashboard(props: DashboardProps) -> Element {
+pub fn Dashboard(_props: DashboardProps) -> Element {
     let language_state = use_context::<Signal<LanguageState>>();
     let current_lang = language_state.read().current_language.clone();
     
@@ -252,9 +251,9 @@ pub fn Dashboard(props: DashboardProps) -> Element {
     let toast_visible = use_signal(|| false);
     let mut is_open = use_signal(|| false);
     let mut search_query = use_signal(|| String::new());
-    let is_goto_open = use_signal(|| false);
-    let goto_search_query = use_signal(|| String::new());
-    let available_choices = use_signal(|| Vec::<ChoiceOption>::new());
+    let _is_goto_open = use_signal(|| false);
+    let _goto_search_query = use_signal(|| String::new());
+    let _available_choices = use_signal(|| Vec::<ChoiceOption>::new());
     let mut available_paragraphs = use_signal(|| Vec::<crate::components::paragraph_list::Paragraph>::new());
     let available_chapters = use_signal(|| Vec::<Chapter>::new());
     let mut selected_chapter = use_signal(|| String::new());
@@ -361,7 +360,7 @@ pub fn Dashboard(props: DashboardProps) -> Element {
                             available_paragraphs.set(paragraphs);
                             has_loaded.set(true);
                         }
-                        Err(e) => {}
+                        Err(_e) => {}
                     }
                 }
                 Err(_) => {}
@@ -381,7 +380,7 @@ pub fn Dashboard(props: DashboardProps) -> Element {
             .collect::<Vec<_>>()
     });
 
-    let dropdown_class = use_memo(move || {
+    let _dropdown_class = use_memo(move || {
         if *is_open.read() {
             "translate-y-0 opacity-100"
         } else {
@@ -506,7 +505,7 @@ pub fn Dashboard(props: DashboardProps) -> Element {
             }
         }
 
-        let text = Text {
+        let _text = Text {
             lang: current_lang.clone(),
             paragraphs: paragraphs.read().clone(),
             choices: all_choices.clone(),

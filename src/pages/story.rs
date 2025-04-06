@@ -11,20 +11,16 @@ use serde::Deserialize;
 use crate::contexts::language_context::LanguageState;
 use crate::components::story_content::{StoryContent, Choice};
 use wasm_bindgen::prelude::*;
-use web_sys::{
-    window,
-    IdbDatabase,
-    IdbTransactionMode,
-};
+use web_sys::IdbDatabase;
 use wasm_bindgen_futures::JsFuture;
+use js_sys::Promise;
+use wasm_bindgen::closure::Closure;
 
 #[allow(non_snake_case)]
 #[derive(Deserialize, Clone, Debug)]
 struct Data {
-    // page: i32,
-    // perPage: i32,
+    #[allow(dead_code)]
     totalItems: i32,
-    // totalPages: i32,
     items: Vec<Paragraph>,
 }
 
@@ -32,6 +28,7 @@ struct Data {
 struct Paragraph {
     id: String,
     index: usize,
+    #[allow(dead_code)]
     #[serde(default)]
     chapter_id: String,
     texts: Vec<Text>,
@@ -60,8 +57,8 @@ pub struct StoryProps {
     pub lang: String,
 }
 
+#[allow(dead_code)]
 async fn sync_action_to_db(action: &Action, paragraph_id: &str) -> Result<(), Box<dyn std::error::Error>> {
-    let client = reqwest::Client::new();
     let url = format!("{}/api{}", BASE_API_URL, ACTIONS);
     
     let action_data = serde_json::json!({
@@ -72,7 +69,8 @@ async fn sync_action_to_db(action: &Action, paragraph_id: &str) -> Result<(), Bo
         "to": action.to
     });
 
-    client.post(&url)
+    reqwest::Client::new()
+        .post(&url)
         .json(&action_data)
         .send()
         .await?;
@@ -80,6 +78,7 @@ async fn sync_action_to_db(action: &Action, paragraph_id: &str) -> Result<(), Bo
     Ok(())
 }
 
+#[allow(dead_code)]
 async fn save_setting(key: &str, value: &str, text: &mut Text, paragraph_id: &str) -> Result<(), Box<dyn std::error::Error>> {
     let action = Action {
         type_: "setting".to_string(),
@@ -104,6 +103,7 @@ async fn save_setting(key: &str, value: &str, text: &mut Text, paragraph_id: &st
     Ok(())
 }
 
+#[allow(dead_code)]
 async fn record_choice(choice: &Choice, text: &mut Text, paragraph_id: &str) -> Result<(), Box<dyn std::error::Error>> {
     let action = Action {
         type_: "choice".to_string(),
@@ -122,72 +122,444 @@ async fn record_choice(choice: &Choice, text: &mut Text, paragraph_id: &str) -> 
 }
 
 // 修改 save_choice_to_indexeddb 函數
-async fn save_choice_to_indexeddb(paragraph_id: &str, choice: &Choice) -> Result<(), JsValue> {
-    let window = window().unwrap();
-    let indexed_db = window.indexed_db()?.expect("Failed to get IndexedDB");
+async fn save_choice_to_indexeddb(paragraph_id: &str, chapter_id: &str, choice: &Choice) -> Result<(), JsValue> {
+    web_sys::console::log_1(&JsValue::from_str(&format!("開始保存選擇: {:?}", choice)));
     
-    // 修正 open 方法的使用
-    let db_request = indexed_db.open("story_choices")?;
+    // 如果 action type 為空字串，不記錄選擇
+    if choice.action.type_.is_empty() {
+        web_sys::console::log_1(&JsValue::from_str("action type 為空字串，不記錄選擇"));
+        return Ok(());
+    }
     
-    // 設定資料庫升級事件
-    let db_request_clone = db_request.clone();
-    let onupgradeneeded = Closure::wrap(Box::new(move |_event: web_sys::Event| {
-        let db = db_request_clone.result().unwrap();
-        let db = db.dyn_into::<IdbDatabase>().unwrap();
-        
-        // 檢查 object store 是否存在
-        let store_names = js_sys::Reflect::get(&db, &JsValue::from_str("objectStoreNames")).unwrap();
-        let store_names = store_names.dyn_into::<js_sys::Array>().unwrap();
-        
-        if !store_names.includes(&JsValue::from_str("choices"), 0) {
-            // 創建 object store，移除第二個參數
-            let store = db.create_object_store("choices")?;
-            // 使用正確的方法名稱
-            store.create_index_with_str("paragraph_id", "paragraph_id")?;
-        }
-        Ok(())
-    }) as Box<dyn FnMut(_) -> Result<(), JsValue>>);
+    let window = web_sys::window().ok_or_else(|| JsValue::from_str("No window found"))?;
+    let indexed_db = window.indexed_db()
+        .map_err(|e| {
+            web_sys::console::error_1(&JsValue::from_str(&format!("Failed to get indexed_db: {:?}", e)));
+            JsValue::from_str(&format!("Failed to get indexed_db: {:?}", e))
+        })?
+        .ok_or_else(|| {
+            web_sys::console::error_1(&JsValue::from_str("No indexed_db found"));
+            JsValue::from_str("No indexed_db found")
+        })?;
     
-    db_request.set_onupgradeneeded(Some(onupgradeneeded.as_ref().unchecked_ref()));
-    onupgradeneeded.forget();
+    web_sys::console::log_1(&JsValue::from_str("成功獲取 indexed_db"));
     
-    // 等待資料庫開啟，添加明確的類型註解
-    let db = JsFuture::from(db_request.dyn_into::<js_sys::Promise>()?).await?;
-    let db = db.dyn_into::<IdbDatabase>()?;
+    let db_request = indexed_db.open_with_u32("story_choices", 1)
+        .map_err(|e| {
+            web_sys::console::error_1(&JsValue::from_str(&format!("Failed to open database: {:?}", e)));
+            JsValue::from_str(&format!("Failed to open database: {:?}", e))
+        })?;
     
-    let transaction = db.transaction_with_str_and_mode("choices", IdbTransactionMode::Readwrite)?;
-    let store = transaction.object_store("choices")?;
-    
-    let choice_data = serde_json::json!({
-        "paragraph_id": paragraph_id,
-        "type": choice.action.type_,
-        "key": choice.action.key,
-        "value": choice.action.value,
-        "to": choice.action.to
-    });
-    
-    // 將 serde_json::Value 轉換為 JsValue
-    let choice_data_js = serde_wasm_bindgen::to_value(&choice_data)?;
-    
-    // 使用段落 ID 作為主鍵，確保每個段落只能有一個選擇
-    store.put_with_key(&choice_data_js, &JsValue::from_str(paragraph_id))?;
-    
-    // 如果是設定類型的動作，也儲存到 localStorage
-    if choice.action.type_ == "setting" {
-        if let Some(storage) = window.local_storage().ok().flatten() {
-            if let Some(key) = &choice.action.key {
-                if let Some(value) = &choice.action.value {
-                    let _ = storage.set_item(key, &value.to_string());
+    // 等待數據庫打開或升級完成
+    let db_promise = js_sys::Promise::new(&mut |resolve, reject| {
+        // 處理升級事件
+        let db_request_upgrade = db_request.clone();
+        let onupgradeneeded_callback = Closure::wrap(Box::new(move |_event: web_sys::Event| {
+            web_sys::console::log_1(&JsValue::from_str("數據庫升級事件觸發"));
+            match db_request_upgrade.result() {
+                Ok(db_any) => {
+                    match db_any.dyn_into::<IdbDatabase>() {
+                        Ok(db) => {
+                            match db.create_object_store("choices") {
+                                Ok(_) => {
+                                    web_sys::console::log_1(&JsValue::from_str("成功創建 choices 存儲對象"));
+                                },
+                                Err(e) => {
+                                    web_sys::console::error_1(&JsValue::from_str(&format!("創建存儲對象失敗: {:?}", e)));
+                                }
+                            }
+                        },
+                        Err(e) => {
+                            web_sys::console::error_1(&JsValue::from_str(&format!("轉換數據庫對象失敗: {:?}", e)));
+                        }
+                    }
+                },
+                Err(e) => {
+                    web_sys::console::error_1(&JsValue::from_str(&format!("獲取數據庫結果失敗: {:?}", e)));
                 }
             }
+        }) as Box<dyn FnMut(web_sys::Event)>);
+        
+        // 處理成功事件
+        let db_request_success = db_request.clone();
+        let resolve_success = resolve.clone();
+        let reject_success = reject.clone();
+        let onsuccess_callback = Closure::wrap(Box::new(move |_event: web_sys::Event| {
+            match db_request_success.result() {
+                Ok(db_any) => {
+                    match db_any.dyn_into::<IdbDatabase>() {
+                        Ok(db) => {
+                            web_sys::console::log_1(&JsValue::from_str("數據庫打開成功"));
+                            resolve_success.call1(&JsValue::NULL, &db).unwrap();
+                        },
+                        Err(e) => {
+                            web_sys::console::error_1(&JsValue::from_str(&format!("轉換數據庫對象失敗: {:?}", e)));
+                            reject_success.call1(&JsValue::NULL, &e).unwrap();
+                        }
+                    }
+                },
+                Err(e) => {
+                    web_sys::console::error_1(&JsValue::from_str(&format!("獲取數據庫結果失敗: {:?}", e)));
+                    reject_success.call1(&JsValue::NULL, &e).unwrap();
+                }
+            }
+        }) as Box<dyn FnMut(web_sys::Event)>);
+        
+        // 處理錯誤事件
+        let reject_error = reject.clone();
+        let onerror_callback = Closure::wrap(Box::new(move |event: web_sys::Event| {
+            web_sys::console::error_1(&JsValue::from_str("數據庫打開失敗"));
+            reject_error.call1(&JsValue::NULL, &event).unwrap();
+        }) as Box<dyn FnMut(web_sys::Event)>);
+        
+        db_request.set_onupgradeneeded(Some(onupgradeneeded_callback.as_ref().unchecked_ref()));
+        db_request.set_onsuccess(Some(onsuccess_callback.as_ref().unchecked_ref()));
+        db_request.set_onerror(Some(onerror_callback.as_ref().unchecked_ref()));
+        
+        onupgradeneeded_callback.forget();
+        onsuccess_callback.forget();
+        onerror_callback.forget();
+    });
+    
+    let db: IdbDatabase = JsFuture::from(db_promise)
+        .await
+        .map_err(|e| {
+            web_sys::console::error_1(&JsValue::from_str(&format!("等待數據庫打開失敗: {:?}", e)));
+            JsValue::from_str(&format!("等待數據庫打開失敗: {:?}", e))
+        })?
+        .dyn_into()
+        .map_err(|e| {
+            web_sys::console::error_1(&JsValue::from_str(&format!("轉換為 IdbDatabase 失敗: {:?}", e)));
+            JsValue::from_str(&format!("轉換為 IdbDatabase 失敗: {:?}", e))
+        })?;
+    
+    web_sys::console::log_1(&JsValue::from_str("成功獲取數據庫"));
+    
+    let transaction = db.transaction_with_str_sequence_and_mode(
+        &js_sys::Array::of1(&JsValue::from_str("choices")),
+        web_sys::IdbTransactionMode::Readwrite,
+    ).map_err(|e| {
+        web_sys::console::error_1(&JsValue::from_str(&format!("創建事務失敗: {:?}", e)));
+        JsValue::from_str(&format!("創建事務失敗: {:?}", e))
+    })?;
+    
+    let store = transaction.object_store("choices")
+        .map_err(|e| {
+            web_sys::console::error_1(&JsValue::from_str(&format!("獲取存儲對象失敗: {:?}", e)));
+            JsValue::from_str(&format!("獲取存儲對象失敗: {:?}", e))
+        })?;
+    
+    web_sys::console::log_1(&JsValue::from_str("成功獲取存儲對象"));
+    
+    // 根據 action type 處理不同的存儲邏輯
+    match choice.action.type_.as_str() {
+        "setting" => {
+            web_sys::console::log_1(&JsValue::from_str("處理 setting 類型"));
+            if let Some(key) = &choice.action.key {
+                if let Some(value) = &choice.action.value {
+                    let data = serde_json::json!({
+                        "type": "setting",
+                        "key": key,
+                        "value": value,
+                        "paragraph_id": paragraph_id,
+                        "timestamp": js_sys::Date::new_0().get_time()
+                    });
+                    let data_str = serde_json::to_string(&data)
+                        .map_err(|e| {
+                            web_sys::console::error_1(&JsValue::from_str(&format!("序列化數據失敗: {:?}", e)));
+                            JsValue::from_str(&format!("序列化數據失敗: {:?}", e))
+                        })?;
+                    web_sys::console::log_1(&JsValue::from_str(&format!("保存 setting 數據: {}", data_str)));
+                    let request = store.put_with_key(&JsValue::from_str(&data_str), &JsValue::from_str(&format!("setting_{}", key)))
+                        .map_err(|e| {
+                            web_sys::console::error_1(&JsValue::from_str(&format!("保存數據失敗: {:?}", e)));
+                            JsValue::from_str(&format!("保存數據失敗: {:?}", e))
+                        })?;
+                    
+                    // 等待請求完成
+                    JsFuture::from(Promise::resolve(&request))
+                        .await
+                        .map_err(|e| {
+                            web_sys::console::error_1(&JsValue::from_str(&format!("等待請求完成失敗: {:?}", e)));
+                            JsValue::from_str(&format!("等待請求完成失敗: {:?}", e))
+                        })?;
+                }
+            }
+        },
+        _ => {
+            web_sys::console::log_1(&JsValue::from_str("處理選擇類型"));
+            let choices_key = "user_choices";
+            
+            // 創建一個 Promise 來等待請求完成
+            let request_promise = js_sys::Promise::new(&mut |resolve, reject| {
+                let request_result = store.get(&JsValue::from_str(choices_key));
+                match request_result {
+                    Ok(request) => {
+                        let resolve_success = resolve.clone();
+                        let reject_success = reject.clone();
+                        let request_success = request.clone();
+                        
+                        let onsuccess = Closure::wrap(Box::new(move |_event: web_sys::Event| {
+                            match request_success.result() {
+                                Ok(result) => {
+                                    web_sys::console::log_1(&JsValue::from_str(&format!("獲取現有選擇成功: {:?}", result)));
+                                    resolve_success.call1(&JsValue::NULL, &result).unwrap();
+                                },
+                                Err(e) => {
+                                    web_sys::console::error_1(&JsValue::from_str(&format!("獲取現有選擇結果失敗: {:?}", e)));
+                                    reject_success.call1(&JsValue::NULL, &JsValue::from_str(&format!("獲取現有選擇結果失敗: {:?}", e))).unwrap();
+                                }
+                            }
+                        }) as Box<dyn FnMut(web_sys::Event)>);
+                        
+                        let reject_error = reject.clone();
+                        let onerror = Closure::wrap(Box::new(move |_event: web_sys::Event| {
+                            web_sys::console::error_1(&JsValue::from_str("獲取現有選擇請求失敗"));
+                            reject_error.call1(&JsValue::NULL, &JsValue::from_str("獲取現有選擇請求失敗")).unwrap();
+                        }) as Box<dyn FnMut(web_sys::Event)>);
+                        
+                        request.set_onsuccess(Some(onsuccess.as_ref().unchecked_ref()));
+                        request.set_onerror(Some(onerror.as_ref().unchecked_ref()));
+                        
+                        onsuccess.forget();
+                        onerror.forget();
+                    },
+                    Err(e) => {
+                        web_sys::console::error_1(&JsValue::from_str(&format!("獲取現有選擇失敗: {:?}", e)));
+                        reject.call1(&JsValue::NULL, &JsValue::from_str(&format!("獲取現有選擇失敗: {:?}", e))).unwrap();
+                    }
+                }
+            });
+            
+            // 等待請求完成
+            let existing_choices = JsFuture::from(request_promise)
+                .await
+                .map_err(|e| {
+                    web_sys::console::error_1(&JsValue::from_str(&format!("等待現有選擇失敗: {:?}", e)));
+                    JsValue::from_str(&format!("等待現有選擇失敗: {:?}", e))
+                })?;
+            
+            web_sys::console::log_1(&JsValue::from_str(&format!("現有選擇: {:?}", existing_choices)));
+            
+            let mut choices: Vec<String> = if !existing_choices.is_undefined() && !existing_choices.is_null() {
+                let existing_str = existing_choices.as_string()
+                    .ok_or_else(|| {
+                        web_sys::console::error_1(&JsValue::from_str("轉換現有選擇為字符串失敗"));
+                        JsValue::from_str("轉換現有選擇為字符串失敗")
+                    })?;
+                web_sys::console::log_1(&JsValue::from_str(&format!("現有選擇字符串: {}", existing_str)));
+                serde_json::from_str(&existing_str)
+                    .map_err(|e| {
+                        web_sys::console::error_1(&JsValue::from_str(&format!("解析現有選擇失敗: {:?}", e)));
+                        JsValue::from_str(&format!("解析現有選擇失敗: {:?}", e))
+                    })?
+            } else {
+                web_sys::console::log_1(&JsValue::from_str("沒有現有選擇，創建新數組"));
+                Vec::new()
+            };
+            
+            choices.push(choice.action.to.clone());
+            web_sys::console::log_1(&JsValue::from_str(&format!("更新後的選擇: {:?}", choices)));
+            
+            let data = serde_json::to_string(&choices)
+                .map_err(|e| {
+                    web_sys::console::error_1(&JsValue::from_str(&format!("序列化選擇失敗: {:?}", e)));
+                    JsValue::from_str(&format!("序列化選擇失敗: {:?}", e))
+                })?;
+            web_sys::console::log_1(&JsValue::from_str(&format!("保存選擇數據: {}", data)));
+            let request = store.put_with_key(&JsValue::from_str(&data), &JsValue::from_str(choices_key))
+                .map_err(|e| {
+                    web_sys::console::error_1(&JsValue::from_str(&format!("保存選擇失敗: {:?}", e)));
+                    JsValue::from_str(&format!("保存選擇失敗: {:?}", e))
+                })?;
+            
+            // 等待請求完成
+            JsFuture::from(Promise::resolve(&request))
+                .await
+                .map_err(|e| {
+                    web_sys::console::error_1(&JsValue::from_str(&format!("等待請求完成失敗: {:?}", e)));
+                    JsValue::from_str(&format!("等待請求完成失敗: {:?}", e))
+                })?;
         }
     }
+    
+    // 等待事務完成
+    let transaction_complete = js_sys::Promise::new(&mut |resolve, _reject| {
+        let transaction_clone = transaction.clone();
+        let resolve_clone = resolve.clone();
+        let callback = Closure::wrap(Box::new(move |_event: web_sys::Event| {
+            resolve_clone.call1(&JsValue::NULL, &JsValue::NULL).unwrap();
+        }) as Box<dyn FnMut(web_sys::Event)>);
+        transaction_clone.set_oncomplete(Some(callback.as_ref().unchecked_ref()));
+        callback.forget();
+    });
+    
+    JsFuture::from(transaction_complete)
+        .await
+        .map_err(|e| {
+            web_sys::console::error_1(&JsValue::from_str(&format!("等待事務完成失敗: {:?}", e)));
+            JsValue::from_str(&format!("等待事務完成失敗: {:?}", e))
+        })?;
+    
+    web_sys::console::log_1(&JsValue::from_str("成功保存選擇"));
+    Ok(())
+}
+
+async fn read_indexeddb_data() -> Result<(), JsValue> {
+    let window = web_sys::window().ok_or_else(|| JsValue::from_str("No window found"))?;
+    let indexed_db = window.indexed_db()
+        .map_err(|e| {
+            web_sys::console::error_1(&JsValue::from_str(&format!("Failed to get indexed_db: {:?}", e)));
+            JsValue::from_str(&format!("Failed to get indexed_db: {:?}", e))
+        })?
+        .ok_or_else(|| {
+            web_sys::console::error_1(&JsValue::from_str("No indexed_db found"));
+            JsValue::from_str("No indexed_db found")
+        })?;
+    
+    let db_request = indexed_db.open_with_u32("story_choices", 1)
+        .map_err(|e| {
+            web_sys::console::error_1(&JsValue::from_str(&format!("Failed to open database: {:?}", e)));
+            JsValue::from_str(&format!("Failed to open database: {:?}", e))
+        })?;
+    
+    // 等待數據庫打開或升級完成
+    let db_promise = js_sys::Promise::new(&mut |resolve, reject| {
+        // 處理升級事件
+        let db_request_upgrade = db_request.clone();
+        let onupgradeneeded_callback = Closure::wrap(Box::new(move |_event: web_sys::Event| {
+            web_sys::console::log_1(&JsValue::from_str("數據庫升級事件觸發"));
+            match db_request_upgrade.result() {
+                Ok(db_any) => {
+                    match db_any.dyn_into::<IdbDatabase>() {
+                        Ok(db) => {
+                            match db.create_object_store("choices") {
+                                Ok(_) => {
+                                    web_sys::console::log_1(&JsValue::from_str("成功創建 choices 存儲對象"));
+                                },
+                                Err(e) => {
+                                    web_sys::console::error_1(&JsValue::from_str(&format!("創建存儲對象失敗: {:?}", e)));
+                                }
+                            }
+                        },
+                        Err(e) => {
+                            web_sys::console::error_1(&JsValue::from_str(&format!("轉換數據庫對象失敗: {:?}", e)));
+                        }
+                    }
+                },
+                Err(e) => {
+                    web_sys::console::error_1(&JsValue::from_str(&format!("獲取數據庫結果失敗: {:?}", e)));
+                }
+            }
+        }) as Box<dyn FnMut(web_sys::Event)>);
+        
+        // 處理成功事件
+        let db_request_success = db_request.clone();
+        let resolve_success = resolve.clone();
+        let reject_success = reject.clone();
+        let onsuccess_callback = Closure::wrap(Box::new(move |_event: web_sys::Event| {
+            match db_request_success.result() {
+                Ok(db_any) => {
+                    match db_any.dyn_into::<IdbDatabase>() {
+                        Ok(db) => {
+                            web_sys::console::log_1(&JsValue::from_str("數據庫打開成功"));
+                            resolve_success.call1(&JsValue::NULL, &db).unwrap();
+                        },
+                        Err(e) => {
+                            web_sys::console::error_1(&JsValue::from_str(&format!("轉換數據庫對象失敗: {:?}", e)));
+                            reject_success.call1(&JsValue::NULL, &e).unwrap();
+                        }
+                    }
+                },
+                Err(e) => {
+                    web_sys::console::error_1(&JsValue::from_str(&format!("獲取數據庫結果失敗: {:?}", e)));
+                    reject_success.call1(&JsValue::NULL, &e).unwrap();
+                }
+            }
+        }) as Box<dyn FnMut(web_sys::Event)>);
+        
+        // 處理錯誤事件
+        let reject_error = reject.clone();
+        let onerror_callback = Closure::wrap(Box::new(move |event: web_sys::Event| {
+            web_sys::console::error_1(&JsValue::from_str("數據庫打開失敗"));
+            reject_error.call1(&JsValue::NULL, &event).unwrap();
+        }) as Box<dyn FnMut(web_sys::Event)>);
+        
+        db_request.set_onupgradeneeded(Some(onupgradeneeded_callback.as_ref().unchecked_ref()));
+        db_request.set_onsuccess(Some(onsuccess_callback.as_ref().unchecked_ref()));
+        db_request.set_onerror(Some(onerror_callback.as_ref().unchecked_ref()));
+        
+        onupgradeneeded_callback.forget();
+        onsuccess_callback.forget();
+        onerror_callback.forget();
+    });
+    
+    let db: IdbDatabase = JsFuture::from(db_promise)
+        .await
+        .map_err(|e| {
+            web_sys::console::error_1(&JsValue::from_str(&format!("等待數據庫打開失敗: {:?}", e)));
+            JsValue::from_str(&format!("等待數據庫打開失敗: {:?}", e))
+        })?
+        .dyn_into()
+        .map_err(|e| {
+            web_sys::console::error_1(&JsValue::from_str(&format!("轉換為 IdbDatabase 失敗: {:?}", e)));
+            JsValue::from_str(&format!("轉換為 IdbDatabase 失敗: {:?}", e))
+        })?;
+    
+    web_sys::console::log_1(&JsValue::from_str("成功獲取數據庫"));
+    
+    let transaction = db.transaction_with_str_sequence_and_mode(
+        &js_sys::Array::of1(&JsValue::from_str("choices")),
+        web_sys::IdbTransactionMode::Readonly,
+    ).map_err(|e| {
+        web_sys::console::error_1(&JsValue::from_str(&format!("創建事務失敗: {:?}", e)));
+        JsValue::from_str(&format!("創建事務失敗: {:?}", e))
+    })?;
+    
+    let store = transaction.object_store("choices")
+        .map_err(|e| {
+            web_sys::console::error_1(&JsValue::from_str(&format!("獲取存儲對象失敗: {:?}", e)));
+            JsValue::from_str(&format!("獲取存儲對象失敗: {:?}", e))
+        })?;
+    
+    // 獲取所有數據
+    let request = store.get_all()
+        .map_err(|e| {
+            web_sys::console::error_1(&JsValue::from_str(&format!("獲取所有數據失敗: {:?}", e)));
+            JsValue::from_str(&format!("獲取所有數據失敗: {:?}", e))
+        })?;
+    
+    let result = JsFuture::from(Promise::resolve(&request))
+        .await
+        .map_err(|e| {
+            web_sys::console::error_1(&JsValue::from_str(&format!("獲取結果失敗: {:?}", e)));
+            JsValue::from_str(&format!("獲取結果失敗: {:?}", e))
+        })?;
+    
+    web_sys::console::log_1(&JsValue::from_str("IndexedDB 中的所有數據:"));
+    web_sys::console::log_1(&result);
+    
+    // 特別獲取 user_choices
+    let choices_request = store.get(&JsValue::from_str("user_choices"))
+        .map_err(|e| {
+            web_sys::console::error_1(&JsValue::from_str(&format!("獲取 user_choices 失敗: {:?}", e)));
+            JsValue::from_str(&format!("獲取 user_choices 失敗: {:?}", e))
+        })?;
+    
+    let choices_result = JsFuture::from(Promise::resolve(&choices_request))
+        .await
+        .map_err(|e| {
+            web_sys::console::error_1(&JsValue::from_str(&format!("獲取 user_choices 結果失敗: {:?}", e)));
+            JsValue::from_str(&format!("獲取 user_choices 結果失敗: {:?}", e))
+        })?;
+    
+    web_sys::console::log_1(&JsValue::from_str("user_choices 的內容:"));
+    web_sys::console::log_1(&choices_result);
     
     Ok(())
 }
 
-#[component]
-pub fn Story(props: StoryProps) -> Element {
+pub fn Story(_props: StoryProps) -> Element {
     let data = use_signal(|| Data {
         totalItems: 0,
         items: vec![],
@@ -277,26 +649,50 @@ pub fn Story(props: StoryProps) -> Element {
         });
     }
 
+    // 在組件加載時讀取 IndexedDB 數據
+    {
+        use_future(move || async move {
+            match read_indexeddb_data().await {
+                Ok(_) => web_sys::console::log_1(&JsValue::from_str("成功讀取 IndexedDB 數據")),
+                Err(e) => web_sys::console::error_1(&JsValue::from_str(&format!("讀取 IndexedDB 數據失敗: {:?}", e)))
+            }
+        });
+    }
+
     let text_found_clone = text_found.clone();
     let paragraph_clone = paragraph.clone();
 
     let on_choice_click = move |goto: String| {
+        web_sys::console::log_1(&JsValue::from_str(&format!("選擇點擊: {}", goto)));
+        
         if let Some(item) = data.read().items.iter().find(|item| item.id == goto) {
+            web_sys::console::log_1(&JsValue::from_str(&format!("找到段落: {:?}", item)));
             let paragraph_id = item.id.clone();
+            let chapter_id = item.chapter_id.clone();
             let choice = text_found.read().as_ref().and_then(|text| {
                 text.choices.iter().find(|c| c.action.to == goto).cloned()
             });
             
             if let Some(choice) = choice {
+                web_sys::console::log_1(&JsValue::from_str(&format!("找到選擇: {:?}", choice)));
                 let paragraph_id_clone = paragraph_id.clone();
+                let chapter_id_clone = chapter_id.clone();
                 let choice_clone = choice.clone();
                 
                 wasm_bindgen_futures::spawn_local(async move {
-                    let _ = save_choice_to_indexeddb(&paragraph_id_clone, &choice_clone).await;
+                    web_sys::console::log_1(&JsValue::from_str("開始保存選擇到 IndexedDB"));
+                    match save_choice_to_indexeddb(&paragraph_id_clone, &chapter_id_clone, &choice_clone).await {
+                        Ok(_) => web_sys::console::log_1(&JsValue::from_str("成功保存選擇到 IndexedDB")),
+                        Err(e) => web_sys::console::error_1(&JsValue::from_str(&format!("保存選擇到 IndexedDB 失敗: {:?}", e)))
+                    }
                 });
+            } else {
+                web_sys::console::error_1(&JsValue::from_str(&format!("未找到選擇: {}", goto)));
             }
             
             selected_paragraph_index.set(item.index);
+        } else {
+            web_sys::console::error_1(&JsValue::from_str(&format!("未找到段落: {}", goto)));
         }
     };
 
