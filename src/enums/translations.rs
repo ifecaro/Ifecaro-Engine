@@ -7,6 +7,7 @@ pub struct Translations {
     pub goto_target: &'static str,
     pub options: &'static str,
     pub option_text: &'static str,
+    pub caption: &'static str,
     pub paragraph: &'static str,
     pub settings: &'static str,
     pub story: &'static str,
@@ -25,6 +26,7 @@ impl PartialEq for Translations {
         self.goto_target == other.goto_target &&
         self.options == other.options &&
         self.option_text == other.option_text &&
+        self.caption == other.caption &&
         self.paragraph == other.paragraph &&
         self.settings == other.settings &&
         self.story == other.story &&
@@ -43,9 +45,10 @@ impl Translations {
                 choice_id: "Choice ID",
                 coming_soon: "Coming soon...",
                 dashboard: "Dashboard",
-                goto_target: "Go to Target",
+                goto_target: "Target Paragraph",
                 options: "Options",
                 option_text: "Option Text",
+                caption: "Caption",
                 paragraph: "Paragraph",
                 settings: "Settings",
                 story: "Story",
@@ -62,6 +65,7 @@ impl Translations {
                 goto_target: "Ir a Destino",
                 options: "Opciones",
                 option_text: "Texto de Opción",
+                caption: "Leyenda",
                 paragraph: "Párrafo",
                 settings: "Configuración",
                 story: "Historia",
@@ -78,6 +82,7 @@ impl Translations {
                 goto_target: "Ir a Destino",
                 options: "Opciones",
                 option_text: "Texto de Opción",
+                caption: "Leyenda",
                 paragraph: "Párrafo",
                 settings: "Configuración",
                 story: "Historia",
@@ -91,9 +96,10 @@ impl Translations {
                 choice_id: "選項代號",
                 coming_soon: "即將推出...",
                 dashboard: "儀表板",
-                goto_target: "跳轉目標",
+                goto_target: "目標段落",
                 options: "選項",
                 option_text: "選項文字",
+                caption: "標題",
                 paragraph: "段落",
                 settings: "設定",
                 story: "故事",

@@ -2,6 +2,7 @@ use dioxus::prelude::*;
 use crate::enums::translations::Translations;
 use crate::components::form::{TextareaField, ChoiceOptions};
 use crate::components::paragraph_list::{Paragraph as ListParagraph, ParagraphList};
+use crate::components::story_content::Choice;
 use serde::{Serialize, Deserialize};
 use std::sync::Arc;
 
@@ -19,12 +20,6 @@ pub struct Text {
     pub lang: String,
     pub paragraphs: String,
     pub choices: Vec<Choice>,
-}
-
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub struct Choice {
-    pub caption: String,
-    pub goto: String,
 }
 
 #[derive(Props, Clone, PartialEq)]
@@ -86,8 +81,9 @@ pub fn TranslationForm(props: TranslationFormProps) -> Element {
         div { 
             class: "max-w-3xl mx-auto p-8 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-100 dark:border-gray-700",
             div { class: "space-y-4",
+                // 段落選擇器
                 ParagraphList {
-                    label: props.t.paragraph,
+                    label: "選擇段落",
                     value: props.paragraphs,
                     paragraphs: props.available_paragraphs.clone(),
                     is_open: *is_paragraph_open.read(),
@@ -103,46 +99,58 @@ pub fn TranslationForm(props: TranslationFormProps) -> Element {
                         paragraph_search_query.set(String::new());
                     }
                 }
-            }
 
-            // 段落內容欄位
-            TextareaField {
-                label: t.paragraph,
-                placeholder: t.paragraph,
-                value: paragraphs.to_string(),
-                required: true,
-                has_error: paragraphs_error,
-                rows: 5,
-                on_input: move |event: FormEvent| {
-                    let value = event.value().clone();
-                    props.on_paragraphs_change.call(value);
-                },
-                on_blur: move |_| {}
-            }
+                // 段落內容欄位
+                TextareaField {
+                    label: "段落內容",
+                    placeholder: t.paragraph,
+                    value: paragraphs.to_string(),
+                    required: true,
+                    has_error: paragraphs_error,
+                    rows: 5,
+                    on_input: move |event: FormEvent| {
+                        let value = event.value().clone();
+                        props.on_paragraphs_change.call(value);
+                    },
+                    on_blur: move |_| {}
+                }
 
-            // 選項設定
-            ChoiceOptions {
-                t: t.clone(),
-                new_caption: new_caption.to_string(),
-                new_goto: new_goto.to_string(),
-                extra_captions: extra_captions,
-                extra_gotos: extra_gotos,
-                new_caption_error: new_caption_error,
-                new_goto_error: new_goto_error,
-                available_paragraphs: available_paragraphs,
-                on_new_caption_change: props.on_new_caption_change,
-                on_new_goto_change: props.on_new_goto_change,
-                on_extra_caption_change: props.on_extra_caption_change,
-                on_extra_goto_change: props.on_extra_goto_change,
-                on_add_choice: props.on_add_choice
-            }
+                // 選項設定
+                ChoiceOptions {
+                    t: t.clone(),
+                    new_caption: new_caption.to_string(),
+                    new_goto: new_goto.to_string(),
+                    new_action_type: String::new(),
+                    new_action_key: None,
+                    new_action_value: None,
+                    extra_captions: extra_captions,
+                    extra_gotos: extra_gotos,
+                    extra_action_types: Vec::new(),
+                    extra_action_keys: Vec::new(),
+                    extra_action_values: Vec::new(),
+                    new_caption_error: new_caption_error,
+                    new_goto_error: new_goto_error,
+                    available_paragraphs: available_paragraphs,
+                    on_new_caption_change: props.on_new_caption_change,
+                    on_new_goto_change: props.on_new_goto_change,
+                    on_new_action_type_change: move |_| {},
+                    on_new_action_key_change: move |_| {},
+                    on_new_action_value_change: move |_| {},
+                    on_extra_caption_change: props.on_extra_caption_change,
+                    on_extra_goto_change: props.on_extra_goto_change,
+                    on_extra_action_type_change: move |_| {},
+                    on_extra_action_key_change: move |_| {},
+                    on_extra_action_value_change: move |_| {},
+                    on_add_choice: props.on_add_choice
+                }
 
-            // 提交按鈕
-            button {
-                class: "w-full px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:opacity-50 disabled:cursor-not-allowed",
-                disabled: !*is_form_valid.read(),
-                onclick: move |_| props.on_submit.call(()),
-                "{t.submit}"
+                // 提交按鈕
+                button {
+                    class: "w-full px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:opacity-50 disabled:cursor-not-allowed",
+                    disabled: !*is_form_valid.read(),
+                    onclick: move |_| props.on_submit.call(()),
+                    "{t.submit}"
+                }
             }
         }
     }

@@ -7,6 +7,7 @@ use crate::components::toast::Toast;
 use crate::components::form::{InputField, TextareaField, ChoiceOptions};
 use crate::components::story_content::{Choice, Action};
 use crate::components::dropdown::Dropdown;
+use crate::components::translation_form::{Paragraph, Text};
 use crate::components::paragraph_list::ParagraphList;
 use dioxus::events::FormEvent;
 use dioxus::hooks::use_context;
@@ -26,22 +27,6 @@ pub struct DashboardProps {
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Data {
     pub items: Vec<Paragraph>,
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct Paragraph {
-    pub id: String,
-    pub index: usize,
-    #[serde(default)]
-    pub chapter_id: String,
-    pub texts: Vec<Text>,
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct Text {
-    pub lang: String,
-    pub paragraphs: String,
-    pub choices: Vec<Choice>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
@@ -262,16 +247,25 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
     let mut chapter_search_query = use_signal(|| String::new());
     let mut selected_paragraph = use_signal(|| None::<Paragraph>);
     let mut is_edit_mode = use_signal(|| false);
-    let mut is_paragraph_open = use_signal(|| false);
-    let mut paragraph_search_query = use_signal(|| String::new());
+    let mut _is_paragraph_open = use_signal(|| false);
+    let mut _paragraph_search_query = use_signal(|| String::new());
     let paragraph_data = use_signal(|| Vec::<Paragraph>::new());
     let t = Translations::get(&current_lang);
+    let mut should_scroll = use_signal(|| false);
 
     let mut paragraphs_error = use_signal(|| false);
     let mut new_caption_error = use_signal(|| false);
     let mut new_goto_error = use_signal(|| false);
     let mut chapter_error = use_signal(|| false);
     let has_loaded = use_signal(|| false);
+
+    // 在 DashboardProps 結構體後添加新的狀態
+    let mut new_action_type = use_signal(|| String::new());
+    let mut new_action_key = use_signal(|| None::<String>);
+    let mut new_action_value = use_signal(|| None::<serde_json::Value>);
+    let mut extra_action_types = use_signal(|| Vec::<String>::new());
+    let mut extra_action_keys = use_signal(|| Vec::<Option<String>>::new());
+    let mut extra_action_values = use_signal(|| Vec::<Option<serde_json::Value>>::new());
 
     // 載入章節列表
     use_effect(move || {
@@ -475,41 +469,42 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
             return;
         }
 
-        let mut all_choices = Vec::new();
+        let mut choices = Vec::new();
         let current_lang = language_state.read().current_language.clone();
         
-        if !new_caption.read().trim().is_empty() && !new_goto.read().trim().is_empty() {
-            all_choices.push(Choice {
-                caption: new_caption.read().clone(),
+        let main_choice = Choice {
+            caption: new_caption.read().clone(),
+            action: Action {
+                type_: new_action_type.read().clone(),
+                key: new_action_key.read().clone(),
+                value: new_action_value.read().clone(),
+                to: new_goto.read().clone(),
+            },
+        };
+        choices.push(main_choice);
+
+        for ((((caption, goto), action_type), action_key), action_value) in extra_captions.read().iter()
+            .zip(extra_gotos.read().iter())
+            .zip(extra_action_types.read().iter())
+            .zip(extra_action_keys.read().iter())
+            .zip(extra_action_values.read().iter())
+        {
+            let choice = Choice {
+                caption: caption.clone(),
                 action: Action {
-                    type_: "choice".to_string(),
-                    key: Some(new_goto.read().clone()),
-                    value: Some(serde_json::Value::String(new_caption.read().clone())),
-                    to: new_goto.read().clone(),
+                    type_: action_type.clone(),
+                    key: action_key.clone(),
+                    value: action_value.clone(),
+                    to: goto.clone(),
                 },
-            });
+            };
+            choices.push(choice);
         }
 
-        for i in 0..extra_captions.read().len() {
-            let caption = &extra_captions.read()[i];
-            let goto = &extra_gotos.read()[i];
-            if !caption.trim().is_empty() && !goto.trim().is_empty() {
-                all_choices.push(Choice {
-                    caption: caption.clone(),
-                    action: Action {
-                        type_: "choice".to_string(),
-                        key: Some(goto.clone()),
-                        value: Some(serde_json::Value::String(caption.clone())),
-                        to: goto.clone(),
-                    },
-                });
-            }
-        }
-
-        let _text = Text {
+        let text = Text {
             lang: current_lang.clone(),
             paragraphs: paragraphs.read().clone(),
-            choices: all_choices.clone(),
+            choices: choices.clone(),
         };
 
         spawn_local(async move {
@@ -529,13 +524,7 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
             let new_paragraph = serde_json::json!({
                 "id": unique_id,
                 "chapter_id": chapter_id,
-                "texts": [
-                    {
-                        "lang": current_lang,
-                        "paragraphs": paragraphs.read().clone(),
-                        "choices": all_choices
-                    }
-                ]
+                "texts": [text]
             });
             
             // 發布到段落集合
@@ -545,32 +534,38 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
                 .json(&new_paragraph)
                 .send()
                 .await {
-                            Ok(response) => {
-                                if response.status().is_success() {
-                                    paragraphs.set(String::new());
-                                    choices.write().clear();
-                                    new_caption.set(String::new());
-                                    new_goto.set(String::new());
-                                    extra_captions.write().clear();
-                                    extra_gotos.write().clear();
-                                    show_extra_options.write().clear();
-                                    selected_chapter.set(String::new());
-                                    show_toast.set(true);
-                                    
-                                    let mut toast_visible = toast_visible.clone();
-                                    spawn_local(async move {
-                                        let window = web_sys::window().unwrap();
-                                        let promise = js_sys::Promise::new(&mut |resolve, _| {
-                                            window
-                                                .set_timeout_with_callback_and_timeout_and_arguments_0(
-                                                    &resolve,
-                                                    50,
-                                                )
-                                                .unwrap();
-                                        });
-                                        let _ = wasm_bindgen_futures::JsFuture::from(promise).await;
-                                        toast_visible.set(true);
-                                    });
+                Ok(response) => {
+                    if response.status().is_success() {
+                        paragraphs.set(String::new());
+                        choices.clear();
+                        new_caption.set(String::new());
+                        new_goto.set(String::new());
+                        new_action_type.set(String::new());
+                        new_action_key.set(None);
+                        new_action_value.set(None);
+                        extra_captions.write().clear();
+                        extra_gotos.write().clear();
+                        extra_action_types.write().clear();
+                        extra_action_keys.write().clear();
+                        extra_action_values.write().clear();
+                        show_extra_options.write().clear();
+                        selected_chapter.set(String::new());
+                        show_toast.set(true);
+                        
+                        let mut toast_visible = toast_visible.clone();
+                        spawn_local(async move {
+                            let window = web_sys::window().unwrap();
+                            let promise = js_sys::Promise::new(&mut |resolve, _| {
+                                window
+                                    .set_timeout_with_callback_and_timeout_and_arguments_0(
+                                        &resolve,
+                                        50,
+                                    )
+                                    .unwrap();
+                            });
+                            let _ = wasm_bindgen_futures::JsFuture::from(promise).await;
+                            toast_visible.set(true);
+                        });
                     }
                 }
                 Err(_) => {}
@@ -583,10 +578,42 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
             let language_state = use_context::<Signal<LanguageState>>();
             let current_lang = language_state.read().current_language.clone();
             let mut updated_texts = paragraph.texts.clone();
+
+            let mut choices = Vec::new();
+            
+            let main_choice = Choice {
+                caption: new_caption.read().clone(),
+                action: Action {
+                    type_: new_action_type.read().clone(),
+                    key: new_action_key.read().clone(),
+                    value: new_action_value.read().clone(),
+                    to: new_goto.read().clone(),
+                },
+            };
+            choices.push(main_choice);
+
+            for ((((caption, goto), action_type), action_key), action_value) in extra_captions.read().iter()
+                .zip(extra_gotos.read().iter())
+                .zip(extra_action_types.read().iter())
+                .zip(extra_action_keys.read().iter())
+                .zip(extra_action_values.read().iter())
+            {
+                let choice = Choice {
+                    caption: caption.clone(),
+                    action: Action {
+                        type_: action_type.clone(),
+                        key: action_key.clone(),
+                        value: action_value.clone(),
+                        to: goto.clone(),
+                    },
+                };
+                choices.push(choice);
+            }
+
             updated_texts.push(Text {
                 lang: current_lang,
                 paragraphs: paragraphs.read().clone(),
-                choices: choices.read().clone(),
+                choices: choices.clone(),
             });
 
             let updated_paragraph = serde_json::json!({
@@ -604,27 +631,38 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
                     Ok(response) => {
                         if response.status().is_success() {
                             paragraphs.set(String::new());
-                            choices.write().clear();
+                            choices.clear();
+                            new_caption.set(String::new());
+                            new_goto.set(String::new());
+                            new_action_type.set(String::new());
+                            new_action_key.set(None);
+                            new_action_value.set(None);
+                            extra_captions.write().clear();
+                            extra_gotos.write().clear();
+                            extra_action_types.write().clear();
+                            extra_action_keys.write().clear();
+                            extra_action_values.write().clear();
+                            show_extra_options.write().clear();
                             show_toast.set(true);
                             
-                                    let mut toast_visible = toast_visible.clone();
-                                    spawn_local(async move {
-                                        let window = web_sys::window().unwrap();
-                                        let promise = js_sys::Promise::new(&mut |resolve, _| {
-                                            window
-                                                .set_timeout_with_callback_and_timeout_and_arguments_0(
-                                                    &resolve,
+                            let mut toast_visible = toast_visible.clone();
+                            spawn_local(async move {
+                                let window = web_sys::window().unwrap();
+                                let promise = js_sys::Promise::new(&mut |resolve, _| {
+                                    window
+                                        .set_timeout_with_callback_and_timeout_and_arguments_0(
+                                            &resolve,
                                             50,
-                                                )
-                                                .unwrap();
-                                        });
-                                        let _ = wasm_bindgen_futures::JsFuture::from(promise).await;
+                                        )
+                                        .unwrap();
+                                });
+                                let _ = wasm_bindgen_futures::JsFuture::from(promise).await;
                                 toast_visible.set(true);
-                                    });
-                                }
-                            }
-                            Err(_) => {}
+                            });
                         }
+                    }
+                    Err(_) => {}
+                }
             });
         }
     };
@@ -647,15 +685,24 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
                     // 設置第一個選項
                     new_caption.set(existing_text.choices[0].caption.clone());
                     new_goto.set(existing_text.choices[0].action.to.clone());
+                    new_action_type.set(existing_text.choices[0].action.type_.clone());
+                    new_action_key.set(existing_text.choices[0].action.key.clone());
+                    new_action_value.set(existing_text.choices[0].action.value.clone());
                     
                     // 設置額外選項
                     let mut captions = Vec::new();
                     let mut gotos = Vec::new();
+                    let mut action_types = Vec::new();
+                    let mut action_keys = Vec::new();
+                    let mut action_values = Vec::new();
                     let mut options = Vec::new();
                     
                     for choice in existing_text.choices.iter().skip(1) {
                         captions.push(choice.caption.clone());
                         gotos.push(choice.action.to.clone());
+                        action_types.push(choice.action.type_.clone());
+                        action_keys.push(choice.action.key.clone());
+                        action_values.push(choice.action.value.clone());
                         options.push(());
                     }
                     
@@ -664,19 +711,47 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
                     if len > 0 {
                         extra_captions.set(captions);
                         extra_gotos.set(gotos);
+                        extra_action_types.set(action_types);
+                        extra_action_keys.set(action_keys);
+                        extra_action_values.set(action_values);
                         show_extra_options.set(options);
                     } else {
                         // 如果沒有額外選項，清空所有向量
                         extra_captions.set(Vec::new());
                         extra_gotos.set(Vec::new());
+                        extra_action_types.set(Vec::new());
+                        extra_action_keys.set(Vec::new());
+                        extra_action_values.set(Vec::new());
                         show_extra_options.set(Vec::new());
                     }
                 } else {
                     // 如果沒有選項，清空所有向量
+                    new_caption.set(String::new());
+                    new_goto.set(String::new());
+                    new_action_type.set(String::new());
+                    new_action_key.set(None);
+                    new_action_value.set(None);
                     extra_captions.set(Vec::new());
                     extra_gotos.set(Vec::new());
+                    extra_action_types.set(Vec::new());
+                    extra_action_keys.set(Vec::new());
+                    extra_action_values.set(Vec::new());
                     show_extra_options.set(Vec::new());
                 }
+            } else {
+                // 如果沒有當前語言的翻譯，清空所有欄位
+                paragraphs.set(String::new());
+                new_caption.set(String::new());
+                new_goto.set(String::new());
+                new_action_type.set(String::new());
+                new_action_key.set(None);
+                new_action_value.set(None);
+                extra_captions.set(Vec::new());
+                extra_gotos.set(Vec::new());
+                extra_action_types.set(Vec::new());
+                extra_action_keys.set(Vec::new());
+                extra_action_values.set(Vec::new());
+                show_extra_options.set(Vec::new());
             }
         }
     };
@@ -692,6 +767,16 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
             .unwrap_or_default()
     };
 
+    let handle_add_choice = move |_| {
+        show_extra_options.write().push(());
+        extra_captions.write().push(String::new());
+        extra_gotos.write().push(String::new());
+        extra_action_types.write().push(String::new());
+        extra_action_keys.write().push(None);
+        extra_action_values.write().push(None);
+        should_scroll.set(true);
+    };
+
     rsx! {
         crate::pages::layout::Layout { 
             title: Some("Dashboard"),
@@ -704,117 +789,225 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
                 )
             })}
             div { 
-                class: "max-w-3xl mx-auto p-8 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-100 dark:border-gray-700",
-                div { class: "space-y-8",
-                    Dropdown {
-                        label: t.select_language.to_string(),
-                        value: current_language.read().to_string(),
-                        options: filtered_languages.read().clone(),
-                        is_open: *is_open.read(),
-                        search_query: search_query.read().to_string(),
-                        on_toggle: move |_| {
-                            let current = *is_open.read();
-                            is_open.set(!current);
-                        },
-                        on_search: move |query| search_query.set(query),
-                        on_select: move |lang: &Language| {
-                            let mut language_state = use_context::<Signal<LanguageState>>();
-                            language_state.write().current_language = lang.code.to_string();
-                            is_open.set(false);
-                            search_query.set(String::new());
-                        },
-                        display_fn: display_language
+                class: "max-w-3xl md:max-w-5xl mx-auto p-8 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-100 dark:border-gray-700 space-y-6",
+                div { 
+                    class: "grid grid-cols-1 md:grid-cols-2 gap-6",
+                    // 語言選擇
+                    div {
+                        Dropdown {
+                            label: t.select_language.to_string(),
+                            value: current_language.read().to_string(),
+                            options: filtered_languages.read().clone(),
+                            is_open: *is_open.read(),
+                            search_query: search_query.read().to_string(),
+                            on_toggle: move |_| {
+                                let current = *is_open.read();
+                                is_open.set(!current);
+                            },
+                            on_search: move |query| search_query.set(query),
+                            on_select: move |lang: &Language| {
+                                let mut language_state = use_context::<Signal<LanguageState>>();
+                                language_state.write().current_language = lang.code.to_string();
+                                is_open.set(false);
+                                search_query.set(String::new());
+                            },
+                            display_fn: display_language
+                        }
                     }
 
                     // 章節選擇器
-                    Dropdown {
-                        key: format!("chapter-dropdown-{}", current_lang),
-                        label: t.select_chapter.to_string(),
-                        value: {
-                            if selected_chapter.read().is_empty() {
-                                t.select_chapter.to_string()
-                            } else {
-                                let chapter = available_chapters.read().iter()
-                                    .find(|c| c.id == *selected_chapter.read())
-                                    .cloned()
-                                    .unwrap_or_else(|| Chapter { id: String::new(), titles: Vec::new(), order: 0 });
-                                
-                                display_chapter_title(&chapter)
-                            }
-                        },
-                        options: available_chapters.read().iter()
-                            .filter(|chapter| {
-                                let query = chapter_search_query.read().to_lowercase();
-                                chapter.titles.iter()
-                                    .find(|t| t.lang == current_lang)
-                                    .map(|t| t.title.to_lowercase().contains(&query))
-                                    .unwrap_or(false)
-                            })
-                            .cloned()
-                            .collect::<Vec<_>>(),
-                        is_open: *is_chapter_open.read(),
-                        search_query: chapter_search_query.read().to_string(),
-                        on_toggle: move |_| {
-                            let current = *is_chapter_open.read();
-                            is_chapter_open.set(!current);
-                        },
-                        on_search: move |query| chapter_search_query.set(query),
-                        on_select: move |chapter: Chapter| {
-                            selected_chapter.set(chapter.id.clone());
-                            is_chapter_open.set(false);
-                            chapter_search_query.set(String::new());
-                            validate_field(&chapter.id, &mut chapter_error);
-                        },
-                        display_fn: display_chapter_title
+                    div {
+                        Dropdown {
+                            key: format!("chapter-dropdown-{}", current_lang),
+                            label: t.select_chapter.to_string(),
+                            value: {
+                                if selected_chapter.read().is_empty() {
+                                    t.select_chapter.to_string()
+                                } else {
+                                    let chapter = available_chapters.read().iter()
+                                        .find(|c| c.id == *selected_chapter.read())
+                                        .cloned()
+                                        .unwrap_or_else(|| Chapter { id: String::new(), titles: Vec::new(), order: 0 });
+                                    
+                                    display_chapter_title(&chapter)
+                                }
+                            },
+                            options: available_chapters.read().iter()
+                                .filter(|chapter| {
+                                    let query = chapter_search_query.read().to_lowercase();
+                                    chapter.titles.iter()
+                                        .find(|t| t.lang == current_lang)
+                                        .map(|t| t.title.to_lowercase().contains(&query))
+                                        .unwrap_or(false)
+                                })
+                                .cloned()
+                                .collect::<Vec<_>>(),
+                            is_open: *is_chapter_open.read(),
+                            search_query: chapter_search_query.read().to_string(),
+                            on_toggle: move |_| {
+                                let current = *is_chapter_open.read();
+                                is_chapter_open.set(!current);
+                            },
+                            on_search: move |query| chapter_search_query.set(query),
+                            on_select: move |chapter: Chapter| {
+                                selected_chapter.set(chapter.id.clone());
+                                is_chapter_open.set(false);
+                                chapter_search_query.set(String::new());
+                                validate_field(&chapter.id, &mut chapter_error);
+                            },
+                            display_fn: display_chapter_title
+                        }
                     }
 
                     // 根據模式顯示不同的表單
-                    if !*is_edit_mode.read() {
-                        // 新增段落表單
-                        div { class: "space-y-2",
-                            div { class: "flex items-end space-x-4",
+                    if *is_edit_mode.read() {
+                        // 編輯段落表單
+                        div { 
+                            class: "md:col-span-2",
+                            div {
+                                class: "flex items-center space-x-4",
                                 div { class: "flex-1",
-                                    InputField {
-                                        label: t.option_text,
-                                        placeholder: t.option_text,
-                                        value: new_caption.read().to_string(),
-                                        required: true,
-                                        has_error: *new_caption_error.read(),
-                                        on_input: move |value: String| {
-                                            new_caption.set(value.clone());
-                                            validate_field(&value, &mut new_caption_error);
+                                    ParagraphList {
+                                        label: "選擇段落",
+                                        value: selected_paragraph.read().as_ref().map(|p| p.id.clone()).unwrap_or("選擇段落".to_string()),
+                                        paragraphs: available_paragraphs.read().clone(),
+                                        is_open: *_is_paragraph_open.read(),
+                                        search_query: _paragraph_search_query.read().to_string(),
+                                        on_toggle: move |_| {
+                                            let current = *_is_paragraph_open.read();
+                                            _is_paragraph_open.set(!current);
                                         },
-                                        on_blur: move |_| validate_field(&new_caption.read(), &mut new_caption_error),
-                                        children: rsx! {
-                                            button {
-                                                class: "inline-flex items-center justify-center w-10 h-10 text-sm font-medium text-white bg-gray-700 rounded-lg hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-600 transition-colors duration-200 shadow-sm mb-[2px]",
-                                                onclick: move |_| {
-                                                    let current_mode = *is_edit_mode.read();
-                                                    is_edit_mode.set(!current_mode);
-                                                },
-                                                // 使用鉛筆圖標表示「新增段落」
-                                                svg { 
-                                                    xmlns: "http://www.w3.org/2000/svg",
-                                                    class: "h-5 w-5",
-                                                    fill: "none",
-                                                    view_box: "0 0 24 24",
-                                                    stroke: "currentColor",
-                                                    stroke_width: "2",
-                                                    path { 
-                                                        stroke_linecap: "round",
-                                                        stroke_linejoin: "round",
-                                                        d: "M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"
-                                                    }
-                                                }
+                                        on_search: move |query| _paragraph_search_query.set(query),
+                                        on_select: handle_paragraph_select,
+                                    }
+                                }
+
+                                button {
+                                    class: "inline-flex items-center justify-center w-10 h-10 text-sm font-medium text-white bg-gray-700 rounded-lg hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-600 transition-colors duration-200 shadow-sm",
+                                    onclick: move |_| {
+                                        let current_mode = *is_edit_mode.read();
+                                        is_edit_mode.set(!current_mode);
+                                        // 清空表單
+                                        if !current_mode {
+                                            paragraphs.set(String::new());
+                                            new_caption.set(String::new());
+                                            new_goto.set(String::new());
+                                            extra_captions.write().clear();
+                                            extra_gotos.write().clear();
+                                            show_extra_options.write().clear();
+                                            selected_paragraph.set(None);
+                                        }
+                                    },
+                                    // 根據模式使用不同圖標
+                                    if *is_edit_mode.read() {
+                                        svg { 
+                                            xmlns: "http://www.w3.org/2000/svg",
+                                            class: "h-5 w-5",
+                                            fill: "none",
+                                            view_box: "0 0 24 24",
+                                            stroke: "currentColor",
+                                            stroke_width: "2",
+                                            path { 
+                                                stroke_linecap: "round",
+                                                stroke_linejoin: "round",
+                                                d: "M12 4v16m8-8H4"
+                                            }
+                                        }
+                                    } else {
+                                        svg { 
+                                            xmlns: "http://www.w3.org/2000/svg",
+                                            class: "h-5 w-5",
+                                            fill: "none",
+                                            view_box: "0 0 24 24",
+                                            stroke: "currentColor",
+                                            stroke_width: "2",
+                                            path { 
+                                                stroke_linecap: "round",
+                                                stroke_linejoin: "round",
+                                                d: "M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"
                                             }
                                         }
                                     }
                                 }
                             }
                         }
+                    } else {
+                        // 新增段落表單
+                        div { 
+                            class: "md:col-span-2",
+                            div {
+                                class: "flex items-center space-x-4",
+                                div { class: "flex-1",
+                                    InputField {
+                                        label: "新段落標題",
+                                        placeholder: "輸入段落標題",
+                                        value: paragraphs.read().to_string(),
+                                        required: true,
+                                        has_error: *paragraphs_error.read(),
+                                        on_input: move |value: String| {
+                                            paragraphs.set(value.clone());
+                                            validate_field(&value, &mut paragraphs_error);
+                                        },
+                                        on_blur: move |_| validate_field(&paragraphs.read(), &mut paragraphs_error)
+                                    }
+                                }
 
+                                button {
+                                    class: "inline-flex items-center justify-center w-10 h-10 text-sm font-medium text-white bg-gray-700 rounded-lg hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-600 transition-colors duration-200 shadow-sm",
+                                    onclick: move |_| {
+                                        let current_mode = *is_edit_mode.read();
+                                        is_edit_mode.set(!current_mode);
+                                        // 清空表單
+                                        if !current_mode {
+                                            paragraphs.set(String::new());
+                                            new_caption.set(String::new());
+                                            new_goto.set(String::new());
+                                            extra_captions.write().clear();
+                                            extra_gotos.write().clear();
+                                            show_extra_options.write().clear();
+                                            selected_paragraph.set(None);
+                                        }
+                                    },
+                                    // 根據模式使用不同圖標
+                                    if *is_edit_mode.read() {
+                                        svg { 
+                                            xmlns: "http://www.w3.org/2000/svg",
+                                            class: "h-5 w-5",
+                                            fill: "none",
+                                            view_box: "0 0 24 24",
+                                            stroke: "currentColor",
+                                            stroke_width: "2",
+                                            path { 
+                                                stroke_linecap: "round",
+                                                stroke_linejoin: "round",
+                                                d: "M12 4v16m8-8H4"
+                                            }
+                                        }
+                                    } else {
+                                        svg { 
+                                            xmlns: "http://www.w3.org/2000/svg",
+                                            class: "h-5 w-5",
+                                            fill: "none",
+                                            view_box: "0 0 24 24",
+                                            stroke: "currentColor",
+                                            stroke_width: "2",
+                                            path { 
+                                                stroke_linecap: "round",
+                                                stroke_linejoin: "round",
+                                                d: "M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    // 段落內容欄位
+                    div { 
+                        class: "md:col-span-2",
                         TextareaField {
-                            label: t.paragraph,
+                            label: "段落內容",
                             placeholder: t.paragraph,
                             value: paragraphs.read().to_string(),
                             required: true,
@@ -827,141 +1020,76 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
                             },
                             on_blur: move |_| validate_field(&paragraphs.read(), &mut paragraphs_error)
                         }
-
-                        ChoiceOptions {
-                            t: t.clone(),
-                            new_caption: new_caption.read().to_string(),
-                            new_goto: new_goto.read().to_string(),
-                            extra_captions: extra_captions.read().clone(),
-                            extra_gotos: extra_gotos.read().clone(),
-                            new_caption_error: *new_caption_error.read(),
-                            new_goto_error: *new_goto_error.read(),
-                            available_paragraphs: available_paragraphs.read().clone(),
-                            on_new_caption_change: move |value: String| {
-                                validate_field(&value, &mut new_caption_error);
-                                new_caption.set(value);
-                            },
-                            on_new_goto_change: move |value: String| {
-                                validate_field(&value, &mut new_goto_error);
-                                new_goto.set(value);
-                            },
-                            on_extra_caption_change: move |(i, value): (usize, String)| {
-                                let mut captions = extra_captions.write();
-                                captions[i] = value;
-                            },
-                            on_extra_goto_change: move |(i, value): (usize, String)| {
-                                let mut gotos = extra_gotos.write();
-                                gotos[i] = value;
-                            },
-                            on_add_choice: move |_| {
-                                show_extra_options.write().push(());
-                                extra_captions.write().push(String::new());
-                                extra_gotos.write().push(String::new());
-                            }
-                        }
-
-                        button {
-                            class: "w-full px-6 py-3 bg-green-500 text-white rounded-md hover:bg-green-600 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed font-medium text-lg",
-                            disabled: !*is_form_valid.read() || selected_paragraph.read().is_none() || !*has_changes.read(),
-                            onclick: handle_submit,
-                            "{t.submit}"
-                        }
-                    } else {
-                        // 新增翻譯表單
-                        // 段落選擇器和取消按鈕
-                        div { class: "flex items-end space-x-4",
-                            div { class: "flex-1",
-                                ParagraphList {
-                                    label: "選擇段落".to_string(),
-                                    value: selected_paragraph.read().as_ref().map(|p| p.id.clone()).unwrap_or("選擇段落".to_string()),
-                                    paragraphs: available_paragraphs.read().clone(),
-                                    is_open: *is_paragraph_open.read(),
-                                    search_query: paragraph_search_query.read().to_string(),
-                                    on_toggle: move |_| {
-                                        let current = *is_paragraph_open.read();
-                                        is_paragraph_open.set(!current);
-                                    },
-                                    on_search: move |query| paragraph_search_query.set(query),
-                                    on_select: handle_paragraph_select,
-                                }
-                            }
-                            button {
-                                class: "inline-flex items-center justify-center w-10 h-10 text-sm font-medium text-white bg-gray-700 rounded-lg hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-600 transition-colors duration-200 shadow-sm mb-[2px]",
-                                onclick: move |_| {
-                                    let current_mode = *is_edit_mode.read();
-                                    is_edit_mode.set(!current_mode);
-                                },
-                                // 使用加號圖標表示「取消新增段落」
-                                svg {
-                                    xmlns: "http://www.w3.org/2000/svg",
-                                    class: "h-5 w-5",
-                                    fill: "none",
-                                    view_box: "0 0 24 24",
-                                    stroke: "currentColor",
-                                    stroke_width: "2",
-                                    path {
-                                        stroke_linecap: "round",
-                                        stroke_linejoin: "round",
-                                        d: "M12 4v16m8-8H4"
-                                    }
-                                }
-                            }
-                        }
-
-                        TextareaField {
-                            label: t.paragraph,
-                            placeholder: t.paragraph,
-                            value: paragraphs.read().to_string(),
-                            required: true,
-                            has_error: *paragraphs_error.read(),
-                            rows: 5,
-                            on_input: move |event: FormEvent| {
-                                let value = event.value().to_string();
-                                validate_field(&value, &mut paragraphs_error);
-                                paragraphs.set(value);
-                            },
-                            on_blur: move |_| {}
-                        }
-
-                        ChoiceOptions {
-                            t: t.clone(),
-                            new_caption: new_caption.read().to_string(),
-                            new_goto: new_goto.read().to_string(),
-                            extra_captions: extra_captions.read().clone(),
-                            extra_gotos: extra_gotos.read().clone(),
-                            new_caption_error: *new_caption_error.read(),
-                            new_goto_error: *new_goto_error.read(),
-                            available_paragraphs: available_paragraphs.read().clone(),
-                            on_new_caption_change: move |value: String| {
-                                validate_field(&value, &mut new_caption_error);
-                                new_caption.set(value);
-                            },
-                            on_new_goto_change: move |value: String| {
-                                validate_field(&value, &mut new_goto_error);
-                                new_goto.set(value);
-                            },
-                            on_extra_caption_change: move |(i, value): (usize, String)| {
-                                let mut captions = extra_captions.write();
-                                captions[i] = value;
-                            },
-                            on_extra_goto_change: move |(i, value): (usize, String)| {
-                                let mut gotos = extra_gotos.write();
-                                gotos[i] = value;
-                            },
-                            on_add_choice: move |_| {
-                                show_extra_options.write().push(());
-                                extra_captions.write().push(String::new());
-                                extra_gotos.write().push(String::new());
-                        }
                     }
 
-                    button {
-                            class: "w-full px-6 py-3 bg-green-500 text-white rounded-md hover:bg-green-600 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed font-medium text-lg",
-                            disabled: !*is_form_valid.read() || selected_paragraph.read().is_none() || !*has_changes.read(),
-                            onclick: handle_add_translation,
-                            "{t.submit}"
-                        }
+                    ChoiceOptions {
+                        t: t.clone(),
+                        new_caption: new_caption.read().to_string(),
+                        new_goto: new_goto.read().to_string(),
+                        new_action_type: new_action_type.read().to_string(),
+                        new_action_key: new_action_key.read().clone(),
+                        new_action_value: new_action_value.read().clone(),
+                        extra_captions: extra_captions.read().clone(),
+                        extra_gotos: extra_gotos.read().clone(),
+                        extra_action_types: extra_action_types.read().clone(),
+                        extra_action_keys: extra_action_keys.read().clone(),
+                        extra_action_values: extra_action_values.read().clone(),
+                        new_caption_error: *new_caption_error.read(),
+                        new_goto_error: *new_goto_error.read(),
+                        available_paragraphs: available_paragraphs.read().clone(),
+                        on_new_caption_change: move |value: String| {
+                            validate_field(&value, &mut new_caption_error);
+                            new_caption.set(value);
+                        },
+                        on_new_goto_change: move |value: String| {
+                            validate_field(&value, &mut new_goto_error);
+                            new_goto.set(value);
+                        },
+                        on_new_action_type_change: move |value: String| {
+                            new_action_type.set(value);
+                        },
+                        on_new_action_key_change: move |value: Option<String>| {
+                            new_action_key.set(value);
+                        },
+                        on_new_action_value_change: move |value: Option<serde_json::Value>| {
+                            new_action_value.set(value);
+                        },
+                        on_extra_caption_change: move |(i, value): (usize, String)| {
+                            let mut captions = extra_captions.write();
+                            captions[i] = value;
+                        },
+                        on_extra_goto_change: move |(i, value): (usize, String)| {
+                            let mut gotos = extra_gotos.write();
+                            gotos[i] = value;
+                        },
+                        on_extra_action_type_change: move |(i, value): (usize, String)| {
+                            let mut types = extra_action_types.write();
+                            types[i] = value;
+                        },
+                        on_extra_action_key_change: move |(i, value): (usize, Option<String>)| {
+                            let mut keys = extra_action_keys.write();
+                            keys[i] = value;
+                        },
+                        on_extra_action_value_change: move |(i, value): (usize, Option<serde_json::Value>)| {
+                            let mut values = extra_action_values.write();
+                            values[i] = value;
+                        },
+                        on_add_choice: handle_add_choice
                     }
+                }
+
+                // 提交按鈕（移到網格外）
+                button {
+                    class: "w-full px-6 py-3 bg-green-500 text-white rounded-md hover:bg-green-600 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed font-medium text-lg",
+                    disabled: !*is_form_valid.read() || (*is_edit_mode.read() && selected_paragraph.read().is_none()) || !*has_changes.read(),
+                    onclick: move |_| {
+                        if *is_edit_mode.read() {
+                            handle_add_translation(());
+                        } else {
+                            handle_submit(());
+                        }
+                    },
+                    "{t.submit}"
                 }
             }
         }
