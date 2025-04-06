@@ -1,5 +1,4 @@
 use dioxus::prelude::*;
-use crate::enums::route::Route;
 
 #[component]
 pub fn PageNotFound(route: Vec<String>) -> Element {

@@ -1,6 +1,5 @@
 use dioxus_i18n::prelude::*;
 use unic_langid::langid;
-use std::collections::HashMap;
 use crate::enums::translations::Translations;
 
 pub fn create_i18n_store() -> I18nConfig {

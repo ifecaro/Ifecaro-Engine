@@ -61,7 +61,7 @@ pub fn TranslationForm(props: TranslationFormProps) -> Element {
     let new_goto = Arc::new(props.new_goto.clone());
     let extra_captions = props.extra_captions.clone();
     let extra_gotos = props.extra_gotos.clone();
-    let show_extra_options = props.show_extra_options.clone();
+    let _show_extra_options = props.show_extra_options.clone();
     let paragraphs_error = props.paragraphs_error;
     let new_caption_error = props.new_caption_error;
     let new_goto_error = props.new_goto_error;
@@ -87,7 +87,7 @@ pub fn TranslationForm(props: TranslationFormProps) -> Element {
             class: "max-w-3xl mx-auto p-8 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-100 dark:border-gray-700",
             div { class: "space-y-4",
                 ParagraphList {
-                    label: props.t.paragraph.clone(),
+                    label: props.t.paragraph,
                     value: props.paragraphs,
                     paragraphs: props.available_paragraphs.clone(),
                     is_open: *is_paragraph_open.read(),
@@ -107,8 +107,8 @@ pub fn TranslationForm(props: TranslationFormProps) -> Element {
 
             // 段落內容欄位
             TextareaField {
-                label: t.paragraph.clone(),
-                placeholder: t.paragraph.clone(),
+                label: t.paragraph,
+                placeholder: t.paragraph,
                 value: paragraphs.to_string(),
                 required: true,
                 has_error: paragraphs_error,

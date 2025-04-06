@@ -123,7 +123,7 @@ pub fn LanguageSelector(props: LanguageSelectorProps) -> Element {
             .collect::<Vec<_>>()
     });
 
-    let dropdown_class = use_memo(move || {
+    let _dropdown_class = use_memo(move || {
         if *is_open.read() {
             "translate-y-0 opacity-100"
         } else {

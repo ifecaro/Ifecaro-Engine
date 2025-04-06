@@ -1,16 +1,14 @@
 use dioxus::prelude::*;
 use serde::{Deserialize, Serialize};
 use wasm_bindgen_futures::spawn_local;
-use wasm_bindgen::prelude::*;
 use crate::constants::{BASE_API_URL, PARAGRAPHS, AUTH_TOKEN, CHAPTERS};
 use crate::enums::translations::Translations;
 use crate::components::toast::Toast;
 use crate::components::form::{InputField, TextareaField, ChoiceOptions};
-use crate::components::story_content::Choice;
+use crate::components::story_content::{Choice, Action};
 use crate::components::dropdown::Dropdown;
 use crate::components::paragraph_list::ParagraphList;
-use dioxus::events::{FormEvent, FocusEvent};
-use web_sys::console;
+use dioxus::events::FormEvent;
 use dioxus::hooks::use_context;
 use crate::contexts::language_context::LanguageState;
 use std::cell::RefCell;
@@ -251,14 +249,14 @@ pub fn Dashboard(props: DashboardProps) -> Element {
     let mut extra_gotos = use_signal(|| Vec::<String>::new());
     let mut show_extra_options = use_signal(|| Vec::<()>::new());
     let mut show_toast = use_signal(|| false);
-    let mut toast_visible = use_signal(|| false);
+    let toast_visible = use_signal(|| false);
     let mut is_open = use_signal(|| false);
     let mut search_query = use_signal(|| String::new());
-    let mut is_goto_open = use_signal(|| false);
-    let mut goto_search_query = use_signal(|| String::new());
-    let mut available_choices = use_signal(|| Vec::<ChoiceOption>::new());
+    let is_goto_open = use_signal(|| false);
+    let goto_search_query = use_signal(|| String::new());
+    let available_choices = use_signal(|| Vec::<ChoiceOption>::new());
     let mut available_paragraphs = use_signal(|| Vec::<crate::components::paragraph_list::Paragraph>::new());
-    let mut available_chapters = use_signal(|| Vec::<Chapter>::new());
+    let available_chapters = use_signal(|| Vec::<Chapter>::new());
     let mut selected_chapter = use_signal(|| String::new());
     let mut is_chapter_open = use_signal(|| false);
     let mut chapter_search_query = use_signal(|| String::new());
@@ -266,10 +264,9 @@ pub fn Dashboard(props: DashboardProps) -> Element {
     let mut is_edit_mode = use_signal(|| false);
     let mut is_paragraph_open = use_signal(|| false);
     let mut paragraph_search_query = use_signal(|| String::new());
-    let mut paragraph_data = use_signal(|| Vec::<Paragraph>::new());
+    let paragraph_data = use_signal(|| Vec::<Paragraph>::new());
     let t = Translations::get(&current_lang);
 
-    let mut choice_id_error = use_signal(|| false);
     let mut paragraphs_error = use_signal(|| false);
     let mut new_caption_error = use_signal(|| false);
     let mut new_goto_error = use_signal(|| false);
@@ -278,7 +275,7 @@ pub fn Dashboard(props: DashboardProps) -> Element {
 
     // 載入章節列表
     use_effect(move || {
-        let chapters_url = format!("{}{}", BASE_API_URL, CHAPTERS);
+        let chapters_url = format!("{}/api{}", BASE_API_URL, CHAPTERS);
         let client = reqwest::Client::new();
         let mut available_chapters = available_chapters.clone();
         
@@ -313,9 +310,6 @@ pub fn Dashboard(props: DashboardProps) -> Element {
                                     let mut sorted_chapters = chapters;
                                     sorted_chapters.sort_by(|a, b| a.order.cmp(&b.order));
                                     
-                                    // 在控制台輸出章節列表
-                                    console::log_1(&format!("Chapters loaded: {:?}", sorted_chapters).into());
-                                    
                                     available_chapters.set(sorted_chapters);
                                 }
                             }
@@ -331,7 +325,7 @@ pub fn Dashboard(props: DashboardProps) -> Element {
     });
 
     use_effect(move || {
-        let paragraphs_url = format!("{}{}", BASE_API_URL, PARAGRAPHS);
+        let paragraphs_url = format!("{}/api{}", BASE_API_URL, PARAGRAPHS);
         let client = reqwest::Client::new();
         let mut has_loaded = has_loaded.clone();
         let language_state = use_context::<Signal<LanguageState>>();
@@ -428,7 +422,7 @@ pub fn Dashboard(props: DashboardProps) -> Element {
                 let choices_changed = if !existing_text.choices.is_empty() {
                     // 檢查第一個選項
                     let first_choice_changed = existing_text.choices[0].caption != *new_caption.read() ||
-                                            existing_text.choices[0].goto != *new_goto.read();
+                                            existing_text.choices[0].action.to != *new_goto.read();
                     
                     // 檢查額外選項
                     let extra_choices_changed = if existing_text.choices.len() > 1 {
@@ -441,7 +435,7 @@ pub fn Dashboard(props: DashboardProps) -> Element {
                         } else {
                             existing_extra.iter().zip(current_extra_captions.iter().zip(current_extra_gotos.iter()))
                                 .any(|(existing, (current_caption, current_goto))| {
-                                    existing.caption != *current_caption || existing.goto != *current_goto
+                                    existing.caption != *current_caption || existing.action.to != *current_goto
                                 })
                         }
                     } else {
@@ -487,7 +481,12 @@ pub fn Dashboard(props: DashboardProps) -> Element {
         if !new_caption.read().trim().is_empty() && !new_goto.read().trim().is_empty() {
             all_choices.push(Choice {
                 caption: new_caption.read().clone(),
-                goto: new_goto.read().clone(),
+                action: Action {
+                    type_: "choice".to_string(),
+                    key: Some(new_goto.read().clone()),
+                    value: Some(serde_json::Value::String(new_caption.read().clone())),
+                    to: new_goto.read().clone(),
+                },
             });
         }
 
@@ -497,7 +496,12 @@ pub fn Dashboard(props: DashboardProps) -> Element {
             if !caption.trim().is_empty() && !goto.trim().is_empty() {
                 all_choices.push(Choice {
                     caption: caption.clone(),
-                    goto: goto.clone(),
+                    action: Action {
+                        type_: "choice".to_string(),
+                        key: Some(goto.clone()),
+                        value: Some(serde_json::Value::String(caption.clone())),
+                        to: goto.clone(),
+                    },
                 });
             }
         }
@@ -535,7 +539,7 @@ pub fn Dashboard(props: DashboardProps) -> Element {
             });
             
             // 發布到段落集合
-            let paragraphs_url = format!("{}/api/collections/paragraphs/records", BASE_API_URL);
+            let paragraphs_url = format!("{}/api{}", BASE_API_URL, PARAGRAPHS);
             
             match client.post(&paragraphs_url)
                 .json(&new_paragraph)
@@ -590,7 +594,7 @@ pub fn Dashboard(props: DashboardProps) -> Element {
             });
 
             let client = reqwest::Client::new();
-            let paragraphs_url = format!("{}/api/collections/paragraphs/records/{}", BASE_API_URL, paragraph.id);
+            let paragraphs_url = format!("{}/api{}/{}", BASE_API_URL, PARAGRAPHS, paragraph.id);
 
             spawn_local(async move {
                 match client.patch(&paragraphs_url)
@@ -642,7 +646,7 @@ pub fn Dashboard(props: DashboardProps) -> Element {
                 if !existing_text.choices.is_empty() {
                     // 設置第一個選項
                     new_caption.set(existing_text.choices[0].caption.clone());
-                    new_goto.set(existing_text.choices[0].goto.clone());
+                    new_goto.set(existing_text.choices[0].action.to.clone());
                     
                     // 設置額外選項
                     let mut captions = Vec::new();
@@ -651,7 +655,7 @@ pub fn Dashboard(props: DashboardProps) -> Element {
                     
                     for choice in existing_text.choices.iter().skip(1) {
                         captions.push(choice.caption.clone());
-                        gotos.push(choice.goto.clone());
+                        gotos.push(choice.action.to.clone());
                         options.push(());
                     }
                     
@@ -771,8 +775,8 @@ pub fn Dashboard(props: DashboardProps) -> Element {
                             div { class: "flex items-end space-x-4",
                                 div { class: "flex-1",
                                     InputField {
-                                        label: t.option_text.clone(),
-                                        placeholder: t.option_text.clone(),
+                                        label: t.option_text,
+                                        placeholder: t.option_text,
                                         value: new_caption.read().to_string(),
                                         required: true,
                                         has_error: *new_caption_error.read(),
@@ -810,8 +814,8 @@ pub fn Dashboard(props: DashboardProps) -> Element {
                         }
 
                         TextareaField {
-                            label: t.paragraph.clone(),
-                            placeholder: t.paragraph.clone(),
+                            label: t.paragraph,
+                            placeholder: t.paragraph,
                             value: paragraphs.read().to_string(),
                             required: true,
                             has_error: *paragraphs_error.read(),

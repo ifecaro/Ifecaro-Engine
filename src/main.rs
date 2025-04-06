@@ -10,15 +10,11 @@ use dioxus::{
     prelude::*,
     document::Stylesheet,
 };
-use dioxus_i18n::prelude::*;
-use dioxus_router::prelude::*;
 use crate::{
     enums::route::Route,
     components::navbar::Navbar,
-    pages::{story::Story, dashboard::Dashboard},
     contexts::language_context::{LanguageProvider, LanguageState},
 };
-use unic_langid::langid;
 
 fn main() {
     launch(App);

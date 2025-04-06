@@ -1,6 +1,6 @@
 use dioxus::prelude::*;
 use crate::enums::translations::Translations;
-use crate::components::form::{InputField, TextareaField, ChoiceOptions};
+use crate::components::form::{TextareaField, ChoiceOptions};
 use crate::components::paragraph_list::Paragraph;
 use std::sync::Arc;
 
@@ -33,7 +33,7 @@ pub fn ParagraphForm(props: ParagraphFormProps) -> Element {
     let new_goto = Arc::new(props.new_goto.clone());
     let extra_captions = props.extra_captions.clone();
     let extra_gotos = props.extra_gotos.clone();
-    let show_extra_options = props.show_extra_options.clone();
+    let _show_extra_options = props.show_extra_options.clone();
     let paragraphs_error = props.paragraphs_error;
     let new_caption_error = props.new_caption_error;
     let new_goto_error = props.new_goto_error;
@@ -55,8 +55,8 @@ pub fn ParagraphForm(props: ParagraphFormProps) -> Element {
         div { class: "space-y-8",
             // 段落內容欄位
             TextareaField {
-                label: t.paragraph.clone(),
-                placeholder: t.paragraph.clone(),
+                label: t.paragraph,
+                placeholder: t.paragraph,
                 value: paragraphs.to_string(),
                 required: true,
                 has_error: paragraphs_error,

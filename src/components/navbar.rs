@@ -1,7 +1,6 @@
 use dioxus::prelude::*;
-use dioxus_router::prelude::*;
 use crate::enums::route::Route;
-use dioxus_i18n::{prelude::*, t};
+use dioxus_i18n::t;
 use wasm_bindgen::{closure::Closure, JsCast};
 use web_sys::Event;
 use crate::contexts::language_context::LanguageState;

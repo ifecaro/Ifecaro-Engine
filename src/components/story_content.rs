@@ -1,67 +1,75 @@
 use dioxus::prelude::*;
 use crate::enums::translations::Translations;
 use serde::{Serialize, Deserialize};
+use serde_json;
 
 #[derive(Props, Clone, PartialEq)]
 pub struct StoryContentProps {
-    paragraph: String,
-    choices: Vec<Choice>,
-    on_choice_click: EventHandler<String>,
-    t: Translations,
-    enabled_choices: Vec<String>,
+    pub paragraph: String,
+    pub choices: Vec<Choice>,
+    pub on_choice_click: EventHandler<String>,
+    pub t: Translations,
+    pub enabled_choices: Vec<String>,
 }
 
-#[derive(Clone, PartialEq, Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Choice {
     pub caption: String,
-    pub goto: String,
+    pub action: Action,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct Action {
+    #[serde(rename = "type")]
+    pub type_: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub key: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub value: Option<serde_json::Value>,
+    pub to: String,
 }
 
 #[component]
 pub fn StoryContent(props: StoryContentProps) -> Element {
-    let paragraphs: Vec<String> = props.paragraph.split('\n').map(|s| s.to_string()).collect();
-    
-    let handle_choice_click = move |goto: String| {
-        // println!("Clicked choice with goto: {}", goto);
-        if let Some(on_choice_click) = props.on_choice_click {
-            on_choice_click.call(goto);
-        }
-    };
+    let paragraph = props.paragraph.clone();
+    let choices = props.choices.clone();
+    let enabled_choices = props.enabled_choices.clone();
+    let on_choice_click = props.on_choice_click.clone();
+    let _t = props.t.clone();
     
     rsx! {
         article {
-            class: "prose dark:prose-invert lg:prose-xl indent-10 mx-auto",
+            class: "prose dark:prose-invert lg:prose-xl mx-auto",
             div {
-                class: "whitespace-pre-wrap",
-                {paragraphs.iter().map(|p| {
-                    rsx! {
-                        p { class: "mb-6", {p.clone()} }
+                class: "whitespace-pre-wrap mt-16 space-y-8",
+                {paragraph.split('\n').map(|p| {
+                    if p.trim().is_empty() {
+                        rsx! { br {} }
+                    } else {
+                        rsx! {
+                            p { 
+                                class: "indent-10",
+                                {p}
+                            }
+                        }
                     }
                 })}
             }
             ol {
                 class: "mt-10 w-fit",
-                {props.choices.iter().map(|choice| {
+                {choices.iter().map(|choice| {
                     let caption = choice.caption.clone();
-                    let goto = choice.goto.clone();
-                    let is_enabled = props.enabled_choices.contains(&goto);
+                    let goto = choice.action.to.clone();
+                    let is_enabled = enabled_choices.contains(&goto);
                     rsx! {
-                        li { 
-                            class: if is_enabled { "" } else { "opacity-30" },
-                            button {
-                                class: if is_enabled {
-                                    "text-left cursor-pointer"
-                                } else {
-                                    "text-left cursor-not-allowed"
-                                },
-                                disabled: !is_enabled,
-                                onclick: move |_| {
-                                    if is_enabled {
-                                        handle_choice_click(goto.clone());
-                                    }
-                                },
-                                {caption}
-                            }
+                        li {
+                            class: if is_enabled { "cursor-pointer hover:text-blue-500" } else { "opacity-30 cursor-not-allowed" },
+                            onclick: move |_| {
+                                if is_enabled {
+                                    on_choice_click.call(goto.clone());
+                                }
+                            },
+                            { caption }
                         }
                     }
                 })}

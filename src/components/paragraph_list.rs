@@ -1,6 +1,4 @@
 use dioxus::prelude::*;
-use serde::{Deserialize, Serialize};
-use crate::components::dropdown::Dropdown;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Paragraph {

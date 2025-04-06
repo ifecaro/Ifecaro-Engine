@@ -2,7 +2,6 @@ use dioxus::prelude::*;
 use crate::enums::translations::Translations;
 use crate::components::form::InputField;
 use crate::components::paragraph_list::{Paragraph, ParagraphList};
-use wasm_bindgen_futures::spawn_local;
 
 #[derive(Props, Clone, PartialEq)]
 pub struct ChoiceOptionsProps {
@@ -43,8 +42,8 @@ pub fn ChoiceOptions(props: ChoiceOptionsProps) -> Element {
             class: "max-w-3xl mx-auto p-8 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-100 dark:border-gray-700",
             div { class: "space-y-4",
                 InputField {
-                    label: t.option_text.clone(),
-                    placeholder: t.option_text.clone(),
+                    label: t.option_text,
+                    placeholder: t.option_text,
                     value: props.new_caption,
                     required: true,
                     has_error: props.new_caption_error,
@@ -56,7 +55,7 @@ pub fn ChoiceOptions(props: ChoiceOptionsProps) -> Element {
                     div { class: "flex items-center space-x-4",
                         div { class: "flex-1",
                             ParagraphList {
-                                label: t.goto_target.clone(),
+                                label: t.goto_target,
                                 value: target_preview,
                                 paragraphs: props.available_paragraphs.clone().into_iter()
                                     .filter(|p| p.id != props.available_paragraphs[0].id)
@@ -120,7 +119,7 @@ pub fn ChoiceOptions(props: ChoiceOptionsProps) -> Element {
                         div { class: "space-y-4",
                             InputField {
                                 label: label.clone(),
-                                placeholder: t.option_text.clone(),
+                                placeholder: t.option_text,
                                 value: caption,
                                 required: true,
                                 has_error: false,

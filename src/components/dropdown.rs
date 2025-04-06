@@ -1,5 +1,4 @@
 use dioxus::prelude::*;
-use serde::{Deserialize, Serialize};
 
 #[derive(Props, Clone, PartialEq)]
 pub struct DropdownProps<T: Clone + PartialEq + 'static> {
