@@ -9,7 +9,7 @@ pub struct TitleProps {
 #[component]
 pub fn Layout(props: TitleProps) -> Element {
     rsx! {
-        div { class: "h-screen bg-cover bg-center pt-16 px-16",
+        div { class: "min-h-screen bg-fixed bg-cover bg-center pt-16 px-16",
             if let Some(title) = props.title {
                 crate::components::title::Title { title }
             }
