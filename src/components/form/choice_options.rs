@@ -68,7 +68,7 @@ pub fn ChoiceOptions(props: ChoiceOptionsProps) -> Element {
                     class: "bg-gray-100 dark:bg-gray-600 px-4 py-3 border-b border-gray-200 dark:border-gray-500",
                     div {
                         class: "text-lg font-medium text-gray-900 dark:text-white",
-                        "Option 1"
+                        "{t.option} 1"
                     }
                 }
                 div {
@@ -117,7 +117,7 @@ pub fn ChoiceOptions(props: ChoiceOptionsProps) -> Element {
                             class: "border-t border-gray-200 dark:border-gray-700 mt-4 pt-4",
                             div {
                                 class: "text-sm font-medium text-gray-700 dark:text-gray-300 mb-4",
-                                "Action Settings"
+                                "{t.action_settings}"
                             }
                             div {
                                 class: "grid grid-cols-1 lg:grid-cols-3 gap-4",
@@ -125,7 +125,7 @@ pub fn ChoiceOptions(props: ChoiceOptionsProps) -> Element {
                                     class: "relative",
                                     label { 
                                         class: "block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2",
-                                        "Action Type"
+                                        "{t.action_type}"
                                     }
                                     select {
                                         class: "block w-full px-4 py-2.5 text-base bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-blue-500 focus:border-blue-500 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500",
@@ -145,8 +145,8 @@ pub fn ChoiceOptions(props: ChoiceOptionsProps) -> Element {
                                 }
 
                                 InputField {
-                                    label: "Action Key",
-                                    placeholder: "Enter action key (optional)",
+                                    label: t.action_key,
+                                    placeholder: t.action_key,
                                     value: props.new_action_key.clone().unwrap_or_default(),
                                     required: false,
                                     has_error: false,
@@ -157,8 +157,8 @@ pub fn ChoiceOptions(props: ChoiceOptionsProps) -> Element {
                                 }
 
                                 InputField {
-                                    label: "Action Value",
-                                    placeholder: "Enter action value (optional)",
+                                    label: t.action_value,
+                                    placeholder: t.action_value,
                                     value: props.new_action_value.clone().map(|v| v.to_string()).unwrap_or_default(),
                                     required: false,
                                     has_error: false,
@@ -194,7 +194,7 @@ pub fn ChoiceOptions(props: ChoiceOptionsProps) -> Element {
                             class: "bg-gray-100 dark:bg-gray-600 px-4 py-3 border-b border-gray-200 dark:border-gray-500",
                             div {
                                 class: "text-lg font-medium text-gray-900 dark:text-white",
-                                "Option {i + 2}"
+                                "{t.option} {i + 2}"
                             }
                         }
                         div {
@@ -241,7 +241,7 @@ pub fn ChoiceOptions(props: ChoiceOptionsProps) -> Element {
                                     class: "border-t border-gray-200 dark:border-gray-700 mt-4 pt-4",
                                     div {
                                         class: "text-sm font-medium text-gray-700 dark:text-gray-300 mb-4",
-                                        "Action Settings"
+                                        "{t.action_settings}"
                                     }
                                     div {
                                         class: "grid grid-cols-1 lg:grid-cols-3 gap-4",
@@ -249,7 +249,7 @@ pub fn ChoiceOptions(props: ChoiceOptionsProps) -> Element {
                                             class: "relative",
                                             label { 
                                                 class: "block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2",
-                                                "Action Type"
+                                                "{t.action_type}"
                                             }
                                             select {
                                                 class: "block w-full px-4 py-2.5 text-base bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-blue-500 focus:border-blue-500 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500",
@@ -269,9 +269,9 @@ pub fn ChoiceOptions(props: ChoiceOptionsProps) -> Element {
                                         }
 
                                         InputField {
-                                            label: "Action Key",
-                                            placeholder: "Enter action key (optional)",
-                                            value: action_key.unwrap_or_default(),
+                                            label: t.action_key,
+                                            placeholder: t.action_key,
+                                            value: action_key.clone().unwrap_or_default(),
                                             required: false,
                                             has_error: false,
                                             on_input: move |value: String| {
@@ -281,9 +281,9 @@ pub fn ChoiceOptions(props: ChoiceOptionsProps) -> Element {
                                         }
 
                                         InputField {
-                                            label: "Action Value",
-                                            placeholder: "Enter action value (optional)",
-                                            value: action_value.map(|v| v.to_string()).unwrap_or_default(),
+                                            label: t.action_value,
+                                            placeholder: t.action_value,
+                                            value: action_value.clone().map(|v| v.to_string()).unwrap_or_default(),
                                             required: false,
                                             has_error: false,
                                             on_input: move |value: String| {
@@ -310,7 +310,7 @@ pub fn ChoiceOptions(props: ChoiceOptionsProps) -> Element {
                 class: "bg-gray-100 dark:bg-gray-600 px-4 py-3 border-b border-gray-200 dark:border-gray-500",
                 div {
                     class: "text-lg font-medium text-gray-900 dark:text-white",
-                    "Add Option"
+                    "{t.add_option}"
                 }
             }
             div {

@@ -15,6 +15,14 @@ pub struct Translations {
     pub submit_success: &'static str,
     pub select_language: &'static str,
     pub select_chapter: &'static str,
+    pub option: &'static str,
+    pub action_settings: &'static str,
+    pub action_type: &'static str,
+    pub action_key: &'static str,
+    pub action_value: &'static str,
+    pub add_option: &'static str,
+    pub paragraph_title: &'static str,
+    pub paragraph_content: &'static str,
 }
 
 impl PartialEq for Translations {
@@ -33,7 +41,15 @@ impl PartialEq for Translations {
         self.submit == other.submit &&
         self.submit_success == other.submit_success &&
         self.select_language == other.select_language &&
-        self.select_chapter == other.select_chapter
+        self.select_chapter == other.select_chapter &&
+        self.option == other.option &&
+        self.action_settings == other.action_settings &&
+        self.action_type == other.action_type &&
+        self.action_key == other.action_key &&
+        self.action_value == other.action_value &&
+        self.add_option == other.add_option &&
+        self.paragraph_title == other.paragraph_title &&
+        self.paragraph_content == other.paragraph_content
     }
 }
 
@@ -56,6 +72,14 @@ impl Translations {
                 submit_success: "Successfully submitted!",
                 select_language: "Select Language",
                 select_chapter: "Select Chapter",
+                option: "Option",
+                action_settings: "Action Settings",
+                action_type: "Action Type",
+                action_key: "Action Key",
+                action_value: "Action Value",
+                add_option: "Add Option",
+                paragraph_title: "Paragraph Title",
+                paragraph_content: "Paragraph Content",
             },
             "es-ES" => Self {
                 add: "Añadir",
@@ -73,6 +97,14 @@ impl Translations {
                 submit_success: "¡Enviado con éxito!",
                 select_language: "Seleccionar Idioma",
                 select_chapter: "Seleccionar Capítulo",
+                option: "Opción",
+                action_settings: "Configuración de Acción",
+                action_type: "Tipo de Acción",
+                action_key: "Clave de Acción",
+                action_value: "Valor de Acción",
+                add_option: "Añadir Opción",
+                paragraph_title: "Título del Párrafo",
+                paragraph_content: "Contenido del Párrafo",
             },
             "es-CL" => Self {
                 add: "Agregar",
@@ -90,6 +122,14 @@ impl Translations {
                 submit_success: "¡Enviado exitosamente!",
                 select_language: "Seleccionar Idioma",
                 select_chapter: "Seleccionar Capítulo",
+                option: "Opción",
+                action_settings: "Configuración de Acción",
+                action_type: "Tipo de Acción",
+                action_key: "Clave de Acción",
+                action_value: "Valor de Acción",
+                add_option: "Agregar Opción",
+                paragraph_title: "Título del Párrafo",
+                paragraph_content: "Contenido del Párrafo",
             },
             "zh-TW" => Self {
                 add: "新增",
@@ -107,6 +147,14 @@ impl Translations {
                 submit_success: "資料送出成功！",
                 select_language: "選擇語言",
                 select_chapter: "選擇章節",
+                option: "選項",
+                action_settings: "動作設定",
+                action_type: "動作類型",
+                action_key: "動作鍵值",
+                action_value: "動作數值",
+                add_option: "新增選項",
+                paragraph_title: "段落標題",
+                paragraph_content: "段落內容",
             },
             _ => Self::get("en-US"),
         }

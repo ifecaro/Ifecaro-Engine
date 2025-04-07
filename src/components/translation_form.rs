@@ -102,8 +102,8 @@ pub fn TranslationForm(props: TranslationFormProps) -> Element {
 
                 // 段落內容欄位
                 TextareaField {
-                    label: "段落內容",
-                    placeholder: t.paragraph,
+                    label: t.paragraph_content,
+                    placeholder: t.paragraph_content,
                     value: paragraphs.to_string(),
                     required: true,
                     has_error: paragraphs_error,

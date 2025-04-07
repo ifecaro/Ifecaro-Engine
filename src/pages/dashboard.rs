@@ -795,7 +795,7 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
                     // 語言選擇
                     div {
                         Dropdown {
-                            label: t.select_language.to_string(),
+                            label: t.select_language,
                             value: current_language.read().to_string(),
                             options: filtered_languages.read().clone(),
                             is_open: *is_open.read(),
@@ -819,7 +819,7 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
                     div {
                         Dropdown {
                             key: format!("chapter-dropdown-{}", current_lang),
-                            label: t.select_chapter.to_string(),
+                            label: t.select_chapter,
                             value: {
                                 if selected_chapter.read().is_empty() {
                                     t.select_chapter.to_string()
@@ -939,16 +939,16 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
                                 class: "flex items-center space-x-4",
                                 div { class: "flex-1",
                                     InputField {
-                                        label: "新段落標題",
-                                        placeholder: "輸入段落標題",
-                                        value: paragraphs.read().to_string(),
+                                        label: t.paragraph_title,
+                                        placeholder: t.paragraph_title,
+                                        value: new_caption.read().to_string(),
                                         required: true,
-                                        has_error: *paragraphs_error.read(),
+                                        has_error: *new_caption_error.read(),
                                         on_input: move |value: String| {
-                                            paragraphs.set(value.clone());
-                                            validate_field(&value, &mut paragraphs_error);
+                                            new_caption.set(value.clone());
+                                            validate_field(&value, &mut new_caption_error);
                                         },
-                                        on_blur: move |_| validate_field(&paragraphs.read(), &mut paragraphs_error)
+                                        on_blur: move |_| validate_field(&new_caption.read(), &mut new_caption_error)
                                     }
                                 }
 
@@ -1007,8 +1007,8 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
                     div { 
                         class: "md:col-span-2",
                         TextareaField {
-                            label: "段落內容",
-                            placeholder: t.paragraph,
+                            label: t.paragraph_content,
+                            placeholder: t.paragraph_content,
                             value: paragraphs.read().to_string(),
                             required: true,
                             has_error: *paragraphs_error.read(),
