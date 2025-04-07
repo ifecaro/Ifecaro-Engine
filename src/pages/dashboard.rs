@@ -226,7 +226,7 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
         (move || {})()
     });
 
-    let mut choices = use_signal(|| Vec::<Choice>::new());
+    let _choices = use_signal(|| Vec::<Choice>::new());
     let mut paragraphs = use_signal(|| String::new());
     let mut new_caption = use_signal(|| String::new());
     let mut new_goto = use_signal(|| String::new());

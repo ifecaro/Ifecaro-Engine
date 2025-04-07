@@ -405,158 +405,47 @@ async fn save_choice_to_indexeddb(paragraph_id: &str, _chapter_id: &str, choice:
     Ok(())
 }
 
-async fn read_indexeddb_data() -> Result<(), JsValue> {
+#[allow(dead_code)]
+async fn read_indexeddb_data() -> Result<Vec<String>, JsValue> {
     let window = web_sys::window().ok_or_else(|| JsValue::from_str("No window found"))?;
     let indexed_db = window.indexed_db()
-        .map_err(|e| {
-            web_sys::console::error_1(&JsValue::from_str(&format!("Failed to get indexed_db: {:?}", e)));
-            JsValue::from_str(&format!("Failed to get indexed_db: {:?}", e))
-        })?
-        .ok_or_else(|| {
-            web_sys::console::error_1(&JsValue::from_str("No indexed_db found"));
-            JsValue::from_str("No indexed_db found")
-        })?;
+        .map_err(|e| JsValue::from_str(&format!("Failed to get indexed_db: {:?}", e)))?
+        .ok_or_else(|| JsValue::from_str("No indexed_db found"))?;
     
     let db_request = indexed_db.open_with_u32("story_choices", 1)
-        .map_err(|e| {
-            web_sys::console::error_1(&JsValue::from_str(&format!("Failed to open database: {:?}", e)));
-            JsValue::from_str(&format!("Failed to open database: {:?}", e))
-        })?;
+        .map_err(|e| JsValue::from_str(&format!("Failed to open database: {:?}", e)))?;
     
-    // 等待數據庫打開或升級完成
-    let db_promise = js_sys::Promise::new(&mut |resolve, reject| {
-        // 處理升級事件
-        let db_request_upgrade = db_request.clone();
-        let onupgradeneeded_callback = Closure::wrap(Box::new(move |_event: web_sys::Event| {
-            web_sys::console::log_1(&JsValue::from_str("數據庫升級事件觸發"));
-            match db_request_upgrade.result() {
-                Ok(db_any) => {
-                    match db_any.dyn_into::<IdbDatabase>() {
-                        Ok(db) => {
-                            match db.create_object_store("choices") {
-                                Ok(_) => {
-                                    web_sys::console::log_1(&JsValue::from_str("成功創建 choices 存儲對象"));
-                                },
-                                Err(e) => {
-                                    web_sys::console::error_1(&JsValue::from_str(&format!("創建存儲對象失敗: {:?}", e)));
-                                }
-                            }
-                        },
-                        Err(e) => {
-                            web_sys::console::error_1(&JsValue::from_str(&format!("轉換數據庫對象失敗: {:?}", e)));
-                        }
-                    }
-                },
-                Err(e) => {
-                    web_sys::console::error_1(&JsValue::from_str(&format!("獲取數據庫結果失敗: {:?}", e)));
-                }
-            }
-        }) as Box<dyn FnMut(web_sys::Event)>);
-        
-        // 處理成功事件
-        let db_request_success = db_request.clone();
-        let resolve_success = resolve.clone();
-        let reject_success = reject.clone();
-        let onsuccess_callback = Closure::wrap(Box::new(move |_event: web_sys::Event| {
-            match db_request_success.result() {
-                Ok(db_any) => {
-                    match db_any.dyn_into::<IdbDatabase>() {
-                        Ok(db) => {
-                            web_sys::console::log_1(&JsValue::from_str("數據庫打開成功"));
-                            resolve_success.call1(&JsValue::NULL, &db).unwrap();
-                        },
-                        Err(e) => {
-                            web_sys::console::error_1(&JsValue::from_str(&format!("轉換數據庫對象失敗: {:?}", e)));
-                            reject_success.call1(&JsValue::NULL, &e).unwrap();
-                        }
-                    }
-                },
-                Err(e) => {
-                    web_sys::console::error_1(&JsValue::from_str(&format!("獲取數據庫結果失敗: {:?}", e)));
-                    reject_success.call1(&JsValue::NULL, &e).unwrap();
-                }
-            }
-        }) as Box<dyn FnMut(web_sys::Event)>);
-        
-        // 處理錯誤事件
-        let reject_error = reject.clone();
-        let onerror_callback = Closure::wrap(Box::new(move |event: web_sys::Event| {
-            web_sys::console::error_1(&JsValue::from_str("數據庫打開失敗"));
-            reject_error.call1(&JsValue::NULL, &event).unwrap();
-        }) as Box<dyn FnMut(web_sys::Event)>);
-        
-        db_request.set_onupgradeneeded(Some(onupgradeneeded_callback.as_ref().unchecked_ref()));
-        db_request.set_onsuccess(Some(onsuccess_callback.as_ref().unchecked_ref()));
-        db_request.set_onerror(Some(onerror_callback.as_ref().unchecked_ref()));
-        
-        onupgradeneeded_callback.forget();
-        onsuccess_callback.forget();
-        onerror_callback.forget();
-    });
-    
-    let db: IdbDatabase = JsFuture::from(db_promise)
+    let db: IdbDatabase = JsFuture::from(Promise::resolve(&db_request))
         .await
-        .map_err(|e| {
-            web_sys::console::error_1(&JsValue::from_str(&format!("等待數據庫打開失敗: {:?}", e)));
-            JsValue::from_str(&format!("等待數據庫打開失敗: {:?}", e))
-        })?
+        .map_err(|e| JsValue::from_str(&format!("Failed to open database: {:?}", e)))?
         .dyn_into()
-        .map_err(|e| {
-            web_sys::console::error_1(&JsValue::from_str(&format!("轉換為 IdbDatabase 失敗: {:?}", e)));
-            JsValue::from_str(&format!("轉換為 IdbDatabase 失敗: {:?}", e))
-        })?;
-    
-    web_sys::console::log_1(&JsValue::from_str("成功獲取數據庫"));
+        .map_err(|e| JsValue::from_str(&format!("Failed to convert to IdbDatabase: {:?}", e)))?;
     
     let transaction = db.transaction_with_str_sequence_and_mode(
         &js_sys::Array::of1(&JsValue::from_str("choices")),
         web_sys::IdbTransactionMode::Readonly,
-    ).map_err(|e| {
-        web_sys::console::error_1(&JsValue::from_str(&format!("創建事務失敗: {:?}", e)));
-        JsValue::from_str(&format!("創建事務失敗: {:?}", e))
-    })?;
+    ).map_err(|e| JsValue::from_str(&format!("Failed to create transaction: {:?}", e)))?;
     
     let store = transaction.object_store("choices")
-        .map_err(|e| {
-            web_sys::console::error_1(&JsValue::from_str(&format!("獲取存儲對象失敗: {:?}", e)));
-            JsValue::from_str(&format!("獲取存儲對象失敗: {:?}", e))
-        })?;
+        .map_err(|e| JsValue::from_str(&format!("Failed to get store: {:?}", e)))?;
     
-    // 獲取所有數據
-    let request = store.get_all()
-        .map_err(|e| {
-            web_sys::console::error_1(&JsValue::from_str(&format!("獲取所有數據失敗: {:?}", e)));
-            JsValue::from_str(&format!("獲取所有數據失敗: {:?}", e))
-        })?;
-    
-    let result = JsFuture::from(Promise::resolve(&request))
-        .await
-        .map_err(|e| {
-            web_sys::console::error_1(&JsValue::from_str(&format!("獲取結果失敗: {:?}", e)));
-            JsValue::from_str(&format!("獲取結果失敗: {:?}", e))
-        })?;
-    
-    web_sys::console::log_1(&JsValue::from_str("IndexedDB 中的所有數據:"));
-    web_sys::console::log_1(&result);
-    
-    // 特別獲取 user_choices
     let choices_request = store.get(&JsValue::from_str("user_choices"))
-        .map_err(|e| {
-            web_sys::console::error_1(&JsValue::from_str(&format!("獲取 user_choices 失敗: {:?}", e)));
-            JsValue::from_str(&format!("獲取 user_choices 失敗: {:?}", e))
-        })?;
+        .map_err(|e| JsValue::from_str(&format!("Failed to get user_choices: {:?}", e)))?;
     
     let choices_result = JsFuture::from(Promise::resolve(&choices_request))
         .await
-        .map_err(|e| {
-            web_sys::console::error_1(&JsValue::from_str(&format!("獲取 user_choices 結果失敗: {:?}", e)));
-            JsValue::from_str(&format!("獲取 user_choices 結果失敗: {:?}", e))
-        })?;
+        .map_err(|e| JsValue::from_str(&format!("Failed to get choices result: {:?}", e)))?;
     
-    web_sys::console::log_1(&JsValue::from_str("user_choices 的內容:"));
-    web_sys::console::log_1(&choices_result);
+    let choices: Vec<String> = if !choices_result.is_undefined() && !choices_result.is_null() {
+        let choices_str = choices_result.as_string()
+            .ok_or_else(|| JsValue::from_str("Failed to convert choices to string"))?;
+        serde_json::from_str(&choices_str)
+            .map_err(|e| JsValue::from_str(&format!("Failed to parse choices: {:?}", e)))?
+    } else {
+        Vec::new()
+    };
     
-    Ok(())
+    Ok(choices)
 }
 
 #[allow(non_snake_case)]
@@ -652,10 +541,26 @@ pub fn Story(_props: StoryProps) -> Element {
 
     // 在組件加載時讀取 IndexedDB 數據
     {
+        let data = data.clone();
+        let mut selected_paragraph_index = selected_paragraph_index.clone();
+
         use_future(move || async move {
             match read_indexeddb_data().await {
-                Ok(_) => web_sys::console::log_1(&JsValue::from_str("成功讀取 IndexedDB 數據")),
-                Err(e) => web_sys::console::error_1(&JsValue::from_str(&format!("讀取 IndexedDB 數據失敗: {:?}", e)))
+                Ok(choices) => {
+                    if !choices.is_empty() {
+                        // 找到最後一個選擇對應的段落
+                        if let Some(last_choice) = choices.last() {
+                            if let Some(item) = data.read().items.iter().find(|item| item.id == *last_choice) {
+                                selected_paragraph_index.set(item.index);
+                            }
+                        }
+                    }
+                    Ok(())
+                },
+                Err(e) => {
+                    web_sys::console::error_1(&JsValue::from_str(&format!("讀取 IndexedDB 數據失敗: {:?}", e)));
+                    Err(e)
+                }
             }
         });
     }
