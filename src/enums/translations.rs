@@ -26,6 +26,8 @@ pub struct Translations {
     pub delete_option: &'static str,
     pub paragraph_title: &'static str,
     pub paragraph_content: &'static str,
+    pub continue_reading: &'static str,
+    pub start_reading: &'static str,
 }
 
 impl PartialEq for Translations {
@@ -55,7 +57,9 @@ impl PartialEq for Translations {
         self.add_option == other.add_option &&
         self.delete_option == other.delete_option &&
         self.paragraph_title == other.paragraph_title &&
-        self.paragraph_content == other.paragraph_content
+        self.paragraph_content == other.paragraph_content &&
+        self.continue_reading == other.continue_reading &&
+        self.start_reading == other.start_reading
     }
 }
 
@@ -89,6 +93,8 @@ impl Translations {
                 delete_option: "Delete Option",
                 paragraph_title: "Paragraph Title",
                 paragraph_content: "Paragraph Content",
+                continue_reading: "Click here to continue",
+                start_reading: "Click here to start",
             },
             "es-ES" => Self {
                 add: "Añadir",
@@ -98,7 +104,7 @@ impl Translations {
                 goto_target: "Ir a Destino",
                 options: "Opciones",
                 option_text: "Texto de Opción",
-                caption: "Leyenda",
+                caption: "Pie de Foto",
                 paragraph: "Párrafo",
                 settings: "Configuración",
                 story: "Historia",
@@ -117,6 +123,8 @@ impl Translations {
                 delete_option: "Eliminar Opción",
                 paragraph_title: "Título del Párrafo",
                 paragraph_content: "Contenido del Párrafo",
+                continue_reading: "Haz clic aquí para continuar",
+                start_reading: "Haz clic aquí para comenzar",
             },
             "es-CL" => Self {
                 add: "Agregar",
@@ -145,6 +153,8 @@ impl Translations {
                 delete_option: "Eliminar Opción",
                 paragraph_title: "Título del Párrafo",
                 paragraph_content: "Contenido del Párrafo",
+                continue_reading: "Haz clic aquí para continuar",
+                start_reading: "Haz clic aquí para comenzar",
             },
             "zh-TW" => Self {
                 add: "新增",
@@ -154,7 +164,7 @@ impl Translations {
                 goto_target: "目標段落",
                 options: "選項",
                 option_text: "選項文字",
-                caption: "標題",
+                caption: "說明文字",
                 paragraph: "段落",
                 settings: "設定",
                 story: "故事",
@@ -168,11 +178,13 @@ impl Translations {
                 action_settings: "動作設定",
                 action_type: "動作類型",
                 action_key: "動作鍵值",
-                action_value: "動作值",
+                action_value: "動作數值",
                 add_option: "新增選項",
                 delete_option: "刪除選項",
                 paragraph_title: "段落標題",
                 paragraph_content: "段落內容",
+                continue_reading: "點擊這裡繼續",
+                start_reading: "點擊這裡開始",
             },
             "zh-CN" => Self {
                 add: "添加",
@@ -201,6 +213,8 @@ impl Translations {
                 delete_option: "删除选项",
                 paragraph_title: "段落标题",
                 paragraph_content: "段落内容",
+                continue_reading: "Click here to continue",
+                start_reading: "Click here to start",
             },
             _ => Self {
                 add: "Add",
@@ -229,6 +243,8 @@ impl Translations {
                 delete_option: "Delete Option",
                 paragraph_title: "Paragraph Title",
                 paragraph_content: "Paragraph Content",
+                continue_reading: "Click here to continue",
+                start_reading: "Click here to start",
             },
         }
     }

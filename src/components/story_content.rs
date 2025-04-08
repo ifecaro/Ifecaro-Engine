@@ -77,10 +77,15 @@ pub fn StoryContent(props: StoryContentProps) -> Element {
             document.add_event_listener_with_callback("focusin", focus_handler.as_ref().unchecked_ref()).unwrap();
             document.add_event_listener_with_callback("focusout", blur_handler.as_ref().unchecked_ref()).unwrap();
             
-            focus_handler.forget();
-            blur_handler.forget();
+            // 保持 handlers 存活直到組件卸載
+            let focus_handler = focus_handler;
+            let blur_handler = blur_handler;
+            let document = document;
             
-            (|| ())()
+            (move || {
+                let _ = document.remove_event_listener_with_callback("focusin", focus_handler.as_ref().unchecked_ref());
+                let _ = document.remove_event_listener_with_callback("focusout", blur_handler.as_ref().unchecked_ref());
+            })()
         });
     }
     
