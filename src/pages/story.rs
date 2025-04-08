@@ -337,7 +337,18 @@ pub fn Story(_props: StoryProps) -> Element {
     });
     let mut selected_paragraph_index: Signal<usize> = use_signal(|| 0);
     let state = use_context::<Signal<LanguageState>>();
-    let t = Translations::get(&state.read().current_language);
+    let mut t = use_signal(|| Translations::get(&state.read().current_language));
+
+    // 監聽語言變化
+    {
+        let state = state.clone();
+        let mut t = t.clone();
+        use_effect(move || {
+            t.set(Translations::get(&state.read().current_language));
+            (|| ())()
+        });
+    }
+
     let mut story_context = use_story_context();
 
     let text_found = use_memo(move || {
@@ -490,15 +501,21 @@ pub fn Story(_props: StoryProps) -> Element {
 
     let render_coming_soon = move || {
         rsx! {
-            article {
-                class: "prose dark:prose-invert lg:prose-xl indent-10 mx-auto",
+            div {
+                class: "prose dark:prose-invert lg:prose-xl mx-auto",
                 div {
-                    class: "whitespace-pre-line",
-                    p { class: "mb-6", { t.coming_soon } }
+                    class: "whitespace-pre-wrap mt-16 space-y-8",
+                    p {
+                        class: "indent-10",
+                        {t.read().coming_soon}
+                    }
                 }
-                ol {
-                    class: "mt-10 w-fit",
-                    li { class: "opacity-30", { t.coming_soon } }
+                StoryContent {
+                    paragraph: "".to_string(),
+                    choices: vec![],
+                    on_choice_click: move |_| {},
+                    t: t.read().clone(),
+                    enabled_choices: vec![]
                 }
             }
         }
@@ -512,7 +529,7 @@ pub fn Story(_props: StoryProps) -> Element {
                         paragraph: paragraph.clone(),
                         choices: text.choices.clone(),
                         on_choice_click,
-                        t: t.clone(),
+                        t: t.read().clone(),
                         enabled_choices: enabled_choices.read().clone()
                     }
                 }
