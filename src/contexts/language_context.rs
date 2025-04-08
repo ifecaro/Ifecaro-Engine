@@ -20,6 +20,7 @@ impl LanguageState {
         self.current_language = lang.to_string();
         match lang {
             "zh-TW" => self.i18n.set_language(langid!("zh-TW")),
+            "zh-CN" => self.i18n.set_language(langid!("zh-CN")),
             "en-US" => self.i18n.set_language(langid!("en-US")),
             "es-ES" => self.i18n.set_language(langid!("es-ES")),
             "es-CL" => self.i18n.set_language(langid!("es-CL")),

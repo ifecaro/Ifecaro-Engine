@@ -1,5 +1,4 @@
 use dioxus::prelude::*;
-use crate::enums::translations::Translations;
 use serde::{Serialize, Deserialize};
 use serde_json;
 use crate::KeyboardState;
@@ -7,13 +6,13 @@ use wasm_bindgen::JsCast;
 use wasm_bindgen::closure::Closure;
 use web_sys::FocusEvent;
 use crate::contexts::story_context::use_story_context;
+use dioxus_i18n::t;
 
 #[derive(Props, Clone, PartialEq)]
 pub struct StoryContentProps {
     pub paragraph: String,
     pub choices: Vec<Choice>,
     pub on_choice_click: EventHandler<String>,
-    pub t: Translations,
     pub enabled_choices: Vec<String>,
 }
 
@@ -40,13 +39,18 @@ pub fn StoryContent(props: StoryContentProps) -> Element {
     let choices = props.choices.clone();
     let enabled_choices = props.enabled_choices.clone();
     let on_choice_click = props.on_choice_click.clone();
-    let t = props.t.clone();
     let mut keyboard_state = use_context::<Signal<KeyboardState>>();
     let mut story_context = use_story_context();
     
     let mut show_filter = use_signal(|| true);
     let mut is_focused = use_signal(|| false);
     let mut is_mobile = use_signal(|| false);
+    
+    // 確保在組件掛載時過濾器始終顯示
+    use_effect(move || {
+        show_filter.set(true);
+        (|| ())()
+    });
     
     {
         use_effect(move || {
@@ -116,7 +120,7 @@ pub fn StoryContent(props: StoryContentProps) -> Element {
             class: "relative",
             div {
                 class: {
-                    let mut classes = vec!["fixed inset-0 bg-black bg-opacity-50 z-10 flex items-center justify-center transition-opacity duration-500"];
+                    let mut classes = vec!["fixed inset-0 bg-[rgba(0,0,0,0.7)] backdrop-blur-sm z-10 flex items-center justify-center transition-opacity duration-500 cursor-pointer"];
                     if !*show_filter.read() || *is_mobile.read() {
                         classes.push("opacity-0 pointer-events-none");
                     } else {
@@ -124,20 +128,20 @@ pub fn StoryContent(props: StoryContentProps) -> Element {
                     }
                     classes.join(" ")
                 },
-                button {
-                    class: "bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline",
-                    onclick: move |_| {
-                        show_filter.set(false);
-                        is_focused.set(true);
-                        if let Some(window) = web_sys::window() {
-                            if let Some(document) = window.document() {
-                                if let Some(main) = document.query_selector("main").unwrap() {
-                                    let _ = main.unchecked_into::<web_sys::HtmlElement>().focus();
-                                }
+                onclick: move |_| {
+                    show_filter.set(false);
+                    is_focused.set(true);
+                    if let Some(window) = web_sys::window() {
+                        if let Some(document) = window.document() {
+                            if let Some(main) = document.query_selector("main").unwrap() {
+                                let _ = main.unchecked_into::<web_sys::HtmlElement>().focus();
                             }
                         }
-                    },
-                    { if *is_focused.read() { t.continue_reading } else { t.start_reading } }
+                    }
+                },
+                div {
+                    class: "text-white text-xl font-bold",
+                    { if *is_focused.read() { t!("continue-reading") } else { t!("start-reading") } }
                 }
             }
             article {

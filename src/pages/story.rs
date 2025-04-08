@@ -6,6 +6,7 @@ use dioxus::{
     prelude::{dioxus_elements, fc_to_builder, rsx, Element, IntoDynNode, GlobalSignal, Readable, Props},
     signals::{Signal, Writable},
 };
+use dioxus_i18n::t;
 // use dioxus_markdown::Markdown;
 use serde::Deserialize;
 use crate::contexts::language_context::LanguageState;
@@ -507,14 +508,13 @@ pub fn Story(_props: StoryProps) -> Element {
                     class: "whitespace-pre-wrap mt-16 space-y-8",
                     p {
                         class: "indent-10",
-                        {t.read().coming_soon}
+                        {t!("coming-soon")}
                     }
                 }
                 StoryContent {
                     paragraph: "".to_string(),
                     choices: vec![],
                     on_choice_click: move |_| {},
-                    t: t.read().clone(),
                     enabled_choices: vec![]
                 }
             }
@@ -529,7 +529,6 @@ pub fn Story(_props: StoryProps) -> Element {
                         paragraph: paragraph.clone(),
                         choices: text.choices.clone(),
                         on_choice_click,
-                        t: t.read().clone(),
                         enabled_choices: enabled_choices.read().clone()
                     }
                 }

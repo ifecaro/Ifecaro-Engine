@@ -6,6 +6,7 @@ pub fn create_i18n_store() -> I18nConfig {
     I18nConfig::new(langid!("zh-TW"))
         .with_locale((langid!("en-US"), include_str!("../i18n/en.ftl")))
         .with_locale((langid!("zh-TW"), include_str!("../i18n/zh-TW.ftl")))
+        .with_locale((langid!("zh-CN"), include_str!("../i18n/zh-CN.ftl")))
         .with_locale((langid!("es-ES"), include_str!("../i18n/es-ES.ftl")))
         .with_locale((langid!("es-CL"), include_str!("../i18n/es-CL.ftl")))
 }
@@ -19,5 +20,5 @@ pub fn get_translations(lang: &str) -> Translations {
 // 獲取所有可用的語言列表
 #[allow(dead_code)]
 pub fn get_available_languages() -> Vec<&'static str> {
-    vec!["en-US", "zh-TW", "es-ES", "es-CL"]
+    vec!["en-US", "zh-TW", "zh-CN", "es-ES", "es-CL"]
 } 

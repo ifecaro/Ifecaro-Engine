@@ -93,8 +93,8 @@ impl Translations {
                 delete_option: "Delete Option",
                 paragraph_title: "Paragraph Title",
                 paragraph_content: "Paragraph Content",
-                continue_reading: "Click here to continue",
-                start_reading: "Click here to start",
+                continue_reading: "Click anywhere on the screen to continue",
+                start_reading: "Click anywhere on the screen to start",
             },
             "es-ES" => Self {
                 add: "Añadir",
@@ -123,8 +123,8 @@ impl Translations {
                 delete_option: "Eliminar Opción",
                 paragraph_title: "Título del Párrafo",
                 paragraph_content: "Contenido del Párrafo",
-                continue_reading: "Haz clic aquí para continuar",
-                start_reading: "Haz clic aquí para comenzar",
+                continue_reading: "Haz clic en cualquier parte de la pantalla para continuar",
+                start_reading: "Haz clic en cualquier parte de la pantalla para comenzar",
             },
             "es-CL" => Self {
                 add: "Agregar",
@@ -153,8 +153,8 @@ impl Translations {
                 delete_option: "Eliminar Opción",
                 paragraph_title: "Título del Párrafo",
                 paragraph_content: "Contenido del Párrafo",
-                continue_reading: "Haz clic aquí para continuar",
-                start_reading: "Haz clic aquí para comenzar",
+                continue_reading: "Haz clic en cualquier parte de la pantalla para continuar",
+                start_reading: "Haz clic en cualquier parte de la pantalla para comenzar",
             },
             "zh-TW" => Self {
                 add: "新增",
@@ -183,8 +183,8 @@ impl Translations {
                 delete_option: "刪除選項",
                 paragraph_title: "段落標題",
                 paragraph_content: "段落內容",
-                continue_reading: "點擊這裡繼續",
-                start_reading: "點擊這裡開始",
+                continue_reading: "點擊螢幕任意處繼續",
+                start_reading: "點擊螢幕任意處開始",
             },
             "zh-CN" => Self {
                 add: "添加",
@@ -213,8 +213,8 @@ impl Translations {
                 delete_option: "删除选项",
                 paragraph_title: "段落标题",
                 paragraph_content: "段落内容",
-                continue_reading: "Click here to continue",
-                start_reading: "Click here to start",
+                continue_reading: "点击屏幕任意处继续",
+                start_reading: "点击屏幕任意处开始",
             },
             _ => Self {
                 add: "Add",
@@ -243,8 +243,8 @@ impl Translations {
                 delete_option: "Delete Option",
                 paragraph_title: "Paragraph Title",
                 paragraph_content: "Paragraph Content",
-                continue_reading: "Click here to continue",
-                start_reading: "Click here to start",
+                continue_reading: "Click anywhere on the screen to continue",
+                start_reading: "Click anywhere on the screen to start",
             },
         }
     }
