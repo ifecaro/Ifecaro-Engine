@@ -8,3 +8,4 @@ pub mod paragraph_list;
 pub mod language_selector;
 pub mod paragraph_form;
 pub mod translation_form;
+pub mod chapter_selector;

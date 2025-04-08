@@ -23,6 +23,7 @@ pub struct ParagraphFormProps {
     on_extra_caption_change: EventHandler<(usize, String)>,
     on_extra_goto_change: EventHandler<(usize, String)>,
     on_add_choice: EventHandler<()>,
+    on_remove_choice: EventHandler<usize>,
     on_submit: EventHandler<()>,
 }
 
@@ -94,7 +95,8 @@ pub fn ParagraphForm(props: ParagraphFormProps) -> Element {
                 on_extra_action_type_change: move |_| {},
                 on_extra_action_key_change: move |_| {},
                 on_extra_action_value_change: move |_| {},
-                on_add_choice: props.on_add_choice
+                on_add_choice: props.on_add_choice,
+                on_remove_choice: props.on_remove_choice
             }
 
             // 提交按鈕

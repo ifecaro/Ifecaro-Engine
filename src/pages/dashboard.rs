@@ -9,6 +9,7 @@ use crate::components::story_content::{Choice, Action};
 use crate::components::dropdown::Dropdown;
 use crate::components::translation_form::{Paragraph, Text};
 use crate::components::paragraph_list::ParagraphList;
+use crate::components::chapter_selector::ChapterSelector;
 use dioxus::events::FormEvent;
 use dioxus::hooks::use_context;
 use crate::contexts::language_context::LanguageState;
@@ -756,17 +757,6 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
         }
     };
 
-    // 定義章節標題顯示函數
-    let display_chapter_title = move |chapter: &Chapter| {
-        let language_state = use_context::<Signal<LanguageState>>();
-        let current_lang = language_state.read().current_language.clone();
-        chapter.titles.iter()
-            .find(|t| t.lang == current_lang)
-            .or_else(|| chapter.titles.first())
-            .map(|t| t.title.clone())
-            .unwrap_or_default()
-    };
-
     let handle_add_choice = move |_| {
         show_extra_options.write().push(());
         extra_captions.write().push(String::new());
@@ -775,6 +765,22 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
         extra_action_keys.write().push(None);
         extra_action_values.write().push(None);
         should_scroll.set(true);
+    };
+
+    let handle_remove_choice = move |index: usize| {
+        let mut captions = extra_captions.write();
+        let mut gotos = extra_gotos.write();
+        let mut action_types = extra_action_types.write();
+        let mut action_keys = extra_action_keys.write();
+        let mut action_values = extra_action_values.write();
+        let mut options = show_extra_options.write();
+
+        captions.remove(index);
+        gotos.remove(index);
+        action_types.remove(index);
+        action_keys.remove(index);
+        action_values.remove(index);
+        options.remove(index);
     };
 
     rsx! {
@@ -811,37 +817,19 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
                                 is_open.set(false);
                                 search_query.set(String::new());
                             },
-                            display_fn: display_language
+                            display_fn: display_language,
+                            has_error: false,
+                            search_placeholder: t.search_language,
                         }
                     }
 
                     // 章節選擇器
                     div {
-                        Dropdown {
+                        ChapterSelector {
                             key: format!("chapter-dropdown-{}", current_lang),
                             label: t.select_chapter,
-                            value: {
-                                if selected_chapter.read().is_empty() {
-                                    t.select_chapter.to_string()
-                                } else {
-                                    let chapter = available_chapters.read().iter()
-                                        .find(|c| c.id == *selected_chapter.read())
-                                        .cloned()
-                                        .unwrap_or_else(|| Chapter { id: String::new(), titles: Vec::new(), order: 0 });
-                                    
-                                    display_chapter_title(&chapter)
-                                }
-                            },
-                            options: available_chapters.read().iter()
-                                .filter(|chapter| {
-                                    let query = chapter_search_query.read().to_lowercase();
-                                    chapter.titles.iter()
-                                        .find(|t| t.lang == current_lang)
-                                        .map(|t| t.title.to_lowercase().contains(&query))
-                                        .unwrap_or(false)
-                                })
-                                .cloned()
-                                .collect::<Vec<_>>(),
+                            value: selected_chapter.read().clone(),
+                            chapters: available_chapters.read().clone(),
                             is_open: *is_chapter_open.read(),
                             search_query: chapter_search_query.read().to_string(),
                             on_toggle: move |_| {
@@ -855,7 +843,7 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
                                 chapter_search_query.set(String::new());
                                 validate_field(&chapter.id, &mut chapter_error);
                             },
-                            display_fn: display_chapter_title
+                            has_error: *chapter_error.read(),
                         }
                     }
 
@@ -865,7 +853,7 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
                         div { 
                             class: "md:col-span-2",
                             div {
-                                class: "flex items-center space-x-4",
+                                class: "flex items-end space-x-4",
                                 div { class: "flex-1",
                                     ParagraphList {
                                         label: "選擇段落",
@@ -879,6 +867,7 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
                                         },
                                         on_search: move |query| _paragraph_search_query.set(query),
                                         on_select: handle_paragraph_select,
+                                        has_error: false,
                                     }
                                 }
 
@@ -936,7 +925,7 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
                         div { 
                             class: "md:col-span-2",
                             div {
-                                class: "flex items-center space-x-4",
+                                class: "flex items-end space-x-4",
                                 div { class: "flex-1",
                                     InputField {
                                         label: t.paragraph_title,
@@ -1026,7 +1015,7 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
                         t: t.clone(),
                         new_caption: new_caption.read().to_string(),
                         new_goto: new_goto.read().to_string(),
-                        new_action_type: new_action_type.read().to_string(),
+                        new_action_type: new_action_type.read().clone(),
                         new_action_key: new_action_key.read().clone(),
                         new_action_value: new_action_value.read().clone(),
                         extra_captions: extra_captions.read().clone(),
@@ -1038,22 +1027,16 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
                         new_goto_error: *new_goto_error.read(),
                         available_paragraphs: available_paragraphs.read().clone(),
                         on_new_caption_change: move |value: String| {
+                            new_caption.set(value.clone());
                             validate_field(&value, &mut new_caption_error);
-                            new_caption.set(value);
                         },
                         on_new_goto_change: move |value: String| {
+                            new_goto.set(value.clone());
                             validate_field(&value, &mut new_goto_error);
-                            new_goto.set(value);
                         },
-                        on_new_action_type_change: move |value: String| {
-                            new_action_type.set(value);
-                        },
-                        on_new_action_key_change: move |value: Option<String>| {
-                            new_action_key.set(value);
-                        },
-                        on_new_action_value_change: move |value: Option<serde_json::Value>| {
-                            new_action_value.set(value);
-                        },
+                        on_new_action_type_change: move |value| new_action_type.set(value),
+                        on_new_action_key_change: move |value| new_action_key.set(value),
+                        on_new_action_value_change: move |value| new_action_value.set(value),
                         on_extra_caption_change: move |(i, value): (usize, String)| {
                             let mut captions = extra_captions.write();
                             captions[i] = value;
@@ -1074,7 +1057,8 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
                             let mut values = extra_action_values.write();
                             values[i] = value;
                         },
-                        on_add_choice: handle_add_choice
+                        on_add_choice: handle_add_choice,
+                        on_remove_choice: handle_remove_choice
                     }
                 }
 

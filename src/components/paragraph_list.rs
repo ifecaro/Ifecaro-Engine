@@ -1,4 +1,5 @@
 use dioxus::prelude::*;
+use crate::components::dropdown::Dropdown;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Paragraph {
@@ -13,14 +14,18 @@ fn display_paragraph(paragraph: &Paragraph) -> String {
 
 #[derive(Props, Clone, PartialEq)]
 pub struct ParagraphListProps {
-    label: String,
-    value: String,
-    paragraphs: Vec<Paragraph>,
-    is_open: bool,
-    search_query: String,
-    on_toggle: EventHandler<()>,
-    on_search: EventHandler<String>,
-    on_select: EventHandler<String>,
+    pub label: String,
+    pub value: String,
+    pub paragraphs: Vec<Paragraph>,
+    pub is_open: bool,
+    pub search_query: String,
+    pub on_toggle: EventHandler<()>,
+    pub on_search: EventHandler<String>,
+    pub on_select: EventHandler<String>,
+    #[props(default = false)]
+    pub has_error: bool,
+    #[props(default = String::new())]
+    pub class: String,
 }
 
 #[component]
@@ -31,66 +36,38 @@ pub fn ParagraphList(props: ParagraphListProps) -> Element {
         .map(|p| p.preview.clone())
         .unwrap_or_else(|| props.value.clone());
 
+    // 過濾段落
+    let filtered_paragraphs = props.paragraphs.iter()
+        .filter(|paragraph| {
+            paragraph.preview.to_lowercase().contains(&props.search_query.to_lowercase())
+        })
+        .cloned()
+        .collect::<Vec<_>>();
+
+    // 定義顯示函數
+    let display_paragraph = |paragraph: &Paragraph| paragraph.preview.clone();
+
     rsx! {
-        div { class: "relative",
-            label { class: "block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2",
-                "{props.label}"
-            }
-            div {
-                class: "relative",
-                button {
-                    class: "w-full px-4 py-2.5 text-left text-sm bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors duration-150",
-                    onclick: move |_| props.on_toggle.call(()),
-                    div { class: "flex justify-between items-center",
-                        span { class: "block truncate text-gray-900 dark:text-gray-100",
-                            "{selected_preview}"
-                        }
-                        span { class: "ml-2 pointer-events-none text-gray-500 dark:text-gray-400",
-                            if props.is_open {
-                                "▲"
-                            } else {
-                                "▼"
-                            }
-                        }
-                    }
-                }
-                div {
-                    class: if props.is_open {
-                        "absolute z-10 mt-1 w-full bg-white dark:bg-gray-700 shadow-lg max-h-60 rounded-md py-1 text-sm overflow-auto focus:outline-none border border-gray-200 dark:border-gray-600"
-                    } else {
-                        "hidden"
-                    },
-                    div { class: "sticky top-0 z-10 bg-white dark:bg-gray-700 px-3 py-2 border-b border-gray-200 dark:border-gray-600",
-                        input {
-                            class: "w-full px-4 py-2.5 text-sm bg-gray-50 dark:bg-gray-600 border border-gray-300 dark:border-gray-500 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400",
-                            placeholder: "搜尋...",
-                            value: "{props.search_query}",
-                            oninput: move |event: FormEvent| props.on_search.call(event.value().clone())
-                        }
-                    }
-                    div { class: "py-1",
-                        {props.paragraphs.iter()
-                            .filter(|paragraph| {
-                                paragraph.preview.to_lowercase().contains(&props.search_query.to_lowercase())
-                            })
-                            .map(|paragraph| {
-                                let id = paragraph.id.clone();
-                                rsx! {
-                                    div {
-                                        class: "cursor-pointer select-none relative py-2 pl-3 pr-9 hover:bg-gray-100 dark:hover:bg-gray-600 text-gray-900 dark:text-gray-100 transition-colors duration-150",
-                                        onclick: move |_| {
-                                            props.on_select.call(id.clone());
-                                            props.on_toggle.call(());
-                                        },
-                                        span { class: "block truncate",
-                                            "{paragraph.preview}"
-                                        }
-                                    }
-                                }
-                            })}
-                    }
-                }
-            }
+        Dropdown {
+            label: props.label,
+            value: selected_preview,
+            options: filtered_paragraphs,
+            is_open: props.is_open,
+            search_query: props.search_query,
+            on_toggle: props.on_toggle,
+            on_search: props.on_search,
+            on_select: move |paragraph: Paragraph| {
+                props.on_select.call(paragraph.id);
+                props.on_toggle.call(());
+            },
+            display_fn: display_paragraph,
+            has_error: props.has_error,
+            class: props.class,
+            search_placeholder: "搜尋段落...",
+            button_class: "",
+            dropdown_class: "",
+            search_input_class: "",
+            option_class: "",
         }
     }
 } 
