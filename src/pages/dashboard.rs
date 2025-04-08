@@ -253,6 +253,8 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
     let paragraph_data = use_signal(|| Vec::<Paragraph>::new());
     let t = Translations::get(&current_lang);
     let mut should_scroll = use_signal(|| false);
+    // 添加段落語言狀態
+    let mut paragraph_language = use_signal(|| current_lang.clone());
 
     let mut paragraphs_error = use_signal(|| false);
     let mut new_caption_error = use_signal(|| false);
@@ -386,7 +388,7 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
 
     let current_language = use_memo(move || {
         AVAILABLE_LANGUAGES.iter()
-            .find(|l| l.code == language_state.read().current_language)
+            .find(|l| l.code == *paragraph_language.read())
             .map(|l| l.name)
             .unwrap_or("繁體中文")
     });
@@ -675,6 +677,9 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
             let current_lang = language_state.read().current_language.clone();
             
             selected_paragraph.set(Some(paragraph.clone()));
+            
+            // 更新段落語言為當前界面語言
+            paragraph_language.set(current_lang.clone());
 
             // 檢查是否有已存在的翻譯
             if let Some(existing_text) = paragraph.texts.iter().find(|text| text.lang == current_lang) {
@@ -812,8 +817,62 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
                             },
                             on_search: move |query| search_query.set(query),
                             on_select: move |lang: &Language| {
-                                let mut language_state = use_context::<Signal<LanguageState>>();
-                                language_state.write().current_language = lang.code.to_string();
+                                // 只更新段落的語言，不更新界面語言
+                                let current_lang = lang.code.to_string();
+                                
+                                // 更新段落語言
+                                paragraph_language.set(current_lang.clone());
+                                
+                                // 如果選擇的段落存在，更新其語言
+                                if let Some(paragraph) = selected_paragraph.read().as_ref() {
+                                    if let Some(existing_text) = paragraph.texts.iter().find(|text| text.lang == current_lang) {
+                                        paragraphs.set(existing_text.paragraphs.clone());
+                                        new_caption.set(existing_text.choices[0].caption.clone());
+                                        new_goto.set(existing_text.choices[0].action.to.clone());
+                                        new_action_type.set(existing_text.choices[0].action.type_.clone());
+                                        new_action_key.set(existing_text.choices[0].action.key.clone());
+                                        new_action_value.set(existing_text.choices[0].action.value.clone());
+                                        
+                                        // 更新額外選項
+                                        if existing_text.choices.len() > 1 {
+                                            let extra_choices = &existing_text.choices[1..];
+                                            extra_captions.set(extra_choices.iter().map(|c| c.caption.clone()).collect());
+                                            extra_gotos.set(extra_choices.iter().map(|c| c.action.to.clone()).collect());
+                                            extra_action_types.set(extra_choices.iter().map(|c| c.action.type_.clone()).collect());
+                                            extra_action_keys.set(extra_choices.iter().map(|c| c.action.key.clone()).collect());
+                                            extra_action_values.set(extra_choices.iter().map(|c| c.action.value.clone()).collect());
+                                            
+                                            // 更新顯示的額外選項
+                                            let mut options = Vec::new();
+                                            for _ in 0..extra_choices.len() {
+                                                options.push(());
+                                            }
+                                            show_extra_options.set(options);
+                                        } else {
+                                            extra_captions.set(vec![]);
+                                            extra_gotos.set(vec![]);
+                                            extra_action_types.set(vec![]);
+                                            extra_action_keys.set(vec![]);
+                                            extra_action_values.set(vec![]);
+                                            show_extra_options.set(vec![]);
+                                        }
+                                    } else {
+                                        // 如果該語言不存在，清空表單
+                                        paragraphs.set(String::new());
+                                        new_caption.set(String::new());
+                                        new_goto.set(String::new());
+                                        new_action_type.set(String::new());
+                                        new_action_key.set(None);
+                                        new_action_value.set(None);
+                                        extra_captions.set(vec![]);
+                                        extra_gotos.set(vec![]);
+                                        extra_action_types.set(vec![]);
+                                        extra_action_keys.set(vec![]);
+                                        extra_action_values.set(vec![]);
+                                        show_extra_options.set(vec![]);
+                                    }
+                                }
+                                
                                 is_open.set(false);
                                 search_query.set(String::new());
                             },
