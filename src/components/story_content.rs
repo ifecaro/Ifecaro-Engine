@@ -40,7 +40,7 @@ pub fn StoryContent(props: StoryContentProps) -> Element {
     let choices = props.choices.clone();
     let enabled_choices = props.enabled_choices.clone();
     let on_choice_click = props.on_choice_click.clone();
-    let _t = props.t.clone();
+    let t = props.t.clone();
     let mut keyboard_state = use_context::<Signal<KeyboardState>>();
     let mut story_context = use_story_context();
     
@@ -132,7 +132,7 @@ pub fn StoryContent(props: StoryContentProps) -> Element {
                             }
                         }
                     },
-                    { if *is_focused.read() { "點擊這裡繼續" } else { "點擊這裡開始" } }
+                    { if *is_focused.read() { t.continue_reading } else { t.start_reading } }
                 }
             }
             article {
