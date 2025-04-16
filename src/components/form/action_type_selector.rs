@@ -23,6 +23,8 @@ pub struct ActionTypeSelectorProps {
     pub has_error: bool,
     #[props(default = String::new())]
     pub class: String,
+    #[props(default = false)]
+    pub required: bool,
 }
 
 #[component]
@@ -59,6 +61,7 @@ pub fn ActionTypeSelector(props: ActionTypeSelectorProps) -> Element {
             dropdown_class: "",
             search_input_class: "",
             option_class: "",
+            required: props.required,
         }
     }
 } 

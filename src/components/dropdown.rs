@@ -44,6 +44,9 @@ pub struct DropdownProps<T: Clone + PartialEq + 'static> {
     /// 是否禁用下拉選單
     #[props(default = false)]
     pub disabled: bool,
+    /// 是否為必填
+    #[props(default = false)]
+    pub required: bool,
 }
 
 #[component]
@@ -90,6 +93,16 @@ pub fn Dropdown<T: Clone + PartialEq + 'static>(props: DropdownProps<T>) -> Elem
             label { 
                 class: "block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2",
                 "{props.label}"
+                {if props.required {
+                    rsx! {
+                        span {
+                            class: "text-red-500 ml-1",
+                            "*"
+                        }
+                    }
+                } else {
+                    rsx! {}
+                }}
             }
             div { 
                 class: format!("w-full {}", if props.is_open { "relative z-[1000]" } else { "" }),
@@ -101,6 +114,7 @@ pub fn Dropdown<T: Clone + PartialEq + 'static>(props: DropdownProps<T>) -> Elem
                         }
                     },
                     disabled: props.disabled,
+                    "aria-required": props.required.to_string(),
                     span { "{props.value}" }
                     svg { 
                         class: "fill-current h-4 w-4 transition-transform duration-200 ease-in-out",

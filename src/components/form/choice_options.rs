@@ -83,6 +83,7 @@ pub fn ChoiceOptions(props: ChoiceOptionsProps) -> Element {
                             goto_search_query.set(String::new());
                         },
                         has_error: props.new_goto_error,
+                        required: true,
                     }
                     // Action 相關欄位
                     div {
@@ -108,9 +109,10 @@ pub fn ChoiceOptions(props: ChoiceOptionsProps) -> Element {
                                         is_action_type_open.set(false);
                                     },
                                     has_error: false,
+                                    required: false,
                                 }
                             }
-    
+
                             InputField {
                                 label: t.action_key,
                                 placeholder: t.action_key,
@@ -122,7 +124,7 @@ pub fn ChoiceOptions(props: ChoiceOptionsProps) -> Element {
                                 },
                                 on_blur: move |_| {}
                             }
-    
+
                             InputField {
                                 label: t.action_value,
                                 placeholder: t.action_value,
@@ -214,6 +216,7 @@ pub fn ChoiceOptions(props: ChoiceOptionsProps) -> Element {
                                     extra_goto_search_query.set(String::new());
                                 },
                                 has_error: false,
+                                required: true,
                             }
                             // Action 相關欄位
                             div {
@@ -239,9 +242,10 @@ pub fn ChoiceOptions(props: ChoiceOptionsProps) -> Element {
                                                 is_extra_action_type_open.set(false);
                                             },
                                             has_error: false,
+                                            required: false,
                                         }
                                     }
-        
+
                                     InputField {
                                         label: t.action_key,
                                         placeholder: t.action_key,
@@ -253,7 +257,7 @@ pub fn ChoiceOptions(props: ChoiceOptionsProps) -> Element {
                                         },
                                         on_blur: move |_| {}
                                     }
-        
+
                                     InputField {
                                         label: t.action_value,
                                         placeholder: t.action_value,

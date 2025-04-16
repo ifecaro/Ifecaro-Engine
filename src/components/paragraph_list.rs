@@ -28,6 +28,8 @@ pub struct ParagraphListProps {
     pub class: String,
     #[props(default = false)]
     pub disabled: bool,
+    #[props(default = false)]
+    pub required: bool,
 }
 
 #[component]
@@ -71,6 +73,7 @@ pub fn ParagraphList(props: ParagraphListProps) -> Element {
             search_input_class: "",
             option_class: "",
             disabled: props.disabled,
+            required: props.required,
         }
     }
 } 

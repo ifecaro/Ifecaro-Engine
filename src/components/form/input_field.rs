@@ -18,8 +18,19 @@ pub fn InputField(props: InputFieldProps) -> Element {
     
     rsx! {
         div { class: "space-y-2",
-            label { class: "block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2",
-                "{props.label}"
+            label { 
+                class: "block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2",
+                span { "{props.label}" }
+                {if props.required {
+                    rsx! {
+                        span {
+                            class: "text-red-500 ml-1",
+                            "*"
+                        }
+                    }
+                } else {
+                    rsx! {}
+                }}
             }
             div { class: "flex items-center space-x-3",
                 input {
