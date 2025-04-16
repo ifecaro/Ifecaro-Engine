@@ -11,6 +11,7 @@ pub struct Paragraph {
     pub id: String,
     pub index: usize,
     #[serde(default)]
+    #[serde(rename = "chapter_id")]
     pub chapter_id: String,
     pub texts: Vec<Text>,
 }

@@ -25,14 +25,14 @@ struct Data {
     items: Vec<Paragraph>,
 }
 
-#[derive(Deserialize, Clone, Debug)]
-struct Paragraph {
-    id: String,
-    index: usize,
-    #[allow(dead_code)]
+#[derive(Debug, Deserialize, Clone, PartialEq)]
+pub struct Paragraph {
+    pub id: String,
+    pub index: usize,
     #[serde(default)]
-    chapter_id: String,
-    texts: Vec<Text>,
+    #[serde(rename = "chapter_id")]
+    pub chapter_id: String,
+    pub texts: Vec<Text>,
 }
 
 #[derive(Deserialize, Clone, Debug, PartialEq)]
