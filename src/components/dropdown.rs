@@ -41,6 +41,9 @@ pub struct DropdownProps<T: Clone + PartialEq + 'static> {
     /// 可選的選項類名
     #[props(default = String::new())]
     pub option_class: String,
+    /// 是否禁用下拉選單
+    #[props(default = false)]
+    pub disabled: bool,
 }
 
 #[component]
@@ -55,7 +58,9 @@ pub fn Dropdown<T: Clone + PartialEq + 'static>(props: DropdownProps<T>) -> Elem
     let display_fn = props.display_fn;
     
     // 合併自定義類名
-    let button_class = if props.has_error {
+    let button_class = if props.disabled {
+        format!("w-full px-4 py-2.5 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 shadow-sm cursor-not-allowed transition-all duration-200 ease-in-out flex justify-between items-center relative {}", props.button_class)
+    } else if props.has_error {
         format!("w-full px-4 py-2.5 text-sm border border-red-500 dark:border-red-500 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent cursor-pointer transition-all duration-200 ease-in-out hover:border-red-500 dark:hover:border-red-500 flex justify-between items-center relative {}", props.button_class)
     } else {
         format!("w-full px-4 py-2.5 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent cursor-pointer transition-all duration-200 ease-in-out hover:border-green-500 dark:hover:border-green-500 flex justify-between items-center relative {}", props.button_class)
@@ -71,7 +76,7 @@ pub fn Dropdown<T: Clone + PartialEq + 'static>(props: DropdownProps<T>) -> Elem
         div { 
             class: format!("relative {}", props.class),
             // 遮罩層
-            {if props.is_open {
+            {if props.is_open && !props.disabled {
                 rsx! {
                     div {
                         class: "fixed inset-0 w-screen h-screen z-[999] bg-black/50",
@@ -90,7 +95,12 @@ pub fn Dropdown<T: Clone + PartialEq + 'static>(props: DropdownProps<T>) -> Elem
                 class: format!("w-full {}", if props.is_open { "relative z-[1000]" } else { "" }),
                 button {
                     class: button_class,
-                    onclick: move |_| props.on_toggle.call(()),
+                    onclick: move |_| {
+                        if !props.disabled {
+                            props.on_toggle.call(())
+                        }
+                    },
+                    disabled: props.disabled,
                     span { "{props.value}" }
                     svg { 
                         class: "fill-current h-4 w-4 transition-transform duration-200 ease-in-out",
@@ -101,32 +111,38 @@ pub fn Dropdown<T: Clone + PartialEq + 'static>(props: DropdownProps<T>) -> Elem
                         }
                     }
                 }
-                div {
-                    class: dropdown_container_class,
-                    div { 
-                        class: "p-2 border-b border-gray-200 dark:border-gray-700",
-                        input {
-                            class: search_input_class,
-                            placeholder: props.search_placeholder,
-                            value: "{search_query}",
-                            oninput: move |e| props.on_search.call(e.value().clone())
-                        }
-                    }
-                    div { 
-                        class: "max-h-[calc(100vh_-_25rem)] overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-600 scrollbar-track-transparent",
-                        {props.options.iter().map(|option| {
-                            let display_value = display_fn(option);
-                            let option_clone = option.clone();
-                            rsx! {
-                                button {
-                                    class: base_option_class.clone(),
-                                    onclick: move |_| props.on_select.call(option_clone.clone()),
-                                    {display_value}
+                {if !props.disabled {
+                    rsx! {
+                        div {
+                            class: dropdown_container_class,
+                            div { 
+                                class: "p-2 border-b border-gray-200 dark:border-gray-700",
+                                input {
+                                    class: search_input_class,
+                                    placeholder: props.search_placeholder,
+                                    value: "{search_query}",
+                                    oninput: move |e| props.on_search.call(e.value().clone())
                                 }
                             }
-                        })}
+                            div { 
+                                class: "max-h-[calc(100vh_-_25rem)] overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-600 scrollbar-track-transparent",
+                                {props.options.iter().map(|option| {
+                                    let display_value = display_fn(option);
+                                    let option_clone = option.clone();
+                                    rsx! {
+                                        button {
+                                            class: base_option_class.clone(),
+                                            onclick: move |_| props.on_select.call(option_clone.clone()),
+                                            {display_value}
+                                        }
+                                    }
+                                })}
+                            }
+                        }
                     }
-                }
+                } else {
+                    rsx! {}
+                }}
             }
         }
     }

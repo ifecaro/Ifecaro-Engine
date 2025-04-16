@@ -26,6 +26,8 @@ pub struct ParagraphListProps {
     pub has_error: bool,
     #[props(default = String::new())]
     pub class: String,
+    #[props(default = false)]
+    pub disabled: bool,
 }
 
 #[component]
@@ -68,6 +70,7 @@ pub fn ParagraphList(props: ParagraphListProps) -> Element {
             dropdown_class: "",
             search_input_class: "",
             option_class: "",
+            disabled: props.disabled,
         }
     }
 } 

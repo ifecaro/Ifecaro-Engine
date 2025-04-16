@@ -2,13 +2,11 @@ use dioxus::prelude::*;
 use serde::{Deserialize, Serialize};
 use wasm_bindgen_futures::spawn_local;
 use crate::enums::translations::Translations;
-use crate::components::toast::Toast;
-use crate::components::form::{InputField, TextareaField, ChoiceOptions};
+use crate::components::form::{TextareaField, ChoiceOptions};
 use dioxus::events::FormEvent;
 use crate::components::story_content::{Choice, Action};
 use crate::components::dropdown::Dropdown;
 use crate::components::translation_form::{Paragraph, Text};
-use crate::components::paragraph_list::ParagraphList;
 use crate::components::chapter_selector::ChapterSelector;
 use dioxus::hooks::use_context;
 use crate::contexts::language_context::LanguageState;
@@ -573,7 +571,7 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
         }
     };
 
-    let handle_paragraph_select = move |id: String| {
+    let mut handle_paragraph_select = move |id: String| {
         // 從完整的段落資料中尋找選中的段落
         if let Some(paragraph) = paragraph_data.read().iter().find(|p| p.id == id) {
             let language_state = use_context::<Signal<LanguageState>>();
@@ -762,109 +760,75 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
                             // 編輯/新增段落區域
                             div {
                                 class: "pt-6 border-t border-gray-200 dark:border-gray-700",
-                                if *is_edit_mode.read() {
-                                    div { 
-                                        class: "w-full",
-                                        div {
-                                            class: "flex flex-col sm:flex-row items-start sm:items-end space-y-2 sm:space-y-0 sm:space-x-4",
-                                            div { 
-                                                class: "w-full sm:flex-1",
-                                                ParagraphList {
-                                                    label: "選擇段落",
-                                                    value: selected_paragraph.read().as_ref().map(|p| p.id.clone()).unwrap_or("選擇段落".to_string()),
-                                                    paragraphs: available_paragraphs.read().clone(),
-                                                    is_open: *is_paragraph_open.read(),
-                                                    search_query: paragraph_search_query.read().to_string(),
-                                                    on_toggle: move |_| {
+                                div { 
+                                    class: "w-full",
+                                    div {
+                                        class: "flex flex-col sm:flex-row items-start sm:items-end space-y-2 sm:space-y-0 sm:space-x-4",
+                                        div { 
+                                            class: "w-full sm:flex-1",
+                                            crate::components::paragraph_list::ParagraphList {
+                                                label: "選擇段落",
+                                                value: selected_paragraph.read().as_ref().map(|p| p.id.clone()).unwrap_or("選擇段落".to_string()),
+                                                paragraphs: available_paragraphs.read().clone(),
+                                                is_open: *is_paragraph_open.read(),
+                                                search_query: paragraph_search_query.read().to_string(),
+                                                on_toggle: move |_| {
+                                                    if *is_edit_mode.read() {
                                                         let current = *is_paragraph_open.read();
                                                         is_paragraph_open.set(!current);
-                                                    },
-                                                    on_search: move |query| paragraph_search_query.set(query),
-                                                    on_select: handle_paragraph_select,
-                                                    has_error: false,
-                                                }
-                                            }
-
-                                            button {
-                                                class: "inline-flex items-center justify-center w-10 h-10 text-sm font-medium text-white bg-gray-700 rounded-lg hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-600 transition-colors duration-200 shadow-sm",
-                                                onclick: move |_| {
-                                                    let current_mode = *is_edit_mode.read();
-                                                    is_edit_mode.set(!current_mode);
-                                                    if !current_mode {
-                                                        paragraphs.set(String::new());
-                                                        new_caption.set(String::new());
-                                                        new_goto.set(String::new());
-                                                        extra_captions.write().clear();
-                                                        extra_gotos.write().clear();
-                                                        show_extra_options.write().clear();
-                                                        selected_paragraph.set(None);
                                                     }
                                                 },
-                                                svg { 
-                                                    xmlns: "http://www.w3.org/2000/svg",
-                                                    class: "h-5 w-5",
-                                                    fill: "none",
-                                                    view_box: "0 0 24 24",
-                                                    stroke: "currentColor",
-                                                    stroke_width: "2",
-                                                    path { 
-                                                        stroke_linecap: "round",
-                                                        stroke_linejoin: "round",
-                                                        d: "M12 4v16m8-8H4"
+                                                on_search: move |query| {
+                                                    if *is_edit_mode.read() {
+                                                        paragraph_search_query.set(query);
                                                     }
-                                                }
+                                                },
+                                                on_select: move |id| {
+                                                    if *is_edit_mode.read() {
+                                                        handle_paragraph_select(id);
+                                                    }
+                                                },
+                                                has_error: false,
+                                                disabled: !*is_edit_mode.read(),
                                             }
                                         }
-                                    }
-                                } else {
-                                    div { 
-                                        class: "w-full",
-                                        div {
-                                            class: "flex flex-col sm:flex-row items-start sm:items-end space-y-2 sm:space-y-0 sm:space-x-4",
-                                            div { 
-                                                class: "w-full sm:flex-1",
-                                                if *is_edit_mode.read() {
-                                                    InputField {
-                                                        label: t.paragraph_title,
-                                                        placeholder: t.paragraph_title,
-                                                        value: new_caption.read().to_string(),
-                                                        required: true,
-                                                        has_error: *new_caption_error.read(),
-                                                        on_input: move |value: String| {
-                                                            new_caption.set(value.clone());
-                                                            validate_field(&value, &mut new_caption_error);
-                                                        },
-                                                        on_blur: move |_| validate_field(&new_caption.read(), &mut new_caption_error)
-                                                    }
-                                                }
-                                            }
 
-                                            button {
-                                                class: "inline-flex items-center justify-center w-10 h-10 text-sm font-medium text-white bg-gray-700 rounded-lg hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-600 transition-colors duration-200 shadow-sm",
-                                                onclick: move |_| {
-                                                    let current_mode = *is_edit_mode.read();
-                                                    is_edit_mode.set(!current_mode);
-                                                    if !current_mode {
-                                                        paragraphs.set(String::new());
-                                                        new_caption.set(String::new());
-                                                        new_goto.set(String::new());
-                                                        extra_captions.write().clear();
-                                                        extra_gotos.write().clear();
-                                                        show_extra_options.write().clear();
-                                                        selected_paragraph.set(None);
-                                                    }
-                                                },
-                                                svg { 
-                                                    xmlns: "http://www.w3.org/2000/svg",
-                                                    class: "h-5 w-5",
-                                                    fill: "none",
-                                                    view_box: "0 0 24 24",
-                                                    stroke: "currentColor",
-                                                    stroke_width: "2",
-                                                    path { 
-                                                        stroke_linecap: "round",
-                                                        stroke_linejoin: "round",
-                                                        d: "M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"
+                                        button {
+                                            class: "inline-flex items-center justify-center w-10 h-10 text-sm font-medium text-white bg-gray-700 rounded-lg hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-600 transition-colors duration-200 shadow-sm",
+                                            onclick: move |_| {
+                                                let current_mode = *is_edit_mode.read();
+                                                is_edit_mode.set(!current_mode);
+                                                if current_mode {
+                                                    // 退出編輯模式時清空所有欄位
+                                                    paragraphs.set(String::new());
+                                                    new_caption.set(String::new());
+                                                    new_goto.set(String::new());
+                                                    new_action_type.set(String::new());
+                                                    new_action_key.set(None);
+                                                    new_action_value.set(None);
+                                                    extra_captions.write().clear();
+                                                    extra_gotos.write().clear();
+                                                    extra_action_types.write().clear();
+                                                    extra_action_keys.write().clear();
+                                                    extra_action_values.write().clear();
+                                                    show_extra_options.write().clear();
+                                                    selected_paragraph.set(None);
+                                                }
+                                            },
+                                            svg { 
+                                                xmlns: "http://www.w3.org/2000/svg",
+                                                class: "h-5 w-5",
+                                                fill: "none",
+                                                view_box: "0 0 24 24",
+                                                stroke: "currentColor",
+                                                stroke_width: "2",
+                                                path { 
+                                                    stroke_linecap: "round",
+                                                    stroke_linejoin: "round",
+                                                    d: if *is_edit_mode.read() {
+                                                        "M12 4v16m8-8H4"
+                                                    } else {
+                                                        "M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"
                                                     }
                                                 }
                                             }
