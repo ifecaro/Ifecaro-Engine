@@ -888,18 +888,22 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
                             class: "md:col-span-2",
                             div {
                                 class: "flex items-end space-x-4",
-                            div { class: "flex-1",
-                                InputField {
-                                        label: t.paragraph_title,
-                                        placeholder: t.paragraph_title,
-                                        value: new_caption.read().to_string(),
-                                        required: true,
-                                        has_error: *new_caption_error.read(),
-                                        on_input: move |value: String| {
-                                            new_caption.set(value.clone());
-                                            validate_field(&value, &mut new_caption_error);
-                                        },
-                                        on_blur: move |_| validate_field(&new_caption.read(), &mut new_caption_error)
+                                div { 
+                                    class: "flex-1",
+                                    // 只在編輯模式下顯示標題欄位
+                                    if *is_edit_mode.read() {
+                                        InputField {
+                                            label: t.paragraph_title,
+                                            placeholder: t.paragraph_title,
+                                            value: new_caption.read().to_string(),
+                                            required: true,
+                                            has_error: *new_caption_error.read(),
+                                            on_input: move |value: String| {
+                                                new_caption.set(value.clone());
+                                                validate_field(&value, &mut new_caption_error);
+                                            },
+                                            on_blur: move |_| validate_field(&new_caption.read(), &mut new_caption_error)
+                                        }
                                     }
                                 }
 
