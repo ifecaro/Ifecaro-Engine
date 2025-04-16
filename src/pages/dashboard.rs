@@ -105,7 +105,7 @@ pub struct SystemDataResponse {
     pub total_pages: i32,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[allow(dead_code)]
 struct ChoiceOption {
     id: String,
     preview: String,
@@ -141,19 +141,19 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
     let mut extra_gotos = use_signal(|| Vec::<String>::new());
     let mut show_extra_options = use_signal(|| Vec::<()>::new());
     let mut show_toast = use_signal(|| false);
-    let mut toast_visible = use_signal(|| false);
+    let toast_visible = use_signal(|| false);
     let mut is_open = use_signal(|| false);
     let mut search_query = use_signal(|| String::new());
     let mut is_paragraph_open = use_signal(|| false);
     let mut paragraph_search_query = use_signal(|| String::new());
     let mut available_paragraphs = use_signal(|| Vec::<crate::components::paragraph_list::Paragraph>::new());
-    let mut available_chapters = use_signal(|| Vec::<Chapter>::new());
+    let available_chapters = use_signal(|| Vec::<Chapter>::new());
     let mut selected_chapter = use_signal(|| String::new());
     let mut is_chapter_open = use_signal(|| false);
     let mut chapter_search_query = use_signal(|| String::new());
     let mut selected_paragraph = use_signal(|| None::<Paragraph>);
     let mut is_edit_mode = use_signal(|| false);
-    let mut paragraph_data = use_signal(|| Vec::<Paragraph>::new());
+    let paragraph_data = use_signal(|| Vec::<Paragraph>::new());
     let t = Translations::get(&current_lang);
     let mut should_scroll = use_signal(|| false);
     let mut paragraph_language = use_signal(|| current_lang.clone());
@@ -162,7 +162,7 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
     let mut new_caption_error = use_signal(|| false);
     let mut new_goto_error = use_signal(|| false);
     let mut chapter_error = use_signal(|| false);
-    let mut has_loaded = use_signal(|| false);
+    let has_loaded = use_signal(|| false);
 
     let mut new_action_type = use_signal(|| String::new());
     let mut new_action_key = use_signal(|| None::<String>);
