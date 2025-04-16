@@ -6,7 +6,7 @@ pub struct Language<'a> {
     pub code: &'a str,
 }
 
-pub static BASE_API_URL: &str = "http://localhost:8090/api";
+pub static BASE_API_URL: &str = "https://ifecaro.com/db/api";
 pub static PARAGRAPHS: &str = "/collections/paragraphs/records";
 pub static CHAPTERS: &str = "/collections/chapters/records";
 pub static ACTIONS: &str = "/collections/actions/records";
