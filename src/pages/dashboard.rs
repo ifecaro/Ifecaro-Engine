@@ -694,352 +694,276 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
     rsx! {
         crate::pages::layout::Layout { 
             title: Some("Dashboard"),
-            {show_toast.read().then(|| {
-                rsx!(
-                    Toast {
-                        visible: *toast_visible.read(),
-                        message: t.submit_success.to_string()
-                    }
-                )
-            })}
             div { 
-                class: "max-w-3xl md:max-w-5xl mx-auto p-8 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-100 dark:border-gray-700 space-y-6",
-                div { 
-                    class: "grid grid-cols-1 md:grid-cols-2 gap-6",
-                    // 語言選擇
-                    div {
-                        Dropdown {
-                            label: t.select_language,
-                            value: current_language.read().to_string(),
-                            options: filtered_languages.read().clone(),
-                            is_open: *is_open.read(),
-                            search_query: search_query.read().to_string(),
-                            on_toggle: move |_| {
-                                let current = *is_open.read();
-                                is_open.set(!current);
-                            },
-                            on_search: move |query| search_query.set(query),
-                            on_select: move |lang: &Language| {
-                                // 只更新段落的語言，不更新界面語言
-                                let current_lang = lang.code.to_string();
-                                
-                                // 更新段落語言
-                                paragraph_language.set(current_lang.clone());
-                                
-                                // 如果選擇的段落存在，更新其語言
-                                if let Some(paragraph) = selected_paragraph.read().as_ref() {
-                                    if let Some(existing_text) = paragraph.texts.iter().find(|text| text.lang == current_lang) {
-                                        paragraphs.set(existing_text.paragraphs.clone());
-                                        new_caption.set(existing_text.choices[0].caption.clone());
-                                        new_goto.set(existing_text.choices[0].action.to.clone());
-                                        new_action_type.set(existing_text.choices[0].action.type_.clone());
-                                        new_action_key.set(existing_text.choices[0].action.key.clone());
-                                        new_action_value.set(existing_text.choices[0].action.value.clone());
-                                        
-                                        // 更新額外選項
-                                        if existing_text.choices.len() > 1 {
-                                            let extra_choices = &existing_text.choices[1..];
-                                            extra_captions.set(extra_choices.iter().map(|c| c.caption.clone()).collect());
-                                            extra_gotos.set(extra_choices.iter().map(|c| c.action.to.clone()).collect());
-                                            extra_action_types.set(extra_choices.iter().map(|c| c.action.type_.clone()).collect());
-                                            extra_action_keys.set(extra_choices.iter().map(|c| c.action.key.clone()).collect());
-                                            extra_action_values.set(extra_choices.iter().map(|c| c.action.value.clone()).collect());
-                                            
-                                            // 更新顯示的額外選項
-                                            let mut options = Vec::new();
-                                            for _ in 0..extra_choices.len() {
-                                                options.push(());
-                                            }
-                                            show_extra_options.set(options);
-                                        } else {
-                                            extra_captions.set(vec![]);
-                                            extra_gotos.set(vec![]);
-                                            extra_action_types.set(vec![]);
-                                            extra_action_keys.set(vec![]);
-                                            extra_action_values.set(vec![]);
-                                            show_extra_options.set(vec![]);
-                                        }
-                                    } else {
-                                        // 如果該語言不存在，清空表單
-                                        paragraphs.set(String::new());
-                                        new_caption.set(String::new());
-                                        new_goto.set(String::new());
-                                        new_action_type.set(String::new());
-                                        new_action_key.set(None);
-                                        new_action_value.set(None);
-                                        extra_captions.set(vec![]);
-                                        extra_gotos.set(vec![]);
-                                        extra_action_types.set(vec![]);
-                                        extra_action_keys.set(vec![]);
-                                        extra_action_values.set(vec![]);
-                                        show_extra_options.set(vec![]);
-                                    }
-                                }
-                                
-                                is_open.set(false);
-                                search_query.set(String::new());
-                            },
-                            display_fn: display_language,
-                            has_error: false,
-                            search_placeholder: t.search_language,
-                        }
-                    }
-
-                    // 章節選擇器
-                    div {
-                        ChapterSelector {
-                            key: format!("chapter-dropdown-{}", current_lang),
-                            label: t.select_chapter,
-                            value: selected_chapter.read().clone(),
-                            chapters: available_chapters.read().clone(),
-                            is_open: *is_chapter_open.read(),
-                            search_query: chapter_search_query.read().to_string(),
-                            on_toggle: move |_| {
-                                let current = *is_chapter_open.read();
-                                is_chapter_open.set(!current);
-                            },
-                            on_search: move |query| chapter_search_query.set(query),
-                            on_select: move |chapter: Chapter| {
-                                selected_chapter.set(chapter.id.clone());
-                                is_chapter_open.set(false);
-                                chapter_search_query.set(String::new());
-                                validate_field(&chapter.id, &mut chapter_error);
-                            },
-                            has_error: *chapter_error.read(),
-                        }
-                    }
-
-                    // 根據模式顯示不同的表單
-                    if *is_edit_mode.read() {
-                        // 編輯段落表單
-                        div { 
-                            class: "md:col-span-2",
-                            div {
-                                class: "flex items-end space-x-4",
-                            div { class: "flex-1",
-                                    ParagraphList {
-                                        label: "選擇段落",
-                                        value: selected_paragraph.read().as_ref().map(|p| p.id.clone()).unwrap_or("選擇段落".to_string()),
-                                        paragraphs: available_paragraphs.read().clone(),
-                                        is_open: *is_paragraph_open.read(),
-                                        search_query: paragraph_search_query.read().to_string(),
-                                        on_toggle: move |_| {
-                                            let current = *is_paragraph_open.read();
-                                            is_paragraph_open.set(!current);
-                                        },
-                                        on_search: move |query| paragraph_search_query.set(query),
-                                        on_select: handle_paragraph_select,
-                                    has_error: false,
-                                    }
-                                }
-
-                                button {
-                                    class: "inline-flex items-center justify-center w-10 h-10 text-sm font-medium text-white bg-gray-700 rounded-lg hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-600 transition-colors duration-200 shadow-sm",
-                                    onclick: move |_| {
-                                        let current_mode = *is_edit_mode.read();
-                                        is_edit_mode.set(!current_mode);
-                                        // 清空表單
-                                        if !current_mode {
-                                            paragraphs.set(String::new());
-                                            new_caption.set(String::new());
-                                            new_goto.set(String::new());
-                                            extra_captions.write().clear();
-                                            extra_gotos.write().clear();
-                                            show_extra_options.write().clear();
-                                            selected_paragraph.set(None);
-                                        }
-                                    },
-                                    // 根據模式使用不同圖標
-                                    if *is_edit_mode.read() {
-                                        svg { 
-                                            xmlns: "http://www.w3.org/2000/svg",
-                                            class: "h-5 w-5",
-                                            fill: "none",
-                                            view_box: "0 0 24 24",
-                                            stroke: "currentColor",
-                                            stroke_width: "2",
-                                            path { 
-                                                stroke_linecap: "round",
-                                                stroke_linejoin: "round",
-                                                d: "M12 4v16m8-8H4"
-                                            }
-                                        }
-                                    } else {
-                                        svg { 
-                                            xmlns: "http://www.w3.org/2000/svg",
-                                            class: "h-5 w-5",
-                                            fill: "none",
-                                            view_box: "0 0 24 24",
-                                            stroke: "currentColor",
-                                            stroke_width: "2",
-                                            path { 
-                                                stroke_linecap: "round",
-                                                stroke_linejoin: "round",
-                                                d: "M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    } else {
-                        // 新增段落表單
-                        div { 
-                            class: "md:col-span-2",
-                            div {
-                                class: "flex items-end space-x-4",
-                                div { 
-                                    class: "flex-1",
-                                    // 只在編輯模式下顯示標題欄位
-                                    if *is_edit_mode.read() {
-                                        InputField {
-                                            label: t.paragraph_title,
-                                            placeholder: t.paragraph_title,
-                                            value: new_caption.read().to_string(),
-                                            required: true,
-                                            has_error: *new_caption_error.read(),
-                                            on_input: move |value: String| {
-                                                new_caption.set(value.clone());
-                                                validate_field(&value, &mut new_caption_error);
-                                            },
-                                            on_blur: move |_| validate_field(&new_caption.read(), &mut new_caption_error)
-                                        }
-                                    }
-                                }
-
-                                button {
-                                    class: "inline-flex items-center justify-center w-10 h-10 text-sm font-medium text-white bg-gray-700 rounded-lg hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-600 transition-colors duration-200 shadow-sm",
-                                    onclick: move |_| {
-                                        let current_mode = *is_edit_mode.read();
-                                        is_edit_mode.set(!current_mode);
-                                        // 清空表單
-                                        if !current_mode {
-                                            paragraphs.set(String::new());
-                                            new_caption.set(String::new());
-                                            new_goto.set(String::new());
-                                            extra_captions.write().clear();
-                                            extra_gotos.write().clear();
-                                            show_extra_options.write().clear();
-                                            selected_paragraph.set(None);
-                                        }
-                                    },
-                                    // 根據模式使用不同圖標
-                                    if *is_edit_mode.read() {
-                                        svg { 
-                                            xmlns: "http://www.w3.org/2000/svg",
-                                            class: "h-5 w-5",
-                                            fill: "none",
-                                            view_box: "0 0 24 24",
-                                            stroke: "currentColor",
-                                            stroke_width: "2",
-                                            path { 
-                                                stroke_linecap: "round",
-                                                stroke_linejoin: "round",
-                                                d: "M12 4v16m8-8H4"
-                                            }
-                                        }
-                                    } else {
-                                        svg { 
-                                            xmlns: "http://www.w3.org/2000/svg",
-                                            class: "h-5 w-5",
-                                            fill: "none",
-                                            view_box: "0 0 24 24",
-                                            stroke: "currentColor",
-                                            stroke_width: "2",
-                                            path { 
-                                                stroke_linecap: "round",
-                                                stroke_linejoin: "round",
-                                                d: "M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-
-                    // 段落內容欄位
+                class: "min-h-screen bg-gray-50 dark:bg-gray-900",
+                div {
+                    class: "w-full mx-auto",
+                    // 主要內容區域
                     div { 
-                        class: "md:col-span-2",
-                        TextareaField {
-                            label: t.paragraph_content,
-                            placeholder: t.paragraph_content,
-                            value: paragraphs.read().to_string(),
-                            required: true,
-                            has_error: *paragraphs_error.read(),
-                            rows: 5,
-                            on_input: move |event: FormEvent| {
-                                let value = event.value().clone();
-                                paragraphs.set(value.clone());
-                                validate_field(&value, &mut paragraphs_error);
-                            },
-                            on_blur: move |_| validate_field(&paragraphs.read(), &mut paragraphs_error)
+                        class: "space-y-4 bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700",
+                        // 表單區域
+                        div {
+                            class: "p-3 sm:p-4 md:p-6 lg:p-8 space-y-4 sm:space-y-6",
+                            // 語言和章節選擇區域
+                            div { 
+                                class: "grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 lg:gap-8",
+                                // 語言選擇
+                                div {
+                                    class: "w-full",
+                                    Dropdown {
+                                        label: t.select_language,
+                                        value: current_language.read().to_string(),
+                                        options: filtered_languages.read().clone(),
+                                        is_open: *is_open.read(),
+                                        search_query: search_query.read().to_string(),
+                                        on_toggle: move |_| {
+                                            let current = *is_open.read();
+                                            is_open.set(!current);
+                                        },
+                                        on_search: move |query| search_query.set(query),
+                                        on_select: move |lang: &Language| {
+                                            let current_lang = lang.code.to_string();
+                                            paragraph_language.set(current_lang.clone());
+                                            is_open.set(false);
+                                            search_query.set(String::new());
+                                        },
+                                        display_fn: display_language,
+                                        has_error: false,
+                                        search_placeholder: t.search_language,
+                                    }
+                                }
+
+                                // 章節選擇器
+                                div {
+                                    class: "w-full",
+                                    ChapterSelector {
+                                        key: format!("chapter-dropdown-{}", current_lang),
+                                        label: t.select_chapter,
+                                        value: selected_chapter.read().clone(),
+                                        chapters: available_chapters.read().clone(),
+                                        is_open: *is_chapter_open.read(),
+                                        search_query: chapter_search_query.read().to_string(),
+                                        on_toggle: move |_| {
+                                            let current = *is_chapter_open.read();
+                                            is_chapter_open.set(!current);
+                                        },
+                                        on_search: move |query| chapter_search_query.set(query),
+                                        on_select: move |chapter: Chapter| {
+                                            selected_chapter.set(chapter.id.clone());
+                                            is_chapter_open.set(false);
+                                            chapter_search_query.set(String::new());
+                                            validate_field(&chapter.id, &mut chapter_error);
+                                        },
+                                        has_error: *chapter_error.read(),
+                                    }
+                                }
+                            }
+
+                            // 編輯/新增段落區域
+                            div {
+                                class: "pt-6 border-t border-gray-200 dark:border-gray-700",
+                                if *is_edit_mode.read() {
+                                    div { 
+                                        class: "w-full",
+                                        div {
+                                            class: "flex flex-col sm:flex-row items-start sm:items-end space-y-2 sm:space-y-0 sm:space-x-4",
+                                            div { 
+                                                class: "w-full sm:flex-1",
+                                                ParagraphList {
+                                                    label: "選擇段落",
+                                                    value: selected_paragraph.read().as_ref().map(|p| p.id.clone()).unwrap_or("選擇段落".to_string()),
+                                                    paragraphs: available_paragraphs.read().clone(),
+                                                    is_open: *is_paragraph_open.read(),
+                                                    search_query: paragraph_search_query.read().to_string(),
+                                                    on_toggle: move |_| {
+                                                        let current = *is_paragraph_open.read();
+                                                        is_paragraph_open.set(!current);
+                                                    },
+                                                    on_search: move |query| paragraph_search_query.set(query),
+                                                    on_select: handle_paragraph_select,
+                                                    has_error: false,
+                                                }
+                                            }
+
+                                            button {
+                                                class: "inline-flex items-center justify-center w-10 h-10 text-sm font-medium text-white bg-gray-700 rounded-lg hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-600 transition-colors duration-200 shadow-sm",
+                                                onclick: move |_| {
+                                                    let current_mode = *is_edit_mode.read();
+                                                    is_edit_mode.set(!current_mode);
+                                                    if !current_mode {
+                                                        paragraphs.set(String::new());
+                                                        new_caption.set(String::new());
+                                                        new_goto.set(String::new());
+                                                        extra_captions.write().clear();
+                                                        extra_gotos.write().clear();
+                                                        show_extra_options.write().clear();
+                                                        selected_paragraph.set(None);
+                                                    }
+                                                },
+                                                svg { 
+                                                    xmlns: "http://www.w3.org/2000/svg",
+                                                    class: "h-5 w-5",
+                                                    fill: "none",
+                                                    view_box: "0 0 24 24",
+                                                    stroke: "currentColor",
+                                                    stroke_width: "2",
+                                                    path { 
+                                                        stroke_linecap: "round",
+                                                        stroke_linejoin: "round",
+                                                        d: "M12 4v16m8-8H4"
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                } else {
+                                    div { 
+                                        class: "w-full",
+                                        div {
+                                            class: "flex flex-col sm:flex-row items-start sm:items-end space-y-2 sm:space-y-0 sm:space-x-4",
+                                            div { 
+                                                class: "w-full sm:flex-1",
+                                                if *is_edit_mode.read() {
+                                                    InputField {
+                                                        label: t.paragraph_title,
+                                                        placeholder: t.paragraph_title,
+                                                        value: new_caption.read().to_string(),
+                                                        required: true,
+                                                        has_error: *new_caption_error.read(),
+                                                        on_input: move |value: String| {
+                                                            new_caption.set(value.clone());
+                                                            validate_field(&value, &mut new_caption_error);
+                                                        },
+                                                        on_blur: move |_| validate_field(&new_caption.read(), &mut new_caption_error)
+                                                    }
+                                                }
+                                            }
+
+                                            button {
+                                                class: "inline-flex items-center justify-center w-10 h-10 text-sm font-medium text-white bg-gray-700 rounded-lg hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-600 transition-colors duration-200 shadow-sm",
+                                                onclick: move |_| {
+                                                    let current_mode = *is_edit_mode.read();
+                                                    is_edit_mode.set(!current_mode);
+                                                    if !current_mode {
+                                                        paragraphs.set(String::new());
+                                                        new_caption.set(String::new());
+                                                        new_goto.set(String::new());
+                                                        extra_captions.write().clear();
+                                                        extra_gotos.write().clear();
+                                                        show_extra_options.write().clear();
+                                                        selected_paragraph.set(None);
+                                                    }
+                                                },
+                                                svg { 
+                                                    xmlns: "http://www.w3.org/2000/svg",
+                                                    class: "h-5 w-5",
+                                                    fill: "none",
+                                                    view_box: "0 0 24 24",
+                                                    stroke: "currentColor",
+                                                    stroke_width: "2",
+                                                    path { 
+                                                        stroke_linecap: "round",
+                                                        stroke_linejoin: "round",
+                                                        d: "M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+
+                            // 段落內容區域
+                            div { 
+                                class: "w-full",
+                                TextareaField {
+                                    label: t.paragraph_content,
+                                    placeholder: t.paragraph_content,
+                                    value: paragraphs.read().to_string(),
+                                    required: true,
+                                    has_error: *paragraphs_error.read(),
+                                    rows: 5,
+                                    on_input: move |event: FormEvent| {
+                                        let value = event.value().clone();
+                                        paragraphs.set(value.clone());
+                                        validate_field(&value, &mut paragraphs_error);
+                                    },
+                                    on_blur: move |_| validate_field(&paragraphs.read(), &mut paragraphs_error)
+                                }
+                            }
+
+                            // 選項區域
+                            div {
+                                class: "w-full",
+                                ChoiceOptions {
+                                    t: t.clone(),
+                                    new_caption: new_caption.read().to_string(),
+                                    new_goto: new_goto.read().to_string(),
+                                    new_action_type: new_action_type.read().clone(),
+                                    new_action_key: new_action_key.read().clone(),
+                                    new_action_value: new_action_value.read().clone(),
+                                    extra_captions: extra_captions.read().clone(),
+                                    extra_gotos: extra_gotos.read().clone(),
+                                    extra_action_types: extra_action_types.read().clone(),
+                                    extra_action_keys: extra_action_keys.read().clone(),
+                                    extra_action_values: extra_action_values.read().clone(),
+                                    new_caption_error: *new_caption_error.read(),
+                                    new_goto_error: *new_goto_error.read(),
+                                    available_paragraphs: available_paragraphs.read().clone(),
+                                    on_new_caption_change: move |value: String| {
+                                        new_caption.set(value.clone());
+                                        validate_field(&value, &mut new_caption_error);
+                                    },
+                                    on_new_goto_change: move |value: String| {
+                                        new_goto.set(value.clone());
+                                        validate_field(&value, &mut new_goto_error);
+                                    },
+                                    on_new_action_type_change: move |value| new_action_type.set(value),
+                                    on_new_action_key_change: move |value| new_action_key.set(value),
+                                    on_new_action_value_change: move |value| new_action_value.set(value),
+                                    on_extra_caption_change: move |(i, value): (usize, String)| {
+                                        let mut captions = extra_captions.write();
+                                        captions[i] = value;
+                                    },
+                                    on_extra_goto_change: move |(i, value): (usize, String)| {
+                                        let mut gotos = extra_gotos.write();
+                                        gotos[i] = value;
+                                    },
+                                    on_extra_action_type_change: move |(i, value): (usize, String)| {
+                                        let mut types = extra_action_types.write();
+                                        types[i] = value;
+                                    },
+                                    on_extra_action_key_change: move |(i, value): (usize, Option<String>)| {
+                                        let mut keys = extra_action_keys.write();
+                                        keys[i] = value;
+                                    },
+                                    on_extra_action_value_change: move |(i, value): (usize, Option<serde_json::Value>)| {
+                                        let mut values = extra_action_values.write();
+                                        values[i] = value;
+                                    },
+                                    on_add_choice: handle_add_choice,
+                                    on_remove_choice: handle_remove_choice
+                                }
+                            }
+                        }
+
+                        // 提交按鈕區域
+                        div {
+                            class: "px-4 sm:px-6 py-4 bg-gray-50 dark:bg-gray-700/50 border-t border-gray-200 dark:border-gray-700",
+                            button {
+                                class: "w-full inline-flex justify-center items-center px-4 sm:px-6 py-2.5 sm:py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed font-medium text-base sm:text-lg shadow-sm",
+                                disabled: !*is_form_valid.read() || (*is_edit_mode.read() && selected_paragraph.read().is_none()) || !*has_changes.read(),
+                                onclick: move |_| {
+                                    if *is_edit_mode.read() {
+                                        handle_add_translation(());
+                                    } else {
+                                        handle_submit(());
+                                    }
+                                },
+                                "{t.submit}"
+                            }
                         }
                     }
-
-                    ChoiceOptions {
-                        t: t.clone(),
-                        new_caption: new_caption.read().to_string(),
-                        new_goto: new_goto.read().to_string(),
-                        new_action_type: new_action_type.read().clone(),
-                        new_action_key: new_action_key.read().clone(),
-                        new_action_value: new_action_value.read().clone(),
-                        extra_captions: extra_captions.read().clone(),
-                        extra_gotos: extra_gotos.read().clone(),
-                        extra_action_types: extra_action_types.read().clone(),
-                        extra_action_keys: extra_action_keys.read().clone(),
-                        extra_action_values: extra_action_values.read().clone(),
-                        new_caption_error: *new_caption_error.read(),
-                        new_goto_error: *new_goto_error.read(),
-                        available_paragraphs: available_paragraphs.read().clone(),
-                        on_new_caption_change: move |value: String| {
-                            new_caption.set(value.clone());
-                            validate_field(&value, &mut new_caption_error);
-                        },
-                        on_new_goto_change: move |value: String| {
-                            new_goto.set(value.clone());
-                            validate_field(&value, &mut new_goto_error);
-                        },
-                        on_new_action_type_change: move |value| new_action_type.set(value),
-                        on_new_action_key_change: move |value| new_action_key.set(value),
-                        on_new_action_value_change: move |value| new_action_value.set(value),
-                        on_extra_caption_change: move |(i, value): (usize, String)| {
-                            let mut captions = extra_captions.write();
-                            captions[i] = value;
-                        },
-                        on_extra_goto_change: move |(i, value): (usize, String)| {
-                            let mut gotos = extra_gotos.write();
-                            gotos[i] = value;
-                        },
-                        on_extra_action_type_change: move |(i, value): (usize, String)| {
-                            let mut types = extra_action_types.write();
-                            types[i] = value;
-                        },
-                        on_extra_action_key_change: move |(i, value): (usize, Option<String>)| {
-                            let mut keys = extra_action_keys.write();
-                            keys[i] = value;
-                        },
-                        on_extra_action_value_change: move |(i, value): (usize, Option<serde_json::Value>)| {
-                            let mut values = extra_action_values.write();
-                            values[i] = value;
-                        },
-                        on_add_choice: handle_add_choice,
-                        on_remove_choice: handle_remove_choice
-                    }
-                }
-
-                // 提交按鈕（移到網格外）
-                button {
-                    class: "w-full px-6 py-3 bg-green-500 text-white rounded-md hover:bg-green-600 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed font-medium text-lg",
-                    disabled: !*is_form_valid.read() || (*is_edit_mode.read() && selected_paragraph.read().is_none()) || !*has_changes.read(),
-                    onclick: move |_| {
-                        if *is_edit_mode.read() {
-                            handle_add_translation(());
-                        } else {
-                            handle_submit(());
-                        }
-                    },
-                    "{t.submit}"
                 }
             }
         }
