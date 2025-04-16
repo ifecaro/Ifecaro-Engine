@@ -42,88 +42,98 @@ pub fn ChoiceOptions(props: ChoiceOptionsProps) -> Element {
 
     rsx! {
         // 主要選項（選項 1）
-        div { 
-            class: "relative border-2 border-gray-200 dark:border-gray-600 rounded-lg",
+        div {
             div {
-                class: "p-4 space-y-4",
-                // 標題輸入框
-                InputField {
-                    label: t.caption,
-                    value: props.new_caption.clone(),
-                    on_input: move |value| props.on_new_caption_change.call(value),
-                    placeholder: t.caption,
-                    has_error: props.new_caption_error,
-                    required: true,
-                    on_blur: move |_| {},
+                class: "text-sm font-medium text-gray-700 dark:text-gray-300 mb-4",
+                span {
+                    "{t.option} 1"
                 }
-                // 目標段落選擇器
-                ParagraphList {
-                    label: t.goto_target,
-                    value: props.new_goto.clone(),
-                    paragraphs: props.available_paragraphs.clone(),
-                    is_open: *is_goto_open.read(),
-                    search_query: goto_search_query.read().to_string(),
-                    on_toggle: move |_| {
-                        let current = *is_goto_open.read();
-                        is_goto_open.set(!current);
-                    },
-                    on_search: move |query| goto_search_query.set(query),
-                    on_select: move |value| {
-                        props.on_new_goto_change.call(value);
-                        is_goto_open.set(false);
-                        goto_search_query.set(String::new());
-                    },
-                    has_error: props.new_goto_error,
-                }
-                // Action 相關欄位
+            }
+
+            div { 
+                class: "relative border-2 border-gray-200 dark:border-gray-600 rounded-lg",
                 div {
-                    class: "border-t border-gray-200 dark:border-gray-700 mt-4 pt-4",
-                    div {
-                        class: "text-sm font-medium text-gray-700 dark:text-gray-300 mb-4",
-                        "{t.action_settings}"
+                    class: "p-4 space-y-4",
+                    // 選項1標題
+                    // 標題輸入框
+                    InputField {
+                        label: t.caption,
+                        value: props.new_caption.clone(),
+                        on_input: move |value| props.on_new_caption_change.call(value),
+                        placeholder: t.caption,
+                        has_error: props.new_caption_error,
+                        required: true,
+                        on_blur: move |_| {},
                     }
+                    // 目標段落選擇器
+                    ParagraphList {
+                        label: t.goto_target,
+                        value: props.new_goto.clone(),
+                        paragraphs: props.available_paragraphs.clone(),
+                        is_open: *is_goto_open.read(),
+                        search_query: goto_search_query.read().to_string(),
+                        on_toggle: move |_| {
+                            let current = *is_goto_open.read();
+                            is_goto_open.set(!current);
+                        },
+                        on_search: move |query| goto_search_query.set(query),
+                        on_select: move |value| {
+                            props.on_new_goto_change.call(value);
+                            is_goto_open.set(false);
+                            goto_search_query.set(String::new());
+                        },
+                        has_error: props.new_goto_error,
+                    }
+                    // Action 相關欄位
                     div {
-                        class: "grid grid-cols-1 lg:grid-cols-3 gap-4",
+                        class: "border-t border-gray-200 dark:border-gray-700 mt-4 pt-4",
                         div {
-                            class: "relative",
-                            ActionTypeSelector {
-                                label: t.action_type,
-                                value: props.new_action_type.clone(),
-                                is_open: *is_action_type_open.read(),
-                                on_toggle: move |_| {
-                                    let current = *is_action_type_open.read();
-                                    is_action_type_open.set(!current);
-                                },
-                                on_select: move |value| {
-                                    props.on_new_action_type_change.call(value);
-                                    is_action_type_open.set(false);
-                                },
-                                has_error: false,
+                            class: "text-sm font-medium text-gray-700 dark:text-gray-300 mb-4",
+                            "{t.action_settings}"
+                        }
+                        div {
+                            class: "grid grid-cols-1 lg:grid-cols-3 gap-4",
+                            div {
+                                class: "relative",
+                                ActionTypeSelector {
+                                    label: t.action_type,
+                                    value: props.new_action_type.clone(),
+                                    is_open: *is_action_type_open.read(),
+                                    on_toggle: move |_| {
+                                        let current = *is_action_type_open.read();
+                                        is_action_type_open.set(!current);
+                                    },
+                                    on_select: move |value| {
+                                        props.on_new_action_type_change.call(value);
+                                        is_action_type_open.set(false);
+                                    },
+                                    has_error: false,
+                                }
                             }
-                        }
-
-                        InputField {
-                            label: t.action_key,
-                            placeholder: t.action_key,
-                            value: props.new_action_key.clone().unwrap_or_default(),
-                            required: false,
-                            has_error: false,
-                            on_input: move |value: String| {
-                                props.on_new_action_key_change.call(if value.is_empty() { None } else { Some(value) });
-                            },
-                            on_blur: move |_| {}
-                        }
-
-                        InputField {
-                            label: t.action_value,
-                            placeholder: t.action_value,
-                            value: props.new_action_value.clone().map(|v| v.to_string()).unwrap_or_default(),
-                            required: false,
-                            has_error: false,
-                            on_input: move |value: String| {
-                                props.on_new_action_value_change.call(if value.is_empty() { None } else { Some(serde_json::Value::String(value)) });
-                            },
-                            on_blur: move |_| {}
+    
+                            InputField {
+                                label: t.action_key,
+                                placeholder: t.action_key,
+                                value: props.new_action_key.clone().unwrap_or_default(),
+                                required: false,
+                                has_error: false,
+                                on_input: move |value: String| {
+                                    props.on_new_action_key_change.call(if value.is_empty() { None } else { Some(value) });
+                                },
+                                on_blur: move |_| {}
+                            }
+    
+                            InputField {
+                                label: t.action_value,
+                                placeholder: t.action_value,
+                                value: props.new_action_value.clone().map(|v| v.to_string()).unwrap_or_default(),
+                                required: false,
+                                has_error: false,
+                                on_input: move |value: String| {
+                                    props.on_new_action_value_change.call(if value.is_empty() { None } else { Some(serde_json::Value::String(value)) });
+                                },
+                                on_blur: move |_| {}
+                            }
                         }
                     }
                 }
@@ -165,96 +175,104 @@ pub fn ChoiceOptions(props: ChoiceOptionsProps) -> Element {
 
             rsx! {
                 div {
-                    key: "{index}",
-                    class: "relative border-2 border-gray-200 dark:border-gray-600 rounded-lg mt-4",
                     div {
-                        class: "p-4 space-y-4",
-                        // 標題輸入框
-                        InputField {
-                            label: format!("{} {}", t.option, index + 2),
-                            value: caption.clone(),
-                            on_input: move |value| props.on_extra_caption_change.call((index, value)),
-                            placeholder: t.caption,
-                            has_error: false,
-                            required: true,
-                            on_blur: move |_| {},
+                        class: "text-sm font-medium text-gray-700 dark:text-gray-300 mb-4",
+                        span {
+                            "{t.option} {index + 2}"
                         }
-                        // 目標段落選擇器
-                        ParagraphList {
-                            label: t.goto_target,
-                            value: goto.clone(),
-                            paragraphs: props.available_paragraphs.clone(),
-                            is_open: *is_extra_goto_open.read(),
-                            search_query: extra_goto_search_query.read().to_string(),
-                            on_toggle: move |_| {
-                                let current = *is_extra_goto_open.read();
-                                is_extra_goto_open.set(!current);
-                            },
-                            on_search: move |query| extra_goto_search_query.set(query),
-                            on_select: move |value| {
-                                props.on_extra_goto_change.call((index, value));
-                                is_extra_goto_open.set(false);
-                                extra_goto_search_query.set(String::new());
-                            },
-                            has_error: false,
-                        }
-                        // Action 相關欄位
+                    }
+                    div {
+                        key: "{index}",
+                        class: "relative border-2 border-gray-200 dark:border-gray-600 rounded-lg mt-4",
                         div {
-                            class: "border-t border-gray-200 dark:border-gray-700 mt-4 pt-4",
-                            div {
-                                class: "text-sm font-medium text-gray-700 dark:text-gray-300 mb-4",
-                                "{t.action_settings}"
+                            class: "p-4 space-y-4",
+                            // 標題輸入框
+                            InputField {
+                                label: t.caption,
+                                value: caption.clone(),
+                                on_input: move |value| props.on_extra_caption_change.call((index, value)),
+                                placeholder: t.caption,
+                                has_error: false,
+                                required: true,
+                                on_blur: move |_| {},
                             }
+                            // 目標段落選擇器
+                            ParagraphList {
+                                label: t.goto_target,
+                                value: goto.clone(),
+                                paragraphs: props.available_paragraphs.clone(),
+                                is_open: *is_extra_goto_open.read(),
+                                search_query: extra_goto_search_query.read().to_string(),
+                                on_toggle: move |_| {
+                                    let current = *is_extra_goto_open.read();
+                                    is_extra_goto_open.set(!current);
+                                },
+                                on_search: move |query| extra_goto_search_query.set(query),
+                                on_select: move |value| {
+                                    props.on_extra_goto_change.call((index, value));
+                                    is_extra_goto_open.set(false);
+                                    extra_goto_search_query.set(String::new());
+                                },
+                                has_error: false,
+                            }
+                            // Action 相關欄位
                             div {
-                                class: "grid grid-cols-1 lg:grid-cols-3 gap-4",
+                                class: "border-t border-gray-200 dark:border-gray-700 mt-4 pt-4",
                                 div {
-                                    class: "relative",
-                                    ActionTypeSelector {
-                                        label: t.action_type,
-                                        value: action_type.clone(),
-                                        is_open: *is_extra_action_type_open.read(),
-                                        on_toggle: move |_| {
-                                            let current = *is_extra_action_type_open.read();
-                                            is_extra_action_type_open.set(!current);
-                                        },
-                                        on_select: move |value| {
-                                            props.on_extra_action_type_change.call((index, value));
-                                            is_extra_action_type_open.set(false);
-                                        },
+                                    class: "text-sm font-medium text-gray-700 dark:text-gray-300 mb-4",
+                                    "{t.action_settings}"
+                                }
+                                div {
+                                    class: "grid grid-cols-1 lg:grid-cols-3 gap-4",
+                                    div {
+                                        class: "relative",
+                                        ActionTypeSelector {
+                                            label: t.action_type,
+                                            value: action_type.clone(),
+                                            is_open: *is_extra_action_type_open.read(),
+                                            on_toggle: move |_| {
+                                                let current = *is_extra_action_type_open.read();
+                                                is_extra_action_type_open.set(!current);
+                                            },
+                                            on_select: move |value| {
+                                                props.on_extra_action_type_change.call((index, value));
+                                                is_extra_action_type_open.set(false);
+                                            },
+                                            has_error: false,
+                                        }
+                                    }
+        
+                                    InputField {
+                                        label: t.action_key,
+                                        placeholder: t.action_key,
+                                        value: action_key.clone().unwrap_or_default(),
+                                        required: false,
                                         has_error: false,
+                                        on_input: move |value: String| {
+                                            props.on_extra_action_key_change.call((index, if value.is_empty() { None } else { Some(value) }));
+                                        },
+                                        on_blur: move |_| {}
+                                    }
+        
+                                    InputField {
+                                        label: t.action_value,
+                                        placeholder: t.action_value,
+                                        value: action_value.clone().map(|v| v.to_string()).unwrap_or_default(),
+                                        required: false,
+                                        has_error: false,
+                                        on_input: move |value: String| {
+                                            props.on_extra_action_value_change.call((index, if value.is_empty() { None } else { Some(serde_json::Value::String(value)) }));
+                                        },
+                                        on_blur: move |_| {}
                                     }
                                 }
-
-                                InputField {
-                                    label: t.action_key,
-                                    placeholder: t.action_key,
-                                    value: action_key.clone().unwrap_or_default(),
-                                    required: false,
-                                    has_error: false,
-                                    on_input: move |value: String| {
-                                        props.on_extra_action_key_change.call((index, if value.is_empty() { None } else { Some(value) }));
-                                    },
-                                    on_blur: move |_| {}
-                                }
-
-                                InputField {
-                                    label: t.action_value,
-                                    placeholder: t.action_value,
-                                    value: action_value.clone().map(|v| v.to_string()).unwrap_or_default(),
-                                    required: false,
-                                    has_error: false,
-                                    on_input: move |value: String| {
-                                        props.on_extra_action_value_change.call((index, if value.is_empty() { None } else { Some(serde_json::Value::String(value)) }));
-                                    },
-                                    on_blur: move |_| {}
-                                }
                             }
-                        }
-                        // 刪除按鈕
-                        button {
-                            class: "w-full mt-2 px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 transition-colors duration-200",
-                            onclick: move |_| props.on_remove_choice.call(index),
-                            "{t.delete_option}"
+                            // 刪除按鈕
+                            button {
+                                class: "w-full mt-2 px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 transition-colors duration-200",
+                                onclick: move |_| props.on_remove_choice.call(index),
+                                "{t.delete_option}"
+                            }
                         }
                     }
                 }

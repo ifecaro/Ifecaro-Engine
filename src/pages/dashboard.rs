@@ -1,20 +1,22 @@
 use dioxus::prelude::*;
 use serde::{Deserialize, Serialize};
 use wasm_bindgen_futures::spawn_local;
-use crate::constants::{BASE_API_URL, PARAGRAPHS, AUTH_TOKEN, CHAPTERS};
 use crate::enums::translations::Translations;
 use crate::components::toast::Toast;
 use crate::components::form::{InputField, TextareaField, ChoiceOptions};
+use dioxus::events::FormEvent;
 use crate::components::story_content::{Choice, Action};
 use crate::components::dropdown::Dropdown;
 use crate::components::translation_form::{Paragraph, Text};
 use crate::components::paragraph_list::ParagraphList;
 use crate::components::chapter_selector::ChapterSelector;
-use dioxus::events::FormEvent;
 use dioxus::hooks::use_context;
 use crate::contexts::language_context::LanguageState;
 use std::cell::RefCell;
 use std::thread_local;
+use crate::components::language_selector::{Language, AVAILABLE_LANGUAGES};
+use std::env;
+use crate::constants::config::{BASE_API_URL, PARAGRAPHS, CHAPTERS};
 
 thread_local! {
     static CURRENT_LANGUAGE: RefCell<String> = RefCell::new(String::from("zh-TW"));
@@ -103,101 +105,6 @@ pub struct SystemDataResponse {
     pub total_pages: i32,
 }
 
-#[derive(Clone, PartialEq)]
-struct Language {
-    code: &'static str,
-    name: &'static str,
-}
-
-const AVAILABLE_LANGUAGES: &[Language] = &[
-    Language { code: "zh-TW", name: "繁體中文" },
-    Language { code: "zh-CN", name: "簡體中文" },
-    Language { code: "en", name: "English" },
-    Language { code: "ja", name: "日本語" },
-    Language { code: "ko", name: "한국어" },
-    Language { code: "es", name: "Español" },
-    Language { code: "fr", name: "Français" },
-    Language { code: "de", name: "Deutsch" },
-    Language { code: "it", name: "Italiano" },
-    Language { code: "pt", name: "Português" },
-    Language { code: "ru", name: "Русский" },
-    Language { code: "ar", name: "العربية" },
-    Language { code: "hi", name: "हिंदी" },
-    Language { code: "bn", name: "বাংলা" },
-    Language { code: "id", name: "Bahasa Indonesia" },
-    Language { code: "ms", name: "Bahasa Melayu" },
-    Language { code: "th", name: "ไทย" },
-    Language { code: "vi", name: "Tiếng Việt" },
-    Language { code: "nl", name: "Nederlands" },
-    Language { code: "pl", name: "Polski" },
-    Language { code: "uk", name: "Українська" },
-    Language { code: "el", name: "Ελληνικά" },
-    Language { code: "he", name: "עברית" },
-    Language { code: "tr", name: "Türkçe" },
-    Language { code: "sv", name: "Svenska" },
-    Language { code: "da", name: "Dansk" },
-    Language { code: "no", name: "Norsk" },
-    Language { code: "cs", name: "Čeština" },
-    Language { code: "ro", name: "Română" },
-    Language { code: "hu", name: "Magyar" },
-    Language { code: "sk", name: "Slovenčina" },
-    Language { code: "hr", name: "Hrvatski" },
-    Language { code: "ca", name: "Català" },
-    Language { code: "fil", name: "Filipino" },
-    Language { code: "fa", name: "فارسی" },
-    Language { code: "lv", name: "Latviešu" },
-    Language { code: "af", name: "Afrikaans" },
-    Language { code: "sw", name: "Kiswahili" },
-    Language { code: "ga", name: "Gaeilge" },
-    Language { code: "et", name: "Eesti" },
-    Language { code: "eu", name: "Euskara" },
-    Language { code: "is", name: "Íslenska" },
-    Language { code: "mk", name: "Македонски" },
-    Language { code: "hy", name: "Հայերեն" },
-    Language { code: "ne", name: "नेपाली" },
-    Language { code: "lb", name: "Lëtzebuergesch" },
-    Language { code: "my", name: "မြန်မာဘာသာ" },
-    Language { code: "gl", name: "Galego" },
-    Language { code: "mr", name: "मराठी" },
-    Language { code: "ka", name: "ქართული" },
-    Language { code: "mn", name: "Монгол" },
-    Language { code: "si", name: "සිංහල" },
-    Language { code: "km", name: "ខ្មែរ" },
-    Language { code: "sn", name: "chiShona" },
-    Language { code: "yo", name: "Yorùbá" },
-    Language { code: "so", name: "Soomaali" },
-    Language { code: "ha", name: "Hausa" },
-    Language { code: "zu", name: "isiZulu" },
-    Language { code: "xh", name: "isiXhosa" },
-    Language { code: "am", name: "አማርኛ" },
-    Language { code: "be", name: "Беларуская" },
-    Language { code: "az", name: "Azərbaycan" },
-    Language { code: "uz", name: "O'zbek" },
-    Language { code: "kk", name: "Қазақ" },
-    Language { code: "ky", name: "Кыргызча" },
-    Language { code: "tg", name: "Тоҷикӣ" },
-    Language { code: "tk", name: "Türkmen" },
-    Language { code: "ur", name: "اردو" },
-    Language { code: "pa", name: "ਪੰਜਾਬੀ" },
-    Language { code: "gu", name: "ગુજરાતી" },
-    Language { code: "or", name: "ଓଡ଼ିଆ" },
-    Language { code: "ta", name: "தமிழ்" },
-    Language { code: "te", name: "తెలుగు" },
-    Language { code: "kn", name: "ಕನ್ನಡ" },
-    Language { code: "ml", name: "മലയാളം" },
-    Language { code: "as", name: "অসমীয়া" },
-    Language { code: "mai", name: "मैथिली" },
-    Language { code: "mni", name: "মৈতৈলোন্" },
-    Language { code: "doi", name: "डोगरी" },
-    Language { code: "bho", name: "भोजपुरी" },
-    Language { code: "sat", name: "ᱥᱟᱱᱛᱟᱲᱤ" },
-    Language { code: "ks", name: "کٲشُر" },
-    Language { code: "sa", name: "संस्कृतम्" },
-    Language { code: "sd", name: "سنڌي" },
-    Language { code: "kok", name: "कोंकणी" },
-    Language { code: "gom", name: "कोंकणी" },
-];
-
 #[derive(Debug, Clone, PartialEq)]
 struct ChoiceOption {
     id: String,
@@ -227,7 +134,6 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
         (move || {})()
     });
 
-    let _choices = use_signal(|| Vec::<Choice>::new());
     let mut paragraphs = use_signal(|| String::new());
     let mut new_caption = use_signal(|| String::new());
     let mut new_goto = use_signal(|| String::new());
@@ -235,34 +141,29 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
     let mut extra_gotos = use_signal(|| Vec::<String>::new());
     let mut show_extra_options = use_signal(|| Vec::<()>::new());
     let mut show_toast = use_signal(|| false);
-    let toast_visible = use_signal(|| false);
+    let mut toast_visible = use_signal(|| false);
     let mut is_open = use_signal(|| false);
     let mut search_query = use_signal(|| String::new());
-    let _is_goto_open = use_signal(|| false);
-    let _goto_search_query = use_signal(|| String::new());
-    let _available_choices = use_signal(|| Vec::<ChoiceOption>::new());
+    let mut is_paragraph_open = use_signal(|| false);
+    let mut paragraph_search_query = use_signal(|| String::new());
     let mut available_paragraphs = use_signal(|| Vec::<crate::components::paragraph_list::Paragraph>::new());
-    let available_chapters = use_signal(|| Vec::<Chapter>::new());
+    let mut available_chapters = use_signal(|| Vec::<Chapter>::new());
     let mut selected_chapter = use_signal(|| String::new());
     let mut is_chapter_open = use_signal(|| false);
     let mut chapter_search_query = use_signal(|| String::new());
     let mut selected_paragraph = use_signal(|| None::<Paragraph>);
     let mut is_edit_mode = use_signal(|| false);
-    let mut _is_paragraph_open = use_signal(|| false);
-    let mut _paragraph_search_query = use_signal(|| String::new());
-    let paragraph_data = use_signal(|| Vec::<Paragraph>::new());
+    let mut paragraph_data = use_signal(|| Vec::<Paragraph>::new());
     let t = Translations::get(&current_lang);
     let mut should_scroll = use_signal(|| false);
-    // 添加段落語言狀態
     let mut paragraph_language = use_signal(|| current_lang.clone());
 
     let mut paragraphs_error = use_signal(|| false);
     let mut new_caption_error = use_signal(|| false);
     let mut new_goto_error = use_signal(|| false);
     let mut chapter_error = use_signal(|| false);
-    let has_loaded = use_signal(|| false);
+    let mut has_loaded = use_signal(|| false);
 
-    // 在 DashboardProps 結構體後添加新的狀態
     let mut new_action_type = use_signal(|| String::new());
     let mut new_action_key = use_signal(|| None::<String>);
     let mut new_action_value = use_signal(|| None::<serde_json::Value>);
@@ -272,13 +173,14 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
 
     // 載入章節列表
     use_effect(move || {
-        let chapters_url = format!("{}/api{}", BASE_API_URL, CHAPTERS);
+        let chapters_url = format!("{}{}", BASE_API_URL, CHAPTERS);
         let client = reqwest::Client::new();
         let mut available_chapters = available_chapters.clone();
         
         wasm_bindgen_futures::spawn_local(async move {
+            let auth_token = env::var("AUTH_TOKEN").unwrap_or_else(|_| "YOUR_AUTH_TOKEN".to_string());
             match client.get(&chapters_url)
-                .header("Authorization", format!("Bearer {}", AUTH_TOKEN))
+                .header("Authorization", format!("Bearer {}", auth_token))
                 .send()
                 .await {
                 Ok(response) => {
@@ -322,7 +224,7 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
     });
 
     use_effect(move || {
-        let paragraphs_url = format!("{}/api{}", BASE_API_URL, PARAGRAPHS);
+        let paragraphs_url = format!("{}{}", BASE_API_URL, PARAGRAPHS);
         let client = reqwest::Client::new();
         let mut has_loaded = has_loaded.clone();
         let language_state = use_context::<Signal<LanguageState>>();
@@ -331,8 +233,9 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
 
         wasm_bindgen_futures::spawn_local(async move {
             // 載入段落
+            let auth_token = env::var("AUTH_TOKEN").unwrap_or_else(|_| "YOUR_AUTH_TOKEN".to_string());
             match client.get(&paragraphs_url)
-                .header("Authorization", format!("Bearer {}", AUTH_TOKEN))
+                .header("Authorization", format!("Bearer {}", auth_token))
                 .send()
                 .await {
                 Ok(response) => {
@@ -471,12 +374,12 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
         if !*is_form_valid.read() {
             return;
         }
-
+        
         let mut choices = Vec::new();
         let current_lang = language_state.read().current_language.clone();
         
         let main_choice = Choice {
-            caption: new_caption.read().clone(),
+                caption: new_caption.read().clone(),
             action: Action {
                 type_: new_action_type.read().clone(),
                 key: new_action_key.read().clone(),
@@ -493,7 +396,7 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
             .zip(extra_action_values.read().iter())
         {
             let choice = Choice {
-                caption: caption.clone(),
+                    caption: caption.clone(),
                 action: Action {
                     type_: action_type.clone(),
                     key: action_key.clone(),
@@ -531,14 +434,14 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
             });
             
             // 發布到段落集合
-            let paragraphs_url = format!("{}/api{}", BASE_API_URL, PARAGRAPHS);
+            let paragraphs_url = format!("{}{}", BASE_API_URL, PARAGRAPHS);
             
             match client.post(&paragraphs_url)
                 .json(&new_paragraph)
                 .send()
                 .await {
-                Ok(response) => {
-                    if response.status().is_success() {
+                            Ok(response) => {
+                                if response.status().is_success() {
                         paragraphs.set(String::new());
                         choices.clear();
                         new_caption.set(String::new());
@@ -546,29 +449,29 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
                         new_action_type.set(String::new());
                         new_action_key.set(None);
                         new_action_value.set(None);
-                        extra_captions.write().clear();
-                        extra_gotos.write().clear();
+                                    extra_captions.write().clear();
+                                    extra_gotos.write().clear();
                         extra_action_types.write().clear();
                         extra_action_keys.write().clear();
                         extra_action_values.write().clear();
-                        show_extra_options.write().clear();
+                                    show_extra_options.write().clear();
                         selected_chapter.set(String::new());
-                        show_toast.set(true);
-                        
-                        let mut toast_visible = toast_visible.clone();
-                        spawn_local(async move {
-                            let window = web_sys::window().unwrap();
-                            let promise = js_sys::Promise::new(&mut |resolve, _| {
-                                window
-                                    .set_timeout_with_callback_and_timeout_and_arguments_0(
-                                        &resolve,
-                                        50,
-                                    )
-                                    .unwrap();
-                            });
-                            let _ = wasm_bindgen_futures::JsFuture::from(promise).await;
-                            toast_visible.set(true);
-                        });
+                                    show_toast.set(true);
+                                    
+                                    let mut toast_visible = toast_visible.clone();
+                                    spawn_local(async move {
+                                        let window = web_sys::window().unwrap();
+                                        let promise = js_sys::Promise::new(&mut |resolve, _| {
+                                            window
+                                                .set_timeout_with_callback_and_timeout_and_arguments_0(
+                                                    &resolve,
+                                                    50,
+                                                )
+                                                .unwrap();
+                                        });
+                                        let _ = wasm_bindgen_futures::JsFuture::from(promise).await;
+                                        toast_visible.set(true);
+                                    });
                     }
                 }
                 Err(_) => {}
@@ -624,7 +527,7 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
             });
 
             let client = reqwest::Client::new();
-            let paragraphs_url = format!("{}/api{}/{}", BASE_API_URL, PARAGRAPHS, paragraph.id);
+            let paragraphs_url = format!("{}{}/{}", BASE_API_URL, PARAGRAPHS, paragraph.id);
 
             spawn_local(async move {
                 match client.patch(&paragraphs_url)
@@ -648,24 +551,24 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
                             show_extra_options.write().clear();
                             show_toast.set(true);
                             
-                            let mut toast_visible = toast_visible.clone();
-                            spawn_local(async move {
-                                let window = web_sys::window().unwrap();
-                                let promise = js_sys::Promise::new(&mut |resolve, _| {
-                                    window
-                                        .set_timeout_with_callback_and_timeout_and_arguments_0(
-                                            &resolve,
+                                    let mut toast_visible = toast_visible.clone();
+                                    spawn_local(async move {
+                                        let window = web_sys::window().unwrap();
+                                        let promise = js_sys::Promise::new(&mut |resolve, _| {
+                                            window
+                                                .set_timeout_with_callback_and_timeout_and_arguments_0(
+                                                    &resolve,
                                             50,
-                                        )
-                                        .unwrap();
-                                });
-                                let _ = wasm_bindgen_futures::JsFuture::from(promise).await;
+                                                )
+                                                .unwrap();
+                                        });
+                                        let _ = wasm_bindgen_futures::JsFuture::from(promise).await;
                                 toast_visible.set(true);
-                            });
+                                    });
+                                }
+                            }
+                            Err(_) => {}
                         }
-                    }
-                    Err(_) => {}
-                }
             });
         }
     };
@@ -913,20 +816,20 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
                             class: "md:col-span-2",
                             div {
                                 class: "flex items-end space-x-4",
-                                div { class: "flex-1",
+                            div { class: "flex-1",
                                     ParagraphList {
                                         label: "選擇段落",
                                         value: selected_paragraph.read().as_ref().map(|p| p.id.clone()).unwrap_or("選擇段落".to_string()),
                                         paragraphs: available_paragraphs.read().clone(),
-                                        is_open: *_is_paragraph_open.read(),
-                                        search_query: _paragraph_search_query.read().to_string(),
+                                        is_open: *is_paragraph_open.read(),
+                                        search_query: paragraph_search_query.read().to_string(),
                                         on_toggle: move |_| {
-                                            let current = *_is_paragraph_open.read();
-                                            _is_paragraph_open.set(!current);
+                                            let current = *is_paragraph_open.read();
+                                            is_paragraph_open.set(!current);
                                         },
-                                        on_search: move |query| _paragraph_search_query.set(query),
+                                        on_search: move |query| paragraph_search_query.set(query),
                                         on_select: handle_paragraph_select,
-                                        has_error: false,
+                                    has_error: false,
                                     }
                                 }
 
@@ -985,8 +888,8 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
                             class: "md:col-span-2",
                             div {
                                 class: "flex items-end space-x-4",
-                                div { class: "flex-1",
-                                    InputField {
+                            div { class: "flex-1",
+                                InputField {
                                         label: t.paragraph_title,
                                         placeholder: t.paragraph_title,
                                         value: new_caption.read().to_string(),

@@ -1,5 +1,3 @@
-use crate::constants::{BASE_API_URL, PARAGRAPHS, ACTIONS};
-use crate::enums::translations::Translations;
 use dioxus::{
     dioxus_core,
     hooks::{use_context, use_future, use_memo, use_signal, use_effect},
@@ -11,13 +9,14 @@ use dioxus_i18n::t;
 use serde::Deserialize;
 use crate::contexts::language_context::LanguageState;
 use crate::components::story_content::{StoryContent, Choice};
+use crate::enums::translations::Translations;
 use wasm_bindgen::prelude::*;
 use web_sys::IdbDatabase;
 use wasm_bindgen_futures::JsFuture;
 use js_sys::Promise;
 use wasm_bindgen::closure::Closure;
 use crate::contexts::story_context::use_story_context;
-
+use crate::constants::config::{BASE_API_URL, PARAGRAPHS, ACTIONS};
 #[allow(non_snake_case)]
 #[derive(Deserialize, Clone, Debug)]
 struct Data {
@@ -61,7 +60,7 @@ pub struct StoryProps {
 
 #[allow(dead_code)]
 async fn sync_action_to_db(action: &Action, paragraph_id: &str) -> Result<(), Box<dyn std::error::Error>> {
-    let url = format!("{}/api{}", BASE_API_URL, ACTIONS);
+    let url = format!("{}{}", BASE_API_URL, ACTIONS);
     
     let action_data = serde_json::json!({
         "paragraph_id": paragraph_id,
@@ -338,7 +337,7 @@ pub fn Story(_props: StoryProps) -> Element {
     });
     let mut selected_paragraph_index: Signal<usize> = use_signal(|| 0);
     let state = use_context::<Signal<LanguageState>>();
-    let mut t = use_signal(|| Translations::get(&state.read().current_language));
+    let t = use_signal(|| Translations::get(&state.read().current_language));
 
     // 監聽語言變化
     {
@@ -428,13 +427,13 @@ pub fn Story(_props: StoryProps) -> Element {
         let mut data = data.clone();
 
         use_future(move || async move {
-            let url = format!("{}/api{}", BASE_API_URL, PARAGRAPHS);
+            let url = format!("{}{}", BASE_API_URL, PARAGRAPHS);
             
             match reqwest::get(&url).await {
                 Ok(response) => {
                     match response.json::<Data>().await {
                         Ok(data2) => {
-                            data.set(data2.clone());
+                    data.set(data2.clone());
                             Ok(data2)
                         },
                         Err(e) => Err(e)

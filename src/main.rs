@@ -1,10 +1,10 @@
 mod components;
-mod constants;
 mod enums;
 mod i18n;
 mod layout;
 mod pages;
 mod contexts;
+mod constants;
 
 use dioxus::{
     prelude::*,

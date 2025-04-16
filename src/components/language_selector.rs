@@ -3,8 +3,8 @@ use crate::enums::translations::Translations;
 
 #[derive(Clone, PartialEq)]
 pub struct Language {
-    code: &'static str,
-    name: &'static str,
+    pub code: &'static str,
+    pub name: &'static str,
 }
 
 #[allow(dead_code)]
