@@ -60,7 +60,7 @@ pub fn Navbar() -> Element {
     
     rsx! {
         div { 
-            class: "fixed top-0 left-0 right-0 w-full bg-white shadow-md dark:bg-gray-900",
+            class: "fixed top-0 left-0 right-0 w-full bg-white shadow-md dark:bg-gray-900 z-[9999]",
             div { 
                 class: "container mx-auto px-6 py-3",
                 div { 
