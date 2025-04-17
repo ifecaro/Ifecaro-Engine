@@ -1,6 +1,4 @@
 use std::process::Command;
-use std::path::Path;
-use std::env;
 
 fn main() {
     // Compile Tailwind CSS

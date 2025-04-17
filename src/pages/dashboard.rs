@@ -328,8 +328,8 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
     });
 
     let has_changes = use_memo(move || {
+        let language_state = language_state.clone();
         if let Some(paragraph) = selected_paragraph.read().as_ref() {
-            let language_state = use_context::<Signal<LanguageState>>();
             let current_lang = language_state.read().current_language.clone();
             // 檢查當前語言的翻譯是否存在
             if let Some(existing_text) = paragraph.texts.iter().find(|text| text.lang == current_lang) {
@@ -497,61 +497,62 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
         });
     };
 
-    let handle_add_translation = move |_| {
-        if let Some(paragraph) = selected_paragraph.read().as_ref() {
-            let language_state = use_context::<Signal<LanguageState>>();
-            let current_lang = language_state.read().current_language.clone();
-            let mut updated_texts = paragraph.texts.clone();
+    let handle_add_translation = {
+        let language_state = language_state.clone();
+        move |_| {
+            if let Some(paragraph) = selected_paragraph.read().as_ref() {
+                let current_lang = language_state.read().current_language.clone();
+                let mut updated_texts = paragraph.texts.clone();
 
-            let mut choices = Vec::new();
-            
-            let main_choice = Choice {
-                caption: new_caption.read().clone(),
-                action: Action {
-                    type_: new_action_type.read().clone(),
-                    key: new_action_key.read().clone(),
-                    value: new_action_value.read().clone(),
-                    to: new_goto.read().clone(),
-                },
-            };
-            choices.push(main_choice);
-
-            for ((((caption, goto), action_type), action_key), action_value) in extra_captions.read().iter()
-                .zip(extra_gotos.read().iter())
-                .zip(extra_action_types.read().iter())
-                .zip(extra_action_keys.read().iter())
-                .zip(extra_action_values.read().iter())
-            {
-                let choice = Choice {
-                    caption: caption.clone(),
+                let mut choices = Vec::new();
+                
+                let main_choice = Choice {
+                    caption: new_caption.read().clone(),
                     action: Action {
-                        type_: action_type.clone(),
-                        key: action_key.clone(),
-                        value: action_value.clone(),
-                        to: goto.clone(),
+                        type_: new_action_type.read().clone(),
+                        key: new_action_key.read().clone(),
+                        value: new_action_value.read().clone(),
+                        to: new_goto.read().clone(),
                     },
                 };
-                choices.push(choice);
-            }
+                choices.push(main_choice);
 
-            updated_texts.push(Text {
-                lang: current_lang,
-                paragraphs: paragraphs.read().clone(),
-                choices: choices.clone(),
-            });
+                for ((((caption, goto), action_type), action_key), action_value) in extra_captions.read().iter()
+                    .zip(extra_gotos.read().iter())
+                    .zip(extra_action_types.read().iter())
+                    .zip(extra_action_keys.read().iter())
+                    .zip(extra_action_values.read().iter())
+                {
+                    let choice = Choice {
+                        caption: caption.clone(),
+                        action: Action {
+                            type_: action_type.clone(),
+                            key: action_key.clone(),
+                            value: action_value.clone(),
+                            to: goto.clone(),
+                        },
+                    };
+                    choices.push(choice);
+                }
 
-            let updated_paragraph = serde_json::json!({
-                "texts": updated_texts
-            });
+                updated_texts.push(Text {
+                    lang: current_lang,
+                    paragraphs: paragraphs.read().clone(),
+                    choices: choices.clone(),
+                });
 
-            let client = reqwest::Client::new();
-            let paragraphs_url = format!("{}{}/{}", BASE_API_URL, PARAGRAPHS, paragraph.id);
+                let updated_paragraph = serde_json::json!({
+                    "texts": updated_texts
+                });
 
-            spawn_local(async move {
-                match client.patch(&paragraphs_url)
-                    .json(&updated_paragraph)
-                    .send()
-                    .await {
+                let client = reqwest::Client::new();
+                let paragraphs_url = format!("{}{}/{}", BASE_API_URL, PARAGRAPHS, paragraph.id);
+
+                spawn_local(async move {
+                    match client.patch(&paragraphs_url)
+                        .json(&updated_paragraph)
+                        .send()
+                        .await {
                     Ok(response) => {
                         if response.status().is_success() {
                             paragraphs.set(String::new());
@@ -587,7 +588,8 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
                             }
                             Err(_) => {}
                         }
-            });
+                });
+            }
         }
     };
 

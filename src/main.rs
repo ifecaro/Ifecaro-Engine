@@ -24,15 +24,28 @@ fn main() {
 
 #[component]
 fn App() -> Element {
-    provide_story_context();
-    
     rsx! {
         head {
             Stylesheet { href: asset!("public/tailwind.css") }
         }
         LanguageProvider {
-            Router::<Route> {}
+            StoryProvider {
+                Router::<Route> {}
+            }
         }
+    }
+}
+
+#[derive(Props, Clone, PartialEq)]
+struct StoryProviderProps {
+    children: Element,
+}
+
+#[component]
+fn StoryProvider(props: StoryProviderProps) -> Element {
+    provide_story_context();
+    rsx! {
+        {props.children}
     }
 }
 
