@@ -37,6 +37,7 @@ web-sys = { version = "0.3.69", features = [
     "Document",
     "HtmlElement",
     "Element",
+    "Navigator",
 ] }
 wasm-bindgen = "0.2.95"
 regex = "1.10.3"

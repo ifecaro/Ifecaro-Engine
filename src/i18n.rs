@@ -4,11 +4,20 @@ use crate::enums::translations::Translations;
 use crate::constants::config::LANGUAGES;
 
 pub fn create_i18n_store() -> I18nConfig {
-    I18nConfig::new(langid!("zh-TW"))
+    I18nConfig::new(langid!("en-US"))
         .with_locale(Locale::new_static(langid!("en-US"), include_str!("../i18n/en.ftl")))
         .with_locale(Locale::new_static(langid!("zh-TW"), include_str!("../i18n/zh-TW.ftl")))
+        .with_locale(Locale::new_static(langid!("zh-CN"), include_str!("../i18n/zh-CN.ftl")))
         .with_locale(Locale::new_static(langid!("es-ES"), include_str!("../i18n/es-ES.ftl")))
         .with_locale(Locale::new_static(langid!("es-CL"), include_str!("../i18n/es-CL.ftl")))
+        // 添加更多語言支持
+        .with_locale(Locale::new_static(langid!("ja"), include_str!("../i18n/en.ftl")))
+        .with_locale(Locale::new_static(langid!("ko"), include_str!("../i18n/en.ftl")))
+        .with_locale(Locale::new_static(langid!("fr"), include_str!("../i18n/en.ftl")))
+        .with_locale(Locale::new_static(langid!("de"), include_str!("../i18n/en.ftl")))
+        .with_locale(Locale::new_static(langid!("it"), include_str!("../i18n/en.ftl")))
+        .with_locale(Locale::new_static(langid!("pt"), include_str!("../i18n/en.ftl")))
+        .with_locale(Locale::new_static(langid!("ru"), include_str!("../i18n/en.ftl")))
 }
 
 // 輔助函數：獲取當前語言的翻譯
