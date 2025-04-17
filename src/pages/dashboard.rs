@@ -143,7 +143,7 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
     let mut show_extra_options = use_signal(|| Vec::<()>::new());
     let mut show_toast = use_signal(|| false);
     let mut toast_visible = use_signal(|| false);
-    let mut init_done = use_signal(|| false);
+    let _init_done = use_signal(|| false);
     let mut is_open = use_signal(|| false);
     let mut search_query = use_signal(|| String::new());
     let mut is_paragraph_open = use_signal(|| false);
@@ -155,7 +155,7 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
     let mut chapter_search_query = use_signal(|| String::new());
     let mut selected_paragraph = use_signal(|| None::<Paragraph>);
     let mut is_edit_mode = use_signal(|| false);
-    let paragraph_data = use_signal(|| Vec::<Paragraph>::new());
+    let mut paragraph_data = use_signal(|| Vec::<Paragraph>::new());
     let t = Translations::get(&current_lang);
     let mut should_scroll = use_signal(|| false);
     let mut paragraph_language = use_signal(|| current_lang.clone());
@@ -165,6 +165,7 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
     let mut new_goto_error = use_signal(|| false);
     let mut chapter_error = use_signal(|| false);
     let has_loaded = use_signal(|| false);
+    let error_toast_visible = use_signal(|| false);
 
     let mut new_action_type = use_signal(|| String::new());
     let mut new_action_key = use_signal(|| None::<String>);
@@ -175,7 +176,6 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
 
     let mut show_error_toast = use_signal(|| false);
     let mut error_message = use_signal(|| String::new());
-    let mut error_toast_visible = use_signal(|| false);
 
     let mut update_paragraph_previews = move || {
         let selected_lang = paragraph_language.read().clone();
@@ -438,15 +438,20 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
                 return;
             }
             
-            // 建立一個足夠長的 id
+            // 計算新段落的 index
+            let max_index = paragraph_data.read().iter()
+                .map(|p| p.index)
+                .max()
+                .unwrap_or(0);
+            let new_index = max_index + 1;
+            
+            // 建立新的段落資料
             let chapter_id = selected_chapter.read().clone();
-            let timestamp = js_sys::Date::new_0().get_time();
-            let unique_id = format!("{}_{}", chapter_id, timestamp);
             
             // 建立新的段落資料
             let new_paragraph = serde_json::json!({
-                "id": unique_id,
                 "chapter_id": chapter_id,
+                "index": new_index,
                 "texts": [text]
             });
             
@@ -460,6 +465,25 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
                 Ok(response) => {
                     let status = response.status();
                     if status.is_success() {
+                        // 重新載入段落資料
+                        let paragraphs_url = format!("{}{}", BASE_API_URL, PARAGRAPHS);
+                        match client.get(&paragraphs_url)
+                            .send()
+                            .await {
+                            Ok(response) => {
+                                if response.status().is_success() {
+                                    match response.json::<Data>().await {
+                                        Ok(data) => {
+                                            paragraph_data.set(data.items);
+                                            update_paragraph_previews();
+                                        }
+                                        Err(_) => {}
+                                    }
+                                }
+                            }
+                            Err(_) => {}
+                        }
+
                         paragraphs.set(String::new());
                         choices.clear();
                         new_caption.set(String::new());
