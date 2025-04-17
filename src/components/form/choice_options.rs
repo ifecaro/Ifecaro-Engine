@@ -67,7 +67,7 @@ pub fn ChoiceOptions(props: ChoiceOptionsProps) -> Element {
                     }
                     // 目標段落選擇器
                     ParagraphList {
-                        label: t.goto_target,
+                        label: props.t.goto_target,
                         value: props.new_goto.clone(),
                         paragraphs: props.available_paragraphs.clone(),
                         is_open: *is_goto_open.read(),
@@ -77,13 +77,12 @@ pub fn ChoiceOptions(props: ChoiceOptionsProps) -> Element {
                             is_goto_open.set(!current);
                         },
                         on_search: move |query| goto_search_query.set(query),
-                        on_select: move |value| {
-                            props.on_new_goto_change.call(value);
+                        on_select: move |id| {
+                            props.on_new_goto_change.call(id);
                             is_goto_open.set(false);
-                            goto_search_query.set(String::new());
                         },
                         has_error: props.new_goto_error,
-                        required: true,
+                        t: props.t.clone(),
                     }
                     // Action 相關欄位
                     div {
@@ -200,7 +199,7 @@ pub fn ChoiceOptions(props: ChoiceOptionsProps) -> Element {
                             }
                             // 目標段落選擇器
                             ParagraphList {
-                                label: t.goto_target,
+                                label: props.t.goto_target,
                                 value: goto.clone(),
                                 paragraphs: props.available_paragraphs.clone(),
                                 is_open: *is_extra_goto_open.read(),
@@ -210,13 +209,12 @@ pub fn ChoiceOptions(props: ChoiceOptionsProps) -> Element {
                                     is_extra_goto_open.set(!current);
                                 },
                                 on_search: move |query| extra_goto_search_query.set(query),
-                                on_select: move |value| {
-                                    props.on_extra_goto_change.call((index, value));
+                                on_select: move |id| {
+                                    props.on_extra_goto_change.call((index, id));
                                     is_extra_goto_open.set(false);
-                                    extra_goto_search_query.set(String::new());
                                 },
                                 has_error: false,
-                                required: true,
+                                t: props.t.clone(),
                             }
                             // Action 相關欄位
                             div {

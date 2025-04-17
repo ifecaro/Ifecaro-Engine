@@ -767,8 +767,8 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
                                         div { 
                                             class: "w-full sm:flex-1",
                                             crate::components::paragraph_list::ParagraphList {
-                                                label: "選擇段落",
-                                                value: selected_paragraph.read().as_ref().map(|p| p.id.clone()).unwrap_or("選擇段落".to_string()),
+                                                label: t.select_paragraph,
+                                                value: selected_paragraph.read().as_ref().map(|p| p.id.clone()).unwrap_or(t.select_paragraph.to_string()),
                                                 paragraphs: available_paragraphs.read().clone(),
                                                 is_open: *is_paragraph_open.read(),
                                                 search_query: paragraph_search_query.read().to_string(),
@@ -790,11 +790,12 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
                                                 },
                                                 has_error: false,
                                                 disabled: !*is_edit_mode.read(),
+                                                t: t.clone(),
                                             }
                                         }
 
                                         button {
-                                            class: "inline-flex items-center justify-center w-10 h-10 text-sm font-medium text-white bg-gray-700 rounded-lg hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-600 transition-colors duration-200 shadow-sm",
+                                            class: "w-full md:w-10 h-10 inline-flex items-center justify-center rounded-lg text-white bg-blue-600 hover:bg-blue-700 focus:ring-4 focus:outline-none focus:ring-blue-300 dark:bg-blue-500 dark:hover:bg-blue-600 dark:focus:ring-blue-800",
                                             onclick: move |_| {
                                                 let current_mode = *is_edit_mode.read();
                                                 is_edit_mode.set(!current_mode);

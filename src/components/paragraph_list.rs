@@ -1,5 +1,6 @@
 use dioxus::prelude::*;
 use crate::components::dropdown::Dropdown;
+use crate::enums::translations::Translations;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Paragraph {
@@ -30,6 +31,7 @@ pub struct ParagraphListProps {
     pub disabled: bool,
     #[props(default = false)]
     pub required: bool,
+    pub t: Translations,
 }
 
 #[component]
@@ -67,7 +69,7 @@ pub fn ParagraphList(props: ParagraphListProps) -> Element {
             display_fn: display_paragraph,
             has_error: props.has_error,
             class: props.class,
-            search_placeholder: "搜尋段落...",
+            search_placeholder: props.t.search_paragraph,
             button_class: "",
             dropdown_class: "",
             search_input_class: "",

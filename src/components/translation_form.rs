@@ -11,7 +11,6 @@ pub struct Paragraph {
     pub id: String,
     pub index: usize,
     #[serde(default)]
-    #[serde(rename = "chapter_id")]
     pub chapter_id: String,
     pub texts: Vec<Text>,
 }
@@ -85,8 +84,8 @@ pub fn TranslationForm(props: TranslationFormProps) -> Element {
             div { class: "space-y-4",
                 // 段落選擇器
                 ParagraphList {
-                    label: "選擇段落",
-                    value: props.paragraphs,
+                    label: props.t.paragraph,
+                    value: props.selected_paragraph.as_ref().map(|p| p.id.clone()).unwrap_or_else(|| "選擇段落".to_string()),
                     paragraphs: props.available_paragraphs.clone(),
                     is_open: *is_paragraph_open.read(),
                     search_query: paragraph_search_query.read().to_string(),
@@ -95,11 +94,12 @@ pub fn TranslationForm(props: TranslationFormProps) -> Element {
                         is_paragraph_open.set(!current);
                     },
                     on_search: move |query| paragraph_search_query.set(query),
-                    on_select: move |id: String| {
+                    on_select: move |id| {
                         props.on_paragraph_select.call(id);
                         is_paragraph_open.set(false);
-                        paragraph_search_query.set(String::new());
-                    }
+                    },
+                    has_error: false,
+                    t: props.t.clone(),
                 }
 
                 // 段落內容欄位
