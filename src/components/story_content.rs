@@ -164,7 +164,7 @@ pub fn StoryContent(props: StoryContentProps) -> Element {
                     }
                 },
                 div {
-                    class: "whitespace-pre-wrap mt-16 space-y-8",
+                    class: "whitespace-pre-wrap lg:mt-16 space-y-8",
                     {paragraph.split('\n').map(|p| {
                         if p.trim().is_empty() {
                             rsx! { br {} }

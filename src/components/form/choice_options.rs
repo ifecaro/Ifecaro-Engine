@@ -143,7 +143,7 @@ pub fn ChoiceOptions(props: ChoiceOptionsProps) -> Element {
 
         // 新增選項按鈕
         button {
-            class: "w-full border-2 border-dashed border-gray-200 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors duration-200 flex items-center justify-center",
+            class: "w-full mt-4 border-2 border-dashed border-gray-200 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors duration-200 flex items-center justify-center",
             onclick: move |_| props.on_add_choice.call(()),
             div {
                 class: "flex items-center space-x-2 text-gray-500 dark:text-gray-400 p-4",
