@@ -179,7 +179,7 @@ pub fn StoryContent(props: StoryContentProps) -> Element {
                     })}
                 }
                 ol {
-                    class: "mt-10 w-fit list-decimal",
+                    class: "mt-10 w-full md:w-fit list-decimal",
                     {choices.iter().enumerate().map(|(index, choice)| {
                         let caption = choice.caption.clone();
                         let goto = choice.action.to.clone();
@@ -188,7 +188,9 @@ pub fn StoryContent(props: StoryContentProps) -> Element {
                         rsx! {
                             li {
                                 class: {
-                                    let mut classes = vec![];
+                                    let mut classes = vec![
+                                        "!ml-0 md:!ml-20" // Force no margin on mobile with !important
+                                    ];
                                     if is_enabled {
                                         classes.push("cursor-pointer hover:text-blue-500");
                                     } else {
