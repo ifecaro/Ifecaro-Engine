@@ -15,6 +15,9 @@ use std::thread_local;
 use crate::components::language_selector::{Language, AVAILABLE_LANGUAGES};
 use std::env;
 use crate::constants::config::{BASE_API_URL, PARAGRAPHS, CHAPTERS};
+use web_sys::window;
+use wasm_bindgen::closure::Closure;
+use wasm_bindgen::JsCast;
 
 thread_local! {
     static CURRENT_LANGUAGE: RefCell<String> = RefCell::new(String::from("zh-TW"));
@@ -139,7 +142,8 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
     let mut extra_gotos = use_signal(|| Vec::<String>::new());
     let mut show_extra_options = use_signal(|| Vec::<()>::new());
     let mut show_toast = use_signal(|| false);
-    let toast_visible = use_signal(|| false);
+    let mut toast_visible = use_signal(|| false);
+    let mut init_done = use_signal(|| false);
     let mut is_open = use_signal(|| false);
     let mut search_query = use_signal(|| String::new());
     let mut is_paragraph_open = use_signal(|| false);
@@ -168,6 +172,10 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
     let mut extra_action_types = use_signal(|| Vec::<String>::new());
     let mut extra_action_keys = use_signal(|| Vec::<Option<String>>::new());
     let mut extra_action_values = use_signal(|| Vec::<Option<serde_json::Value>>::new());
+
+    let mut show_error_toast = use_signal(|| false);
+    let mut error_message = use_signal(|| String::new());
+    let mut error_toast_visible = use_signal(|| false);
 
     let mut update_paragraph_previews = move || {
         let selected_lang = paragraph_language.read().clone();
@@ -320,63 +328,26 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
             !new_caption.read().trim().is_empty() &&
             !new_goto.read().trim().is_empty();
 
-        // 檢查額外選項
-        let extra_choices_valid = extra_captions.read().iter().zip(extra_gotos.read().iter())
-            .all(|(caption, goto)| !caption.trim().is_empty() && !goto.trim().is_empty());
+        // 檢查額外選項（只有在有額外選項時才檢查）
+        let extra_choices_valid = if !extra_captions.read().is_empty() {
+            extra_captions.read().iter().zip(extra_gotos.read().iter())
+                .all(|(caption, goto)| !caption.trim().is_empty() && !goto.trim().is_empty())
+        } else {
+            true
+        };
 
         main_fields_valid && extra_choices_valid
     });
 
     let has_changes = use_memo(move || {
-        let language_state = language_state.clone();
-        if let Some(paragraph) = selected_paragraph.read().as_ref() {
-            let current_lang = language_state.read().current_language.clone();
-            // 檢查當前語言的翻譯是否存在
-            if let Some(existing_text) = paragraph.texts.iter().find(|text| text.lang == current_lang) {
-                // 比較段落內容
-                let paragraphs_changed = existing_text.paragraphs != *paragraphs.read();
-                
-                // 比較選項
-                let choices_changed = if !existing_text.choices.is_empty() {
-                    // 檢查第一個選項
-                    let first_choice_changed = existing_text.choices[0].caption != *new_caption.read() ||
-                                            existing_text.choices[0].action.to != *new_goto.read();
-                    
-                    // 檢查額外選項
-                    let extra_choices_changed = if existing_text.choices.len() > 1 {
-                        let existing_extra = &existing_text.choices[1..];
-                        let current_extra_captions = &extra_captions.read();
-                        let current_extra_gotos = &extra_gotos.read();
-                        
-                        if existing_extra.len() != current_extra_captions.len() {
-                            true
-                        } else {
-                            existing_extra.iter().zip(current_extra_captions.iter().zip(current_extra_gotos.iter()))
-                                .any(|(existing, (current_caption, current_goto))| {
-                                    existing.caption != *current_caption || existing.action.to != *current_goto
-                                })
-                        }
-                    } else {
-                        !extra_captions.read().is_empty() || !extra_gotos.read().is_empty()
-                    };
-                    
-                    first_choice_changed || extra_choices_changed
-                } else {
-                    !new_caption.read().is_empty() || !new_goto.read().is_empty() ||
-                    !extra_captions.read().is_empty() || !extra_gotos.read().is_empty()
-                };
-                
-                paragraphs_changed || choices_changed
-            } else {
-                // 如果是新翻譯，只要有任何內容就表示有變化
-                !paragraphs.read().trim().is_empty() ||
-                !new_caption.read().trim().is_empty() ||
-                !new_goto.read().trim().is_empty() ||
-                !extra_captions.read().is_empty() ||
-                !extra_gotos.read().is_empty()
-            }
+        if *is_edit_mode.read() {
+            // 如果是編輯模式，檢查是否有任何欄位被修改
+            let paragraphs_changed = paragraphs.read().to_string() != selected_paragraph.read().as_ref().map(|p| p.texts.iter().find(|t| t.lang == *paragraph_language.read()).map(|t| t.paragraphs.clone()).unwrap_or_default()).unwrap_or_default();
+            let choices_changed = !new_caption.read().trim().is_empty() || !new_goto.read().trim().is_empty() || !extra_captions.read().is_empty() || !extra_gotos.read().is_empty();
+            paragraphs_changed || choices_changed
         } else {
-            false
+            // 如果是新翻譯，只要有任何內容就表示有變化
+            true  // 在新增模式下，我們總是認為有變更，因為這是一個新的段落
         }
     });
 
@@ -436,6 +407,34 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
             
             // 檢查是否選擇了章節
             if selected_chapter.read().is_empty() {
+                error_message.set("請選擇章節".to_string());
+                show_error_toast.set(true);
+                let mut error_toast_visible = error_toast_visible.clone();
+                spawn_local(async move {
+                    let window = web_sys::window().unwrap();
+                    let promise = js_sys::Promise::new(&mut |resolve, _| {
+                        window
+                            .set_timeout_with_callback_and_timeout_and_arguments_0(
+                                &resolve,
+                                50,
+                            )
+                            .unwrap();
+                    });
+                    let _ = wasm_bindgen_futures::JsFuture::from(promise).await;
+                    error_toast_visible.set(true);
+
+                    // 3秒後隱藏 toast
+                    let promise = js_sys::Promise::new(&mut |resolve, _| {
+                        window
+                            .set_timeout_with_callback_and_timeout_and_arguments_0(
+                                &resolve,
+                                3000,
+                            )
+                            .unwrap();
+                    });
+                    let _ = wasm_bindgen_futures::JsFuture::from(promise).await;
+                    error_toast_visible.set(false);
+                });
                 return;
             }
             
@@ -458,8 +457,9 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
                 .json(&new_paragraph)
                 .send()
                 .await {
-                            Ok(response) => {
-                                if response.status().is_success() {
+                Ok(response) => {
+                    let status = response.status();
+                    if status.is_success() {
                         paragraphs.set(String::new());
                         choices.clear();
                         new_caption.set(String::new());
@@ -467,32 +467,136 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
                         new_action_type.set(String::new());
                         new_action_key.set(None);
                         new_action_value.set(None);
-                                    extra_captions.write().clear();
-                                    extra_gotos.write().clear();
+                        extra_captions.write().clear();
+                        extra_gotos.write().clear();
                         extra_action_types.write().clear();
                         extra_action_keys.write().clear();
                         extra_action_values.write().clear();
-                                    show_extra_options.write().clear();
+                        show_extra_options.write().clear();
                         selected_chapter.set(String::new());
-                                    show_toast.set(true);
-                                    
-                                    let mut toast_visible = toast_visible.clone();
-                                    spawn_local(async move {
-                                        let window = web_sys::window().unwrap();
-                                        let promise = js_sys::Promise::new(&mut |resolve, _| {
-                                            window
-                                                .set_timeout_with_callback_and_timeout_and_arguments_0(
-                                                    &resolve,
-                                                    50,
-                                                )
-                                                .unwrap();
-                                        });
-                                        let _ = wasm_bindgen_futures::JsFuture::from(promise).await;
-                                        toast_visible.set(true);
+                        show_toast.set(true);
+                        
+                        let mut toast_visible = toast_visible.clone();
+                        spawn_local(async move {
+                            let window = web_sys::window().unwrap();
+                            let promise = js_sys::Promise::new(&mut |resolve, _| {
+                                window
+                                    .set_timeout_with_callback_and_timeout_and_arguments_0(
+                                        &resolve,
+                                        50,
+                                    )
+                                    .unwrap();
+                            });
+                            let _ = wasm_bindgen_futures::JsFuture::from(promise).await;
+                            toast_visible.set(true);
+
+                            // 3秒後隱藏 toast
+                            let promise = js_sys::Promise::new(&mut |resolve, _| {
+                                window
+                                    .set_timeout_with_callback_and_timeout_and_arguments_0(
+                                        &resolve,
+                                        3000,
+                                    )
+                                    .unwrap();
+                            });
+                            let _ = wasm_bindgen_futures::JsFuture::from(promise).await;
+                            toast_visible.set(false);
+                        });
+                    } else {
+                        match response.text().await {
+                            Ok(error_text) => {
+                                error_message.set(format!("伺服器錯誤: {}", error_text));
+                                show_error_toast.set(true);
+                                let mut error_toast_visible = error_toast_visible.clone();
+                                spawn_local(async move {
+                                    let window = web_sys::window().unwrap();
+                                    let promise = js_sys::Promise::new(&mut |resolve, _| {
+                                        window
+                                            .set_timeout_with_callback_and_timeout_and_arguments_0(
+                                                &resolve,
+                                                50,
+                                            )
+                                            .unwrap();
                                     });
+                                    let _ = wasm_bindgen_futures::JsFuture::from(promise).await;
+                                    error_toast_visible.set(true);
+
+                                    // 3秒後隱藏 toast
+                                    let promise = js_sys::Promise::new(&mut |resolve, _| {
+                                        window
+                                            .set_timeout_with_callback_and_timeout_and_arguments_0(
+                                                &resolve,
+                                                3000,
+                                            )
+                                            .unwrap();
+                                    });
+                                    let _ = wasm_bindgen_futures::JsFuture::from(promise).await;
+                                    error_toast_visible.set(false);
+                                });
+                            }
+                            Err(_) => {
+                                error_message.set(format!("伺服器錯誤: {}", status));
+                                show_error_toast.set(true);
+                                let mut error_toast_visible = error_toast_visible.clone();
+                                spawn_local(async move {
+                                    let window = web_sys::window().unwrap();
+                                    let promise = js_sys::Promise::new(&mut |resolve, _| {
+                                        window
+                                            .set_timeout_with_callback_and_timeout_and_arguments_0(
+                                                &resolve,
+                                                50,
+                                            )
+                                            .unwrap();
+                                    });
+                                    let _ = wasm_bindgen_futures::JsFuture::from(promise).await;
+                                    error_toast_visible.set(true);
+
+                                    // 3秒後隱藏 toast
+                                    let promise = js_sys::Promise::new(&mut |resolve, _| {
+                                        window
+                                            .set_timeout_with_callback_and_timeout_and_arguments_0(
+                                                &resolve,
+                                                3000,
+                                            )
+                                            .unwrap();
+                                    });
+                                    let _ = wasm_bindgen_futures::JsFuture::from(promise).await;
+                                    error_toast_visible.set(false);
+                                });
+                            }
+                        }
                     }
                 }
-                Err(_) => {}
+                Err(e) => {
+                    error_message.set(format!("網路錯誤: {}", e));
+                    show_error_toast.set(true);
+                    let mut error_toast_visible = error_toast_visible.clone();
+                    spawn_local(async move {
+                        let window = web_sys::window().unwrap();
+                        let promise = js_sys::Promise::new(&mut |resolve, _| {
+                            window
+                                .set_timeout_with_callback_and_timeout_and_arguments_0(
+                                    &resolve,
+                                    50,
+                                )
+                                .unwrap();
+                        });
+                        let _ = wasm_bindgen_futures::JsFuture::from(promise).await;
+                        error_toast_visible.set(true);
+
+                        // 3秒後隱藏 toast
+                        let promise = js_sys::Promise::new(&mut |resolve, _| {
+                            window
+                                .set_timeout_with_callback_and_timeout_and_arguments_0(
+                                    &resolve,
+                                    3000,
+                                )
+                                .unwrap();
+                        });
+                        let _ = wasm_bindgen_futures::JsFuture::from(promise).await;
+                        error_toast_visible.set(false);
+                    });
+                }
             }
         });
     };
@@ -553,41 +657,53 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
                         .json(&updated_paragraph)
                         .send()
                         .await {
-                    Ok(response) => {
-                        if response.status().is_success() {
-                            paragraphs.set(String::new());
-                            choices.clear();
-                            new_caption.set(String::new());
-                            new_goto.set(String::new());
-                            new_action_type.set(String::new());
-                            new_action_key.set(None);
-                            new_action_value.set(None);
-                            extra_captions.write().clear();
-                            extra_gotos.write().clear();
-                            extra_action_types.write().clear();
-                            extra_action_keys.write().clear();
-                            extra_action_values.write().clear();
-                            show_extra_options.write().clear();
-                            show_toast.set(true);
-                            
-                                    let mut toast_visible = toast_visible.clone();
-                                    spawn_local(async move {
-                                        let window = web_sys::window().unwrap();
-                                        let promise = js_sys::Promise::new(&mut |resolve, _| {
-                                            window
-                                                .set_timeout_with_callback_and_timeout_and_arguments_0(
-                                                    &resolve,
-                                            50,
-                                                )
-                                                .unwrap();
-                                        });
-                                        let _ = wasm_bindgen_futures::JsFuture::from(promise).await;
-                                toast_visible.set(true);
+                        Ok(response) => {
+                            if response.status().is_success() {
+                                paragraphs.set(String::new());
+                                choices.clear();
+                                new_caption.set(String::new());
+                                new_goto.set(String::new());
+                                new_action_type.set(String::new());
+                                new_action_key.set(None);
+                                new_action_value.set(None);
+                                extra_captions.write().clear();
+                                extra_gotos.write().clear();
+                                extra_action_types.write().clear();
+                                extra_action_keys.write().clear();
+                                extra_action_values.write().clear();
+                                show_extra_options.write().clear();
+                                show_toast.set(true);
+                                
+                                let mut toast_visible = toast_visible.clone();
+                                spawn_local(async move {
+                                    let window = web_sys::window().unwrap();
+                                    let promise = js_sys::Promise::new(&mut |resolve, _| {
+                                        window
+                                            .set_timeout_with_callback_and_timeout_and_arguments_0(
+                                                &resolve,
+                                                50,
+                                            )
+                                            .unwrap();
                                     });
-                                }
+                                    let _ = wasm_bindgen_futures::JsFuture::from(promise).await;
+                                    toast_visible.set(true);
+
+                                    // 3秒後隱藏 toast
+                                    let promise = js_sys::Promise::new(&mut |resolve, _| {
+                                        window
+                                            .set_timeout_with_callback_and_timeout_and_arguments_0(
+                                                &resolve,
+                                                3000,
+                                            )
+                                            .unwrap();
+                                    });
+                                    let _ = wasm_bindgen_futures::JsFuture::from(promise).await;
+                                    toast_visible.set(false);
+                                });
                             }
-                            Err(_) => {}
                         }
+                        Err(_) => {}
+                    }
                 });
             }
         }
@@ -708,11 +824,59 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
         options.remove(index);
     };
 
+    // 處理 toast 顯示
+    use_effect(move || {
+        if *show_toast.read() {
+            toast_visible.set(true);
+            let window = window().unwrap();
+            let closure = Closure::wrap(Box::new(move || {
+                toast_visible.set(false);
+                show_toast.set(false);
+            }) as Box<dyn FnMut()>);
+            
+            let timeout = window.set_timeout_with_callback_and_timeout_and_arguments_0(
+                closure.as_ref().unchecked_ref(),
+                3000,
+            ).unwrap();
+            
+            (move || {
+                window.clear_timeout_with_handle(timeout);
+                closure.forget(); // 防止 closure 被過早釋放
+            })()
+        }
+    });
+
     rsx! {
         crate::pages::layout::Layout { 
             title: Some("Dashboard"),
             div { 
                 class: "min-h-screen bg-gray-50 dark:bg-gray-900",
+                // Toast 區域
+                div {
+                    class: "fixed bottom-4 right-4 z-50",
+                    // 成功 Toast
+                    div {
+                        class: format!("bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg transition-all duration-300 transform {}",
+                            if *toast_visible.read() {
+                                "translate-y-0 opacity-100"
+                            } else {
+                                "translate-y-2 opacity-0 hidden"
+                            }
+                        ),
+                        "{t.submit_success}"
+                    }
+                    // 錯誤 Toast
+                    div {
+                        class: format!("bg-red-500 text-white px-6 py-3 rounded-lg shadow-lg transition-all duration-300 transform {}",
+                            if *error_toast_visible.read() {
+                                "translate-y-0 opacity-100"
+                            } else {
+                                "translate-y-2 opacity-0 hidden"
+                            }
+                        ),
+                        "{error_message.read()}"
+                    }
+                }
                 div {
                     class: "w-full mx-auto",
                     // 主要內容區域
