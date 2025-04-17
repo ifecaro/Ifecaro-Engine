@@ -169,6 +169,42 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
     let mut extra_action_keys = use_signal(|| Vec::<Option<String>>::new());
     let mut extra_action_values = use_signal(|| Vec::<Option<serde_json::Value>>::new());
 
+    let mut update_paragraph_previews = move || {
+        let selected_lang = paragraph_language.read().clone();
+        
+        if paragraph_data.read().is_empty() {
+            return;
+        }
+        
+        let paragraphs: Vec<crate::components::paragraph_list::Paragraph> = paragraph_data.read().iter()
+            .map(|item| {
+                // 首先嘗試找到完全匹配的語言
+                let preview = item.texts.iter()
+                    .find(|t| t.lang == selected_lang)
+                    .map(|t| t.paragraphs.lines().next().unwrap_or("").to_string())
+                    // 如果沒有完全匹配，嘗試找到語言代碼前綴匹配（例如 en-US 匹配 en）
+                    .or_else(|| {
+                        let lang_prefix = selected_lang.split('-').next().unwrap_or(&selected_lang);
+                        item.texts.iter()
+                            .find(|t| t.lang.starts_with(lang_prefix))
+                            .map(|t| t.paragraphs.lines().next().unwrap_or("").to_string())
+                    })
+                    // 如果還是沒有匹配，使用第一個可用的文本
+                    .or_else(|| {
+                        item.texts.first().map(|t| t.paragraphs.lines().next().unwrap_or("").to_string())
+                    })
+                    .unwrap_or_default();
+                
+                crate::components::paragraph_list::Paragraph {
+                    id: item.id.clone(),
+                    preview,
+                }
+            })
+            .collect();
+        
+        available_paragraphs.set(paragraphs);
+    };
+
     // 載入章節列表
     use_effect(move || {
         let chapters_url = format!("{}{}", BASE_API_URL, CHAPTERS);
@@ -221,13 +257,13 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
         (move || {})()
     });
 
+    // 載入段落數據
     use_effect(move || {
         let paragraphs_url = format!("{}{}", BASE_API_URL, PARAGRAPHS);
         let client = reqwest::Client::new();
         let mut has_loaded = has_loaded.clone();
-        let language_state = use_context::<Signal<LanguageState>>();
-        let current_lang = language_state.read().current_language.clone();
         let mut paragraph_data = paragraph_data.clone();
+        let mut update_paragraph_previews = update_paragraph_previews.clone();
 
         wasm_bindgen_futures::spawn_local(async move {
             // 載入段落
@@ -240,23 +276,7 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
                     match response.json::<Data>().await {
                         Ok(data) => {
                             paragraph_data.set(data.items.clone());
-                            
-                            let paragraphs: Vec<crate::components::paragraph_list::Paragraph> = data.items.iter()
-                                .map(|item| {
-                                    let preview = item.texts.iter()
-                                        .find(|t| t.lang == current_lang)
-                                        .or_else(|| item.texts.first())
-                                        .map(|t| t.paragraphs.lines().next().unwrap_or("").to_string())
-                                        .unwrap_or_default();
-                                    
-                                    crate::components::paragraph_list::Paragraph {
-                                        id: item.id.clone(),
-                                        preview,
-                                    }
-                                })
-                                .collect();
-                            
-                            available_paragraphs.set(paragraphs);
+                            update_paragraph_previews();
                             has_loaded.set(true);
                         }
                         Err(_e) => {}
@@ -574,16 +594,13 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
     let mut handle_paragraph_select = move |id: String| {
         // 從完整的段落資料中尋找選中的段落
         if let Some(paragraph) = paragraph_data.read().iter().find(|p| p.id == id) {
-            let language_state = use_context::<Signal<LanguageState>>();
-            let current_lang = language_state.read().current_language.clone();
-            
             selected_paragraph.set(Some(paragraph.clone()));
             
-            // 更新段落語言為當前界面語言
-            paragraph_language.set(current_lang.clone());
+            // 使用選擇的語言而不是界面語言
+            let selected_lang = paragraph_language.read().clone();
 
             // 檢查是否有已存在的翻譯
-            if let Some(existing_text) = paragraph.texts.iter().find(|text| text.lang == current_lang) {
+            if let Some(existing_text) = paragraph.texts.iter().find(|text| text.lang == selected_lang) {
                 // 填充段落內容
                 paragraphs.set(existing_text.paragraphs.clone());
                 
@@ -722,6 +739,7 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
                                         on_select: move |lang: &Language| {
                                             let current_lang = lang.code.to_string();
                                             paragraph_language.set(current_lang.clone());
+                                            update_paragraph_previews();
                                             is_open.set(false);
                                             search_query.set(String::new());
                                         },
@@ -735,7 +753,7 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
                                 div {
                                     class: "w-full",
                                     ChapterSelector {
-                                        key: format!("chapter-dropdown-{}", current_lang),
+                                        key: format!("chapter-dropdown-{}", paragraph_language.read()),
                                         label: t.select_chapter,
                                         value: selected_chapter.read().clone(),
                                         chapters: available_chapters.read().clone(),
