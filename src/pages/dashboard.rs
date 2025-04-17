@@ -186,22 +186,14 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
         
         let paragraphs: Vec<crate::components::paragraph_list::Paragraph> = paragraph_data.read().iter()
             .map(|item| {
-                // 首先嘗試找到完全匹配的語言
-                let preview = item.texts.iter()
-                    .find(|t| t.lang == selected_lang)
-                    .map(|t| t.paragraphs.lines().next().unwrap_or("").to_string())
-                    // 如果沒有完全匹配，嘗試找到語言代碼前綴匹配（例如 en-US 匹配 en）
-                    .or_else(|| {
-                        let lang_prefix = selected_lang.split('-').next().unwrap_or(&selected_lang);
-                        item.texts.iter()
-                            .find(|t| t.lang.starts_with(lang_prefix))
-                            .map(|t| t.paragraphs.lines().next().unwrap_or("").to_string())
-                    })
-                    // 如果還是沒有匹配，使用第一個可用的文本
-                    .or_else(|| {
-                        item.texts.first().map(|t| t.paragraphs.lines().next().unwrap_or("").to_string())
-                    })
-                    .unwrap_or_default();
+                // 取得段落的第一行作為預覽
+                let preview = if let Some(text) = item.texts.first() {
+                    // 使用第一個可用的翻譯的第一行
+                    text.paragraphs.lines().next().unwrap_or("").to_string()
+                } else {
+                    // 如果沒有任何翻譯，顯示段落 ID
+                    format!("[{}]", item.id)
+                };
                 
                 crate::components::paragraph_list::Paragraph {
                     id: item.id.clone(),
@@ -397,7 +389,7 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
         }
 
         let text = Text {
-            lang: current_lang.clone(),
+            lang: paragraph_language.read().clone(),
             paragraphs: paragraphs.read().clone(),
             choices: choices.clone(),
         };
@@ -664,7 +656,7 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
                 }
 
                 updated_texts.push(Text {
-                    lang: current_lang,
+                    lang: paragraph_language.read().clone(),
                     paragraphs: paragraphs.read().clone(),
                     choices: choices.clone(),
                 });
@@ -741,7 +733,7 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
             // 使用選擇的語言而不是界面語言
             let selected_lang = paragraph_language.read().clone();
 
-            // 檢查是否有已存在的翻譯
+            // 檢查是否有已存在的翻譯，使用精確匹配
             if let Some(existing_text) = paragraph.texts.iter().find(|text| text.lang == selected_lang) {
                 // 填充段落內容
                 paragraphs.set(existing_text.paragraphs.clone());
