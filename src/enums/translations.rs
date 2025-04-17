@@ -15,8 +15,10 @@ pub struct Translations {
     pub submit_success: &'static str,
     pub select_language: &'static str,
     pub select_chapter: &'static str,
+    pub select_paragraph: &'static str,
     pub search_language: &'static str,
     pub search_chapter: &'static str,
+    pub search_paragraph: &'static str,
     pub option: &'static str,
     pub action_settings: &'static str,
     pub action_type: &'static str,
@@ -47,8 +49,10 @@ impl PartialEq for Translations {
         self.submit_success == other.submit_success &&
         self.select_language == other.select_language &&
         self.select_chapter == other.select_chapter &&
+        self.select_paragraph == other.select_paragraph &&
         self.search_language == other.search_language &&
         self.search_chapter == other.search_chapter &&
+        self.search_paragraph == other.search_paragraph &&
         self.option == other.option &&
         self.action_settings == other.action_settings &&
         self.action_type == other.action_type &&
@@ -82,8 +86,10 @@ impl Translations {
                 submit_success: "Successfully submitted!",
                 select_language: "Select Language",
                 select_chapter: "Select Chapter",
+                select_paragraph: "Select Paragraph",
                 search_language: "Search language...",
                 search_chapter: "Search chapter...",
+                search_paragraph: "Search paragraph...",
                 option: "Option",
                 action_settings: "Action Settings",
                 action_type: "Action Type",
@@ -112,8 +118,10 @@ impl Translations {
                 submit_success: "¡Enviado con éxito!",
                 select_language: "Seleccionar Idioma",
                 select_chapter: "Seleccionar Capítulo",
+                select_paragraph: "Seleccionar Párrafo",
                 search_language: "Buscar idioma...",
                 search_chapter: "Buscar capítulo...",
+                search_paragraph: "Buscar párrafo...",
                 option: "Opción",
                 action_settings: "Configuración de Acción",
                 action_type: "Tipo de Acción",
@@ -142,8 +150,10 @@ impl Translations {
                 submit_success: "¡Enviado exitosamente!",
                 select_language: "Seleccionar Idioma",
                 select_chapter: "Seleccionar Capítulo",
+                select_paragraph: "Seleccionar Párrafo",
                 search_language: "Buscar idioma...",
                 search_chapter: "Buscar capítulo...",
+                search_paragraph: "Buscar párrafo...",
                 option: "Opción",
                 action_settings: "Configuración de Acción",
                 action_type: "Tipo de Acción",
@@ -174,6 +184,8 @@ impl Translations {
                 select_chapter: "選擇章節",
                 search_language: "搜尋語言...",
                 search_chapter: "搜尋章節...",
+                search_paragraph: "搜尋段落...",
+                select_paragraph: "選擇段落",
                 option: "選項",
                 action_settings: "動作設定",
                 action_type: "動作類型",
@@ -202,8 +214,10 @@ impl Translations {
                 submit_success: "提交成功！",
                 select_language: "选择语言",
                 select_chapter: "选择章节",
+                select_paragraph: "选择段落",
                 search_language: "搜索语言...",
                 search_chapter: "搜索章节...",
+                search_paragraph: "搜索段落...",
                 option: "选项",
                 action_settings: "动作设置",
                 action_type: "动作类型",
@@ -232,8 +246,10 @@ impl Translations {
                 submit_success: "Successfully submitted!",
                 select_language: "Select Language",
                 select_chapter: "Select Chapter",
+                select_paragraph: "Select Paragraph",
                 search_language: "Search language...",
                 search_chapter: "Search chapter...",
+                search_paragraph: "Search paragraph...",
                 option: "Option",
                 action_settings: "Action Settings",
                 action_type: "Action Type",
