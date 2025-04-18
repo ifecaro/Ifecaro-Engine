@@ -178,7 +178,7 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
     let mut error_message = use_signal(|| String::new());
 
     let mut update_paragraph_previews = move || {
-        let _selected_lang = paragraph_language.read().clone();
+        let selected_lang = paragraph_language.read().clone();
         let selected_chapter_id = selected_chapter.read().clone();
         
         if paragraph_data.read().is_empty() {
@@ -189,8 +189,11 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
             .filter(|item| item.chapter_id == selected_chapter_id)  // 只顯示當前選擇章節的段落
             .map(|item| {
                 // 取得段落的第一行作為預覽
-                let preview = if let Some(text) = item.texts.iter().find(|t| t.lang == "en-US" || t.lang == "en-GB") {
-                    // 優先使用英文翻譯
+                let preview = if let Some(text) = item.texts.iter().find(|t| t.lang == selected_lang) {
+                    // 優先使用選擇的語言
+                    text.paragraphs.lines().next().unwrap_or("").to_string()
+                } else if let Some(text) = item.texts.iter().find(|t| t.lang == "en-US" || t.lang == "en-GB") {
+                    // 如果沒有選擇的語言，優先使用英文翻譯
                     text.paragraphs.lines().next().unwrap_or("").to_string()
                 } else if let Some(text) = item.texts.first() {
                     // 如果沒有英文翻譯，使用第一個可用的翻譯
@@ -897,6 +900,14 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
         }
     });
 
+    // 在語言變更時更新段落預覽
+    use_effect(move || {
+        let _ = paragraph_language.read().clone();
+        update_paragraph_previews();
+        
+        (move || {})()
+    });
+
     rsx! {
         crate::pages::layout::Layout { 
             title: Some("Dashboard"),
@@ -1073,6 +1084,7 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
                                             update_paragraph_previews();
                                         },
                                         has_error: *chapter_error.read(),
+                                        selected_language: paragraph_language.read().clone(),
                                     }
                                 }
                             }
@@ -1111,6 +1123,7 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
                                                 has_error: false,
                                                 disabled: !*is_edit_mode.read(),
                                                 t: t.clone(),
+                                                selected_language: paragraph_language.read().clone(),
                                             }
                                         }
 

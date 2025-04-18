@@ -32,6 +32,8 @@ pub struct ParagraphListProps {
     #[props(default = false)]
     pub required: bool,
     pub t: Translations,
+    #[props(default = String::new())]
+    pub selected_language: String,
 }
 
 #[component]
