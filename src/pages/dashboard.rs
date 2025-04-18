@@ -956,6 +956,90 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
                                             update_paragraph_previews();
                                             is_open.set(false);
                                             search_query.set(String::new());
+                                            
+                                            // 在編輯模式下，更新段落內容為新選擇的語言
+                                            if *is_edit_mode.read() {
+                                                if let Some(paragraph) = selected_paragraph.read().as_ref() {
+                                                    // 檢查是否有已存在的翻譯，使用精確匹配
+                                                    if let Some(existing_text) = paragraph.texts.iter().find(|text| text.lang == current_lang) {
+                                                        // 填充段落內容
+                                                        paragraphs.set(existing_text.paragraphs.clone());
+                                                        
+                                                        // 填充選項
+                                                        if !existing_text.choices.is_empty() {
+                                                            // 設置第一個選項
+                                                            new_caption.set(existing_text.choices[0].caption.clone());
+                                                            new_goto.set(existing_text.choices[0].action.to.clone());
+                                                            new_action_type.set(existing_text.choices[0].action.type_.clone());
+                                                            new_action_key.set(existing_text.choices[0].action.key.clone());
+                                                            new_action_value.set(existing_text.choices[0].action.value.clone());
+                                                            
+                                                            // 設置額外選項
+                                                            let mut captions = Vec::new();
+                                                            let mut gotos = Vec::new();
+                                                            let mut action_types = Vec::new();
+                                                            let mut action_keys = Vec::new();
+                                                            let mut action_values = Vec::new();
+                                                            let mut options = Vec::new();
+                                                            
+                                                            for choice in existing_text.choices.iter().skip(1) {
+                                                                captions.push(choice.caption.clone());
+                                                                gotos.push(choice.action.to.clone());
+                                                                action_types.push(choice.action.type_.clone());
+                                                                action_keys.push(choice.action.key.clone());
+                                                                action_values.push(choice.action.value.clone());
+                                                                options.push(());
+                                                            }
+                                                            
+                                                            // 確保所有向量都有相同的長度
+                                                            let len = captions.len();
+                                                            if len > 0 {
+                                                                extra_captions.set(captions);
+                                                                extra_gotos.set(gotos);
+                                                                extra_action_types.set(action_types);
+                                                                extra_action_keys.set(action_keys);
+                                                                extra_action_values.set(action_values);
+                                                                show_extra_options.set(options);
+                                                            } else {
+                                                                // 如果沒有額外選項，清空所有向量
+                                                                extra_captions.set(Vec::new());
+                                                                extra_gotos.set(Vec::new());
+                                                                extra_action_types.set(Vec::new());
+                                                                extra_action_keys.set(Vec::new());
+                                                                extra_action_values.set(Vec::new());
+                                                                show_extra_options.set(Vec::new());
+                                                            }
+                                                        } else {
+                                                            // 如果沒有選項，清空所有向量
+                                                            new_caption.set(String::new());
+                                                            new_goto.set(String::new());
+                                                            new_action_type.set(String::new());
+                                                            new_action_key.set(None);
+                                                            new_action_value.set(None);
+                                                            extra_captions.set(Vec::new());
+                                                            extra_gotos.set(Vec::new());
+                                                            extra_action_types.set(Vec::new());
+                                                            extra_action_keys.set(Vec::new());
+                                                            extra_action_values.set(Vec::new());
+                                                            show_extra_options.set(Vec::new());
+                                                        }
+                                                    } else {
+                                                        // 如果沒有當前語言的翻譯，清空所有欄位
+                                                        paragraphs.set(String::new());
+                                                        new_caption.set(String::new());
+                                                        new_goto.set(String::new());
+                                                        new_action_type.set(String::new());
+                                                        new_action_key.set(None);
+                                                        new_action_value.set(None);
+                                                        extra_captions.set(Vec::new());
+                                                        extra_gotos.set(Vec::new());
+                                                        extra_action_types.set(Vec::new());
+                                                        extra_action_keys.set(Vec::new());
+                                                        extra_action_values.set(Vec::new());
+                                                        show_extra_options.set(Vec::new());
+                                                    }
+                                                }
+                                            }
                                         },
                                         display_fn: display_language,
                                         has_error: false,
