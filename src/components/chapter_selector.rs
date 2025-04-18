@@ -3,6 +3,12 @@ use crate::components::dropdown::Dropdown;
 use crate::pages::dashboard::Chapter;
 use crate::contexts::language_context::LanguageState;
 use dioxus::hooks::use_context;
+use std::cell::RefCell;
+use std::thread_local;
+
+thread_local! {
+    static SELECTED_LANGUAGE: RefCell<String> = RefCell::new(String::new());
+}
 
 #[derive(Props, Clone, PartialEq)]
 pub struct ChapterSelectorProps {
@@ -18,19 +24,33 @@ pub struct ChapterSelectorProps {
     pub has_error: bool,
     #[props(default = String::new())]
     pub class: String,
+    #[props(default = String::new())]
+    pub selected_language: String,
 }
 
 #[component]
 pub fn ChapterSelector(props: ChapterSelectorProps) -> Element {
-    let language_state = use_context::<Signal<LanguageState>>();
-    let current_lang = language_state.read().current_language.clone();
+    // 使用傳入的語言參數
+    let selected_lang = if props.selected_language.is_empty() {
+        // 如果沒有傳入語言，則從 context 中獲取
+        let language_state = use_context::<Signal<LanguageState>>();
+        let current_lang = language_state.read().current_language.clone();
+        current_lang
+    } else {
+        props.selected_language.clone()
+    };
+    
+    // 更新 thread_local 變量
+    SELECTED_LANGUAGE.with(|lang| {
+        *lang.borrow_mut() = selected_lang.clone();
+    });
     
     // 過濾章節
     let filtered_chapters = props.chapters.iter()
         .filter(|chapter| {
             let query = props.search_query.to_lowercase();
             chapter.titles.iter()
-                .find(|t| t.lang == current_lang)
+                .find(|t| t.lang == selected_lang)
                 .map(|t| t.title.to_lowercase().contains(&query))
                 .unwrap_or(false)
         })
@@ -45,7 +65,7 @@ pub fn ChapterSelector(props: ChapterSelectorProps) -> Element {
             .find(|c| c.id == props.value)
             .map(|c| {
                 c.titles.iter()
-                    .find(|t| t.lang == current_lang)
+                    .find(|t| t.lang == selected_lang)
                     .or_else(|| c.titles.first())
                     .map(|t| t.title.clone())
                     .unwrap_or_default()
@@ -53,9 +73,12 @@ pub fn ChapterSelector(props: ChapterSelectorProps) -> Element {
             .unwrap_or_else(|| props.label.clone())
     };
 
-    // 定義顯示函數，不捕獲任何變量
+    // 定義顯示函數，使用 thread_local 變量獲取當前選擇的語言
     fn display_chapter_title(chapter: &Chapter) -> String {
-        chapter.titles.first()
+        let selected_lang = SELECTED_LANGUAGE.with(|lang| lang.borrow().clone());
+        chapter.titles.iter()
+            .find(|t| t.lang == selected_lang)
+            .or_else(|| chapter.titles.first())
             .map(|t| t.title.clone())
             .unwrap_or_default()
     }
