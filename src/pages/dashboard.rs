@@ -178,7 +178,7 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
     let mut error_message = use_signal(|| String::new());
 
     let mut update_paragraph_previews = move || {
-        let selected_lang = paragraph_language.read().clone();
+        let _selected_lang = paragraph_language.read().clone();
         let selected_chapter_id = selected_chapter.read().clone();
         
         if paragraph_data.read().is_empty() {
@@ -359,7 +359,7 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
         }
         
         let mut choices = Vec::new();
-        let current_lang = language_state.read().current_language.clone();
+        let _current_lang = language_state.read().current_language.clone();
         
         let main_choice = Choice {
                 caption: new_caption.read().clone(),
@@ -623,7 +623,7 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
         let language_state = language_state.clone();
         move |_| {
             if let Some(paragraph) = selected_paragraph.read().as_ref() {
-                let current_lang = paragraph_language.read().clone();
+                let _current_lang = language_state.read().current_language.clone();
                 let mut updated_texts = paragraph.texts.clone();
 
                 let mut choices = Vec::new();
@@ -658,17 +658,17 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
                 }
 
                 // 檢查是否已存在相同語言的翻譯
-                if let Some(existing_text_index) = updated_texts.iter().position(|text| text.lang == current_lang) {
+                if let Some(existing_text_index) = updated_texts.iter().position(|text| text.lang == _current_lang) {
                     // 更新現有翻譯
                     updated_texts[existing_text_index] = Text {
-                        lang: current_lang,
+                        lang: _current_lang,
                         paragraphs: paragraphs.read().clone(),
                         choices: choices.clone(),
                     };
                 } else {
                     // 如果不存在，則新增翻譯
                     updated_texts.push(Text {
-                        lang: current_lang,
+                        lang: _current_lang,
                         paragraphs: paragraphs.read().clone(),
                         choices: choices.clone(),
                     });
@@ -763,10 +763,10 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
             selected_paragraph.set(Some(paragraph.clone()));
             
             // 使用選擇的語言而不是界面語言
-            let selected_lang = paragraph_language.read().clone();
+            let _selected_lang = paragraph_language.read().clone();
 
             // 檢查是否有已存在的翻譯，使用精確匹配
-            if let Some(existing_text) = paragraph.texts.iter().find(|text| text.lang == selected_lang) {
+            if let Some(existing_text) = paragraph.texts.iter().find(|text| text.lang == _selected_lang) {
                 // 填充段落內容
                 paragraphs.set(existing_text.paragraphs.clone());
                 
