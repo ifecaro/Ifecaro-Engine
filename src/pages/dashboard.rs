@@ -179,12 +179,14 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
 
     let mut update_paragraph_previews = move || {
         let selected_lang = paragraph_language.read().clone();
+        let selected_chapter_id = selected_chapter.read().clone();
         
         if paragraph_data.read().is_empty() {
             return;
         }
         
         let paragraphs: Vec<crate::components::paragraph_list::Paragraph> = paragraph_data.read().iter()
+            .filter(|item| item.chapter_id == selected_chapter_id)  // 只顯示當前選擇章節的段落
             .map(|item| {
                 // 取得段落的第一行作為預覽
                 let preview = if let Some(text) = item.texts.first() {
@@ -981,6 +983,7 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
                                             is_chapter_open.set(false);
                                             chapter_search_query.set(String::new());
                                             validate_field(&chapter.id, &mut chapter_error);
+                                            update_paragraph_previews();
                                         },
                                         has_error: *chapter_error.read(),
                                     }
