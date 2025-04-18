@@ -457,6 +457,22 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
                 Ok(response) => {
                     let status = response.status();
                     if status.is_success() {
+                        paragraphs.set(String::new());
+                        choices.clear();
+                        new_caption.set(String::new());
+                        new_goto.set(String::new());
+                        new_action_type.set(String::new());
+                        new_action_key.set(None);
+                        new_action_value.set(None);
+                        extra_captions.write().clear();
+                        extra_gotos.write().clear();
+                        extra_action_types.write().clear();
+                        extra_action_keys.write().clear();
+                        extra_action_values.write().clear();
+                        show_extra_options.write().clear();
+                        selected_chapter.set(String::new());
+                        show_toast.set(true);
+                        
                         // 重新載入段落資料
                         let paragraphs_url = format!("{}{}", BASE_API_URL, PARAGRAPHS);
                         match client.get(&paragraphs_url)
@@ -475,22 +491,6 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
                             }
                             Err(_) => {}
                         }
-
-                        paragraphs.set(String::new());
-                        choices.clear();
-                        new_caption.set(String::new());
-                        new_goto.set(String::new());
-                        new_action_type.set(String::new());
-                        new_action_key.set(None);
-                        new_action_value.set(None);
-                        extra_captions.write().clear();
-                        extra_gotos.write().clear();
-                        extra_action_types.write().clear();
-                        extra_action_keys.write().clear();
-                        extra_action_values.write().clear();
-                        show_extra_options.write().clear();
-                        selected_chapter.set(String::new());
-                        show_toast.set(true);
                         
                         let mut toast_visible = toast_visible.clone();
                         spawn_local(async move {
@@ -621,7 +621,7 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
         let language_state = language_state.clone();
         move |_| {
             if let Some(paragraph) = selected_paragraph.read().as_ref() {
-                let current_lang = language_state.read().current_language.clone();
+                let current_lang = paragraph_language.read().clone();
                 let mut updated_texts = paragraph.texts.clone();
 
                 let mut choices = Vec::new();
@@ -655,11 +655,22 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
                     choices.push(choice);
                 }
 
-                updated_texts.push(Text {
-                    lang: paragraph_language.read().clone(),
-                    paragraphs: paragraphs.read().clone(),
-                    choices: choices.clone(),
-                });
+                // 檢查是否已存在相同語言的翻譯
+                if let Some(existing_text_index) = updated_texts.iter().position(|text| text.lang == current_lang) {
+                    // 更新現有翻譯
+                    updated_texts[existing_text_index] = Text {
+                        lang: current_lang,
+                        paragraphs: paragraphs.read().clone(),
+                        choices: choices.clone(),
+                    };
+                } else {
+                    // 如果不存在，則新增翻譯
+                    updated_texts.push(Text {
+                        lang: current_lang,
+                        paragraphs: paragraphs.read().clone(),
+                        choices: choices.clone(),
+                    });
+                }
 
                 let updated_paragraph = serde_json::json!({
                     "texts": updated_texts
@@ -689,6 +700,25 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
                                 extra_action_values.write().clear();
                                 show_extra_options.write().clear();
                                 show_toast.set(true);
+                                
+                                // 重新載入段落資料
+                                let paragraphs_url = format!("{}{}", BASE_API_URL, PARAGRAPHS);
+                                match client.get(&paragraphs_url)
+                                    .send()
+                                    .await {
+                                    Ok(response) => {
+                                        if response.status().is_success() {
+                                            match response.json::<Data>().await {
+                                                Ok(data) => {
+                                                    paragraph_data.set(data.items);
+                                                    update_paragraph_previews();
+                                                }
+                                                Err(_) => {}
+                                            }
+                                        }
+                                    }
+                                    Err(_) => {}
+                                }
                                 
                                 let mut toast_visible = toast_visible.clone();
                                 spawn_local(async move {
