@@ -189,8 +189,11 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
             .filter(|item| item.chapter_id == selected_chapter_id)  // 只顯示當前選擇章節的段落
             .map(|item| {
                 // 取得段落的第一行作為預覽
-                let preview = if let Some(text) = item.texts.first() {
-                    // 使用第一個可用的翻譯的第一行
+                let preview = if let Some(text) = item.texts.iter().find(|t| t.lang == "en-US" || t.lang == "en-GB") {
+                    // 優先使用英文翻譯
+                    text.paragraphs.lines().next().unwrap_or("").to_string()
+                } else if let Some(text) = item.texts.first() {
+                    // 如果沒有英文翻譯，使用第一個可用的翻譯
                     text.paragraphs.lines().next().unwrap_or("").to_string()
                 } else {
                     // 如果沒有任何翻譯，顯示段落 ID
