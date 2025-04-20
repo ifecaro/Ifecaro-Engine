@@ -73,7 +73,7 @@ pub fn ChoiceOptions(props: ChoiceOptionsProps) -> Element {
                     }
                     // 目標章節選擇器
                     crate::components::chapter_selector::ChapterSelector {
-                        label: "Target Chapter",
+                        label: t.target_chapter,
                         value: props.target_chapter.clone(),
                         chapters: props.available_chapters.clone(),
                         is_open: *is_target_chapter_open.read(),
@@ -106,7 +106,7 @@ pub fn ChoiceOptions(props: ChoiceOptionsProps) -> Element {
                             props.on_new_goto_change.call(id);
                             is_goto_open.set(false);
                         },
-                        has_error: props.new_goto_error,
+                        has_error: false,
                         t: props.t.clone(),
                     }
                     // Action 相關欄位

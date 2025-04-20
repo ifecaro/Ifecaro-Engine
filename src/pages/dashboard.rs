@@ -335,13 +335,12 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
     let is_form_valid = use_memo(move || {
         // 檢查主要欄位
         let main_fields_valid = !paragraphs.read().trim().is_empty() &&
-            !new_caption.read().trim().is_empty() &&
-            !new_goto.read().trim().is_empty();
+            !new_caption.read().trim().is_empty();
 
         // 檢查額外選項（只有在有額外選項時才檢查）
         let extra_choices_valid = if !extra_captions.read().is_empty() {
-            extra_captions.read().iter().zip(extra_gotos.read().iter())
-                .all(|(caption, goto)| !caption.trim().is_empty() && !goto.trim().is_empty())
+            extra_captions.read().iter()
+                .all(|caption| !caption.trim().is_empty())
         } else {
             true
         };
@@ -378,7 +377,7 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
         let _current_lang = language_state.read().current_language.clone();
         
         let main_choice = Choice {
-                caption: new_caption.read().clone(),
+            caption: new_caption.read().clone(),
             action: Action {
                 type_: new_action_type.read().clone(),
                 key: new_action_key.read().clone(),
@@ -394,16 +393,18 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
             .zip(extra_action_keys.read().iter())
             .zip(extra_action_values.read().iter())
         {
-            let choice = Choice {
+            if !caption.trim().is_empty() {
+                let choice = Choice {
                     caption: caption.clone(),
-                action: Action {
-                    type_: action_type.clone(),
-                    key: action_key.clone(),
-                    value: action_value.clone(),
-                    to: goto.clone(),
-                },
-            };
-            choices.push(choice);
+                    action: Action {
+                        type_: action_type.clone(),
+                        key: action_key.clone(),
+                        value: action_value.clone(),
+                        to: goto.clone(),
+                    },
+                };
+                choices.push(choice);
+            }
         }
 
         let text = Text {
@@ -414,39 +415,6 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
 
         spawn_local(async move {
             let client = reqwest::Client::new();
-            
-            // 檢查是否選擇了章節
-            if selected_chapter.read().is_empty() {
-                error_message.set("請選擇章節".to_string());
-                show_error_toast.set(true);
-                let mut error_toast_visible = error_toast_visible.clone();
-                spawn_local(async move {
-                    let window = web_sys::window().unwrap();
-                    let promise = js_sys::Promise::new(&mut |resolve, _| {
-                        window
-                            .set_timeout_with_callback_and_timeout_and_arguments_0(
-                                &resolve,
-                                50,
-                            )
-                            .unwrap();
-                    });
-                    let _ = wasm_bindgen_futures::JsFuture::from(promise).await;
-                    error_toast_visible.set(true);
-
-                    // 3秒後隱藏 toast
-                    let promise = js_sys::Promise::new(&mut |resolve, _| {
-                        window
-                            .set_timeout_with_callback_and_timeout_and_arguments_0(
-                                &resolve,
-                                3000,
-                            )
-                            .unwrap();
-                    });
-                    let _ = wasm_bindgen_futures::JsFuture::from(promise).await;
-                    error_toast_visible.set(false);
-                });
-                return;
-            }
             
             // 計算新段落的 index
             let max_index = paragraph_data.read().iter()
@@ -459,11 +427,18 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
             let chapter_id = selected_chapter.read().clone();
             
             // 建立新的段落資料
-            let new_paragraph = serde_json::json!({
-                "chapter_id": chapter_id,
-                "index": new_index,
-                "texts": [text]
-            });
+            let new_paragraph = if chapter_id.is_empty() {
+                serde_json::json!({
+                    "index": new_index,
+                    "texts": [text]
+                })
+            } else {
+                serde_json::json!({
+                    "chapter_id": chapter_id,
+                    "index": new_index,
+                    "texts": [text]
+                })
+            };
             
             // 發布到段落集合
             let paragraphs_url = format!("{}{}", BASE_API_URL, PARAGRAPHS);
@@ -1267,7 +1242,7 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
                             class: "px-4 sm:px-6 py-4 bg-gray-50 dark:bg-gray-700/50 border-t border-gray-200 dark:border-gray-700",
                             button {
                                 class: "w-full inline-flex justify-center items-center px-4 sm:px-6 py-2.5 sm:py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed font-medium text-base sm:text-lg shadow-sm",
-                                disabled: !*is_form_valid.read() || (*is_edit_mode.read() && selected_paragraph.read().is_none()) || !*has_changes.read(),
+                                disabled: (*is_edit_mode.read() && selected_paragraph.read().is_none()) || !*has_changes.read() || !*is_form_valid.read(),
                                 onclick: move |_| {
                                     if *is_edit_mode.read() {
                                         handle_add_translation(());
