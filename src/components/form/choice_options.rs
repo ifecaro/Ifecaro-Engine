@@ -19,6 +19,8 @@ pub struct ChoiceOptionsProps {
     pub new_caption_error: bool,
     pub new_goto_error: bool,
     pub available_paragraphs: Vec<Paragraph>,
+    pub available_chapters: Vec<crate::pages::dashboard::Chapter>,
+    pub selected_language: String,
     pub on_new_caption_change: EventHandler<String>,
     pub on_new_goto_change: EventHandler<String>,
     pub on_new_action_type_change: EventHandler<String>,
@@ -31,6 +33,8 @@ pub struct ChoiceOptionsProps {
     pub on_extra_action_value_change: EventHandler<(usize, Option<serde_json::Value>)>,
     pub on_add_choice: EventHandler<()>,
     pub on_remove_choice: EventHandler<usize>,
+    pub on_target_chapter_change: EventHandler<String>,
+    pub target_chapter: String,
 }
 
 #[component]
@@ -39,6 +43,8 @@ pub fn ChoiceOptions(props: ChoiceOptionsProps) -> Element {
     let mut is_goto_open = use_signal(|| false);
     let mut goto_search_query = use_signal(|| String::new());
     let mut is_action_type_open = use_signal(|| false);
+    let mut is_target_chapter_open = use_signal(|| false);
+    let mut target_chapter_search_query = use_signal(|| String::new());
 
     rsx! {
         // 主要選項（選項 1）
@@ -64,6 +70,25 @@ pub fn ChoiceOptions(props: ChoiceOptionsProps) -> Element {
                         has_error: props.new_caption_error,
                         required: true,
                         on_blur: move |_| {},
+                    }
+                    // 目標章節選擇器
+                    crate::components::chapter_selector::ChapterSelector {
+                        label: "Target Chapter",
+                        value: props.target_chapter.clone(),
+                        chapters: props.available_chapters.clone(),
+                        is_open: *is_target_chapter_open.read(),
+                        search_query: target_chapter_search_query.read().to_string(),
+                        on_toggle: move |_| {
+                            let current = *is_target_chapter_open.read();
+                            is_target_chapter_open.set(!current);
+                        },
+                        on_search: move |query| target_chapter_search_query.set(query),
+                        on_select: move |chapter: crate::pages::dashboard::Chapter| {
+                            props.on_target_chapter_change.call(chapter.id.clone());
+                            is_target_chapter_open.set(false);
+                        },
+                        has_error: false,
+                        selected_language: props.selected_language.clone(),
                     }
                     // 目標段落選擇器
                     ParagraphList {

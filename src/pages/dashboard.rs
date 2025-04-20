@@ -159,6 +159,7 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
     let t = Translations::get(&current_lang);
     let mut should_scroll = use_signal(|| false);
     let mut paragraph_language = use_signal(|| current_lang.clone());
+    let mut target_chapter = use_signal(|| String::new());
 
     let mut paragraphs_error = use_signal(|| false);
     let mut new_caption_error = use_signal(|| false);
@@ -179,14 +180,23 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
 
     let mut update_paragraph_previews = move || {
         let selected_lang = paragraph_language.read().clone();
-        let selected_chapter_id = selected_chapter.read().clone();
+        let _selected_chapter_id = selected_chapter.read().clone();
+        let target_chapter_id = target_chapter.read().clone();
         
         if paragraph_data.read().is_empty() {
             return;
         }
         
         let paragraphs: Vec<crate::components::paragraph_list::Paragraph> = paragraph_data.read().iter()
-            .filter(|item| item.chapter_id == selected_chapter_id)  // 只顯示當前選擇章節的段落
+            .filter(|item| {
+                // 如果目標章節為空，則顯示所有段落
+                if target_chapter_id.is_empty() {
+                    true
+                } else {
+                    // 否則只顯示目標章節的段落
+                    item.chapter_id == target_chapter_id
+                }
+            })
             .map(|item| {
                 // 取得段落的第一行作為預覽
                 let preview = if let Some(text) = item.texts.iter().find(|t| t.lang == selected_lang) {
@@ -1240,7 +1250,14 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
                                         values[i] = value;
                                     },
                                     on_add_choice: handle_add_choice,
-                                    on_remove_choice: handle_remove_choice
+                                    on_remove_choice: handle_remove_choice,
+                                    available_chapters: available_chapters.read().clone(),
+                                    selected_language: paragraph_language.read().clone(),
+                                    on_target_chapter_change: move |chapter_id| {
+                                        target_chapter.set(chapter_id);
+                                        update_paragraph_previews();
+                                    },
+                                    target_chapter: target_chapter.read().clone(),
                                 }
                             }
                         }

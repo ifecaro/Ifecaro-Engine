@@ -96,7 +96,11 @@ pub fn ParagraphForm(props: ParagraphFormProps) -> Element {
                 on_extra_action_key_change: move |_| {},
                 on_extra_action_value_change: move |_| {},
                 on_add_choice: props.on_add_choice,
-                on_remove_choice: props.on_remove_choice
+                on_remove_choice: props.on_remove_choice,
+                available_chapters: Vec::new(),
+                selected_language: String::new(),
+                on_target_chapter_change: move |_| {},
+                target_chapter: String::new()
             }
 
             // 提交按鈕
