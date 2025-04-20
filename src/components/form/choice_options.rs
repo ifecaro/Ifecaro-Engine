@@ -127,11 +127,18 @@ pub fn ChoiceOptions(props: ChoiceOptionsProps) -> Element {
                             InputField {
                                 label: t.action_value,
                                 placeholder: t.action_value,
-                                value: props.new_action_value.clone().map(|v| v.to_string()).unwrap_or_default(),
+                                value: props.new_action_value.clone().map(|v| match v {
+                                    serde_json::Value::String(s) => s.clone(),
+                                    _ => v.to_string()
+                                }).unwrap_or_default(),
                                 required: false,
                                 has_error: false,
                                 on_input: move |value: String| {
-                                    props.on_new_action_value_change.call(if value.is_empty() { None } else { Some(serde_json::Value::String(value)) });
+                                    props.on_new_action_value_change.call(if value.is_empty() { 
+                                        None 
+                                    } else { 
+                                        Some(serde_json::Value::String(value))
+                                    });
                                 },
                                 on_blur: move |_| {}
                             }
@@ -259,11 +266,18 @@ pub fn ChoiceOptions(props: ChoiceOptionsProps) -> Element {
                                     InputField {
                                         label: t.action_value,
                                         placeholder: t.action_value,
-                                        value: action_value.clone().map(|v| v.to_string()).unwrap_or_default(),
+                                        value: action_value.clone().map(|v| match v {
+                                            serde_json::Value::String(s) => s.clone(),
+                                            _ => v.to_string()
+                                        }).unwrap_or_default(),
                                         required: false,
                                         has_error: false,
                                         on_input: move |value: String| {
-                                            props.on_extra_action_value_change.call((index, if value.is_empty() { None } else { Some(serde_json::Value::String(value)) }));
+                                            props.on_extra_action_value_change.call((index, if value.is_empty() { 
+                                                None 
+                                            } else { 
+                                                Some(serde_json::Value::String(value))
+                                            }));
                                         },
                                         on_blur: move |_| {}
                                     }
