@@ -25,21 +25,41 @@ pub struct ParagraphFormProps {
     on_add_choice: EventHandler<()>,
     on_remove_choice: EventHandler<usize>,
     on_submit: EventHandler<()>,
+    choices: Vec<(String, String, String, Option<String>, Option<serde_json::Value>, String)>,
+    available_chapters: Vec<crate::pages::dashboard::Chapter>,
+    selected_language: String,
+    choice_paragraphs: Vec<Paragraph>,
+    choice_chapters_open: Vec<bool>,
+    choice_chapters_search: Vec<String>,
+    choice_paragraphs_open: Vec<bool>,
+    choice_paragraphs_search: Vec<String>,
+    on_chapter_toggle: EventHandler<()>,
+    on_chapter_search: EventHandler<()>,
+    on_paragraph_toggle: EventHandler<()>,
+    on_paragraph_search: EventHandler<()>,
+    action_type_open: Vec<bool>,
+    on_action_type_toggle: EventHandler<usize>,
 }
 
 #[component]
 pub fn ParagraphForm(props: ParagraphFormProps) -> Element {
+    let t = props.t.clone();
+    let mut choices = use_signal(|| Vec::<(String, String, String, Option<String>, Option<serde_json::Value>, String)>::new());
+    let available_chapters = use_signal(|| Vec::<crate::pages::dashboard::Chapter>::new());
+    let selected_language = use_signal(|| String::new());
+    let choice_paragraphs = use_signal(|| Vec::<Paragraph>::new());
+    let mut action_type_open = use_signal(|| vec![false]);
+
     let paragraphs = Arc::new(props.paragraphs.clone());
     let new_caption = Arc::new(props.new_caption.clone());
     let new_goto = Arc::new(props.new_goto.clone());
-    let extra_captions = props.extra_captions.clone();
-    let extra_gotos = props.extra_gotos.clone();
+    let _extra_captions = props.extra_captions.clone();
+    let _extra_gotos = props.extra_gotos.clone();
     let _show_extra_options = props.show_extra_options.clone();
     let paragraphs_error = props.paragraphs_error;
-    let new_caption_error = props.new_caption_error;
-    let new_goto_error = props.new_goto_error;
-    let available_paragraphs = props.available_paragraphs.clone();
-    let t = props.t.clone();
+    let _new_caption_error = props.new_caption_error;
+    let _new_goto_error = props.new_goto_error;
+    let _available_paragraphs = props.available_paragraphs.clone();
 
     let is_form_valid = {
         let paragraphs = paragraphs.clone();
@@ -72,35 +92,51 @@ pub fn ParagraphForm(props: ParagraphFormProps) -> Element {
             // 選項設定
             ChoiceOptions {
                 t: t.clone(),
-                new_caption: new_caption.to_string(),
-                new_goto: new_goto.to_string(),
-                new_action_type: String::new(),
-                new_action_key: None,
-                new_action_value: None,
-                extra_captions: extra_captions,
-                extra_gotos: extra_gotos,
-                extra_action_types: Vec::new(),
-                extra_action_keys: Vec::new(),
-                extra_action_values: Vec::new(),
-                new_caption_error: new_caption_error,
-                new_goto_error: new_goto_error,
-                available_paragraphs: available_paragraphs,
-                on_new_caption_change: props.on_new_caption_change,
-                on_new_goto_change: props.on_new_goto_change,
-                on_new_action_type_change: move |_| {},
-                on_new_action_key_change: move |_| {},
-                on_new_action_value_change: move |_| {},
-                on_extra_caption_change: props.on_extra_caption_change,
-                on_extra_goto_change: props.on_extra_goto_change,
-                on_extra_action_type_change: move |_| {},
-                on_extra_action_key_change: move |_| {},
-                on_extra_action_value_change: move |_| {},
-                on_add_choice: props.on_add_choice,
-                on_remove_choice: props.on_remove_choice,
-                available_chapters: Vec::new(),
-                selected_language: String::new(),
-                on_target_chapter_change: move |_| {},
-                target_chapter: String::new()
+                choices: choices.read().clone(),
+                on_choice_change: move |(index, field, value): (usize, String, String)| {
+                    let mut choices_write = choices.write();
+                    match field.as_str() {
+                        "caption" => choices_write[index].0 = value,
+                        "goto" => choices_write[index].1 = value,
+                        "action_type" => choices_write[index].2 = value,
+                        "action_key" => choices_write[index].3 = Some(value),
+                        "action_value" => choices_write[index].4 = Some(serde_json::Value::String(value)),
+                        "target_chapter" => choices_write[index].5 = value,
+                        _ => {}
+                    }
+                },
+                on_add_choice: move |_| {
+                    choices.write().push((
+                        String::new(),
+                        String::new(),
+                        String::new(),
+                        None,
+                        None,
+                        String::new(),
+                    ));
+                },
+                on_remove_choice: move |index| {
+                    choices.write().remove(index);
+                },
+                available_chapters: available_chapters.read().clone(),
+                selected_language: selected_language.read().clone(),
+                choice_paragraphs: vec![choice_paragraphs.read().clone()],
+                choice_chapters_open: vec![false],
+                choice_chapters_search: vec![String::new()],
+                choice_paragraphs_open: vec![false],
+                choice_paragraphs_search: vec![String::new()],
+                on_chapter_toggle: move |_| {},
+                on_chapter_search: move |_| {},
+                on_paragraph_toggle: move |_| {},
+                on_paragraph_search: move |_| {},
+                action_type_open: action_type_open.read().clone(),
+                on_action_type_toggle: move |index| {
+                    let mut current = action_type_open.read().clone();
+                    if let Some(is_open) = current.get_mut(index) {
+                        *is_open = !(*is_open as bool);
+                    }
+                    action_type_open.set(current);
+                },
             }
 
             // 提交按鈕
