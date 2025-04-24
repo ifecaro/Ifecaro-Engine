@@ -23,13 +23,17 @@ favicon = "public/img/icons/favicon.ico"
 apple_touch_icon = "public/img/icons/apple-touch-icon.png"
 android_chrome_192 = "public/img/icons/android-chrome-192x192.png"
 android_chrome_512 = "public/img/icons/android-chrome-512x512.png"
-manifest = "public/img/icons/site.webmanifest"
+manifest = "public/manifest.json"
 
 # HTML head 設定
 head = """
     <link rel="modulepreload" href="/assets/dioxus/Ifecaro-Engine.js">
     <link rel="preload" href="/assets/dioxus/Ifecaro-Engine_bg.wasm" as="fetch" crossorigin>
     <link rel="preload" href="/public/fonts/NotoSansTC-Regular.woff2" as="font" type="font/woff2" crossorigin>
+    <meta name="theme-color" content="#000000">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black">
+    <meta name="apple-mobile-web-app-title" content="Ifecaro">
 """
 
 [web.watcher]
@@ -47,7 +51,7 @@ index_on_404 = true
 [web.resource]
 
 # Javascript code file
-script = ["/assets/dioxus/Ifecaro-Engine.js"]
+script = ["/assets/dioxus/Ifecaro-Engine.js", "/sw.js"]
 
 # CSS style file
 style = ["/public/tailwind.css"]
