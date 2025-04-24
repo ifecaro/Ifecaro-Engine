@@ -18,7 +18,6 @@ use crate::constants::config::{BASE_API_URL, PARAGRAPHS, CHAPTERS};
 use web_sys::window;
 use wasm_bindgen::closure::Closure;
 use wasm_bindgen::JsCast;
-use web_sys::console;
 
 thread_local! {
     static CURRENT_LANGUAGE: RefCell<String> = RefCell::new(String::from("zh-TW"));
@@ -358,7 +357,7 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
         let choices = choices.read();
         let has_any_choices = !choices.is_empty();
         
-        let choices_valid = choices.iter().enumerate().all(|(index, choice)| {
+        let choices_valid = choices.iter().enumerate().all(|(_index, choice)| {
             let title_valid = !choice.0.trim().is_empty();
             let goto_valid = if choice.2 == "goto" {
                 !choice.1.trim().is_empty() && !choice.5.trim().is_empty()
@@ -397,10 +396,13 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
                             old_choice.action.key != *new_key ||
                             old_choice.action.value != *new_value
                         });
-                    
-            } else {
-                false
-            }
+                    choices_changed
+                } else {
+                    false
+                }
+            };
+            
+            paragraphs_changed || has_option_changes
         } else {
             // 新增模式
             let has_paragraph = !paragraphs.read().trim().is_empty() && !selected_chapter.read().is_empty();
@@ -419,8 +421,7 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
                 }
             });
             
-            let result = has_paragraph || has_valid_choices;
-            result
+            has_paragraph || has_valid_choices
         }
     });
 
@@ -999,6 +1000,37 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
         choice_paragraphs_search.set(current);
     };
 
+    let mut reset_choices = move || {
+        choices.write().clear();
+        choices.write().push((
+            String::new(),
+            String::new(),
+            String::new(),
+            None,
+            None,
+            String::new(),
+        ));
+        
+        // 重置相關的選項狀態
+        action_type_open.write().clear();
+        action_type_open.write().push(false);
+        
+        choice_chapters_open.write().clear();
+        choice_chapters_open.write().push(false);
+        
+        choice_chapters_search.write().clear();
+        choice_chapters_search.write().push(String::new());
+        
+        choice_paragraphs_open.write().clear();
+        choice_paragraphs_open.write().push(false);
+        
+        choice_paragraphs_search.write().clear();
+        choice_paragraphs_search.write().push(String::new());
+        
+        choice_paragraphs.write().clear();
+        choice_paragraphs.write().push(Vec::new());
+    };
+
     rsx! {
         crate::pages::layout::Layout { 
             title: Some("Dashboard"),
@@ -1166,7 +1198,7 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
                                                 if current_mode {
                                                     // 退出編輯模式時清空所有欄位
                                                     paragraphs.set(String::new());
-                                                    choices.write().clear();
+                                                    reset_choices();
                                                     selected_paragraph.set(None);
                                                 }
                                             },
