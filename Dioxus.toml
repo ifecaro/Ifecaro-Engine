@@ -46,18 +46,3 @@ watch_path = ["src", "public"]
 
 # uncomment line below if using Router
 index_on_404 = true
-
-# include `assets` in web platform
-[web.resource]
-
-# Javascript code file
-script = ["/assets/dioxus/Ifecaro-Engine.js", "/sw.js"]
-
-# CSS style file
-style = ["/public/tailwind.css"]
-
-[web.resource.dev]
-
-# serve: [dev-server] only
-style = []
-script = []

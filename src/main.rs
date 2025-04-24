@@ -9,7 +9,7 @@ mod models;
 
 use dioxus::{
     prelude::*,
-    document::Stylesheet,
+    document::{Stylesheet, Script},
 };
 use crate::{
     enums::route::Route,
@@ -29,6 +29,12 @@ fn App() -> Element {
     rsx! {
         head {
             Stylesheet { href: asset!("public/tailwind.css") }
+            Script { src: asset!("public/sw.js") }
+            link { rel: "modulepreload", href: asset!("public/sw.js") }
+            meta { name: "theme-color", content: "#000000" }
+            meta { name: "apple-mobile-web-app-capable", content: "yes" }
+            meta { name: "apple-mobile-web-app-status-bar-style", content: "black" }
+            meta { name: "apple-mobile-web-app-title", content: "Ifecaro" }
         }
         LanguageProvider {
             StoryProvider {

@@ -478,13 +478,13 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
             // 建立新的段落資料
             let new_paragraph = if chapter_id.is_empty() {
                 serde_json::json!({
-                    "index": new_index,
+                    "index": if *is_edit_mode.read() { selected_paragraph.read().as_ref().map(|p| p.index).unwrap_or(new_index) } else { new_index },
                     "texts": [text]
                 })
             } else {
                 serde_json::json!({
                     "chapter_id": chapter_id,
-                    "index": new_index,
+                    "index": if *is_edit_mode.read() { selected_paragraph.read().as_ref().map(|p| p.index).unwrap_or(new_index) } else { new_index },
                     "texts": [text]
                 })
             };
