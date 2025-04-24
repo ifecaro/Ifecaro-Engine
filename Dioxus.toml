@@ -16,7 +16,14 @@ asset_dir = "public"
 [web.app]
 
 # HTML title tag content
-title = "dioxus | ⛺"
+title = "Ifecaro"
+
+# Favicon settings
+favicon = "public/img/icons/favicon.ico"
+apple_touch_icon = "public/img/icons/apple-touch-icon.png"
+android_chrome_192 = "public/img/icons/android-chrome-192x192.png"
+android_chrome_512 = "public/img/icons/android-chrome-512x512.png"
+manifest = "public/img/icons/site.webmanifest"
 
 [web.watcher]
 
