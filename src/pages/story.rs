@@ -2,7 +2,7 @@ use dioxus::{
     dioxus_core,
     hooks::{use_context, use_future, use_memo, use_signal, use_effect},
     prelude::{dioxus_elements, fc_to_builder, rsx, Element, IntoDynNode, Props, Readable},
-    signals::{Signal, Writable},
+    signals::{Signal, Writable, GlobalSignal},
 };
 use dioxus_i18n::t;
 use serde::Deserialize;
@@ -10,7 +10,7 @@ use crate::contexts::language_context::LanguageState;
 use crate::components::story_content::{StoryContent, Choice};
 use crate::enums::translations::Translations;
 use wasm_bindgen::prelude::*;
-use web_sys::{IdbDatabase, IdbTransactionMode};
+use web_sys::IdbDatabase;
 use wasm_bindgen_futures::JsFuture;
 use js_sys::Promise;
 use crate::contexts::story_context::use_story_context;
@@ -123,39 +123,47 @@ async fn record_choice(choice: &Choice, text: &mut Text, paragraph_id: &str) -> 
 
 // 修改 save_choice_to_indexeddb 函數
 pub async fn save_choice_to_indexeddb(choice: String) -> Result<(), JsValue> {
-    let window = web_sys::window().unwrap();
-    let indexed_db = window.indexed_db()?.unwrap();
+    let window = web_sys::window().ok_or_else(|| JsValue::from_str("No window found"))?;
+    let indexed_db = window.indexed_db()?
+        .ok_or_else(|| JsValue::from_str("No indexed_db found"))?;
     
-    let db_request = indexed_db.open("story_db")?;
-    let db: IdbDatabase = JsFuture::from(Promise::resolve(&db_request.into())).await?.dyn_into()?;
+    let db_request = indexed_db.open_with_u32("story_choices", 1)?;
     
-    let transaction = db.transaction_with_str_and_mode("choices", IdbTransactionMode::Readwrite)?;
+    let db: IdbDatabase = JsFuture::from(Promise::resolve(&db_request))
+        .await?
+        .dyn_into()?;
+    
+    let transaction = db.transaction_with_str_sequence_and_mode(
+        &js_sys::Array::of1(&JsValue::from_str("choices")),
+        web_sys::IdbTransactionMode::Readwrite,
+    )?;
+    
     let store = transaction.object_store("choices")?;
     
     let request = store.get(&JsValue::from_str("user_choices"))?;
-    let existing_choices = JsFuture::from(Promise::resolve(&request.into())).await?;
+    let existing_choices = JsFuture::from(Promise::resolve(&request))
+        .await?;
     
     let mut choices: Vec<String> = if existing_choices.is_undefined() || existing_choices.is_null() {
         Vec::new()
     } else {
-        match existing_choices.as_string() {
-            Some(choices_str) => match serde_json::from_str(&choices_str) {
-                Ok(parsed_choices) => parsed_choices,
-                Err(_) => Vec::new(),
-            },
-            None => Vec::new(),
-        }
+        existing_choices
+            .as_string()
+            .and_then(|s| serde_json::from_str(&s).ok())
+            .unwrap_or_default()
     };
     
     choices.push(choice);
     
-    let choices_json = match serde_json::to_string(&choices) {
-        Ok(json) => JsValue::from_str(&json),
-        Err(_) => return Err(JsValue::from_str("Failed to serialize choices")),
-    };
+    let choices_json = serde_json::to_string(&choices)
+        .map_err(|e| JsValue::from_str(&format!("Failed to serialize choices: {}", e)))?;
     
-    let put_request = store.put_with_key(&choices_json, &JsValue::from_str("user_choices"))?;
-    JsFuture::from(Promise::resolve(&put_request.into())).await?;
+    let put_request = store.put_with_key(
+        &JsValue::from_str(&choices_json),
+        &JsValue::from_str("user_choices"),
+    )?;
+    
+    JsFuture::from(Promise::resolve(&put_request)).await?;
     
     Ok(())
 }

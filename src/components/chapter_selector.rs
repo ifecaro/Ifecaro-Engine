@@ -30,12 +30,11 @@ pub struct ChapterSelectorProps {
 
 #[component]
 pub fn ChapterSelector(props: ChapterSelectorProps) -> Element {
-    // 使用傳入的語言參數
+    let language_state = use_context::<Signal<LanguageState>>();
+    
+    // 使用傳入的語言參數或從 context 中獲取
     let selected_lang = if props.selected_language.is_empty() {
-        // 如果沒有傳入語言，則從 context 中獲取
-        let language_state = use_context::<Signal<LanguageState>>();
-        let current_lang = language_state.read().current_language.clone();
-        current_lang
+        language_state.read().current_language.clone()
     } else {
         props.selected_language.clone()
     };

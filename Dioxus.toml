@@ -25,6 +25,13 @@ android_chrome_192 = "public/img/icons/android-chrome-192x192.png"
 android_chrome_512 = "public/img/icons/android-chrome-512x512.png"
 manifest = "public/img/icons/site.webmanifest"
 
+# HTML head 設定
+head = """
+    <link rel="modulepreload" href="/assets/dioxus/Ifecaro-Engine.js">
+    <link rel="preload" href="/assets/dioxus/Ifecaro-Engine_bg.wasm" as="fetch" crossorigin>
+    <link rel="preload" href="/public/fonts/NotoSansTC-Regular.woff2" as="font" type="font/woff2" crossorigin>
+"""
+
 [web.watcher]
 
 # when watcher trigger, regenerate the `index.html`
@@ -40,14 +47,13 @@ index_on_404 = true
 [web.resource]
 
 # Javascript code file
-script = []
+script = ["/assets/dioxus/Ifecaro-Engine.js"]
+
+# CSS style file
+style = ["/public/tailwind.css"]
 
 [web.resource.dev]
 
 # serve: [dev-server] only
-
-# CSS style file
 style = []
-
-# Javascript code file
 script = []

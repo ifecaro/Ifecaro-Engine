@@ -5,7 +5,7 @@ use serde_json;
 use crate::KeyboardState;
 use wasm_bindgen::JsCast;
 use web_sys::{Window, Document};
-use crate::contexts::story_context::use_story_context;
+use crate::contexts::story_context::{use_story_context, StoryContext};
 use dioxus_i18n::t;
 
 #[derive(Props, Clone, PartialEq)]
@@ -46,28 +46,35 @@ pub fn StoryContent(props: StoryContentProps) -> Element {
     let enabled_choices = Arc::new(props.enabled_choices.clone());
     let on_choice_click = props.on_choice_click.clone();
     let mut keyboard_state = use_context::<Signal<KeyboardState>>();
-    let mut story_context = use_story_context();
+    let story_context = use_story_context();
     
     let mut show_filter = use_signal(|| true);
     let mut is_focused = use_signal(|| false);
     let mut is_mobile = use_signal(|| false);
     
-    use_effect(move || show_filter.set(true));
-    
-    use_effect(move || {
+    let is_mobile_memo = use_memo(move || {
         if let Some((window, _)) = get_window_document() {
             if let Ok(width) = window.inner_width() {
                 if let Some(width) = width.as_f64() {
-                    is_mobile.set(width < 768.0);
+                    return width < 768.0;
                 }
             }
         }
+        false
     });
     
-    let mut handle_choice_click = move |goto: String| {
-        on_choice_click.call(goto.clone());
-        story_context.write().target_paragraph_id = Some(goto);
-    };
+    use_effect(move || {
+        is_mobile.set(*is_mobile_memo.read());
+    });
+    
+    let handle_choice = use_callback(
+        |(goto, on_choice_click, mut story_context): (String, EventHandler<String>, Signal<StoryContext>)| {
+            on_choice_click.call(goto.clone());
+            story_context.write().target_paragraph_id = Some(goto);
+        },
+    );
+    
+    use_effect(move || show_filter.set(true));
     
     rsx! {
         div {
@@ -81,7 +88,7 @@ pub fn StoryContent(props: StoryContentProps) -> Element {
                             let choice = &choices[idx];
                             let goto = choice.action.to.clone();
                             if enabled_choices.contains(&goto) {
-                                handle_choice_click(goto);
+                                handle_choice.call((goto, on_choice_click.clone(), story_context.clone()));
                             }
                         }
                         event.stop_propagation();
@@ -109,7 +116,7 @@ pub fn StoryContent(props: StoryContentProps) -> Element {
                                 let goto = choice.action.to.clone();
                                 if enabled_choices.contains(&goto) {
                                     keyboard_state.write().selected_index = idx as i32;
-                                    handle_choice_click(goto);
+                                    handle_choice.call((goto, on_choice_click.clone(), story_context.clone()));
                                 }
                             }
                             event.stop_propagation();
@@ -165,14 +172,14 @@ pub fn StoryContent(props: StoryContentProps) -> Element {
                             li {
                                 class: {
                                     format!("!ml-0 md:!ml-20 {} {}",
-                                        if is_enabled { "cursor-pointer hover:text-blue-500" } else { "opacity-30 cursor-not-allowed" },
-                                        if is_selected { "text-blue-500 font-bold" } else { "" }
+                                        if is_enabled { "cursor-pointer hover:text-blue-700" } else { "opacity-30 cursor-not-allowed" },
+                                        if is_selected { "text-blue-700 font-bold" } else { "" }
                                     )
                                 },
                                 onclick: move |_| {
                                     if is_enabled {
                                         keyboard_state.write().selected_index = index as i32;
-                                        handle_choice_click(goto.clone());
+                                        handle_choice.call((goto.clone(), on_choice_click.clone(), story_context.clone()));
                                     }
                                 },
                                 { caption }
