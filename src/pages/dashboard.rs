@@ -354,48 +354,21 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
 
     let is_form_valid = use_memo(move || {
         let main_fields_valid = !paragraphs.read().trim().is_empty() && !selected_chapter.read().is_empty();
-        web_sys::console::log_1(&format!("主要欄位驗證結果: {}", main_fields_valid).into());
-
-        let choices = choices.read();
-        let mut choices_valid = true;
-
-        // 檢查是否有任何選項
-        let has_any_choices = !choices.is_empty();
-        web_sys::console::log_1(&format!("是否有選項：{}", has_any_choices).into());
-
-        if has_any_choices {
-            for (index, (caption, goto, action_type, _, _, target_chapter)) in choices.iter().enumerate() {
-                // 檢查各個欄位的狀態
-                let has_title = !caption.trim().is_empty();
-                let has_goto = !goto.trim().is_empty();
-                let has_action_type = !action_type.trim().is_empty();
-                let has_target = !target_chapter.trim().is_empty();
-
-                web_sys::console::log_1(&format!("選項 {} 狀態 - 標題: {}, goto: {}, 動作類型: {}, 目標: {}", 
-                    index, has_title, has_goto, has_action_type, has_target).into());
-
-                // 標題是必填的
-                if !has_title {
-                    web_sys::console::log_1(&format!("選項 {} 驗證失敗：標題為必填", index).into());
-                    choices_valid = false;
-                    break;
-                }
-
-                // 如果是 goto 類型，檢查必要欄位
-                if action_type == "goto" {
-                    if !has_target || !has_goto {
-                        web_sys::console::log_1(&format!("選項 {} 驗證失敗：goto類型但目標不完整", index).into());
-                        choices_valid = false;
-                        break;
-                    }
-                }
-            }
-        }
-
-        web_sys::console::log_1(&format!("選項驗證結果: {}", choices_valid).into());
         
-        let final_result = main_fields_valid && choices_valid;
-        web_sys::console::log_1(&format!("最終驗證結果: {}", final_result).into());
+        let choices = choices.read();
+        let has_any_choices = !choices.is_empty();
+        
+        let choices_valid = choices.iter().enumerate().all(|(index, choice)| {
+            let title_valid = !choice.0.trim().is_empty();
+            let goto_valid = if choice.2 == "goto" {
+                !choice.1.trim().is_empty() && !choice.5.trim().is_empty()
+            } else {
+                true
+            };
+            title_valid && goto_valid
+        });
+        
+        let final_result = main_fields_valid && (!has_any_choices || choices_valid);
         
         final_result
     });
@@ -409,38 +382,25 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
                     .unwrap_or_default())
                 .unwrap_or_default();
             
-            web_sys::console::log_1(&format!("編輯模式 - 段落是否有變更: {}", paragraphs_changed).into());
-            
             let has_option_changes = {
                 let current_paragraph = selected_paragraph.read();
                 
                 if let Some(paragraph) = current_paragraph.as_ref() {
-                    if let Some(text) = paragraph.texts.iter().find(|t| t.lang == *paragraph_language.read()) {
-                        let current_choices = &text.choices;
-                        let new_choices = choices.read();
-                        
-                        let choices_changed = current_choices.len() != new_choices.len() ||
-                            current_choices.iter().zip(new_choices.iter()).any(|(old_choice, (new_caption, new_goto, new_type, new_key, new_value, _))| {
-                                old_choice.caption != *new_caption ||
-                                old_choice.action.to != *new_goto ||
-                                old_choice.action.type_ != *new_type ||
-                                old_choice.action.key != *new_key ||
-                                old_choice.action.value != *new_value
-                            });
-                        
-                        web_sys::console::log_1(&format!("選項變更狀態: {}", choices_changed).into());
-                        choices_changed
-                    } else {
-                        false
-                    }
-                } else {
-                    false
-                }
-            };
-            
-            let result = paragraphs_changed || has_option_changes;
-            web_sys::console::log_1(&format!("編輯模式 - 最終結果: {}", result).into());
-            result
+                    let current_choices = &paragraph.texts.iter().find(|t| t.lang == *paragraph_language.read()).map(|t| t.choices.clone()).unwrap_or_default();
+                    let new_choices = choices.read();
+                    
+                    let choices_changed = current_choices.len() != new_choices.len() ||
+                        current_choices.iter().zip(new_choices.iter()).any(|(old_choice, (new_caption, new_goto, new_type, new_key, new_value, _))| {
+                            old_choice.caption != *new_caption ||
+                            old_choice.action.to != *new_goto ||
+                            old_choice.action.type_ != *new_type ||
+                            old_choice.action.key != *new_key ||
+                            old_choice.action.value != *new_value
+                        });
+                    
+            } else {
+                false
+            }
         } else {
             // 新增模式
             let has_paragraph = !paragraphs.read().trim().is_empty() && !selected_chapter.read().is_empty();
@@ -459,11 +419,7 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
                 }
             });
             
-            web_sys::console::log_1(&format!("新增模式 - 段落是否有內容: {}", has_paragraph).into());
-            web_sys::console::log_1(&format!("新增模式 - 選項是否有內容: {}", has_valid_choices).into());
-            
             let result = has_paragraph || has_valid_choices;
-            web_sys::console::log_1(&format!("新增模式 - 最終結果: {}", result).into());
             result
         }
     });
@@ -870,7 +826,6 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
             if !target_paragraph_id.is_empty() {
                 if let Some(paragraph) = paragraph_data.iter().find(|p| p.id == target_paragraph_id) {
                     let chapter_id = paragraph.chapter_id.clone();
-                    console::log_1(&format!("動作：更新選項 {} 的目標章節為 {}", index, chapter_id).into());
                     
                     // 更新選項中的章節ID
                     let mut current_choices = choices.read().clone();
@@ -910,8 +865,6 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
                 })
                 .collect::<Vec<_>>();
 
-            console::log_1(&format!("動作：更新選項 {} 的段落列表，找到 {} 個段落", index, paragraphs.len()).into());
-            
             let mut current_paragraphs = choice_paragraphs.read().clone();
             
             while current_paragraphs.len() <= index {
