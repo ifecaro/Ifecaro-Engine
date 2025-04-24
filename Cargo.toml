@@ -15,7 +15,7 @@ build = false        # 禁用構建腳本
 # dioxus-web = { git = "https://github.com/DioxusLabs/dioxus.git" }
 # dioxus_markdown = { git = "https://github.com/DioxusLabs/markdown.git" }
 reqwest = { version = "0.11.24", features = ["json"] }
-serde = "1.0.197"
+serde = { version = "1.0.197", features = ["derive"] }
 serde_json = "1.0.114"
 serde-wasm-bindgen = "0.6.3"
 # serde = { git = "https://github.com/serde-rs/serde.git" }
@@ -49,7 +49,10 @@ dioxus-i18n = "0.3.0"
 unic-langid = { version = "0.9.4", features = ["unic-langid-macros"] }
 
 # Debug
-tracing = "0.1.40"
+tracing = { version = "0.1.40", features = [
+    "max_level_debug",
+    "release_max_level_info",
+] }
 dioxus-logger = { git = "https://github.com/DogeDark/dioxus-logger.git" }
 
 [profile]
@@ -65,10 +68,18 @@ inherits = "dev"
 inherits = "dev"
 
 [profile.release]
-opt-level = 'z'
+opt-level = 3
 lto = true
 codegen-units = 1
 panic = "abort"
+strip = true
+debug = false
+
+[profile.wasm-release]
+inherits = "release"
+opt-level = 'z'
+lto = true
+codegen-units = 1
 
 [[bin]]
 name = "build-script"

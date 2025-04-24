@@ -1,5 +1,5 @@
 use crate::enums::route::Route;
-use dioxus::prelude::{component, dioxus_core, fc_to_builder, rsx, Element, Outlet, GlobalSignal, Readable};
+use dioxus::prelude::{component, dioxus_core, fc_to_builder, rsx, Element, Outlet};
 
 #[component]
 pub fn Layout() -> Element {

@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ifecaro Engine</title>
+
+    <!-- 預加載關鍵資源 -->
+    <link rel="preload" href="/public/tailwind.css" as="style">
+    <link rel="preload" href="/assets/dioxus/Ifecaro-Engine.js" as="script">
+    <link rel="preload" href="/assets/dioxus/Ifecaro-Engine_bg.wasm" as="fetch" crossorigin>
+
+    <!-- 預加載字體 -->
+    <link rel="preload" href="/public/fonts/NotoSansTC-Regular.woff2" as="font" type="font/woff2" crossorigin>
+
+    <!-- 預取可能需要的資源 -->
+    <link rel="prefetch" href="/public/img/logo.png">
+
+    <!-- 實際載入樣式 -->
+    <link data-trunk rel="css" href="/public/tailwind.css">
+    <link data-trunk rel="copy-dir" href="public">
+
+    <!-- 初始化 Dioxus -->
+    <script type="module">
+        import init from '/assets/dioxus/Ifecaro-Engine.js';
+        init('/assets/dioxus/Ifecaro-Engine_bg.wasm');
+    </script>
+</head>
+
+<body class="min-h-screen bg-gray-100 dark:bg-gray-900">
+    <div id="main"></div>
+</body>
+
+</html>

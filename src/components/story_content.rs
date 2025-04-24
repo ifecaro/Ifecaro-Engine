@@ -1,10 +1,10 @@
+use std::sync::Arc;
 use dioxus::prelude::*;
 use serde::{Serialize, Deserialize};
 use serde_json;
 use crate::KeyboardState;
 use wasm_bindgen::JsCast;
-use wasm_bindgen::closure::Closure;
-use web_sys::FocusEvent;
+use web_sys::{Window, Document};
 use crate::contexts::story_context::use_story_context;
 use dioxus_i18n::t;
 
@@ -33,11 +33,17 @@ pub struct Action {
     pub to: String,
 }
 
+fn get_window_document() -> Option<(Window, Document)> {
+    let window = web_sys::window()?;
+    let document = window.document()?;
+    Some((window, document))
+}
+
 #[component]
 pub fn StoryContent(props: StoryContentProps) -> Element {
-    let paragraph = props.paragraph.clone();
-    let choices = props.choices.clone();
-    let enabled_choices = props.enabled_choices.clone();
+    let paragraph = Arc::new(props.paragraph.clone());
+    let choices = Arc::new(props.choices.clone());
+    let enabled_choices = Arc::new(props.enabled_choices.clone());
     let on_choice_click = props.on_choice_click.clone();
     let mut keyboard_state = use_context::<Signal<KeyboardState>>();
     let mut story_context = use_story_context();
@@ -46,96 +52,83 @@ pub fn StoryContent(props: StoryContentProps) -> Element {
     let mut is_focused = use_signal(|| false);
     let mut is_mobile = use_signal(|| false);
     
-    // 確保在組件掛載時過濾器始終顯示
+    use_effect(move || show_filter.set(true));
+    
     use_effect(move || {
-        show_filter.set(true);
-        (|| ())()
-    });
-    
-    {
-        use_effect(move || {
-            let window = web_sys::window().unwrap();
-            let width = window.inner_width().unwrap().as_f64().unwrap();
-            is_mobile.set(width < 768.0);
-            (|| ())()
-        });
-    }
-    
-    {
-        let mut show_filter = show_filter.clone();
-        let mut is_focused = is_focused.clone();
-        use_effect(move || {
-            let window = web_sys::window().unwrap();
-            let document = window.document().unwrap();
-            
-            let focus_handler = Closure::wrap(Box::new(move |_: FocusEvent| {
-                is_focused.set(true);
-                show_filter.set(false);
-            }) as Box<dyn FnMut(FocusEvent)>);
-            
-            let blur_handler = Closure::wrap(Box::new(move |_: FocusEvent| {
-                is_focused.set(false);
-                show_filter.set(true);
-            }) as Box<dyn FnMut(FocusEvent)>);
-            
-            document.add_event_listener_with_callback("focusin", focus_handler.as_ref().unchecked_ref()).unwrap();
-            document.add_event_listener_with_callback("focusout", blur_handler.as_ref().unchecked_ref()).unwrap();
-            
-            // 保持 handlers 存活直到組件卸載
-            let focus_handler = focus_handler;
-            let blur_handler = blur_handler;
-            let document = document;
-            
-            (move || {
-                let _ = document.remove_event_listener_with_callback("focusin", focus_handler.as_ref().unchecked_ref());
-                let _ = document.remove_event_listener_with_callback("focusout", blur_handler.as_ref().unchecked_ref());
-            })()
-        });
-    }
-    
-    {
-        let choices = choices.clone();
-        let enabled_choices = enabled_choices.clone();
-        let on_choice_click = on_choice_click.clone();
-        let story_context = story_context.clone();
-        use_effect(move || {
-            keyboard_state.write().selected_index = 0;
-            keyboard_state.write().choices = choices.clone();
-            keyboard_state.write().enabled_choices = enabled_choices.clone();
-            keyboard_state.write().on_choice_click = Some(on_choice_click);
-            
-            if let Some(target_id) = story_context.read().target_paragraph_id.clone() {
-                if let Some(_choice) = choices.iter().find(|c| c.action.to == target_id) {
-                    let idx = choices.iter().position(|c| c.action.to == target_id).unwrap();
-                    keyboard_state.write().selected_index = idx as i32;
+        if let Some((window, _)) = get_window_document() {
+            if let Ok(width) = window.inner_width() {
+                if let Some(width) = width.as_f64() {
+                    is_mobile.set(width < 768.0);
                 }
             }
-            
-            (|| ())()
-        });
-    }
+        }
+    });
+    
+    let mut handle_choice_click = move |goto: String| {
+        on_choice_click.call(goto.clone());
+        story_context.write().target_paragraph_id = Some(goto);
+    };
     
     rsx! {
         div {
-            class: "relative",
+            class: "relative story-content-container",
+            tabindex: "0",
+            onkeydown: move |event: Event<KeyboardData>| {
+                match event.data.key() {
+                    Key::Enter => {
+                        let idx = keyboard_state.read().selected_index as usize;
+                        if idx < choices.len() {
+                            let choice = &choices[idx];
+                            let goto = choice.action.to.clone();
+                            if enabled_choices.contains(&goto) {
+                                handle_choice_click(goto);
+                            }
+                        }
+                        event.stop_propagation();
+                    }
+                    Key::ArrowUp => {
+                        let current_index = keyboard_state.read().selected_index;
+                        if current_index > 0 {
+                            keyboard_state.write().selected_index = current_index - 1;
+                        }
+                        event.stop_propagation();
+                    }
+                    Key::ArrowDown => {
+                        let current_index = keyboard_state.read().selected_index;
+                        if (current_index as usize) < choices.len() - 1 {
+                            keyboard_state.write().selected_index = current_index + 1;
+                        }
+                        event.stop_propagation();
+                    }
+                    key => {
+                        // 處理數字鍵 1-9
+                        if let Some(num) = key.to_string().parse::<usize>().ok() {
+                            if num > 0 && num <= choices.len() {
+                                let idx = num - 1;
+                                let choice = &choices[idx];
+                                let goto = choice.action.to.clone();
+                                if enabled_choices.contains(&goto) {
+                                    keyboard_state.write().selected_index = idx as i32;
+                                    handle_choice_click(goto);
+                                }
+                            }
+                            event.stop_propagation();
+                        }
+                    }
+                }
+            },
             div {
                 class: {
-                    let mut classes = vec!["fixed inset-0 bg-[rgba(0,0,0,0.7)] backdrop-blur-sm z-10 flex items-center justify-center transition-opacity duration-500 cursor-pointer"];
-                    if !*show_filter.read() || *is_mobile.read() {
-                        classes.push("opacity-0 pointer-events-none");
-                    } else {
-                        classes.push("opacity-100");
-                    }
-                    classes.join(" ")
+                    format!("fixed inset-0 bg-[rgba(0,0,0,0.7)] backdrop-blur-sm z-10 flex items-center justify-center transition-opacity duration-500 cursor-pointer {}",
+                        if !*show_filter.read() || *is_mobile.read() { "opacity-0 pointer-events-none" } else { "opacity-100" }
+                    )
                 },
                 onclick: move |_| {
                     show_filter.set(false);
                     is_focused.set(true);
-                    if let Some(window) = web_sys::window() {
-                        if let Some(document) = window.document() {
-                            if let Some(main) = document.query_selector("main").unwrap() {
-                                let _ = main.unchecked_into::<web_sys::HtmlElement>().focus();
-                            }
+                    if let Some((_, document)) = get_window_document() {
+                        if let Ok(Some(container)) = document.query_selector(".story-content-container") {
+                            let _ = container.unchecked_into::<web_sys::HtmlElement>().focus();
                         }
                     }
                 },
@@ -146,23 +139,6 @@ pub fn StoryContent(props: StoryContentProps) -> Element {
             }
             article {
                 class: "prose dark:prose-invert lg:prose-xl mx-auto",
-                onkeydown: move |event: Event<KeyboardData>| {
-                    match event.data.key() {
-                        Key::Enter => {
-                            let idx = keyboard_state.read().selected_index as usize;
-                            if idx < choices.len() {
-                                let choice = &choices[idx];
-                                let goto = choice.action.to.clone();
-                                if enabled_choices.contains(&goto) {
-                                    on_choice_click.call(goto.clone());
-                                    story_context.write().target_paragraph_id = Some(goto.clone());
-                                }
-                            }
-                            event.stop_propagation();
-                        }
-                        _ => {}
-                    }
-                },
                 div {
                     class: "whitespace-pre-wrap lg:mt-16 space-y-8",
                     {paragraph.split('\n').map(|p| {
@@ -188,24 +164,15 @@ pub fn StoryContent(props: StoryContentProps) -> Element {
                         rsx! {
                             li {
                                 class: {
-                                    let mut classes = vec![
-                                        "!ml-0 md:!ml-20" // Force no margin on mobile with !important
-                                    ];
-                                    if is_enabled {
-                                        classes.push("cursor-pointer hover:text-blue-500");
-                                    } else {
-                                        classes.push("opacity-30 cursor-not-allowed");
-                                    }
-                                    if is_selected {
-                                        classes.push("text-blue-500 font-bold");
-                                    }
-                                    classes.join(" ")
+                                    format!("!ml-0 md:!ml-20 {} {}",
+                                        if is_enabled { "cursor-pointer hover:text-blue-500" } else { "opacity-30 cursor-not-allowed" },
+                                        if is_selected { "text-blue-500 font-bold" } else { "" }
+                                    )
                                 },
                                 onclick: move |_| {
                                     if is_enabled {
                                         keyboard_state.write().selected_index = index as i32;
-                                        on_choice_click.call(goto.clone());
-                                        story_context.write().target_paragraph_id = Some(goto.clone());
+                                        handle_choice_click(goto.clone());
                                     }
                                 },
                                 { caption }

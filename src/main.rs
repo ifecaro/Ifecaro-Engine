@@ -5,6 +5,7 @@ mod layout;
 mod pages;
 mod contexts;
 mod constants;
+mod models;
 
 use dioxus::{
     prelude::*,
@@ -15,8 +16,9 @@ use crate::{
     components::navbar::Navbar,
     contexts::language_context::{LanguageProvider, LanguageState},
     components::story_content::Choice,
-    contexts::story_context::{use_story_context, provide_story_context},
+    contexts::story_context::{use_story_context, provide_story_context, StoryContext},
 };
+use std::sync::Arc;
 
 fn main() {
     launch(App);
@@ -52,103 +54,95 @@ fn StoryProvider(props: StoryProviderProps) -> Element {
 #[derive(Debug, Clone)]
 pub struct KeyboardState {
     pub selected_index: i32,
-    pub choices: Vec<Choice>,
-    pub enabled_choices: Vec<String>,
-    pub on_choice_click: Option<EventHandler<String>>,
+    pub choices: Arc<Vec<Choice>>,
+    pub enabled_choices: Arc<Vec<String>>,
+    pub on_choice_click: Option<Arc<EventHandler<String>>>,
+}
+
+impl Default for KeyboardState {
+    fn default() -> Self {
+        Self {
+            selected_index: 0,
+            choices: Arc::new(Vec::new()),
+            enabled_choices: Arc::new(Vec::new()),
+            on_choice_click: None,
+        }
+    }
 }
 
 #[component]
 pub fn Layout() -> Element {
     let route = use_route::<Route>();
     let mut state = use_context::<Signal<LanguageState>>();
-    let mut keyboard_state = use_signal(|| KeyboardState { 
-        selected_index: 0,
-        choices: vec![],
-        enabled_choices: vec![],
-        on_choice_click: None,
-    });
+    let mut keyboard_state = use_signal(KeyboardState::default);
     let mut story_context = use_story_context();
     
     use_effect(move || {
-        match &route {
-            Route::Home {} => {
-                state.write().set_language("zh-TW");
-            }
-            Route::Story { lang } => {
-                state.write().set_language(lang);
-            }
-            Route::Dashboard { lang } => {
-                state.write().set_language(lang);
-            }
-            Route::PageNotFound { .. } => {
-                state.write().set_language("zh-TW");
-            }
-        }
+        let lang = match &route {
+            Route::Home {} => "zh-TW",
+            Route::Story { lang } | Route::Dashboard { lang } => lang,
+            Route::PageNotFound { .. } => "zh-TW",
+        };
+        state.write().set_language(lang);
     });
     
     provide_context(keyboard_state);
+    
+    let handle_key_press = move |event: Event<KeyboardData>| {
+        let mut state = keyboard_state.write();
+        match event.data.key() {
+            Key::ArrowUp => {
+                if state.selected_index > 0 {
+                    state.selected_index -= 1;
+                }
+                event.stop_propagation();
+            }
+            Key::ArrowDown => {
+                if state.selected_index < state.choices.len() as i32 - 1 {
+                    state.selected_index += 1;
+                }
+                event.stop_propagation();
+            }
+            Key::Character(key) => {
+                if let Ok(num) = key.parse::<usize>() {
+                    handle_choice_selection(&state, num - 1, &mut story_context);
+                }
+                event.stop_propagation();
+            }
+            Key::Enter => {
+                handle_choice_selection(&state, state.selected_index as usize, &mut story_context);
+                event.stop_propagation();
+            }
+            _ => {}
+        }
+    };
     
     rsx! {
         main {
             class: "min-h-screen bg-gray-100 dark:bg-gray-900",
             tabindex: "0",
-            onkeydown: move |event: Event<KeyboardData>| {
-                match event.data.key() {
-                    Key::ArrowUp => {
-                        let mut state = keyboard_state.write();
-                        if state.selected_index > 0 {
-                            state.selected_index -= 1;
-                        }
-                        event.stop_propagation();
-                    }
-                    Key::ArrowDown => {
-                        let mut state = keyboard_state.write();
-                        if state.selected_index < state.choices.len() as i32 - 1 {
-                            state.selected_index += 1;
-                        }
-                        event.stop_propagation();
-                    }
-                    Key::Character(key) => {
-                        if let Ok(num) = key.parse::<usize>() {
-                            let state = keyboard_state.read();
-                            if num > 0 && num <= state.choices.len() {
-                                let idx = num - 1;
-                                if idx < state.choices.len() {
-                                    let choice = &state.choices[idx];
-                                    let goto = choice.action.to.clone();
-                                    if state.enabled_choices.contains(&goto) {
-                                        if let Some(on_choice_click) = &state.on_choice_click {
-                                            on_choice_click.call(goto.clone());
-                                            story_context.write().target_paragraph_id = Some(goto.clone());
-                                        }
-                                    }
-                                }
-                            }
-                            event.stop_propagation();
-                        }
-                    }
-                    Key::Enter => {
-                        let state = keyboard_state.read();
-                        let idx = state.selected_index as usize;
-                        if idx < state.choices.len() {
-                            let choice = &state.choices[idx];
-                            let goto = choice.action.to.clone();
-                            if state.enabled_choices.contains(&goto) {
-                                if let Some(on_choice_click) = &state.on_choice_click {
-                                    on_choice_click.call(goto.clone());
-                                    story_context.write().target_paragraph_id = Some(goto.clone());
-                                }
-                            }
-                        }
-                        event.stop_propagation();
-                    }
-                    _ => {}
-                }
-            },
+            onkeydown: handle_key_press,
             Navbar {}
             div {
                 class: "container mx-auto px-4 py-8",
                 Outlet::<Route> {}
+            }
+        }
+    }
+}
+
+fn handle_choice_selection(
+    state: &KeyboardState,
+    idx: usize,
+    story_context: &mut Signal<StoryContext>,
+) {
+    if idx < state.choices.len() {
+        let choice = &state.choices[idx];
+        let goto = choice.action.to.clone();
+        if state.enabled_choices.contains(&goto) {
+            if let Some(on_choice_click) = &state.on_choice_click {
+                on_choice_click.call(goto.clone());
+                story_context.write().target_paragraph_id = Some(goto);
             }
         }
     }
