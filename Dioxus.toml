@@ -19,17 +19,18 @@ asset_dir = "public"
 title = "Ifecaro"
 
 # Favicon settings
-favicon = "public/img/icons/favicon.ico"
-apple_touch_icon = "public/img/icons/apple-touch-icon.png"
-android_chrome_192 = "public/img/icons/android-chrome-192x192.png"
-android_chrome_512 = "public/img/icons/android-chrome-512x512.png"
-manifest = "public/manifest.json"
+favicon = "/favicon.ico"
+apple_touch_icon = "/img/icons/apple-touch-icon.png"
+android_chrome_192 = "/img/icons/android-chrome-192x192.png"
+android_chrome_512 = "/img/icons/android-chrome-512x512.png"
+manifest = "manifest.json"
 
 # HTML head 設定
 head = """
     <link rel="modulepreload" href="/assets/dioxus/Ifecaro-Engine.js">
     <link rel="preload" href="/assets/dioxus/Ifecaro-Engine_bg.wasm" as="fetch" crossorigin>
     <link rel="preload" href="/public/fonts/NotoSansTC-Regular.woff2" as="font" type="font/woff2" crossorigin>
+    <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#000000">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black">

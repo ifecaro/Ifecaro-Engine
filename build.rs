@@ -1,4 +1,6 @@
 use std::process::Command;
+use std::fs;
+use std::path::Path;
 
 fn main() {
     // Compile Tailwind CSS
@@ -21,6 +23,45 @@ fn main() {
 
     if !dx_status.success() {
         panic!("dx build failed");
+    }
+
+    // Copy PWA assets
+    println!("Copying PWA assets...");
+    let build_dir = Path::new("target/dx/simon-cheng/release/web");
+    let public_dir = build_dir.join("public");
+    
+    // Create necessary directories
+    let _ = fs::create_dir_all(&public_dir);
+    let _ = fs::create_dir_all(public_dir.join("img/icons"));
+    
+    // Copy files to public directory
+    let root_files = [
+        ("public/manifest.json", "manifest.json"),
+        ("public/sw.js", "sw.js"),
+        ("public/img/icons/favicon.ico", "favicon.ico"),
+    ];
+
+    for (src, dest) in root_files.iter() {
+        if let Err(e) = fs::copy(src, public_dir.join(dest)) {
+            println!("Failed to copy {}: {}", src, e);
+        }
+    }
+    
+    // Copy icon files to img/icons directory
+    let icon_files = [
+        "favicon.ico",
+        "apple-touch-icon.png",
+        "android-chrome-192x192.png",
+        "android-chrome-512x512.png",
+        "favicon-16x16.png",
+        "favicon-32x32.png",
+    ];
+    
+    for icon in icon_files.iter() {
+        let _ = fs::copy(
+            format!("public/img/icons/{}", icon),
+            public_dir.join("img/icons").join(icon),
+        );
     }
 
     // Create tar.gz file (Unix/Linux only)
@@ -55,6 +96,17 @@ fn main() {
         }
     } else {
         println!("Skipping tar.gz creation and file upload on non-Unix platforms");
+    }
+
+    // Restore tailwind.css from git
+    println!("Restoring tailwind.css...");
+    let git_status = Command::new("git")
+        .args(["checkout", "--", "public/tailwind.css"])
+        .status()
+        .expect("Failed to execute git checkout command");
+
+    if !git_status.success() {
+        println!("Warning: Failed to restore tailwind.css");
     }
 
     println!("All tasks completed successfully!");

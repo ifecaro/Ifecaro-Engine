@@ -28,6 +28,12 @@ fn main() {
 fn App() -> Element {
     rsx! {
         head {
+            link { rel: "icon", r#type: "image/x-icon", href: "/img/icons/favicon.ico" }
+            link { rel: "shortcut icon", r#type: "image/x-icon", href: "/img/icons/favicon.ico" }
+            link { rel: "apple-touch-icon", sizes: "180x180", href: "/img/icons/apple-touch-icon.png" }
+            link { rel: "icon", r#type: "image/png", sizes: "32x32", href: "/img/icons/favicon-32x32.png" }
+            link { rel: "icon", r#type: "image/png", sizes: "16x16", href: "/img/icons/favicon-16x16.png" }
+            link { rel: "manifest", href: "/manifest.json" }
             Stylesheet { href: asset!("public/tailwind.css") }
             Script { src: asset!("public/sw.js") }
             link { rel: "modulepreload", href: asset!("public/sw.js") }
