@@ -19,32 +19,36 @@ const LANGUAGES: &[Language] = &[
 ];
 
 #[component]
-pub fn Navbar() -> Element {
+pub fn Navbar(closure_signal: Signal<Option<Closure<dyn FnMut(Event)>>>) -> Element {
     let navigator = use_navigator();
     let route: Route = use_route();
     let mut state = use_context::<Signal<LanguageState>>();
     let current_lang = state.read().current_language.clone();
     
     let mut is_open = use_signal(|| false);
-    let mut closure_signal = use_signal(|| None);
 
     use_effect(move || {
-        let handler = move |event: Event| {
-            if let Some(target) = event.target() {
-                if let Some(element) = target.dyn_into::<web_sys::Element>().ok() {
-                    if element.closest(".language-dropdown").ok().flatten().is_none() {
-                        is_open.set(false);
-                    }
+        let document = web_sys::window().unwrap().document().unwrap();
+        let closure = Closure::wrap(Box::new(move |_event: Event| {
+            if let Some(target) = _event.target() {
+                let element = target.dyn_into::<web_sys::Element>().unwrap();
+                if !element.closest(".language-dropdown").unwrap().is_some() {
+                    is_open.set(false);
                 }
             }
-        };
+        }) as Box<dyn FnMut(Event)>);
 
-        let window = web_sys::window().unwrap();
-        let document = window.document().unwrap();
-        let closure = Closure::wrap(Box::new(handler) as Box<dyn FnMut(_)>);
-        let ref_ = closure.as_ref().unchecked_ref();
-        document.add_event_listener_with_callback("click", ref_).unwrap();
+        document
+            .add_event_listener_with_callback("click", closure.as_ref().unchecked_ref())
+            .unwrap();
+
         closure_signal.set(Some(closure));
+
+        (move || {
+            if let Some(closure) = closure_signal.read().as_ref() {
+                document.remove_event_listener_with_callback("click", closure.as_ref().unchecked_ref()).unwrap();
+            }
+        })()
     });
 
     let dropdown_class = if *is_open.read() {

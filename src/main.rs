@@ -19,6 +19,8 @@ use crate::{
     contexts::story_context::{use_story_context, provide_story_context, StoryContext},
 };
 use std::sync::Arc;
+use wasm_bindgen::closure::Closure;
+use web_sys::Event as WebEvent;
 
 fn main() {
     launch(App);
@@ -88,6 +90,7 @@ pub fn Layout() -> Element {
     let mut state = use_context::<Signal<LanguageState>>();
     let mut keyboard_state = use_signal(KeyboardState::default);
     let mut story_context = use_story_context();
+    let closure_signal = use_signal(|| None::<Closure<dyn FnMut(WebEvent)>>);
     
     use_effect(move || {
         let lang = match &route {
@@ -134,7 +137,7 @@ pub fn Layout() -> Element {
             class: "min-h-screen bg-gray-100 dark:bg-gray-900",
             tabindex: "0",
             onkeydown: handle_key_press,
-            Navbar {}
+            Navbar { closure_signal: closure_signal }
             div {
                 class: "container mx-auto px-4 py-8",
                 Outlet::<Route> {}
