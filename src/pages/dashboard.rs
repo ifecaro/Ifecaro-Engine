@@ -513,13 +513,33 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
                     let new_paragraph = if chapter_id.is_empty() {
                         serde_json::json!({
                             "index": if *is_edit_mode.read() { selected_paragraph.read().as_ref().map(|p| p.index).unwrap_or(new_index) } else { new_index },
-                            "texts": [text]
+                            "texts": if *is_edit_mode.read() {
+                                // 在編輯模式下，保留所有現有的翻譯，只更新當前語言的翻譯
+                                let mut existing_texts = selected_paragraph.read().as_ref().map(|p| p.texts.clone()).unwrap_or_default();
+                                // 移除當前語言的舊翻譯（如果存在）
+                                existing_texts.retain(|t| t.lang != *paragraph_language.read());
+                                // 添加新的翻譯
+                                existing_texts.push(text);
+                                existing_texts
+                            } else {
+                                vec![text]
+                            }
                         })
                     } else {
                         serde_json::json!({
                             "chapter_id": chapter_id,
                             "index": if *is_edit_mode.read() { selected_paragraph.read().as_ref().map(|p| p.index).unwrap_or(new_index) } else { new_index },
-                            "texts": [text]
+                            "texts": if *is_edit_mode.read() {
+                                // 在編輯模式下，保留所有現有的翻譯，只更新當前語言的翻譯
+                                let mut existing_texts = selected_paragraph.read().as_ref().map(|p| p.texts.clone()).unwrap_or_default();
+                                // 移除當前語言的舊翻譯（如果存在）
+                                existing_texts.retain(|t| t.lang != *paragraph_language.read());
+                                // 添加新的翻譯
+                                existing_texts.push(text);
+                                existing_texts
+                            } else {
+                                vec![text]
+                            }
                         })
                     };
                     
