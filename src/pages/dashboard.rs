@@ -1028,18 +1028,18 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
             if let Some(paragraph) = paragraph_data.read().iter().find(|p| p.id == id) {
                 selected_paragraph.set(Some(paragraph.clone()));
                 
+                // 清空並重置所有選項相關的狀態
+                choices.write().clear();
+                action_type_open.write().clear();
+                choice_chapters_open.write().clear();
+                choice_chapters_search.write().clear();
+                choice_paragraphs_open.write().clear();
+                choice_paragraphs_search.write().clear();
+                choice_paragraphs.write().clear();
+                
                 // 填充段落內容
                 if let Some(text) = paragraph.texts.iter().find(|t| t.lang == *paragraph_language.read()) {
                     paragraphs.set(text.paragraphs.clone());
-                    
-                    // 清空並重置所有選項相關的狀態
-                    choices.write().clear();
-                    action_type_open.write().clear();
-                    choice_chapters_open.write().clear();
-                    choice_chapters_search.write().clear();
-                    choice_paragraphs_open.write().clear();
-                    choice_paragraphs_search.write().clear();
-                    choice_paragraphs.write().clear();
                     
                     // 填充選項
                     for choice in &text.choices {
@@ -1103,6 +1103,27 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
                         
                         choice_paragraphs.set(current_paragraphs);
                     }
+                } else {
+                    // 如果找不到當前語言的翻譯，清空段落內容並添加一個預設選項
+                    paragraphs.set(String::new());
+                    
+                    // 添加一個預設選項
+                    choices.write().push((
+                        String::new(),
+                        String::new(),
+                        String::new(),
+                        None,
+                        None,
+                        String::new(),
+                    ));
+                    
+                    // 初始化選項狀態
+                    action_type_open.write().push(false);
+                    choice_chapters_open.write().push(false);
+                    choice_chapters_search.write().push(String::new());
+                    choice_paragraphs_open.write().push(false);
+                    choice_paragraphs_search.write().push(String::new());
+                    choice_paragraphs.write().push(Vec::new());
                 }
             }
         }
