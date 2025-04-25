@@ -128,11 +128,16 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
         *lang.borrow_mut() = current_lang.clone();
     });
 
-    // 在語言變更時更新 thread_local 變量
+    // 初始化 paragraph_language 為當前界面語言
+    let mut paragraph_language = use_signal(|| current_lang.clone());
+
+    // 在語言變更時更新 thread_local 變量和 paragraph_language
     use_effect(move || {
+        let current_lang = language_state.read().current_language.clone();
         CURRENT_LANGUAGE.with(|lang| {
-            *lang.borrow_mut() = language_state.read().current_language.clone();
+            *lang.borrow_mut() = current_lang.clone();
         });
+        paragraph_language.set(current_lang);
         
         (move || {})()
     });
@@ -175,7 +180,6 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
     let mut paragraph_data = use_signal(|| Vec::<Paragraph>::new());
     let t = Translations::get(&current_lang);
     let mut _should_scroll = use_signal(|| false);
-    let mut paragraph_language = use_signal(|| current_lang.clone());
     let target_chapter = use_signal(|| String::new());
     let _extra_target_chapters = use_signal(|| Vec::<String>::new());
 
