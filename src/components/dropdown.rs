@@ -105,7 +105,7 @@ pub fn Dropdown<T: Clone + PartialEq + 'static>(props: DropdownProps<T>) -> Elem
                 }}
             }
             div { 
-                class: format!("w-full {}", if props.is_open { "relative z-[1000]" } else { "" }),
+                class: "w-full",
                 button {
                     class: button_class,
                     onclick: move |_| {
@@ -115,9 +115,12 @@ pub fn Dropdown<T: Clone + PartialEq + 'static>(props: DropdownProps<T>) -> Elem
                     },
                     disabled: props.disabled,
                     "aria-required": props.required.to_string(),
-                    span { "{props.value}" }
+                    span { 
+                        class: "block truncate",
+                        "{props.value}" 
+                    }
                     svg { 
-                        class: "fill-current h-4 w-4 transition-transform duration-200 ease-in-out",
+                        class: "flex-shrink-0 fill-current h-4 w-4 transition-transform duration-200 ease-in-out",
                         xmlns: "http://www.w3.org/2000/svg",
                         view_box: "0 0 20 20",
                         path { 

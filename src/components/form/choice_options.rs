@@ -36,13 +36,13 @@ pub fn ChoiceOptions(props: ChoiceOptionsProps) -> Element {
                 div {
                     key: "{index}",
                     div {
-                        class: "text-sm font-medium text-gray-700 dark:text-gray-300 mb-4",
+                        class: "text-sm font-medium text-gray-700 dark:text-gray-300 mb-4 pl-4",
                         span {
                             "{t.option} {index + 1}"
                         }
                     }
                     div {
-                        class: "relative border-2 border-gray-200 dark:border-gray-600 rounded-lg",
+                        class: "relative border-2 border-gray-200 dark:border-gray-600 rounded-lg mb-8",
                         div {
                             class: "p-4 space-y-4",
                             // 標題輸入框

@@ -1288,9 +1288,9 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
                                 div { 
                                     class: "w-full",
                                     div {
-                                        class: "flex flex-col sm:flex-row items-start sm:items-end space-y-2 sm:space-y-0 sm:space-x-4",
+                                        class: "flex flex-col sm:flex-row items-start sm:items-end gap-2 sm:gap-4",
                                         div { 
-                                            class: "w-full sm:flex-1",
+                                            class: "w-full",
                                             crate::components::paragraph_list::ParagraphList {
                                                 label: t.select_paragraph,
                                                 value: selected_paragraph.read().as_ref().map(|p| p.id.clone()).unwrap_or(t.select_paragraph.to_string()),
@@ -1321,7 +1321,7 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
                                         }
 
                                         button {
-                                            class: "w-full md:w-10 h-10 inline-flex items-center justify-center rounded-lg text-white bg-blue-600 hover:bg-blue-700 focus:ring-4 focus:outline-none focus:ring-blue-300 dark:bg-blue-500 dark:hover:bg-blue-600 dark:focus:ring-blue-800 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-blue-600 dark:disabled:hover:bg-blue-500",
+                                            class: "w-full sm:w-10 h-10 inline-flex items-center justify-center rounded-lg text-white bg-blue-600 hover:bg-blue-700 focus:ring-4 focus:outline-none focus:ring-blue-300 dark:bg-blue-500 dark:hover:bg-blue-600 dark:focus:ring-blue-800 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-blue-600 dark:disabled:hover:bg-blue-500 flex-shrink-0",
                                             onclick: move |_| {
                                                 let current_mode = *is_edit_mode.read();
                                                 is_edit_mode.set(!current_mode);
