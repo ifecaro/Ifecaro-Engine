@@ -143,9 +143,10 @@ pub fn Dropdown<T: Clone + PartialEq + 'static>(props: DropdownProps<T>) -> Elem
                                 {props.options.iter().map(|option| {
                                     let display_value = display_fn(option);
                                     let option_clone = option.clone();
+                                    let is_selected = display_value == props.value;
                                     rsx! {
                                         button {
-                                            class: base_option_class.clone(),
+                                            class: format!("{} {}", base_option_class.clone(), if is_selected { "bg-blue-50 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300" } else { "" }),
                                             onclick: move |_| props.on_select.call(option_clone.clone()),
                                             {display_value}
                                         }
