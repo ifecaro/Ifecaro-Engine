@@ -641,7 +641,7 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
                                                                             let selected_lang = paragraph_language.read().clone();
                                                                             let filtered_paragraphs = paragraph_data.read()
                                                                                 .iter()
-                                                                                .filter(|item| item.chapter_id == target_chapter_id)
+                                                                                .filter(|item| item.chapter_id == *target_chapter_id)
                                                                                 .map(|item| {
                                                                                     let preview = item.texts.iter()
                                                                                         .find(|t| t.lang == selected_lang)
@@ -979,7 +979,7 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
                             let selected_lang = paragraph_language.read().clone();
                             let filtered_paragraphs = paragraph_data.read()
                                 .iter()
-                                .filter(|item| item.chapter_id == value)
+                                .filter(|item| item.chapter_id == *value)
                                 .map(|item| {
                                     let preview = item.texts.iter()
                                         .find(|t| t.lang == selected_lang)
@@ -1018,6 +1018,11 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
         let mut paragraphs = paragraphs.clone();
         let mut choices = choices.clone();
         let mut action_type_open = action_type_open.clone();
+        let mut choice_chapters_open = choice_chapters_open.clone();
+        let mut choice_chapters_search = choice_chapters_search.clone();
+        let mut choice_paragraphs_open = choice_paragraphs_open.clone();
+        let mut choice_paragraphs_search = choice_paragraphs_search.clone();
+        let mut choice_paragraphs = choice_paragraphs.clone();
         
         move |index: usize| {
             let available_paragraphs = available_paragraphs.read();
@@ -1058,11 +1063,56 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
                         let choices_len = new_choices.len();
                         choices.set(new_choices);
                         
+                        // 初始化所有選項的狀態
                         let mut new_action_types = Vec::new();
+                        let mut new_chapters_open = Vec::new();
+                        let mut new_chapters_search = Vec::new();
+                        let mut new_paragraphs_open = Vec::new();
+                        let mut new_paragraphs_search = Vec::new();
+                        let mut new_paragraphs = Vec::new();
+                        
                         for _ in 0..choices_len {
                             new_action_types.push(false);
+                            new_chapters_open.push(false);
+                            new_chapters_search.push(String::new());
+                            new_paragraphs_open.push(false);
+                            new_paragraphs_search.push(String::new());
+                            new_paragraphs.push(Vec::new());
                         }
+                        
                         action_type_open.set(new_action_types);
+                        choice_chapters_open.set(new_chapters_open);
+                        choice_chapters_search.set(new_chapters_search);
+                        choice_paragraphs_open.set(new_paragraphs_open);
+                        choice_paragraphs_search.set(new_paragraphs_search);
+                        
+                        // 更新目標段落列表
+                        for (index, (_, _, _, _, _, target_chapter_id)) in choices.read().iter().enumerate() {
+                            if !target_chapter_id.is_empty() {
+                                let selected_lang = paragraph_language.read().clone();
+                                let filtered_paragraphs = paragraph_data.read()
+                                    .iter()
+                                    .filter(|item| item.chapter_id == *target_chapter_id)
+                                    .map(|item| {
+                                        let preview = item.texts.iter()
+                                            .find(|t| t.lang == selected_lang)
+                                            .or_else(|| item.texts.iter().find(|t| t.lang == "en-US" || t.lang == "en-GB"))
+                                            .or_else(|| item.texts.first())
+                                            .map(|text| text.paragraphs.lines().next().unwrap_or("").to_string())
+                                            .unwrap_or_else(|| format!("[{}]", item.id));
+
+                                        crate::components::paragraph_list::Paragraph {
+                                            id: item.id.clone(),
+                                            preview,
+                                        }
+                                    })
+                                    .collect::<Vec<_>>();
+                                
+                                new_paragraphs[index] = filtered_paragraphs;
+                            }
+                        }
+                        
+                        choice_paragraphs.set(new_paragraphs);
                     } else {
                         // 如果沒有找到對應語言的翻譯，清除內容並添加默認選項
                         paragraphs.set(String::new());
@@ -1075,6 +1125,11 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
                             String::new(),
                         )]);
                         action_type_open.set(vec![false]);
+                        choice_chapters_open.set(vec![false]);
+                        choice_chapters_search.set(vec![String::new()]);
+                        choice_paragraphs_open.set(vec![false]);
+                        choice_paragraphs_search.set(vec![String::new()]);
+                        choice_paragraphs.set(vec![Vec::new()]);
                     }
                 }
             }
