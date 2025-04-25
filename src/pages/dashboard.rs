@@ -925,6 +925,12 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
         let mut paragraphs = paragraphs.clone();
         let mut choices = choices.clone();
         let mut update_choice_paragraphs = update_choice_paragraphs.clone();
+        let mut action_type_open = action_type_open.clone();
+        let mut choice_chapters_open = choice_chapters_open.clone();
+        let mut choice_chapters_search = choice_chapters_search.clone();
+        let mut choice_paragraphs_open = choice_paragraphs_open.clone();
+        let mut choice_paragraphs_search = choice_paragraphs_search.clone();
+        let mut choice_paragraphs = choice_paragraphs.clone();
         
         move |id: String| {
             if let Some(paragraph) = paragraph_data.read().iter().find(|p| p.id == id) {
@@ -934,9 +940,16 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
                 if let Some(text) = paragraph.texts.iter().find(|t| t.lang == *paragraph_language.read()) {
                     paragraphs.set(text.paragraphs.clone());
                     
-                    // 填充選項
+                    // 清空並重置所有選項相關的狀態
                     choices.write().clear();
+                    action_type_open.write().clear();
+                    choice_chapters_open.write().clear();
+                    choice_chapters_search.write().clear();
+                    choice_paragraphs_open.write().clear();
+                    choice_paragraphs_search.write().clear();
+                    choice_paragraphs.write().clear();
                     
+                    // 填充選項
                     for choice in &text.choices {
                         choices.write().push((
                             choice.caption.clone(),
@@ -946,6 +959,14 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
                             choice.action.value.clone(),
                             choice.action.to.clone(),
                         ));
+                        
+                        // 初始化每個選項的狀態
+                        action_type_open.write().push(false);
+                        choice_chapters_open.write().push(false);
+                        choice_chapters_search.write().push(String::new());
+                        choice_paragraphs_open.write().push(false);
+                        choice_paragraphs_search.write().push(String::new());
+                        choice_paragraphs.write().push(Vec::new());
                         
                         // 更新目標章節的段落列表
                         let current_index = choices.read().len() - 1;
