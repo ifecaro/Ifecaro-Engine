@@ -31,6 +31,7 @@ pub struct Translations {
     pub continue_reading: &'static str,
     pub start_reading: &'static str,
     pub target_chapter: &'static str,
+    pub untranslated: &'static str,
 }
 
 impl PartialEq for Translations {
@@ -65,7 +66,8 @@ impl PartialEq for Translations {
         self.paragraph_content == other.paragraph_content &&
         self.continue_reading == other.continue_reading &&
         self.start_reading == other.start_reading &&
-        self.target_chapter == other.target_chapter
+        self.target_chapter == other.target_chapter &&
+        self.untranslated == other.untranslated
     }
 }
 
@@ -104,6 +106,7 @@ impl Translations {
                 continue_reading: "Click anywhere on the screen to continue",
                 start_reading: "Click anywhere on the screen to start",
                 target_chapter: "Target Chapter",
+                untranslated: "Untranslated",
             },
             "es-ES" => Self {
                 add: "Añadir",
@@ -137,6 +140,7 @@ impl Translations {
                 continue_reading: "Haz clic en cualquier parte de la pantalla para continuar",
                 start_reading: "Haz clic en cualquier parte de la pantalla para comenzar",
                 target_chapter: "Capítulo Objetivo",
+                untranslated: "Sin traducir",
             },
             "es-CL" => Self {
                 add: "Agregar",
@@ -170,6 +174,7 @@ impl Translations {
                 continue_reading: "Haz clic en cualquier parte de la pantalla para continuar",
                 start_reading: "Haz clic en cualquier parte de la pantalla para comenzar",
                 target_chapter: "Capítulo Objetivo",
+                untranslated: "Sin traducir",
             },
             "zh-TW" => Self {
                 add: "新增",
@@ -203,6 +208,7 @@ impl Translations {
                 continue_reading: "點擊螢幕任意處繼續",
                 start_reading: "點擊螢幕任意處開始",
                 target_chapter: "目標章節",
+                untranslated: "未翻譯",
             },
             "zh-CN" => Self {
                 add: "添加",
@@ -236,6 +242,7 @@ impl Translations {
                 continue_reading: "点击屏幕任意处继续",
                 start_reading: "点击屏幕任意处开始",
                 target_chapter: "目标章节",
+                untranslated: "未翻译",
             },
             _ => Self {
                 add: "Add",
@@ -269,6 +276,7 @@ impl Translations {
                 continue_reading: "Click anywhere on the screen to continue",
                 start_reading: "Click anywhere on the screen to start",
                 target_chapter: "Target Chapter",
+                untranslated: "Untranslated",
             },
         }
     }

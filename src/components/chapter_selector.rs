@@ -39,6 +39,7 @@ pub fn ChapterSelector(props: ChapterSelectorProps) -> Element {
         props.selected_language.clone()
     };
     
+    
     // 更新 thread_local 變量
     SELECTED_LANGUAGE.with(|lang| {
         *lang.borrow_mut() = selected_lang.clone();
@@ -48,10 +49,20 @@ pub fn ChapterSelector(props: ChapterSelectorProps) -> Element {
     let filtered_chapters = props.chapters.iter()
         .filter(|chapter| {
             let query = props.search_query.to_lowercase();
-            chapter.titles.iter()
+            if query.is_empty() {
+                return true;
+            }
+            
+            let title = chapter.titles.iter()
                 .find(|t| t.lang == selected_lang)
-                .map(|t| t.title.to_lowercase().contains(&query))
-                .unwrap_or(false)
+                .or_else(|| chapter.titles.iter().find(|t| t.lang == "en-US" || t.lang == "en-GB"))
+                .or_else(|| chapter.titles.first());
+            
+            if let Some(title) = title {
+                title.title.to_lowercase().contains(&query)
+            } else {
+                false
+            }
         })
         .cloned()
         .collect::<Vec<_>>();
@@ -65,6 +76,7 @@ pub fn ChapterSelector(props: ChapterSelectorProps) -> Element {
             .map(|c| {
                 c.titles.iter()
                     .find(|t| t.lang == selected_lang)
+                    .or_else(|| c.titles.iter().find(|t| t.lang == "en-US" || t.lang == "en-GB"))
                     .or_else(|| c.titles.first())
                     .map(|t| t.title.clone())
                     .unwrap_or_default()
@@ -77,6 +89,7 @@ pub fn ChapterSelector(props: ChapterSelectorProps) -> Element {
         let selected_lang = SELECTED_LANGUAGE.with(|lang| lang.borrow().clone());
         chapter.titles.iter()
             .find(|t| t.lang == selected_lang)
+            .or_else(|| chapter.titles.iter().find(|t| t.lang == "en-US" || t.lang == "en-GB"))
             .or_else(|| chapter.titles.first())
             .map(|t| t.title.clone())
             .unwrap_or_default()

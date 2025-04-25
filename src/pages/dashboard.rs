@@ -18,6 +18,8 @@ use crate::constants::config::{BASE_API_URL, PARAGRAPHS, CHAPTERS};
 use web_sys::window;
 use wasm_bindgen::closure::Closure;
 use wasm_bindgen::JsCast;
+use std::rc::Rc;
+use tracing::error;
 
 thread_local! {
     static CURRENT_LANGUAGE: RefCell<String> = RefCell::new(String::from("zh-TW"));
@@ -207,40 +209,52 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
     let mut error_message = use_signal(|| String::new());
     let mut paragraph_previews = use_signal(|| Vec::<crate::components::paragraph_list::Paragraph>::new());
 
-    let mut update_paragraph_previews = move || {
+    let update_paragraph_previews = Rc::new(RefCell::new(move || {
         let selected_language = paragraph_language.read().clone();
         let selected_chapter_id = selected_chapter.read().clone();
+        let t = Translations::get(&current_lang);
         
         if selected_language.is_empty() || selected_chapter_id.is_empty() {
             available_paragraphs.set(Vec::new());
             return;
         }
         
-        let paragraphs = paragraph_data
+        // 將段落分成兩組
+        let (translated_paragraphs, untranslated_paragraphs): (Vec<_>, Vec<_>) = paragraph_data
             .read()
             .iter()
-            .filter(|p| {
-                p.texts.iter().any(|text| text.lang == selected_language) && 
-                p.chapter_id == selected_chapter_id
-            })
+            .filter(|p| p.chapter_id == selected_chapter_id)
             .map(|p| {
+                let has_translation = p.texts.iter().any(|text| text.lang == selected_language);
+                
                 let preview = p.texts
                     .iter()
                     .find(|text| text.lang == selected_language)
+                    .or_else(|| p.texts.iter().find(|text| text.lang == "en-US" || text.lang == "en-GB"))
+                    .or_else(|| p.texts.first())
                     .map(|text| {
-                        text.paragraphs.lines().next().unwrap_or_default().to_string()
+                        let preview_text = text.paragraphs.lines().next().unwrap_or_default().to_string();
+                        if !has_translation {
+                            format!("（{}）{}", t.untranslated, preview_text)
+                        } else {
+                            preview_text
+                        }
                     })
                     .unwrap_or_default();
                 
-                crate::components::paragraph_list::Paragraph {
+                (crate::components::paragraph_list::Paragraph {
                     id: p.id.clone(),
                     preview,
-                }
+                }, has_translation)
             })
-            .collect::<Vec<_>>();
+            .partition(|(_, has_translation)| *has_translation);
         
-        available_paragraphs.set(paragraphs);
-    };
+        // 合併段落，先放有翻譯的，再放沒有翻譯的
+        let mut all_paragraphs = translated_paragraphs.into_iter().map(|(p, _)| p).collect::<Vec<_>>();
+        all_paragraphs.extend(untranslated_paragraphs.into_iter().map(|(p, _)| p));
+        
+        available_paragraphs.set(all_paragraphs);
+    }));
 
     // 載入章節列表
     use_effect(move || {
@@ -283,11 +297,17 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
                                     available_chapters.set(sorted_chapters);
                                 }
                             }
-                            Err(_) => {}
+                            Err(e) => {
+                                error!("解析章節數據失敗: {:?}", e);
+                            }
                         }
+                    } else {
+                        error!("載入章節失敗，狀態碼: {}", response.status());
                     }
                 }
-                Err(_) => {}
+                Err(e) => {
+                    error!("載入章節請求失敗: {:?}", e);
+                }
             }
         });
         
@@ -295,36 +315,42 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
     });
 
     // 載入段落數據
-    use_effect(move || {
-        let paragraphs_url = format!("{}{}", BASE_API_URL, PARAGRAPHS);
-        let client = reqwest::Client::new();
-        let mut has_loaded = has_loaded.clone();
-        let mut paragraph_data = paragraph_data.clone();
-        let mut update_paragraph_previews = update_paragraph_previews.clone();
+    {
+        let update_paragraph_previews = update_paragraph_previews.clone();
+        use_effect(move || {
+            let paragraphs_url = format!("{}{}", BASE_API_URL, PARAGRAPHS);
+            let client = reqwest::Client::new();
+            let mut has_loaded = has_loaded.clone();
+            let mut paragraph_data = paragraph_data.clone();
+            let update_paragraph_previews = update_paragraph_previews.clone();
 
-        wasm_bindgen_futures::spawn_local(async move {
-            // 載入段落
-            let auth_token = env::var("AUTH_TOKEN").unwrap_or_else(|_| "YOUR_AUTH_TOKEN".to_string());
-            match client.get(&paragraphs_url)
-                .header("Authorization", format!("Bearer {}", auth_token))
-                .send()
-                .await {
-                Ok(response) => {
-                    match response.json::<Data>().await {
-                        Ok(data) => {
-                            paragraph_data.set(data.items.clone());
-                            update_paragraph_previews();
-                            has_loaded.set(true);
+            wasm_bindgen_futures::spawn_local(async move {
+                let auth_token = env::var("AUTH_TOKEN").unwrap_or_else(|_| "YOUR_AUTH_TOKEN".to_string());
+                match client.get(&paragraphs_url)
+                    .header("Authorization", format!("Bearer {}", auth_token))
+                    .send()
+                    .await {
+                    Ok(response) => {
+                        match response.json::<Data>().await {
+                            Ok(data) => {
+                                paragraph_data.set(data.items.clone());
+                                (*update_paragraph_previews.borrow_mut())();
+                                has_loaded.set(true);
+                            }
+                            Err(e) => {
+                                error!("解析段落數據失敗: {:?}", e);
+                            }
                         }
-                        Err(_e) => {}
+                    }
+                    Err(e) => {
+                        error!("載入段落請求失敗: {:?}", e);
                     }
                 }
-                Err(_) => {}
-            }
+            });
+            
+            (move || {})()
         });
-        
-        (move || {})()
-    });
+    }
 
     let filtered_languages = use_memo(move || {
         let query = search_query.read().to_lowercase();
@@ -433,274 +459,280 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
         }
     };
 
-    let handle_submit = move |_| {
-        if !*is_form_valid.read() {
-            return;
-        }
-        
-        let mut choices_vec = Vec::new();
-        let _current_lang = language_state.read().current_language.clone();
-        
-        for (caption, goto, action_type, action_key, action_value, _target_chapter) in choices.read().iter() {
-            if !caption.trim().is_empty() {
-                let choice = Choice {
-                    caption: caption.clone(),
-                    action: Action {
-                        type_: action_type.clone(),
-                        key: action_key.clone(),
-                        value: action_value.clone(),
-                        to: goto.clone(),
-                    },
-                };
-                choices_vec.push(choice);
+    let handle_submit = {
+        let update_paragraph_previews = update_paragraph_previews.clone();
+        Rc::new(move || {
+            if !*is_form_valid.read() {
+                return;
             }
-        }
-
-        let text = Text {
-            lang: paragraph_language.read().clone(),
-            paragraphs: paragraphs.read().clone(),
-            choices: choices_vec.clone(),
-        };
-
-        spawn_local(async move {
-            let client = reqwest::Client::new();
             
-            // 計算新段落的 index
-            let max_index = paragraph_data.read().iter()
-                .map(|p| p.index)
-                .max()
-                .unwrap_or(0);
-            let new_index = max_index + 1;
+            let mut choices_vec = Vec::new();
+            let _current_lang = language_state.read().current_language.clone();
             
-            // 建立新的段落資料
-            let chapter_id = selected_chapter.read().clone();
-            
-            // 建立新的段落資料
-            let new_paragraph = if chapter_id.is_empty() {
-                serde_json::json!({
-                    "index": if *is_edit_mode.read() { selected_paragraph.read().as_ref().map(|p| p.index).unwrap_or(new_index) } else { new_index },
-                    "texts": [text]
-                })
-            } else {
-                serde_json::json!({
-                    "chapter_id": chapter_id,
-                    "index": if *is_edit_mode.read() { selected_paragraph.read().as_ref().map(|p| p.index).unwrap_or(new_index) } else { new_index },
-                    "texts": [text]
-                })
-            };
-            
-            // 發布到段落集合
-            let paragraphs_url = format!("{}{}", BASE_API_URL, PARAGRAPHS);
-            
-            let response = if *is_edit_mode.read() {
-                // 編輯模式：使用 PATCH 方法更新現有段落
-                if let Some(paragraph) = selected_paragraph.read().as_ref() {
-                    let update_url = format!("{}{}/{}", BASE_API_URL, PARAGRAPHS, paragraph.id);
-                    client.patch(&update_url)
-                        .json(&new_paragraph)
-                        .send()
-                        .await
-                } else {
-                    return;
+            for (caption, goto, action_type, action_key, action_value, _target_chapter) in choices.read().iter() {
+                if !caption.trim().is_empty() {
+                    let choice = Choice {
+                        caption: caption.clone(),
+                        action: Action {
+                            type_: action_type.clone(),
+                            key: action_key.clone(),
+                            value: action_value.clone(),
+                            to: goto.clone(),
+                        },
+                    };
+                    choices_vec.push(choice);
                 }
-            } else {
-                // 新增模式：使用 POST 方法創建新段落
-                client.post(&paragraphs_url)
-                    .json(&new_paragraph)
-                    .send()
-                    .await
+            }
+
+            let text = Text {
+                lang: paragraph_language.read().clone(),
+                paragraphs: paragraphs.read().clone(),
+                choices: choices_vec.clone(),
             };
 
-            match response {
-                Ok(response) => {
-                    let status = response.status();
-                    if status.is_success() {
-                        // 重新載入段落資料
-                        let paragraphs_url = format!("{}{}", BASE_API_URL, PARAGRAPHS);
-                        match client.get(&paragraphs_url)
+            spawn_local({
+                let update_paragraph_previews = update_paragraph_previews.clone();
+                async move {
+                    let client = reqwest::Client::new();
+                    
+                    // 計算新段落的 index
+                    let max_index = paragraph_data.read().iter()
+                        .map(|p| p.index)
+                        .max()
+                        .unwrap_or(0);
+                    let new_index = max_index + 1;
+                    
+                    // 建立新的段落資料
+                    let chapter_id = selected_chapter.read().clone();
+                    
+                    // 建立新的段落資料
+                    let new_paragraph = if chapter_id.is_empty() {
+                        serde_json::json!({
+                            "index": if *is_edit_mode.read() { selected_paragraph.read().as_ref().map(|p| p.index).unwrap_or(new_index) } else { new_index },
+                            "texts": [text]
+                        })
+                    } else {
+                        serde_json::json!({
+                            "chapter_id": chapter_id,
+                            "index": if *is_edit_mode.read() { selected_paragraph.read().as_ref().map(|p| p.index).unwrap_or(new_index) } else { new_index },
+                            "texts": [text]
+                        })
+                    };
+                    
+                    // 發布到段落集合
+                    let paragraphs_url = format!("{}{}", BASE_API_URL, PARAGRAPHS);
+                    
+                    let response = if *is_edit_mode.read() {
+                        // 編輯模式：使用 PATCH 方法更新現有段落
+                        if let Some(paragraph) = selected_paragraph.read().as_ref() {
+                            let update_url = format!("{}{}/{}", BASE_API_URL, PARAGRAPHS, paragraph.id);
+                            client.patch(&update_url)
+                                .json(&new_paragraph)
+                                .send()
+                                .await
+                        } else {
+                            return;
+                        }
+                    } else {
+                        // 新增模式：使用 POST 方法創建新段落
+                        client.post(&paragraphs_url)
+                            .json(&new_paragraph)
                             .send()
-                            .await {
-                            Ok(response) => {
-                                if response.status().is_success() {
-                                    match response.json::<Data>().await {
-                                        Ok(data) => {
-                                            paragraph_data.set(data.items.clone());
-                                            update_paragraph_previews();
-                                            
-                                            // 如果是編輯模式，重新顯示更新後的段落內容
-                                            if *is_edit_mode.read() {
-                                                // 先獲取所需的資料並釋放借用
-                                                let paragraph_id = {
-                                                    let paragraph = selected_paragraph.read();
-                                                    paragraph.as_ref().map(|p| p.id.clone())
-                                                };
-                                                
-                                                if let Some(id) = paragraph_id {
-                                                    if let Some(updated_paragraph) = data.items.iter().find(|p| p.id == id) {
-                                                        let updated_paragraph = updated_paragraph.clone();
-                                                        selected_paragraph.set(Some(updated_paragraph.clone()));
+                            .await
+                    };
+
+                    match response {
+                        Ok(response) => {
+                            let status = response.status();
+                            if status.is_success() {
+                                // 重新載入段落資料
+                                let paragraphs_url = format!("{}{}", BASE_API_URL, PARAGRAPHS);
+                                match client.get(&paragraphs_url)
+                                    .send()
+                                    .await {
+                                    Ok(response) => {
+                                        if response.status().is_success() {
+                                            match response.json::<Data>().await {
+                                                Ok(data) => {
+                                                    paragraph_data.set(data.items.clone());
+                                                    (*update_paragraph_previews.borrow_mut())();
+                                                    
+                                                    // 如果是編輯模式，重新顯示更新後的段落內容
+                                                    if *is_edit_mode.read() {
+                                                        // 先獲取所需的資料並釋放借用
+                                                        let paragraph_id = {
+                                                            let paragraph = selected_paragraph.read();
+                                                            paragraph.as_ref().map(|p| p.id.clone())
+                                                        };
                                                         
-                                                        // 填充段落內容
-                                                        if let Some(text) = updated_paragraph.texts.iter().find(|t| t.lang == *paragraph_language.read()) {
-                                                            paragraphs.set(text.paragraphs.clone());
-                                                            
-                                                            // 填充選項
-                                                            choices.write().clear();
-                                                            for choice in &text.choices {
-                                                                choices.write().push((
-                                                                    choice.caption.clone(),
-                                                                    choice.action.to.clone(),
-                                                                    choice.action.type_.clone(),
-                                                                    choice.action.key.clone(),
-                                                                    choice.action.value.clone(),
-                                                                    choice.action.to.clone(),
-                                                                ));
+                                                        if let Some(id) = paragraph_id {
+                                                            if let Some(updated_paragraph) = data.items.iter().find(|p| p.id == id) {
+                                                                let updated_paragraph = updated_paragraph.clone();
+                                                                selected_paragraph.set(Some(updated_paragraph.clone()));
+                                                                
+                                                                // 填充段落內容
+                                                                if let Some(text) = updated_paragraph.texts.iter().find(|t| t.lang == *paragraph_language.read()) {
+                                                                    paragraphs.set(text.paragraphs.clone());
+                                                                    
+                                                                    // 填充選項
+                                                                    choices.write().clear();
+                                                                    for choice in &text.choices {
+                                                                        choices.write().push((
+                                                                            choice.caption.clone(),
+                                                                            choice.action.to.clone(),
+                                                                            choice.action.type_.clone(),
+                                                                            choice.action.key.clone(),
+                                                                            choice.action.value.clone(),
+                                                                            choice.action.to.clone(),
+                                                                        ));
+                                                                    }
+                                                                }
                                                             }
                                                         }
+                                                    } else {
+                                                        // 新增模式：清空所有欄位
+                                                        paragraphs.set(String::new());
+                                                        choices.write().clear();
+                                                        selected_paragraph.set(None);
+                                                        selected_chapter.set(String::new());  // 重置選擇的章節
+                                                        (*update_paragraph_previews.borrow_mut())();
+                                                        paragraph_previews.set(Vec::new());  // 重置段落預覽
                                                     }
                                                 }
-                                            } else {
-                                                // 新增模式：清空所有欄位
-                                                paragraphs.set(String::new());
-                                                choices.write().clear();
-                                                selected_paragraph.set(None);
-                                                selected_chapter.set(String::new());  // 重置選擇的章節
-                                                update_paragraph_previews();
-                                                paragraph_previews.set(Vec::new());  // 重置段落預覽
+                                                Err(_) => {}
                                             }
                                         }
-                                        Err(_) => {}
+                                    }
+                                    Err(_) => {}
+                                }
+                                
+                                show_toast.set(true);
+                                
+                                let mut toast_visible = toast_visible.clone();
+                                spawn_local(async move {
+                                    let window = web_sys::window().unwrap();
+                                    let promise = js_sys::Promise::new(&mut |resolve, _| {
+                                        window
+                                            .set_timeout_with_callback_and_timeout_and_arguments_0(
+                                                &resolve,
+                                                50,
+                                            )
+                                            .unwrap();
+                                    });
+                                    let _ = wasm_bindgen_futures::JsFuture::from(promise).await;
+                                    toast_visible.set(true);
+
+                                    // 3秒後隱藏 toast
+                                    let promise = js_sys::Promise::new(&mut |resolve, _| {
+                                        window
+                                            .set_timeout_with_callback_and_timeout_and_arguments_0(
+                                                &resolve,
+                                                3000,
+                                            )
+                                            .unwrap();
+                                    });
+                                    let _ = wasm_bindgen_futures::JsFuture::from(promise).await;
+                                    toast_visible.set(false);
+                                });
+                            } else {
+                                match response.text().await {
+                                    Ok(error_text) => {
+                                        error_message.set(format!("伺服器錯誤: {}", error_text));
+                                        show_error_toast.set(true);
+                                        let mut error_toast_visible = error_toast_visible.clone();
+                                        spawn_local(async move {
+                                            let window = web_sys::window().unwrap();
+                                            let promise = js_sys::Promise::new(&mut |resolve, _| {
+                                                window
+                                                    .set_timeout_with_callback_and_timeout_and_arguments_0(
+                                                        &resolve,
+                                                        50,
+                                                    )
+                                                    .unwrap();
+                                            });
+                                            let _ = wasm_bindgen_futures::JsFuture::from(promise).await;
+                                            error_toast_visible.set(true);
+
+                                            // 3秒後隱藏 toast
+                                            let promise = js_sys::Promise::new(&mut |resolve, _| {
+                                                window
+                                                    .set_timeout_with_callback_and_timeout_and_arguments_0(
+                                                        &resolve,
+                                                        3000,
+                                                    )
+                                                    .unwrap();
+                                            });
+                                            let _ = wasm_bindgen_futures::JsFuture::from(promise).await;
+                                            error_toast_visible.set(false);
+                                        });
+                                    }
+                                    Err(_) => {
+                                        error_message.set(format!("伺服器錯誤: {}", status));
+                                        show_error_toast.set(true);
+                                        let mut error_toast_visible = error_toast_visible.clone();
+                                        spawn_local(async move {
+                                            let window = web_sys::window().unwrap();
+                                            let promise = js_sys::Promise::new(&mut |resolve, _| {
+                                                window
+                                                    .set_timeout_with_callback_and_timeout_and_arguments_0(
+                                                        &resolve,
+                                                        50,
+                                                    )
+                                                    .unwrap();
+                                            });
+                                            let _ = wasm_bindgen_futures::JsFuture::from(promise).await;
+                                            error_toast_visible.set(true);
+
+                                            // 3秒後隱藏 toast
+                                            let promise = js_sys::Promise::new(&mut |resolve, _| {
+                                                window
+                                                    .set_timeout_with_callback_and_timeout_and_arguments_0(
+                                                        &resolve,
+                                                        3000,
+                                                    )
+                                                    .unwrap();
+                                            });
+                                            let _ = wasm_bindgen_futures::JsFuture::from(promise).await;
+                                            error_toast_visible.set(false);
+                                        });
                                     }
                                 }
                             }
-                            Err(_) => {}
                         }
-                        
-                        show_toast.set(true);
-                        
-                        let mut toast_visible = toast_visible.clone();
-                        spawn_local(async move {
-                            let window = web_sys::window().unwrap();
-                            let promise = js_sys::Promise::new(&mut |resolve, _| {
-                                window
-                                    .set_timeout_with_callback_and_timeout_and_arguments_0(
-                                        &resolve,
-                                        50,
-                                    )
-                                    .unwrap();
-                            });
-                            let _ = wasm_bindgen_futures::JsFuture::from(promise).await;
-                            toast_visible.set(true);
-
-                            // 3秒後隱藏 toast
-                            let promise = js_sys::Promise::new(&mut |resolve, _| {
-                                window
-                                    .set_timeout_with_callback_and_timeout_and_arguments_0(
-                                        &resolve,
-                                        3000,
-                                    )
-                                    .unwrap();
-                            });
-                            let _ = wasm_bindgen_futures::JsFuture::from(promise).await;
-                            toast_visible.set(false);
-                        });
-                    } else {
-                        match response.text().await {
-                            Ok(error_text) => {
-                                error_message.set(format!("伺服器錯誤: {}", error_text));
-                                show_error_toast.set(true);
-                                let mut error_toast_visible = error_toast_visible.clone();
-                                spawn_local(async move {
-                                    let window = web_sys::window().unwrap();
-                                    let promise = js_sys::Promise::new(&mut |resolve, _| {
-                                        window
-                                            .set_timeout_with_callback_and_timeout_and_arguments_0(
-                                                &resolve,
-                                                50,
-                                            )
-                                            .unwrap();
-                                    });
-                                    let _ = wasm_bindgen_futures::JsFuture::from(promise).await;
-                                    error_toast_visible.set(true);
-
-                                    // 3秒後隱藏 toast
-                                    let promise = js_sys::Promise::new(&mut |resolve, _| {
-                                        window
-                                            .set_timeout_with_callback_and_timeout_and_arguments_0(
-                                                &resolve,
-                                                3000,
-                                            )
-                                            .unwrap();
-                                    });
-                                    let _ = wasm_bindgen_futures::JsFuture::from(promise).await;
-                                    error_toast_visible.set(false);
+                        Err(e) => {
+                            error_message.set(format!("網路錯誤: {}", e));
+                            show_error_toast.set(true);
+                            let mut error_toast_visible = error_toast_visible.clone();
+                            spawn_local(async move {
+                                let window = web_sys::window().unwrap();
+                                let promise = js_sys::Promise::new(&mut |resolve, _| {
+                                    window
+                                        .set_timeout_with_callback_and_timeout_and_arguments_0(
+                                            &resolve,
+                                            50,
+                                        )
+                                        .unwrap();
                                 });
-                            }
-                            Err(_) => {
-                                error_message.set(format!("伺服器錯誤: {}", status));
-                                show_error_toast.set(true);
-                                let mut error_toast_visible = error_toast_visible.clone();
-                                spawn_local(async move {
-                                    let window = web_sys::window().unwrap();
-                                    let promise = js_sys::Promise::new(&mut |resolve, _| {
-                                        window
-                                            .set_timeout_with_callback_and_timeout_and_arguments_0(
-                                                &resolve,
-                                                50,
-                                            )
-                                            .unwrap();
-                                    });
-                                    let _ = wasm_bindgen_futures::JsFuture::from(promise).await;
-                                    error_toast_visible.set(true);
+                                let _ = wasm_bindgen_futures::JsFuture::from(promise).await;
+                                error_toast_visible.set(true);
 
-                                    // 3秒後隱藏 toast
-                                    let promise = js_sys::Promise::new(&mut |resolve, _| {
-                                        window
-                                            .set_timeout_with_callback_and_timeout_and_arguments_0(
-                                                &resolve,
-                                                3000,
-                                            )
-                                            .unwrap();
-                                    });
-                                    let _ = wasm_bindgen_futures::JsFuture::from(promise).await;
-                                    error_toast_visible.set(false);
+                                // 3秒後隱藏 toast
+                                let promise = js_sys::Promise::new(&mut |resolve, _| {
+                                    window
+                                        .set_timeout_with_callback_and_timeout_and_arguments_0(
+                                            &resolve,
+                                            3000,
+                                        )
+                                        .unwrap();
                                 });
-                            }
+                                let _ = wasm_bindgen_futures::JsFuture::from(promise).await;
+                                error_toast_visible.set(false);
+                            });
                         }
                     }
                 }
-                Err(e) => {
-                    error_message.set(format!("網路錯誤: {}", e));
-                    show_error_toast.set(true);
-                    let mut error_toast_visible = error_toast_visible.clone();
-                    spawn_local(async move {
-                        let window = web_sys::window().unwrap();
-                        let promise = js_sys::Promise::new(&mut |resolve, _| {
-                            window
-                                .set_timeout_with_callback_and_timeout_and_arguments_0(
-                                    &resolve,
-                                    50,
-                                )
-                                .unwrap();
-                        });
-                        let _ = wasm_bindgen_futures::JsFuture::from(promise).await;
-                        error_toast_visible.set(true);
-
-                        // 3秒後隱藏 toast
-                        let promise = js_sys::Promise::new(&mut |resolve, _| {
-                            window
-                                .set_timeout_with_callback_and_timeout_and_arguments_0(
-                                    &resolve,
-                                    3000,
-                                )
-                                .unwrap();
-                        });
-                        let _ = wasm_bindgen_futures::JsFuture::from(promise).await;
-                        error_toast_visible.set(false);
-                    });
-                }
-            }
-        });
+            });
+        })
     };
 
     let handle_action_type_toggle = move |index: usize| {
@@ -784,28 +816,37 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
     });
 
     // 在語言變更時更新段落預覽
-    use_effect(move || {
-        let _ = paragraph_language.read().clone();
-        update_paragraph_previews();
-        
-        (move || {})()
-    });
+    {
+        let update_paragraph_previews = update_paragraph_previews.clone();
+        use_effect(move || {
+            let _ = paragraph_language.read().clone();
+            (*update_paragraph_previews.borrow_mut())();
+            
+            (move || {})()
+        });
+    }
 
     // 在章節選擇變更時更新段落預覽
-    use_effect(move || {
-        let _ = selected_chapter.read().clone();
-        update_paragraph_previews();
-        
-        (move || {})()
-    });
+    {
+        let update_paragraph_previews = update_paragraph_previews.clone();
+        use_effect(move || {
+            let _ = selected_chapter.read().clone();
+            (*update_paragraph_previews.borrow_mut())();
+            
+            (move || {})()
+        });
+    }
 
     // 在目標章節選擇變更時更新段落預覽
-    use_effect(move || {
-        let _ = target_chapter.read().clone();
-        update_paragraph_previews();
-        
-        (move || {})()
-    });
+    {
+        let update_paragraph_previews = update_paragraph_previews.clone();
+        use_effect(move || {
+            let _ = target_chapter.read().clone();
+            (*update_paragraph_previews.borrow_mut())();
+            
+            (move || {})()
+        });
+    }
 
     // 更新特定選項的段落列表
     let update_choice_paragraphs = {
@@ -1087,35 +1128,38 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
                                             is_open.set(!current);
                                         },
                                         on_search: move |query| search_query.set(query),
-                                        on_select: move |lang: &Language| {
-                                            let current_lang = lang.code.to_string();
-                                            paragraph_language.set(current_lang.clone());
-                                            update_paragraph_previews();
-                                            is_open.set(false);
-                                            search_query.set(String::new());
-                                            
-                                                    // 檢查是否有已存在的翻譯，使用精確匹配
-                                            if let Some(paragraph) = selected_paragraph.read().as_ref() {
-                                                        // 填充段落內容
-                                                paragraphs.set(paragraph.texts.iter().find(|text| text.lang == current_lang).map(|t| t.paragraphs.clone()).unwrap_or_default());
-                                                        
-                                                        // 填充選項
-                                                choices.write().clear();
-                                                if !paragraph.texts.iter().find(|text| text.lang == current_lang).map(|t| t.choices.clone()).unwrap_or_default().is_empty() {
-                                                    let choice = &paragraph.texts.iter().find(|text| text.lang == current_lang).map(|t| t.choices[0].clone()).unwrap();
-                                                    choices.write().push((
-                                                        choice.caption.clone(),
-                                                        choice.action.to.clone(),
-                                                        choice.action.type_.clone(),
-                                                        choice.action.key.clone(),
-                                                        choice.action.value.clone(),
-                                                        choice.action.to.clone(),
-                                                    ));
-                                                        }
-                                                    } else {
-                                                        // 如果沒有當前語言的翻譯，清空所有欄位
-                                                        paragraphs.set(String::new());
-                                                choices.write().clear();
+                                        on_select: {
+                                            let update_paragraph_previews = update_paragraph_previews.clone();
+                                            move |lang: &Language| {
+                                                let current_lang = lang.code.to_string();
+                                                paragraph_language.set(current_lang.clone());
+                                                (*update_paragraph_previews.borrow_mut())();
+                                                is_open.set(false);
+                                                search_query.set(String::new());
+                                                
+                                                // 檢查是否有已存在的翻譯，使用精確匹配
+                                                if let Some(paragraph) = selected_paragraph.read().as_ref() {
+                                                    // 填充段落內容
+                                                    paragraphs.set(paragraph.texts.iter().find(|text| text.lang == current_lang).map(|t| t.paragraphs.clone()).unwrap_or_default());
+                                                    
+                                                    // 填充選項
+                                                    choices.write().clear();
+                                                    if !paragraph.texts.iter().find(|text| text.lang == current_lang).map(|t| t.choices.clone()).unwrap_or_default().is_empty() {
+                                                        let choice = &paragraph.texts.iter().find(|text| text.lang == current_lang).map(|t| t.choices[0].clone()).unwrap();
+                                                        choices.write().push((
+                                                            choice.caption.clone(),
+                                                            choice.action.to.clone(),
+                                                            choice.action.type_.clone(),
+                                                            choice.action.key.clone(),
+                                                            choice.action.value.clone(),
+                                                            choice.action.to.clone(),
+                                                        ));
+                                                    }
+                                                } else {
+                                                    // 如果沒有當前語言的翻譯，清空所有欄位
+                                                    paragraphs.set(String::new());
+                                                    choices.write().clear();
+                                                }
                                             }
                                         },
                                         display_fn: display_language,
@@ -1139,12 +1183,15 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
                                             is_chapter_open.set(!current);
                                         },
                                         on_search: move |query| chapter_search_query.set(query),
-                                        on_select: move |chapter: Chapter| {
-                                            selected_chapter.set(chapter.id.clone());
-                                            is_chapter_open.set(false);
-                                            chapter_search_query.set(String::new());
-                                            validate_field(&chapter.id, &mut chapter_error);
-                                            update_paragraph_previews();
+                                        on_select: {
+                                            let update_paragraph_previews = update_paragraph_previews.clone();
+                                            move |chapter: Chapter| {
+                                                selected_chapter.set(chapter.id.clone());
+                                                is_chapter_open.set(false);
+                                                chapter_search_query.set(String::new());
+                                                validate_field(&chapter.id, &mut chapter_error);
+                                                (*update_paragraph_previews.borrow_mut())();
+                                            }
                                         },
                                         has_error: *chapter_error.read(),
                                         selected_language: paragraph_language.read().clone(),
@@ -1308,11 +1355,14 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
                                     let is_valid = *is_form_valid.read();
                                     (edit_mode && selected_para) || !has_changes || !is_valid
                                 },
-                                onclick: move |_| {
-                                    if *is_edit_mode.read() {
-                                        handle_submit(());
-                                    } else {
-                                        handle_submit(());
+                                onclick: {
+                                    let handle_submit = handle_submit.clone();
+                                    move |_| {
+                                        if *is_edit_mode.read() {
+                                            (*handle_submit)();
+                                        } else {
+                                            (*handle_submit)();
+                                        }
                                     }
                                 },
                                 "{t.submit}"
