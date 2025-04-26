@@ -6,11 +6,7 @@ use crate::enums::translations::Translations;
 pub struct Paragraph {
     pub id: String,
     pub preview: String,
-}
-
-#[allow(dead_code)]
-fn display_paragraph(paragraph: &Paragraph) -> String {
-    paragraph.preview.clone()
+    pub has_translation: bool,
 }
 
 #[derive(Props, Clone, PartialEq)]
@@ -36,39 +32,56 @@ pub struct ParagraphListProps {
     pub selected_language: String,
 }
 
+#[derive(Debug, Clone, PartialEq)]
+struct DisplayParagraph {
+    id: String,
+    display_text: String,
+}
+
 #[component]
 pub fn ParagraphList(props: ParagraphListProps) -> Element {
+    let untranslated_text = props.t.untranslated;
+
+    // 將 Paragraph 轉換為 DisplayParagraph
+    let convert_to_display = |p: &Paragraph| {
+        let display_text = if !p.has_translation {
+            format!("（{}）{}", untranslated_text, p.preview)
+        } else {
+            p.preview.clone()
+        };
+        DisplayParagraph {
+            id: p.id.clone(),
+            display_text,
+        }
+    };
+
     // 找到當前選中的段落
     let selected_preview = props.paragraphs.iter()
         .find(|p| p.id == props.value)
-        .map(|p| p.preview.clone())
+        .map(convert_to_display)
+        .map(|p| p.display_text)
         .unwrap_or_else(|| props.value.clone());
 
-    // 過濾段落
-    let filtered_paragraphs = props.paragraphs.iter()
-        .filter(|paragraph| {
-            paragraph.preview.to_lowercase().contains(&props.search_query.to_lowercase())
-        })
-        .cloned()
-        .collect::<Vec<_>>();
-
-    // 定義顯示函數
-    let display_paragraph = |paragraph: &Paragraph| paragraph.preview.clone();
+    // 過濾並轉換段落
+    let display_paragraphs: Vec<DisplayParagraph> = props.paragraphs.iter()
+        .map(convert_to_display)
+        .filter(|p| p.display_text.to_lowercase().contains(&props.search_query.to_lowercase()))
+        .collect();
 
     rsx! {
         Dropdown {
             label: props.label,
             value: selected_preview,
-            options: filtered_paragraphs,
+            options: display_paragraphs,
             is_open: props.is_open,
             search_query: props.search_query,
             on_toggle: props.on_toggle,
             on_search: props.on_search,
-            on_select: move |paragraph: Paragraph| {
+            on_select: move |paragraph: DisplayParagraph| {
                 props.on_select.call(paragraph.id);
                 props.on_toggle.call(());
             },
-            display_fn: display_paragraph,
+            display_fn: |p: &DisplayParagraph| p.display_text.clone(),
             has_error: props.has_error,
             class: props.class,
             search_placeholder: props.t.search_paragraph,

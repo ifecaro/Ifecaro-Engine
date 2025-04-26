@@ -216,7 +216,6 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
     let update_paragraph_previews = Rc::new(RefCell::new(move || {
         let selected_language = paragraph_language.read().clone();
         let selected_chapter_id = selected_chapter.read().clone();
-        let t = Translations::get(&current_lang);
         
         if selected_language.is_empty() || selected_chapter_id.is_empty() {
             available_paragraphs.set(Vec::new());
@@ -236,19 +235,13 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
                     .find(|text| text.lang == selected_language)
                     .or_else(|| p.texts.iter().find(|text| text.lang == "en-US" || text.lang == "en-GB"))
                     .or_else(|| p.texts.first())
-                    .map(|text| {
-                        let preview_text = text.paragraphs.lines().next().unwrap_or_default().to_string();
-                        if !has_translation {
-                            format!("（{}）{}", t.untranslated, preview_text)
-                        } else {
-                            preview_text
-                        }
-                    })
+                    .map(|text| text.paragraphs.lines().next().unwrap_or_default().to_string())
                     .unwrap_or_default();
                 
                 (crate::components::paragraph_list::Paragraph {
                     id: p.id.clone(),
                     preview,
+                    has_translation,
                 }, has_translation)
             })
             .partition(|(_, has_translation)| *has_translation);
@@ -643,6 +636,7 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
                                                                                 .iter()
                                                                                 .filter(|item| item.chapter_id == *target_chapter_id)
                                                                                 .map(|item| {
+                                                                                    let has_translation = item.texts.iter().any(|text| text.lang == selected_lang);
                                                                                     let preview = item.texts.iter()
                                                                                         .find(|t| t.lang == selected_lang)
                                                                                         .or_else(|| item.texts.iter().find(|t| t.lang == "en-US" || t.lang == "en-GB"))
@@ -653,6 +647,7 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
                                                                                     crate::components::paragraph_list::Paragraph {
                                                                                         id: item.id.clone(),
                                                                                         preview,
+                                                                                        has_translation,
                                                                                     }
                                                                                 })
                                                                                 .collect::<Vec<_>>();
@@ -981,6 +976,7 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
                                 .iter()
                                 .filter(|item| item.chapter_id == *value)
                                 .map(|item| {
+                                    let has_translation = item.texts.iter().any(|text| text.lang == selected_lang);
                                     let preview = item.texts.iter()
                                         .find(|t| t.lang == selected_lang)
                                         .or_else(|| item.texts.iter().find(|t| t.lang == "en-US" || t.lang == "en-GB"))
@@ -991,6 +987,7 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
                                     crate::components::paragraph_list::Paragraph {
                                         id: item.id.clone(),
                                         preview,
+                                        has_translation,
                                     }
                                 })
                                 .collect::<Vec<_>>();
@@ -1094,6 +1091,7 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
                                     .iter()
                                     .filter(|item| item.chapter_id == *target_chapter_id)
                                     .map(|item| {
+                                        let has_translation = item.texts.iter().any(|text| text.lang == selected_lang);
                                         let preview = item.texts.iter()
                                             .find(|t| t.lang == selected_lang)
                                             .or_else(|| item.texts.iter().find(|t| t.lang == "en-US" || t.lang == "en-GB"))
@@ -1104,6 +1102,7 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
                                         crate::components::paragraph_list::Paragraph {
                                             id: item.id.clone(),
                                             preview,
+                                            has_translation,
                                         }
                                     })
                                     .collect::<Vec<_>>();
@@ -1333,6 +1332,7 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
                                                                     .iter()
                                                                     .filter(|item| item.chapter_id == *target_chapter_id)
                                                                     .map(|item| {
+                                                                        let has_translation = item.texts.iter().any(|text| text.lang == selected_lang);
                                                                         let preview = item.texts.iter()
                                                                             .find(|t| t.lang == selected_lang)
                                                                             .or_else(|| item.texts.iter().find(|t| t.lang == "en-US" || t.lang == "en-GB"))
@@ -1343,6 +1343,7 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
                                                                         crate::components::paragraph_list::Paragraph {
                                                                             id: item.id.clone(),
                                                                             preview,
+                                                                            has_translation,
                                                                         }
                                                                     })
                                                                     .collect::<Vec<_>>();
