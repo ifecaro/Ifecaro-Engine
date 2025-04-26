@@ -54,6 +54,7 @@ tracing = { version = "0.1.40", features = [
     "release_max_level_info",
 ] }
 dioxus-logger = { git = "https://github.com/DogeDark/dioxus-logger.git" }
+dioxus-core = "0.6.3"
 
 [profile]
 

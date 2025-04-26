@@ -103,6 +103,32 @@ pub fn Layout() -> Element {
     
     provide_context(keyboard_state);
     
+    let handle_choice = {
+        let mut story_context = story_context.clone();
+        let mut keyboard_state = keyboard_state.clone();
+        
+        move |goto: String, on_choice_click: EventHandler<String>, mut story_context: Signal<StoryContext>| {
+            keyboard_state.write().selected_index = -1;
+            story_context.write().target_paragraph_id = Some(goto.clone());
+            on_choice_click.call(goto);
+        }
+    };
+
+    let handle_keyboard_choice = {
+        let mut story_context = story_context.clone();
+        let mut keyboard_state = keyboard_state.clone();
+        let enabled_choices = keyboard_state.read().enabled_choices.clone();
+        
+        move |choice: &Choice, on_choice_click: EventHandler<String>| {
+            let goto = choice.action.to.clone();
+            if enabled_choices.contains(&goto) {
+                keyboard_state.write().selected_index = -1;
+                story_context.write().target_paragraph_id = Some(goto.clone());
+                on_choice_click.call(goto);
+            }
+        }
+    };
+    
     let handle_key_press = move |event: Event<KeyboardData>| {
         let mut state = keyboard_state.write();
         match event.data.key() {
@@ -120,18 +146,38 @@ pub fn Layout() -> Element {
             }
             Key::Character(key) => {
                 if let Ok(num) = key.parse::<usize>() {
-                    handle_choice_selection(&state, num - 1, &mut story_context);
+                    if num > 0 && num <= state.choices.len() {
+                        let idx = num - 1;
+                        let choice = &state.choices[idx];
+                        let goto = choice.action.to.clone();
+                        if state.enabled_choices.contains(&goto) {
+                            state.selected_index = idx as i32;
+                            story_context.write().target_paragraph_id = Some(goto.clone());
+                            if let Some(on_choice_click) = &state.on_choice_click {
+                                on_choice_click.call(goto);
+                            }
+                        }
+                    }
                 }
                 event.stop_propagation();
             }
             Key::Enter => {
-                handle_choice_selection(&state, state.selected_index as usize, &mut story_context);
+                if state.selected_index >= 0 && state.selected_index < state.choices.len() as i32 {
+                    let choice = &state.choices[state.selected_index as usize];
+                    let goto = choice.action.to.clone();
+                    if state.enabled_choices.contains(&goto) {
+                        story_context.write().target_paragraph_id = Some(goto.clone());
+                        if let Some(on_choice_click) = &state.on_choice_click {
+                            on_choice_click.call(goto);
+                        }
+                    }
+                }
                 event.stop_propagation();
             }
             _ => {}
         }
     };
-    
+
     rsx! {
         main {
             class: "min-h-screen bg-gray-100 dark:bg-gray-900",

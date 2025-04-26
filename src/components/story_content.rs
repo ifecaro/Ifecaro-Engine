@@ -33,6 +33,34 @@ pub struct Action {
     pub to: String,
 }
 
+impl From<crate::components::translation_form::ParagraphChoice> for Choice {
+    fn from(choice: crate::components::translation_form::ParagraphChoice) -> Self {
+        Self {
+            caption: String::new(), // caption 現在由前端生成
+            action: Action {
+                type_: choice.get_type(),
+                key: choice.get_key(),
+                value: choice.get_value(),
+                to: choice.get_to(),
+            },
+        }
+    }
+}
+
+impl From<crate::models::story::Choice> for Choice {
+    fn from(choice: crate::models::story::Choice) -> Self {
+        Self {
+            caption: choice.caption,
+            action: Action {
+                type_: choice.action.type_,
+                key: choice.action.key,
+                value: choice.action.value,
+                to: choice.action.to,
+            },
+        }
+    }
+}
+
 fn get_window_document() -> Option<(Window, Document)> {
     let window = web_sys::window()?;
     let document = window.document()?;
@@ -69,8 +97,11 @@ pub fn StoryContent(props: StoryContentProps) -> Element {
     
     let handle_choice = use_callback(
         |(goto, on_choice_click, mut story_context): (String, EventHandler<String>, Signal<StoryContext>)| {
-            on_choice_click.call(goto.clone());
-            story_context.write().target_paragraph_id = Some(goto);
+            tracing::info!("handle_choice 被調用：goto = {}", goto);
+            story_context.write().target_paragraph_id = Some(goto.clone());
+            tracing::info!("設置 target_paragraph_id = {}", goto);
+            tracing::info!("調用 on_choice_click");
+            on_choice_click.call(goto);
         },
     );
     
@@ -82,31 +113,6 @@ pub fn StoryContent(props: StoryContentProps) -> Element {
             tabindex: "0",
             onkeydown: move |event: Event<KeyboardData>| {
                 match event.data.key() {
-                    Key::Enter => {
-                        let idx = keyboard_state.read().selected_index as usize;
-                        if idx < choices.len() {
-                            let choice = &choices[idx];
-                            let goto = choice.action.to.clone();
-                            if enabled_choices.contains(&goto) {
-                                handle_choice.call((goto, on_choice_click.clone(), story_context.clone()));
-                            }
-                        }
-                        event.stop_propagation();
-                    }
-                    Key::ArrowUp => {
-                        let current_index = keyboard_state.read().selected_index;
-                        if current_index > 0 {
-                            keyboard_state.write().selected_index = current_index - 1;
-                        }
-                        event.stop_propagation();
-                    }
-                    Key::ArrowDown => {
-                        let current_index = keyboard_state.read().selected_index;
-                        if (current_index as usize) < choices.len() - 1 {
-                            keyboard_state.write().selected_index = current_index + 1;
-                        }
-                        event.stop_propagation();
-                    }
                     key => {
                         // 處理數字鍵 1-9
                         if let Some(num) = key.to_string().parse::<usize>().ok() {
@@ -114,7 +120,7 @@ pub fn StoryContent(props: StoryContentProps) -> Element {
                                 let idx = num - 1;
                                 let choice = &choices[idx];
                                 let goto = choice.action.to.clone();
-                                if enabled_choices.contains(&goto) {
+                                if enabled_choices.contains(&choice.caption) {
                                     keyboard_state.write().selected_index = idx as i32;
                                     handle_choice.call((goto, on_choice_click.clone(), story_context.clone()));
                                 }
@@ -126,7 +132,7 @@ pub fn StoryContent(props: StoryContentProps) -> Element {
             },
             div {
                 class: {
-                    format!("fixed inset-0 bg-[rgba(0,0,0,0.7)] backdrop-blur-sm z-10 flex items-center justify-center transition-opacity duration-500 cursor-pointer {}",
+                    format!("fixed inset-0 backdrop-blur-sm z-10 flex items-center justify-center transition-opacity duration-500 cursor-pointer {}",
                         if !*show_filter.read() || *is_mobile.read() { "opacity-0 pointer-events-none" } else { "opacity-100" }
                     )
                 },
@@ -145,7 +151,7 @@ pub fn StoryContent(props: StoryContentProps) -> Element {
                 }
             }
             article {
-                class: "prose dark:prose-invert lg:prose-xl mx-auto",
+                class: "prose dark:prose-invert lg:prose-xl mx-auto max-w-3xl p-8",
                 div {
                     class: "whitespace-pre-wrap lg:mt-16 space-y-8",
                     {paragraph.split('\n').map(|p| {
@@ -166,23 +172,50 @@ pub fn StoryContent(props: StoryContentProps) -> Element {
                     {choices.iter().enumerate().map(|(index, choice)| {
                         let caption = choice.caption.clone();
                         let goto = choice.action.to.clone();
-                        let is_enabled = enabled_choices.contains(&goto);
+                        let is_enabled = enabled_choices.contains(&caption);
                         let is_selected = keyboard_state.read().selected_index == index as i32;
+                        let on_click = {
+                            let caption = caption.clone();
+                            let goto = goto.clone();
+                            let on_choice_click = on_choice_click.clone();
+                            let story_context = story_context.clone();
+                            let mut keyboard_state = keyboard_state.clone();
+                            let handle_choice = handle_choice.clone();
+                            move |evt: Event<MouseData>| {
+                                evt.stop_propagation();
+                                tracing::info!("=== 選項點擊事件觸發 ===");
+                                tracing::info!("選項文本：{}", caption);
+                                tracing::info!("目標段落：{}", goto);
+                                if is_enabled {
+                                    tracing::info!("選項已啟用，處理點擊事件");
+                                    keyboard_state.write().selected_index = index as i32;
+                                    handle_choice.call((goto.clone(), on_choice_click.clone(), story_context.clone()));
+                                    tracing::info!("事件處理完成");
+                                } else {
+                                    tracing::info!("選項未啟用，忽略點擊事件");
+                                }
+                            }
+                        };
+                        
                         rsx! {
                             li {
                                 class: {
-                                    format!("!ml-0 md:!ml-20 {} {}",
-                                        if is_enabled { "cursor-pointer hover:text-blue-700" } else { "opacity-30 cursor-not-allowed" },
-                                        if is_selected { "text-blue-700 font-bold" } else { "" }
+                                    format!(
+                                        "cursor-pointer p-4 rounded-lg transition-colors duration-200 {} {}",
+                                        if is_enabled {
+                                            "hover:text-gray-100 dark:hover:text-gray-300"
+                                        } else {
+                                            "opacity-50 cursor-not-allowed"
+                                        },
+                                        if is_selected {
+                                            "text-gray-100 dark:text-gray-300"
+                                        } else {
+                                            ""
+                                        }
                                     )
                                 },
-                                onclick: move |_| {
-                                    if is_enabled {
-                                        keyboard_state.write().selected_index = index as i32;
-                                        handle_choice.call((goto.clone(), on_choice_click.clone(), story_context.clone()));
-                                    }
-                                },
-                                { caption }
+                                onclick: on_click,
+                                {caption}
                             }
                         }
                     })}

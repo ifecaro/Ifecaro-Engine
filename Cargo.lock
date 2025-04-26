@@ -2052,6 +2052,7 @@ name = "simon-cheng"
 version = "0.10.1"
 dependencies = [
  "dioxus",
+ "dioxus-core",
  "dioxus-i18n",
  "dioxus-logger 0.5.1",
  "js-sys",

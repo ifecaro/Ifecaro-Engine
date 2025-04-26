@@ -2,9 +2,51 @@ use dioxus::prelude::*;
 use crate::enums::translations::Translations;
 use crate::components::form::{TextareaField, ChoiceOptions};
 use crate::components::paragraph_list::{Paragraph as ParagraphListItem, ParagraphList};
-use crate::components::story_content::Choice;
 use serde::{Serialize, Deserialize};
 use std::sync::Arc;
+
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
+#[serde(untagged)]
+pub enum ParagraphChoice {
+    Complex {
+        to: String,
+        #[serde(rename = "type")]
+        type_: String,
+        key: Option<String>,
+        value: Option<serde_json::Value>,
+    },
+    Simple(String),
+}
+
+impl ParagraphChoice {
+    pub fn get_to(&self) -> String {
+        match self {
+            ParagraphChoice::Complex { to, .. } => to.clone(),
+            ParagraphChoice::Simple(text) => text.clone(),
+        }
+    }
+
+    pub fn get_type(&self) -> String {
+        match self {
+            ParagraphChoice::Complex { type_, .. } => type_.clone(),
+            ParagraphChoice::Simple(_) => "goto".to_string(),
+        }
+    }
+
+    pub fn get_key(&self) -> Option<String> {
+        match self {
+            ParagraphChoice::Complex { key, .. } => key.clone(),
+            ParagraphChoice::Simple(_) => None,
+        }
+    }
+
+    pub fn get_value(&self) -> Option<serde_json::Value> {
+        match self {
+            ParagraphChoice::Complex { value, .. } => value.clone(),
+            ParagraphChoice::Simple(_) => None,
+        }
+    }
+}
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 pub struct Paragraph {
@@ -13,13 +55,14 @@ pub struct Paragraph {
     #[serde(default)]
     pub chapter_id: String,
     pub texts: Vec<Text>,
+    pub choices: Vec<ParagraphChoice>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 pub struct Text {
     pub lang: String,
     pub paragraphs: String,
-    pub choices: Vec<Choice>,
+    pub choices: Vec<ParagraphChoice>,
 }
 
 #[derive(Props, Clone, PartialEq)]
