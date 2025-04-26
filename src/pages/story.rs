@@ -13,9 +13,9 @@ use crate::constants::config::{BASE_API_URL, PARAGRAPHS};
 struct Data {
     items: Vec<Paragraph>,
     page: i32,
-    perPage: i32,
-    totalItems: i32,
-    totalPages: i32,
+    per_page: i32,
+    total_items: i32,
+    total_pages: i32,
 }
 
 #[derive(Deserialize, Clone, Debug)]
@@ -24,12 +24,11 @@ struct Paragraph {
     index: usize,
     #[serde(default)]
     chapter_id: String,
-    texts: Vec<Text>,
+    text: Vec<Text>,
     choices: Vec<ComplexChoice>,
+    collection_id: String,
     #[serde(default)]
-    collectionId: String,
-    #[serde(default)]
-    collectionName: String,
+    collection_name: String,
     #[serde(default)]
     created: String,
     #[serde(default)]
@@ -119,7 +118,6 @@ pub fn Story(props: StoryProps) -> Element {
                         if response.status().is_success() {
                             match response.text().await {
                                 Ok(text) => {
-                                    info!("收到的原始響應: {}", text);
                                     match serde_json::from_str::<Data>(&text) {
                                         Ok(data) => {
                                             if let Some(first_paragraph) = data.items.first() {
@@ -128,22 +126,14 @@ pub fn Story(props: StoryProps) -> Element {
                                             paragraph_data.set(data.items);
                                             has_loaded.set(true);
                                         },
-                                        Err(e) => {
-                                            error!("解析段落數據失敗：{}", e);
-                                        }
+                                        Err(_) => {}
                                     }
                                 },
-                                Err(e) => {
-                                    error!("讀取響應文本失敗：{}", e);
-                                }
+                                Err(_) => {}
                             }
-                        } else {
-                            error!("載入段落失敗，狀態碼：{}", response.status());
                         }
                     },
-                    Err(e) => {
-                        error!("載入段落請求失敗：{}", e);
-                    }
+                    Err(_) => {}
                 }
             });
             
@@ -162,23 +152,16 @@ pub fn Story(props: StoryProps) -> Element {
         let story_context = story_context.clone();
         
         use_effect(move || {
-            tracing::info!("=== use_effect 觸發 ===");
             let target_id = story_context.read().target_paragraph_id.clone();
-            tracing::info!("story_context 中的 target_paragraph_id：{:?}", target_id);
-            tracing::info!("當前段落數據數量：{}", paragraph_data.read().len());
             
             if let Some(target_id) = target_id {
-                tracing::info!("嘗試查找段落 ID：{}", target_id);
                 if let Some(paragraph) = paragraph_data.read().iter().find(|p| &p.id == &target_id) {
-                    tracing::info!("找到目標段落：id = {}", paragraph.id);
                     current_paragraph.set(Some(paragraph.clone()));
                     
-                    tracing::info!("當前語言：{}", state().current_language);
-                    if let Some(text) = paragraph.texts.iter().find(|t| t.lang == state().current_language) {
-                        tracing::info!("找到對應語言的文本：{}", text.paragraphs);
+                    if let Some(text) = paragraph.text.iter().find(|t| t.lang == state().current_language) {
                         current_text.set(Some(text.clone()));
                         let choices: Vec<Choice> = text.choices.iter().enumerate().map(|(index, c)| {
-                            let choice = if let Some(complex_choice) = paragraph.choices.get(index) {
+                            let choice: StoryChoice = if let Some(complex_choice) = paragraph.choices.get(index) {
                                 StoryChoice::Complex(complex_choice.clone())
                             } else {
                                 StoryChoice::Simple(c.clone())
@@ -187,17 +170,10 @@ pub fn Story(props: StoryProps) -> Element {
                             choice_obj.caption = c.clone();
                             choice_obj
                         }).collect();
-                        tracing::info!("設置新的選項：{:?}", choices);
                         current_choices.set(choices);
-                        enabled_choices.set(text.choices.iter().map(|c| c.clone()).collect());
-                    } else {
-                        tracing::error!("找不到對應語言的文本：lang = {}", state().current_language);
+                        enabled_choices.set(text.choices.clone());
                     }
-                } else {
-                    tracing::error!("找不到目標段落：id = {}", target_id);
                 }
-            } else {
-                tracing::info!("target_paragraph_id 為 None");
             }
             
             (move || {})()
@@ -208,39 +184,26 @@ pub fn Story(props: StoryProps) -> Element {
     {
         let mut state = state.clone();
         use_effect(move || {
-            tracing::info!("設置初始語言：{}", props.lang);
             state().set_language(&props.lang);
             (move || {})()
         });
     }
     
-        rsx! {
-            div {
+    rsx! {
+        div {
             class: "max-w-3xl mx-auto p-8",
             if let Some(text) = current_text.read().as_ref() {
-                {
-                    debug!("渲染文本: {:?}", text);
-                    debug!("當前選項: {:?}", current_choices.read());
-                    debug!("啟用的選項: {:?}", enabled_choices.read());
-                }
                 StoryContent {
                     paragraph: text.paragraphs.clone(),
                     choices: current_choices.read().clone(),
                     enabled_choices: enabled_choices.read().clone(),
                     on_choice_click: move |goto: String| {
-                        tracing::info!("=== on_choice_click 被調用 ===");
-                        tracing::info!("goto = {}", goto);
                         let mut story_context = story_context.write();
-                        tracing::info!("更新前的 target_paragraph_id = {:?}", story_context.target_paragraph_id);
                         story_context.target_paragraph_id = Some(goto.clone());
-                        tracing::info!("更新後的 target_paragraph_id = {:?}", story_context.target_paragraph_id);
-                        drop(story_context); // 確保寫鎖被釋放
+                        drop(story_context);
                     }
                 }
             } else {
-                {
-                    debug!("沒有找到當前文本");
-                }
                 div { "載入中..." }
             }
         }
