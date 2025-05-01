@@ -2,7 +2,6 @@ use dioxus::prelude::*;
 use dioxus_core::IntoDynNode;
 use dioxus_core::fc_to_builder;
 use wasm_bindgen_futures::spawn_local;
-use tracing::{error, info, debug};
 use serde::Deserialize;
 use crate::components::story_content::{StoryContent, Choice, Action};
 use crate::contexts::story_context::use_story_context;
@@ -10,6 +9,7 @@ use crate::contexts::language_context::LanguageState;
 use crate::constants::config::{BASE_API_URL, PARAGRAPHS};
 
 #[derive(Deserialize, Clone, Debug)]
+#[allow(dead_code)]
 struct Data {
     items: Vec<Paragraph>,
     page: i32,
@@ -22,6 +22,7 @@ struct Data {
 }
 
 #[derive(Deserialize, Clone, Debug)]
+#[allow(dead_code)]
 struct Paragraph {
     id: String,
     index: usize,
@@ -131,14 +132,14 @@ pub fn Story(props: StoryProps) -> Element {
                                             paragraph_data.set(data.items);
                                             has_loaded.set(true);
                                         },
-                                        Err(e) => {}
+                                        Err(_e) => {}
                                     }
                                 },
-                                Err(e) => {}
+                                Err(_e) => {}
                             }
                         }
                     },
-                    Err(e) => {}
+                    Err(_e) => {}
                 }
             });
             
@@ -187,7 +188,7 @@ pub fn Story(props: StoryProps) -> Element {
     
     // 設置初始語言
     {
-        let mut state = state.clone();
+        let state = state.clone();
         use_effect(move || {
             state().set_language(&props.lang);
             (move || {})()

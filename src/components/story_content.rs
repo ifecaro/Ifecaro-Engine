@@ -172,7 +172,7 @@ pub fn StoryContent(props: StoryContentProps) -> Element {
                         let is_enabled = enabled_choices.contains(&caption);
                         let is_selected = keyboard_state.read().selected_index == index as i32;
                         let on_click = {
-                            let caption = caption.clone();
+                            let _caption = caption.clone();
                             let goto = goto.clone();
                             let on_choice_click = on_choice_click.clone();
                             let story_context = story_context.clone();

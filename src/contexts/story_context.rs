@@ -1,7 +1,7 @@
 use dioxus::prelude::*;
 use crate::components::story_content::Choice;
 
-#[derive(Clone)]
+#[allow(dead_code)]
 pub struct StoryContext {
     pub current_choices: Vec<Choice>,
     pub target_paragraph_id: Option<String>,

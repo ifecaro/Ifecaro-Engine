@@ -103,18 +103,14 @@ pub fn Layout() -> Element {
     
     provide_context(keyboard_state);
     
-    let handle_choice = {
-        let mut story_context = story_context.clone();
-        let mut keyboard_state = keyboard_state.clone();
-        
-        move |goto: String, on_choice_click: EventHandler<String>, mut story_context: Signal<StoryContext>| {
-            keyboard_state.write().selected_index = -1;
-            story_context.write().target_paragraph_id = Some(goto.clone());
-            on_choice_click.call(goto);
+    let _handle_choice = {
+        let mut _story_context = story_context.clone();
+        move |_choice: String| {
+            // ... existing code ...
         }
     };
 
-    let handle_keyboard_choice = {
+    let _handle_keyboard_choice = {
         let mut story_context = story_context.clone();
         let mut keyboard_state = keyboard_state.clone();
         let enabled_choices = keyboard_state.read().enabled_choices.clone();
@@ -192,6 +188,7 @@ pub fn Layout() -> Element {
     }
 }
 
+#[allow(dead_code)]
 fn handle_choice_selection(
     state: &KeyboardState,
     idx: usize,

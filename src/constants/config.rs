@@ -9,6 +9,7 @@ pub struct Language<'a> {
 pub static BASE_API_URL: &str = "https://ifecaro.com/db/api";
 pub static PARAGRAPHS: &str = "/collections/paragraphs/records";
 pub static CHAPTERS: &str = "/collections/chapters/records";
+#[allow(dead_code)]
 pub static ACTIONS: &str = "/collections/actions/records";
 #[allow(dead_code)]
 pub static PUBLIC_COLLECTIONS: &str = "/collections/public";
