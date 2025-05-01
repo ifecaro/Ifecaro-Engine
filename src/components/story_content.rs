@@ -148,7 +148,7 @@ pub fn StoryContent(props: StoryContentProps) -> Element {
                 }
             }
             article {
-                class: "prose dark:prose-invert lg:prose-xl mx-auto max-w-3xl p-8 text-gray-900 dark:text-white bg-white dark:bg-transparent",
+                class: "prose-sm dark:prose-invert lg:prose-base mx-auto max-w-3xl p-8 text-gray-900 dark:text-white bg-white dark:bg-transparent",
                 div {
                     class: "whitespace-pre-wrap lg:mt-16 space-y-8",
                     {paragraph.split('\n').map(|p| {

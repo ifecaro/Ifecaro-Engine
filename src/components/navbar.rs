@@ -66,23 +66,23 @@ pub fn Navbar(closure_signal: Signal<Option<Closure<dyn FnMut(Event)>>>) -> Elem
         div { 
             class: "fixed top-0 left-0 right-0 w-full bg-white shadow-md dark:bg-gray-900 z-[9999]",
             div { 
-                class: "container mx-auto px-6 py-3",
+                class: "container mx-auto px-0 sm:px-6 py-3",
                 div { 
-                    class: "flex items-center justify-end space-x-6",
+                    class: "flex items-center justify-between sm:justify-end space-x-0 sm:space-x-6 w-full",
                     Link { 
                         to: Route::Story { lang: current_lang.clone() },
-                        class: "text-gray-700 dark:text-white hover:text-gray-900 dark:hover:text-gray-300 transition-colors duration-200",
+                        class: "flex-1 sm:flex-none text-center text-xs text-gray-700 dark:text-white hover:text-gray-900 dark:hover:text-gray-300 transition-colors duration-200 py-2",
                         "{t!(\"story\")}" 
                     }
                     Link { 
                         to: Route::Dashboard { lang: current_lang.clone() },
-                        class: "text-gray-700 dark:text-white hover:text-gray-900 dark:hover:text-gray-300 transition-colors duration-200",
+                        class: "flex-1 sm:flex-none text-center text-xs text-gray-700 dark:text-white hover:text-gray-900 dark:hover:text-gray-300 transition-colors duration-200 py-2",
                         "{t!(\"dashboard\")}" 
                     }
                     div {
-                        class: "relative language-dropdown",
+                        class: "flex-1 sm:flex-none relative language-dropdown text-center",
                         button {
-                            class: "bg-transparent border-none text-sm font-medium text-gray-700 dark:text-white hover:text-gray-900 dark:hover:text-gray-300 outline-none focus:outline-none focus:ring-0 focus:ring-offset-0 transition-all duration-200 ease-in-out transform hover:scale-105",
+                            class: "w-full bg-transparent border-none text-xs font-medium text-gray-700 dark:text-white hover:text-gray-900 dark:hover:text-gray-300 outline-none focus:outline-none focus:ring-0 focus:ring-offset-0 transition-all duration-200 ease-in-out transform hover:scale-105 py-2",
                             onclick: move |_| {
                                 let current = *is_open.read();
                                 is_open.set(!current);

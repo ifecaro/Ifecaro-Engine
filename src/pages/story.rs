@@ -216,7 +216,7 @@ pub fn Story(props: StoryProps) -> Element {
     
     rsx! {
         div {
-            class: "max-w-3xl mx-auto p-8",
+            class: "max-w-3xl mx-auto py-8 md:p-8",
             if let Some(text) = current_text.read().as_ref() {
                 StoryContent {
                     paragraph: text.paragraphs.clone(),

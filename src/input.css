@@ -14,7 +14,13 @@
 
 li {
     text-indent: 0;
-    margin-left: 80px;
+    margin-left: 20px;
+}
+
+@media (min-width: 768px) {
+    li {
+        margin-left: 80px;
+    }
 }
 
 @media (prefers-color-scheme: dark) {
