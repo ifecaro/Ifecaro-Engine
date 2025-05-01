@@ -176,7 +176,7 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
     let mut chapter_search_query = use_signal(|| String::new());
     let mut selected_paragraph = use_signal(|| None::<Paragraph>);
     let mut is_edit_mode = use_signal(|| false);
-    let mut paragraph_data = use_signal(|| Vec::<Paragraph>::new());
+    let paragraph_data = use_signal(|| Vec::<Paragraph>::new());
     let t = Translations::get(&current_lang);
     let mut _should_scroll = use_signal(|| false);
     let target_chapter = use_signal(|| String::new());
@@ -208,9 +208,9 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
     let _extra_action_values = use_signal(|| Vec::<Option<serde_json::Value>>::new());
     let _extra_target_chapters = use_signal(|| Vec::<String>::new());
 
-    let mut show_error_toast = use_signal(|| false);
-    let mut error_message = use_signal(|| String::new());
-    let mut paragraph_previews = use_signal(|| Vec::<crate::components::paragraph_list::Paragraph>::new());
+    let show_error_toast = use_signal(|| false);
+    let error_message = use_signal(|| String::new());
+    let _paragraph_previews = use_signal(|| Vec::<crate::components::paragraph_list::Paragraph>::new());
 
     let update_paragraph_previews = Rc::new(RefCell::new(move || {
         let selected_language = paragraph_language.read().clone();
@@ -379,14 +379,12 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
         let choices = choices.read();
         let has_any_choices = !choices.is_empty();
         
-        let choices_valid = choices.iter().enumerate().all(|(_index, choice)| {
-            let title_valid = !choice.0.trim().is_empty();
-            let goto_valid = if choice.2 == "goto" {
-                !choice.1.trim().is_empty() && !choice.5.trim().is_empty()
-            } else {
-                true
-            };
-            title_valid && goto_valid
+        let choices_valid = choices.iter().all(|(_new_caption, new_goto, new_type, new_key, new_value, new_target_chapter)| {
+            !new_goto.trim().is_empty() &&
+            !new_type.trim().is_empty() &&
+            new_key.as_ref().map_or(true, |k: &String| !k.trim().is_empty()) &&
+            new_value.as_ref().map_or(true, |v: &serde_json::Value| !v.to_string().trim().is_empty()) &&
+            !new_target_chapter.trim().is_empty()
         });
         
         let final_result = main_fields_valid && (!has_any_choices || choices_valid);
@@ -411,7 +409,7 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
                     let new_choices = choices.read();
                     
                     let choices_changed = current_choices.len() != new_choices.len() ||
-                        current_choices.iter().zip(new_choices.iter()).any(|(old_choice, (new_caption, new_goto, new_type, new_key, new_value, _))| {
+                        current_choices.iter().zip(new_choices.iter()).any(|(old_choice, (_new_caption, new_goto, new_type, new_key, new_value, _))| {
                             old_choice.get_to() != *new_goto ||
                             old_choice.get_type() != *new_type ||
                             old_choice.get_key() != *new_key ||
@@ -454,7 +452,7 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
         }
     };
 
-    let handle_choice_change = {
+    let _handle_choice_change = {
         let mut choices = choices.clone();
         let mut action_type_open = action_type_open.clone();
         let mut choice_chapters_open = choice_chapters_open.clone();
@@ -463,7 +461,7 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
         let mut choice_paragraphs_search = choice_paragraphs_search.clone();
         let mut choice_paragraphs = choice_paragraphs.clone();
         
-        move |index: usize, old_choice: &ParagraphChoice, new_caption: &str, new_goto: &str, new_type: &str, new_key: &Option<String>, new_value: &Option<serde_json::Value>| {
+        move |index: usize, old_choice: &ParagraphChoice, _new_caption: &str, new_goto: &str, new_type: &str, new_key: &Option<String>, new_value: &Option<serde_json::Value>| {
             if old_choice.get_to() != new_goto ||
                old_choice.get_type() != new_type ||
                old_choice.get_key() != *new_key ||
