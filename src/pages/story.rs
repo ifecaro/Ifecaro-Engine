@@ -177,7 +177,26 @@ pub fn Story(props: StoryProps) -> Element {
                             choice_obj
                         }).collect();
                         current_choices.set(choices);
-                        enabled_choices.set(text.choices.clone());
+                        
+                        // 檢查每個選項的目標段落是否有當前語言的翻譯
+                        let mut enabled = Vec::new();
+                        let paragraph_data_read = paragraph_data.read();
+                        for choice in &text.choices {
+                            let target_paragraph = paragraph_data_read.iter().find(|p| {
+                                if let Some(complex_choice) = paragraph.choices.get(text.choices.iter().position(|c| c == choice).unwrap_or(0)) {
+                                    p.id == complex_choice.to
+                                } else {
+                                    p.id == *choice
+                                }
+                            });
+                            
+                            if let Some(target_paragraph) = target_paragraph {
+                                if target_paragraph.texts.iter().any(|t| t.lang == state().current_language) {
+                                    enabled.push(choice.clone());
+                                }
+                            }
+                        }
+                        enabled_choices.set(enabled);
                     }
                 }
             }

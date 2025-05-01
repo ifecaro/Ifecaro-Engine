@@ -148,7 +148,7 @@ pub fn StoryContent(props: StoryContentProps) -> Element {
                 }
             }
             article {
-                class: "prose dark:prose-invert lg:prose-xl mx-auto max-w-3xl p-8 text-white",
+                class: "prose dark:prose-invert lg:prose-xl mx-auto max-w-3xl p-8 text-gray-900 dark:text-white bg-white dark:bg-transparent",
                 div {
                     class: "whitespace-pre-wrap lg:mt-16 space-y-8",
                     {paragraph.split('\n').map(|p| {
@@ -157,7 +157,7 @@ pub fn StoryContent(props: StoryContentProps) -> Element {
                         } else {
                             rsx! {
                                 p { 
-                                    class: "indent-10 text-white",
+                                    class: "indent-10",
                                     {p}
                                 }
                             }
@@ -191,11 +191,11 @@ pub fn StoryContent(props: StoryContentProps) -> Element {
                             li {
                                 class: {
                                     format!(
-                                        "cursor-pointer p-4 rounded-lg transition-colors duration-200 {} {}",
+                                        "p-4 rounded-lg transition-colors duration-200 {} {}",
                                         if is_enabled {
-                                            "hover:text-gray-100 dark:hover:text-gray-300"
+                                            "cursor-pointer text-gray-900 hover:text-gray-700 dark:text-white dark:hover:text-gray-300"
                                         } else {
-                                            "opacity-50 cursor-not-allowed"
+                                            "opacity-50 cursor-not-allowed text-gray-400 dark:text-gray-400"
                                         },
                                         if is_selected {
                                             "text-gray-100 dark:text-gray-300"
