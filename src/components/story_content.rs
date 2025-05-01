@@ -97,10 +97,7 @@ pub fn StoryContent(props: StoryContentProps) -> Element {
     
     let handle_choice = use_callback(
         |(goto, on_choice_click, mut story_context): (String, EventHandler<String>, Signal<StoryContext>)| {
-            tracing::info!("handle_choice 被調用：goto = {}", goto);
             story_context.write().target_paragraph_id = Some(goto.clone());
-            tracing::info!("設置 target_paragraph_id = {}", goto);
-            tracing::info!("調用 on_choice_click");
             on_choice_click.call(goto);
         },
     );
@@ -151,7 +148,7 @@ pub fn StoryContent(props: StoryContentProps) -> Element {
                 }
             }
             article {
-                class: "prose dark:prose-invert lg:prose-xl mx-auto max-w-3xl p-8",
+                class: "prose dark:prose-invert lg:prose-xl mx-auto max-w-3xl p-8 text-white",
                 div {
                     class: "whitespace-pre-wrap lg:mt-16 space-y-8",
                     {paragraph.split('\n').map(|p| {
@@ -160,7 +157,7 @@ pub fn StoryContent(props: StoryContentProps) -> Element {
                         } else {
                             rsx! {
                                 p { 
-                                    class: "indent-10",
+                                    class: "indent-10 text-white",
                                     {p}
                                 }
                             }
@@ -183,16 +180,9 @@ pub fn StoryContent(props: StoryContentProps) -> Element {
                             let handle_choice = handle_choice.clone();
                             move |evt: Event<MouseData>| {
                                 evt.stop_propagation();
-                                tracing::info!("=== 選項點擊事件觸發 ===");
-                                tracing::info!("選項文本：{}", caption);
-                                tracing::info!("目標段落：{}", goto);
                                 if is_enabled {
-                                    tracing::info!("選項已啟用，處理點擊事件");
                                     keyboard_state.write().selected_index = index as i32;
                                     handle_choice.call((goto.clone(), on_choice_click.clone(), story_context.clone()));
-                                    tracing::info!("事件處理完成");
-                                } else {
-                                    tracing::info!("選項未啟用，忽略點擊事件");
                                 }
                             }
                         };

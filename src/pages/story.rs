@@ -13,8 +13,11 @@ use crate::constants::config::{BASE_API_URL, PARAGRAPHS};
 struct Data {
     items: Vec<Paragraph>,
     page: i32,
+    #[serde(rename = "perPage")]
     per_page: i32,
+    #[serde(rename = "totalItems")]
     total_items: i32,
+    #[serde(rename = "totalPages")]
     total_pages: i32,
 }
 
@@ -24,10 +27,11 @@ struct Paragraph {
     index: usize,
     #[serde(default)]
     chapter_id: String,
-    text: Vec<Text>,
+    texts: Vec<Text>,
     choices: Vec<ComplexChoice>,
+    #[serde(rename = "collectionId", default)]
     collection_id: String,
-    #[serde(default)]
+    #[serde(rename = "collectionName", default)]
     collection_name: String,
     #[serde(default)]
     created: String,
@@ -44,8 +48,9 @@ struct Text {
 
 #[derive(Deserialize, Clone, Debug, PartialEq)]
 pub struct ComplexChoice {
+    #[serde(default)]
     pub to: String,
-    #[serde(rename = "type")]
+    #[serde(rename = "type", default)]
     pub type_: String,
     #[serde(default)]
     pub key: Option<String>,
@@ -126,14 +131,14 @@ pub fn Story(props: StoryProps) -> Element {
                                             paragraph_data.set(data.items);
                                             has_loaded.set(true);
                                         },
-                                        Err(_) => {}
+                                        Err(e) => {}
                                     }
                                 },
-                                Err(_) => {}
+                                Err(e) => {}
                             }
                         }
                     },
-                    Err(_) => {}
+                    Err(e) => {}
                 }
             });
             
@@ -158,7 +163,7 @@ pub fn Story(props: StoryProps) -> Element {
                 if let Some(paragraph) = paragraph_data.read().iter().find(|p| &p.id == &target_id) {
                     current_paragraph.set(Some(paragraph.clone()));
                     
-                    if let Some(text) = paragraph.text.iter().find(|t| t.lang == state().current_language) {
+                    if let Some(text) = paragraph.texts.iter().find(|t| t.lang == state().current_language) {
                         current_text.set(Some(text.clone()));
                         let choices: Vec<Choice> = text.choices.iter().enumerate().map(|(index, c)| {
                             let choice: StoryChoice = if let Some(complex_choice) = paragraph.choices.get(index) {
@@ -204,7 +209,10 @@ pub fn Story(props: StoryProps) -> Element {
                     }
                 }
             } else {
-                div { "載入中..." }
+                div { 
+                    class: "text-white",
+                    "載入中..." 
+                }
             }
         }
     }
