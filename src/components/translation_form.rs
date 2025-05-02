@@ -62,7 +62,7 @@ pub struct Paragraph {
 pub struct Text {
     pub lang: String,
     pub paragraphs: String,
-    pub choices: Vec<ParagraphChoice>,
+    pub choices: Vec<String>,
 }
 
 #[derive(Props, Clone, PartialEq)]

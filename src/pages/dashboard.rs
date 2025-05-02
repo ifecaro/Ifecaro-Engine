@@ -18,6 +18,7 @@ use web_sys::window;
 use wasm_bindgen::closure::Closure;
 use wasm_bindgen::JsCast;
 use std::rc::Rc;
+use crate::components::{translation_form::Paragraph as TranslationFormParagraph, paragraph_list::Paragraph as ParagraphListParagraph};
 
 thread_local! {
     static CURRENT_LANGUAGE: RefCell<String> = RefCell::new(String::from("zh-TW"));
@@ -380,23 +381,28 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
         let choices = choices.read();
         let has_any_choices = !choices.is_empty();
         
-        let choices_valid = choices.iter().all(|(choice_text, to, type_, key, value, target_chapter)| {
-            !choice_text.trim().is_empty() &&
-            !to.trim().is_empty() &&
-            !type_.trim().is_empty() &&
-            key.as_ref().map_or(true, |k: &String| !k.trim().is_empty()) &&
-            value.as_ref().map_or(true, |v: &serde_json::Value| !v.to_string().trim().is_empty()) &&
-            !target_chapter.trim().is_empty()
+        let choices_valid = choices.iter().all(|(choice_text, to, type_, _key, _value, target_chapter)| {
+            // 如果選項有內容，則需要驗證
+            let has_content = !choice_text.trim().is_empty() || 
+                             !to.trim().is_empty() || 
+                             !type_.trim().is_empty() || 
+                             !target_chapter.trim().is_empty();
+            
+            if has_content {
+                // 如果有內容，則必須有標題
+                !choice_text.trim().is_empty()
+            } else {
+                // 如果沒有內容，則視為有效
+                true
+            }
         });
         
-        let final_result = main_fields_valid && (!has_any_choices || choices_valid);
-        
-        final_result
+        main_fields_valid && (!has_any_choices || choices_valid)
     });
 
     let has_changes = use_memo(move || {
         if *is_edit_mode.read() {
-            // 編輯模式邏輯保持不變
+            // 編輯模式
             let paragraphs_changed = paragraphs.read().to_string() != selected_paragraph.read().as_ref()
                 .map(|p| p.texts.iter().find(|t| t.lang == *paragraph_language.read())
                     .map(|t| t.paragraphs.clone())
@@ -407,17 +413,30 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
                 let current_paragraph = selected_paragraph.read();
                 
                 if let Some(paragraph) = current_paragraph.as_ref() {
-                    let current_choices = &paragraph.texts.iter().find(|t| t.lang == *paragraph_language.read()).map(|t| t.choices.clone()).unwrap_or_default();
+                    let current_choices = &paragraph.texts.iter().find(|t| t.lang == *paragraph_language.read())
+                        .map(|t| t.choices.clone())
+                        .unwrap_or_default();
                     let new_choices = choices.read();
                     
-                    let choices_changed = current_choices.len() != new_choices.len() ||
-                        current_choices.iter().zip(new_choices.iter()).any(|(old_choice, (_choice_text, new_to, new_type, new_key, new_value, _))| {
-                            old_choice.get_to() != *new_to ||
-                            old_choice.get_type() != *new_type ||
-                            old_choice.get_key() != *new_key ||
-                            old_choice.get_value() != *new_value
-                        });
-                    choices_changed
+                    // 檢查選項數量或內容是否有變化
+                    current_choices.len() != new_choices.len() ||
+                        current_choices.iter().zip(new_choices.iter()).any(|(old_choice, (choice_text, to, type_, _key, _value, target_chapter))| {
+                            // 檢查選項內容是否有變化
+                            let has_content = !choice_text.trim().is_empty() || 
+                                            !to.trim().is_empty() || 
+                                            !type_.trim().is_empty() || 
+                                            !target_chapter.trim().is_empty();
+                            
+                            if has_content {
+                                // 檢查所有欄位是否有變化
+                                old_choice != choice_text ||
+                                !to.is_empty() ||
+                                !type_.is_empty() ||
+                                !target_chapter.is_empty()
+                            } else {
+                                false
+                            }
+                        })
                 } else {
                     false
                 }
@@ -522,19 +541,24 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
             let text = Text {
                 lang: paragraph_language.read().clone(),
                 paragraphs: paragraphs.clone(),
-                choices: choices.iter().map(|(choice_text, to, type_, key, value, _)| {
-                    if type_ == "goto" {
-                        ParagraphChoice::Simple(choice_text.clone())
-                    } else {
-                        ParagraphChoice::Complex {
-                            to: to.clone(),
-                            type_: type_.clone(),
-                            key: key.clone(),
-                            value: value.clone(),
-                        }
-                    }
+                choices: choices.iter().map(|(choice_text, _, _, _, _, _)| {
+                    choice_text.clone()
                 }).collect(),
             };
+
+            // 構建選項數據
+            let paragraph_choices: Vec<ParagraphChoice> = choices.iter().map(|(_, to, type_, key, value, _)| {
+                if !type_.is_empty() || key.is_some() || value.is_some() {
+                    ParagraphChoice::Complex {
+                        to: to.clone(),
+                        type_: type_.clone(),
+                        key: key.clone(),
+                        value: value.clone(),
+                    }
+                } else {
+                    ParagraphChoice::Simple(to.clone())
+                }
+            }).collect();
 
             spawn_local({
                 let update_paragraph_previews = update_paragraph_previews.clone();
@@ -565,7 +589,8 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
                                 existing_texts
                             } else {
                                 vec![text]
-                            }
+                            },
+                            "choices": paragraph_choices
                         })
                     } else {
                         serde_json::json!({
@@ -581,7 +606,8 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
                                 existing_texts
                             } else {
                                 vec![text]
-                            }
+                            },
+                            "choices": paragraph_choices
                         })
                     };
                     
@@ -661,54 +687,71 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
         action_type_open.set(current);
     };
 
-    let handle_add_choice = move |_| {
-        // 先讀取當前狀態
-        let current_choices = choices.read().clone();
-        let current_action_type = action_type_open.read().clone();
-        
-        // 創建新的選項，標題預設為空字串
-        let new_choice = (
+    let handle_add_choice = move || {
+        let mut current_choices = choices.read().clone();
+        current_choices.push((
             String::new(),
             String::new(),
             String::new(),
             None,
             None,
             String::new(),
-        );
-        
-        // 更新所有相關狀態
-        let mut new_choices = current_choices;
-        new_choices.push(new_choice);
-        choices.set(new_choices);
+        ));
+        choices.set(current_choices);
 
-        let mut new_action_type = current_action_type;
-        new_action_type.push(false);
-        action_type_open.set(new_action_type);
+        let mut current_action_types = action_type_open.read().clone();
+        current_action_types.push(false);
+        action_type_open.set(current_action_types);
 
-        // 更新其他相關狀態
-        let mut new_chapters_open = choice_chapters_open.read().clone();
-        new_chapters_open.push(false);
-        choice_chapters_open.set(new_chapters_open);
+        let mut current_chapters_open = choice_chapters_open.read().clone();
+        current_chapters_open.push(false);
+        choice_chapters_open.set(current_chapters_open);
 
-        let mut new_chapters_search = choice_chapters_search.read().clone();
-        new_chapters_search.push(String::new());
-        choice_chapters_search.set(new_chapters_search);
+        let mut current_chapters_search = choice_chapters_search.read().clone();
+        current_chapters_search.push(String::new());
+        choice_chapters_search.set(current_chapters_search);
 
-        let mut new_paragraphs_open = choice_paragraphs_open.read().clone();
-        new_paragraphs_open.push(false);
-        choice_paragraphs_open.set(new_paragraphs_open);
+        let mut current_paragraphs_open = choice_paragraphs_open.read().clone();
+        current_paragraphs_open.push(false);
+        choice_paragraphs_open.set(current_paragraphs_open);
 
-        let mut new_paragraphs_search = choice_paragraphs_search.read().clone();
-        new_paragraphs_search.push(String::new());
-        choice_paragraphs_search.set(new_paragraphs_search);
+        let mut current_paragraphs_search = choice_paragraphs_search.read().clone();
+        current_paragraphs_search.push(String::new());
+        choice_paragraphs_search.set(current_paragraphs_search);
 
-        let mut new_paragraphs = choice_paragraphs.read().clone();
-        new_paragraphs.push(Vec::new());
-        choice_paragraphs.set(new_paragraphs);
+        let mut current_paragraphs = choice_paragraphs.read().clone();
+        current_paragraphs.push(Vec::new());
+        choice_paragraphs.set(current_paragraphs);
     };
 
-    let _handle_remove_choice = move |index: usize| {
-        choices.write().remove(index);
+    let handle_remove_choice = move |index: usize| {
+        let mut current_choices = choices.read().clone();
+        current_choices.remove(index);
+        choices.set(current_choices);
+
+        let mut current_action_types = action_type_open.read().clone();
+        current_action_types.remove(index);
+        action_type_open.set(current_action_types);
+
+        let mut current_chapters_open = choice_chapters_open.read().clone();
+        current_chapters_open.remove(index);
+        choice_chapters_open.set(current_chapters_open);
+
+        let mut current_chapters_search = choice_chapters_search.read().clone();
+        current_chapters_search.remove(index);
+        choice_chapters_search.set(current_chapters_search);
+
+        let mut current_paragraphs_open = choice_paragraphs_open.read().clone();
+        current_paragraphs_open.remove(index);
+        choice_paragraphs_open.set(current_paragraphs_open);
+
+        let mut current_paragraphs_search = choice_paragraphs_search.read().clone();
+        current_paragraphs_search.remove(index);
+        choice_paragraphs_search.set(current_paragraphs_search);
+
+        let mut current_paragraphs = choice_paragraphs.read().clone();
+        current_paragraphs.remove(index);
+        choice_paragraphs.set(current_paragraphs);
     };
 
     // 處理 toast 顯示
@@ -767,92 +810,83 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
     }
 
     // 處理選項變更
-    let handle_choice_change = {
-        let mut choices = choices.clone();
-        let mut choice_chapters_open = choice_chapters_open.clone();
-        let mut choice_paragraphs = choice_paragraphs.clone();
-        let paragraph_data = paragraph_data.clone();
-        let paragraph_language = paragraph_language.clone();
+    let handle_choice_change = move |(index, field, value): (usize, String, String)| {
+        let mut current_choices = choices.read().clone();
         
-        move |(index, field, value): (usize, String, String)| {
-            let mut current_choices = choices.read().clone();
-            
-            if let Some(choice) = current_choices.get_mut(index) {
-                match field.as_str() {
-                    "caption" => {
-                        choice.0 = value;
-                    },
-                    "goto" => {
-                        choice.1 = value;
-                    },
-                    "action_type" => {
-                        choice.2 = value;
-                    },
-                    "action_key" => {
-                        choice.3 = Some(value);
-                    },
-                    "action_value" => {
-                        choice.4 = Some(serde_json::Value::String(value));
-                    },
-                    "target_chapter" => {
-                        // 更新選項的目標章節
-                        choice.5 = value.clone();
-                        
-                        // 關閉章節選單
-                        let mut current = choice_chapters_open.read().clone();
-                        if let Some(is_open) = current.get_mut(index) {
-                            *is_open = false;
-                        }
-                        choice_chapters_open.set(current);
+        if let Some(choice) = current_choices.get_mut(index) {
+            match field.as_str() {
+                "caption" => {
+                    choice.0 = value;
+                },
+                "goto" => {
+                    choice.1 = value;
+                },
+                "action_type" => {
+                    choice.2 = value;
+                },
+                "action_key" => {
+                    choice.3 = Some(value);
+                },
+                "action_value" => {
+                    choice.4 = Some(serde_json::Value::String(value));
+                },
+                "target_chapter" => {
+                    // 更新選項的目標章節
+                    choice.5 = value.clone();
+                    
+                    // 關閉章節選單
+                    let mut current = choice_chapters_open.read().clone();
+                    if let Some(is_open) = current.get_mut(index) {
+                        *is_open = false;
+                    }
+                    choice_chapters_open.set(current);
 
-                        // 清空目標段落
-                        choice.1 = String::new();
-                        
-                        // 更新選項狀態
-                        choices.set(current_choices.clone());
-                        
-                        // 更新段落列表
-                        let mut current_paragraphs = choice_paragraphs.read().clone();
-                        while current_paragraphs.len() <= index {
-                            current_paragraphs.push(Vec::new());
-                        }
-                        
-                        if !value.is_empty() {
-                            let selected_lang = paragraph_language.read().clone();
-                            let filtered_paragraphs = paragraph_data.read()
-                                .iter()
-                                .filter(|item| item.chapter_id == *value)
-                                .map(|item| {
-                                    let has_translation = item.texts.iter().any(|text| text.lang == selected_lang);
-                                    let preview = item.texts.iter()
-                                        .find(|t| t.lang == selected_lang)
-                                        .or_else(|| item.texts.iter().find(|t| t.lang == "en-US" || t.lang == "en-GB"))
-                                        .or_else(|| item.texts.first())
-                                        .map(|text| text.paragraphs.lines().next().unwrap_or("").to_string())
-                                        .unwrap_or_else(|| format!("[{}]", item.id));
+                    // 清空目標段落
+                    choice.1 = String::new();
+                    
+                    // 更新選項狀態
+                    choices.set(current_choices.clone());
+                    
+                    // 更新段落列表
+                    let mut current_paragraphs = choice_paragraphs.read().clone();
+                    while current_paragraphs.len() <= index {
+                        current_paragraphs.push(Vec::new());
+                    }
+                    
+                    if !value.is_empty() {
+                        let selected_lang = paragraph_language.read().clone();
+                        let filtered_paragraphs = paragraph_data.read()
+                            .iter()
+                            .filter(|item| item.chapter_id == value)
+                            .map(|item| {
+                                let has_translation = item.texts.iter().any(|text| text.lang == selected_lang);
+                                let preview = item.texts.iter()
+                                    .find(|t| t.lang == selected_lang)
+                                    .or_else(|| item.texts.iter().find(|t| t.lang == "en-US" || t.lang == "en-GB"))
+                                    .or_else(|| item.texts.first())
+                                    .map(|text| text.paragraphs.lines().next().unwrap_or("").to_string())
+                                    .unwrap_or_else(|| format!("[{}]", item.id));
 
-                                    crate::components::paragraph_list::Paragraph {
-                                        id: item.id.clone(),
-                                        preview,
-                                        has_translation,
-                                    }
-                                })
-                                .collect::<Vec<_>>();
-                            
-                            current_paragraphs[index] = filtered_paragraphs;
-                        } else {
-                            current_paragraphs[index] = Vec::new();
-                        }
+                                crate::components::paragraph_list::Paragraph {
+                                    id: item.id.clone(),
+                                    preview,
+                                    has_translation,
+                                }
+                            })
+                            .collect::<Vec<_>>();
                         
-                        choice_paragraphs.set(current_paragraphs);
-                        return;
-                    },
-                    _ => {}
-                }
+                        current_paragraphs[index] = filtered_paragraphs;
+                    } else {
+                        current_paragraphs[index] = Vec::new();
+                    }
+                    
+                    choice_paragraphs.set(current_paragraphs);
+                    return;
+                },
+                _ => {}
             }
-            
-            choices.set(current_choices);
         }
+        choices.set(current_choices);
     };
 
     let mut handle_paragraph_select = {
@@ -863,10 +897,10 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
         let mut choices = choices.clone();
         let mut action_type_open = action_type_open.clone();
         let mut choice_chapters_open = choice_chapters_open.clone();
-        let mut choice_chapters_search = choice_chapters_search.clone();
         let mut choice_paragraphs_open = choice_paragraphs_open.clone();
         let mut choice_paragraphs_search = choice_paragraphs_search.clone();
         let mut choice_paragraphs = choice_paragraphs.clone();
+        let available_paragraphs = available_paragraphs.clone();
         
         move |index: usize| {
             let available_paragraphs = available_paragraphs.read();
@@ -880,95 +914,15 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
                         paragraphs.set(text.paragraphs.clone());
                         
                         // 填充選項
-                        let mut new_choices = Vec::new();
-                        for (i, choice_text) in text.choices.iter().enumerate() {
-                            // 根據索引從 choices 陣列中獲取目標段落ID
-                            let target_id = full_paragraph.choices.get(i)
-                                .map(|c| c.get_to())
-                                .unwrap_or_default();
-                            
-                            // 根據目標段落 ID 找到對應的章節 ID
-                            let target_chapter_id = if !target_id.is_empty() {
-                                if let Some(target_paragraph) = paragraph_data.read().iter().find(|p| p.id == target_id) {
-                                    target_paragraph.chapter_id.clone()
-                                } else {
-                                    String::new()
-                                }
-                            } else {
-                                String::new()
-                            };
-                            
-                            // 獲取目標段落的第一行內容
-                            let _target_preview = if !target_id.is_empty() {
-                                if let Some(target_paragraph) = paragraph_data.read().iter().find(|p| p.id == target_id) {
-                                    target_paragraph.texts.iter()
-                                        .find(|t| t.lang == *paragraph_language.read())
-                                        .or_else(|| target_paragraph.texts.iter().find(|t| t.lang == "en-US" || t.lang == "en-GB"))
-                                        .or_else(|| target_paragraph.texts.first())
-                                        .map(|text| text.paragraphs.lines().next().unwrap_or("").to_string())
-                                        .unwrap_or_else(|| format!("[{}]", target_id))
-                                } else {
-                                    format!("[{}]", target_id)
-                                }
-                            } else {
-                                String::new()
-                            };
-                            
-                            let choice_text_str = match choice_text {
-                                ParagraphChoice::Simple(text) => text.clone(),
-                                ParagraphChoice::Complex { to, .. } => to.clone(),
-                            };
-                            
-                            new_choices.push((
-                                choice_text_str,
-                                target_id,
-                                String::new(), // type 預設為空
-                                None,
-                                None,
-                                target_chapter_id.clone(),
-                            ));
-                        }
-                        
-                        // 更新選項狀態
+                        let (new_choices, new_paragraphs) = process_paragraph_select(text, full_paragraph, &paragraph_data, &paragraph_language);
                         let choices_len = new_choices.len();
+
                         choices.set(new_choices);
+                        choice_paragraphs.set(new_paragraphs);
                         action_type_open.set(vec![false; choices_len]);
                         choice_chapters_open.set(vec![false; choices_len]);
-                        choice_chapters_search.set(vec![String::new(); choices_len]);
                         choice_paragraphs_open.set(vec![false; choices_len]);
                         choice_paragraphs_search.set(vec![String::new(); choices_len]);
-                        choice_paragraphs.set(vec![Vec::new(); choices_len]);
-
-                        // 更新目標段落列表
-                        for (i, (_, _, _, _, _, target_chapter_id)) in choices.read().iter().enumerate() {
-                            if !target_chapter_id.is_empty() {
-                                let selected_lang = paragraph_language.read().clone();
-                                let filtered_paragraphs = paragraph_data.read()
-                                    .iter()
-                                    .filter(|item| item.chapter_id == *target_chapter_id)
-                                    .map(|item| {
-                                        let has_translation = item.texts.iter().any(|text| text.lang == selected_lang);
-                                        let preview = item.texts.iter()
-                                            .find(|t| t.lang == selected_lang)
-                                            .or_else(|| item.texts.iter().find(|t| t.lang == "en-US" || t.lang == "en-GB"))
-                                            .or_else(|| item.texts.first())
-                                            .map(|text| text.paragraphs.lines().next().unwrap_or("").to_string())
-                                            .unwrap_or_else(|| format!("[{}]", item.id));
-
-                                        crate::components::paragraph_list::Paragraph {
-                                            id: item.id.clone(),
-                                            preview,
-                                            has_translation,
-                                        }
-                                    })
-                                    .collect::<Vec<_>>();
-                                
-                                let mut paragraphs = choice_paragraphs.write();
-                                if i < paragraphs.len() {
-                                    paragraphs[i] = filtered_paragraphs;
-                                }
-                            }
-                        }
                     }
                 }
             }
@@ -987,8 +941,8 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
     // 處理章節搜索
     let handle_chapter_search = move |(index, query): (usize, String)| {
         let mut current = choice_chapters_search.read().clone();
-        if let Some(q) = current.get_mut(index) {
-            *q = query;
+        if let Some(search) = current.get_mut(index) {
+            *search = query;
         }
         choice_chapters_search.set(current);
     };
@@ -1005,8 +959,8 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
     // 處理段落搜索
     let handle_paragraph_search = move |(index, query): (usize, String)| {
         let mut current = choice_paragraphs_search.read().clone();
-        if let Some(q) = current.get_mut(index) {
-            *q = query;
+        if let Some(search) = current.get_mut(index) {
+            *search = query;
         }
         choice_paragraphs_search.set(current);
     };
@@ -1115,152 +1069,15 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
                                                         paragraphs.set(text.paragraphs.clone());
                                                         
                                                         // 填充選項
-                                                        let mut new_choices = Vec::new();
-                                                        for (i, choice_text) in text.choices.iter().enumerate() {
-                                                            // 根據索引從 choices 陣列中獲取目標段落ID
-                                                            let target_id = paragraph.choices.get(i)
-                                                                .map(|c| c.get_to())
-                                                                .unwrap_or_default();
-                                                            
-                                                            // 根據目標段落 ID 找到對應的章節 ID
-                                                            let target_chapter_id = if !target_id.is_empty() {
-                                                                if let Some(target_paragraph) = paragraph_data.read().iter().find(|p| p.id == target_id) {
-                                                                    target_paragraph.chapter_id.clone()
-                                                                } else {
-                                                                    String::new()
-                                                                }
-                                                            } else {
-                                                                String::new()
-                                                            };
-                                                            
-                                                            // 獲取目標段落的第一行內容
-                                                            let _target_preview = if !target_id.is_empty() {
-                                                                if let Some(target_paragraph) = paragraph_data.read().iter().find(|p| p.id == target_id) {
-                                                                    target_paragraph.texts.iter()
-                                                                        .find(|t| t.lang == *paragraph_language.read())
-                                                                        .or_else(|| target_paragraph.texts.iter().find(|t| t.lang == "en-US" || t.lang == "en-GB"))
-                                                                        .or_else(|| target_paragraph.texts.first())
-                                                                        .map(|text| text.paragraphs.lines().next().unwrap_or("").to_string())
-                                                                        .unwrap_or_else(|| format!("[{}]", target_id))
-                                                                } else {
-                                                                    format!("[{}]", target_id)
-                                                                }
-                                                            } else {
-                                                                String::new()
-                                                            };
-                                                            
-                                                            new_choices.push((
-                                                                match choice_text {
-                                                                    ParagraphChoice::Simple(text) => text.clone(),
-                                                                    ParagraphChoice::Complex { to, .. } => to.clone(),
-                                                                },
-                                                                target_id,
-                                                                String::new(), // type 預設為空
-                                                                None,
-                                                                None,
-                                                                target_chapter_id.clone(),
-                                                            ));
-                                                            
-                                                            // 更新目標段落列表
-                                                            if !target_chapter_id.is_empty() {
-                                                                let selected_lang = paragraph_language.read().clone();
-                                                                let filtered_paragraphs = paragraph_data.read()
-                                                                    .iter()
-                                                                    .filter(|item| item.chapter_id == target_chapter_id)
-                                                                    .map(|item| {
-                                                                        let has_translation = item.texts.iter().any(|text| text.lang == selected_lang);
-                                                                        let preview = item.texts.iter()
-                                                                            .find(|t| t.lang == selected_lang)
-                                                                            .or_else(|| item.texts.iter().find(|t| t.lang == "en-US" || t.lang == "en-GB"))
-                                                                            .or_else(|| item.texts.first())
-                                                                            .map(|text| text.paragraphs.lines().next().unwrap_or("").to_string())
-                                                                            .unwrap_or_else(|| format!("[{}]", item.id));
-
-                                                                        crate::components::paragraph_list::Paragraph {
-                                                                            id: item.id.clone(),
-                                                                            preview,
-                                                                            has_translation,
-                                                                        }
-                                                                    })
-                                                                    .collect::<Vec<_>>();
-                                                                
-                                                                choice_paragraphs.write()[i] = filtered_paragraphs;
-                                                            }
-                                                        }
-                                                        
-                                                        // 更新選項狀態
+                                                        let (new_choices, new_paragraphs) = process_paragraph_select(text, paragraph, &paragraph_data, &paragraph_language);
                                                         let choices_len = new_choices.len();
-                                                        choices.set(new_choices);
-                                                        
-                                                        // 初始化所有選項的狀態
-                                                        let mut new_action_types = Vec::new();
-                                                        let mut new_chapters_open = Vec::new();
-                                                        let mut new_chapters_search = Vec::new();
-                                                        let mut new_paragraphs_open = Vec::new();
-                                                        let mut new_paragraphs_search = Vec::new();
-                                                        let mut new_paragraphs = Vec::new();
-                                                        
-                                                        for _ in 0..choices_len {
-                                                            new_action_types.push(false);
-                                                            new_chapters_open.push(false);
-                                                            new_chapters_search.push(String::new());
-                                                            new_paragraphs_open.push(false);
-                                                            new_paragraphs_search.push(String::new());
-                                                            new_paragraphs.push(Vec::new());
-                                                        }
-                                                        
-                                                        action_type_open.set(new_action_types);
-                                                        choice_chapters_open.set(new_chapters_open);
-                                                        choice_chapters_search.set(new_chapters_search);
-                                                        choice_paragraphs_open.set(new_paragraphs_open);
-                                                        choice_paragraphs_search.set(new_paragraphs_search);
-                                                        
-                                                        // 更新目標段落列表
-                                                        for (i, (_, _, _, _, _, target_chapter_id)) in choices.read().iter().enumerate() {
-                                                            if !target_chapter_id.is_empty() {
-                                                                let selected_lang = paragraph_language.read().clone();
-                                                                let filtered_paragraphs = paragraph_data.read()
-                                                                    .iter()
-                                                                    .filter(|item| item.chapter_id == *target_chapter_id)
-                                                                    .map(|item| {
-                                                                        let has_translation = item.texts.iter().any(|text| text.lang == selected_lang);
-                                                                        let preview = item.texts.iter()
-                                                                            .find(|t| t.lang == selected_lang)
-                                                                            .or_else(|| item.texts.iter().find(|t| t.lang == "en-US" || t.lang == "en-GB"))
-                                                                            .or_else(|| item.texts.first())
-                                                                            .map(|text| text.paragraphs.lines().next().unwrap_or("").to_string())
-                                                                            .unwrap_or_else(|| format!("[{}]", item.id));
 
-                                                                        crate::components::paragraph_list::Paragraph {
-                                                                            id: item.id.clone(),
-                                                                            preview,
-                                                                            has_translation,
-                                                                        }
-                                                                    })
-                                                                    .collect::<Vec<_>>();
-                                                                
-                                                                new_paragraphs[i] = filtered_paragraphs;
-                                                            }
-                                                        }
-                                                        
+                                                        choices.set(new_choices);
                                                         choice_paragraphs.set(new_paragraphs);
-                                                    } else {
-                                                        // 如果沒有找到對應語言的翻譯，清除內容並添加默認選項
-                                                        paragraphs.set(String::new());
-                                                        choices.set(vec![(
-                                                            String::new(),
-                                                            String::new(),
-                                                            String::from("goto"),
-                                                            None,
-                                                            None,
-                                                            String::new(),
-                                                        )]);
-                                                        action_type_open.set(vec![false]);
-                                                        choice_chapters_open.set(vec![false]);
-                                                        choice_chapters_search.set(vec![String::new()]);
-                                                        choice_paragraphs_open.set(vec![false]);
-                                                        choice_paragraphs_search.set(vec![String::new()]);
-                                                        choice_paragraphs.set(vec![Vec::new()]);
+                                                        action_type_open.set(vec![false; choices_len]);
+                                                        choice_chapters_open.set(vec![false; choices_len]);
+                                                        choice_paragraphs_open.set(vec![false; choices_len]);
+                                                        choice_paragraphs_search.set(vec![String::new(); choices_len]);
                                                     }
                                                 }
                                             }
@@ -1331,9 +1148,11 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
                                                 on_select: EventHandler::new(move |id: String| {
                                                     if *is_edit_mode.read() {
                                                         // 找到選中段落的索引
-                                                        if let Some(index) = available_paragraphs.read().iter().position(|p| p.id == id) {
+                                                        let available_paragraphs = available_paragraphs.read();
+                                                        if let Some(index) = available_paragraphs.iter().position(|p| p.id == id) {
                                                             handle_paragraph_select(index);
                                                         }
+                                                        paragraph_search_query.set(String::new());
                                                     }
                                                 }),
                                                 has_error: false,
@@ -1405,21 +1224,7 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
                                     choices: choices.read().clone(),
                                     on_choice_change: handle_choice_change,
                                     on_add_choice: handle_add_choice,
-                                    on_remove_choice: move |index| {
-                                        let mut current_choices = choices.read().clone();
-                                        current_choices.remove(index);
-                                        choices.set(current_choices);
-
-                                        let mut current = action_type_open.read().clone();
-                                        current.remove(index);
-                                        action_type_open.set(current);
-
-                                        choice_chapters_open.write().remove(index);
-                                        choice_chapters_search.write().remove(index);
-                                        choice_paragraphs_open.write().remove(index);
-                                        choice_paragraphs_search.write().remove(index);
-                                        choice_paragraphs.write().remove(index);
-                                    },
+                                    on_remove_choice: handle_remove_choice,
                                     available_chapters: {
                                         let mut chapters = available_chapters.read().clone();
                                         // 在開頭添加 N/A 選項
@@ -1472,4 +1277,86 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
             }
         }
     }
+}
+
+fn process_paragraph_select(
+    text: &Text,
+    full_paragraph: &TranslationFormParagraph,
+    paragraph_data: &Signal<Vec<TranslationFormParagraph>>,
+    paragraph_language: &Signal<String>,
+) -> (
+    Vec<(String, String, String, Option<String>, Option<serde_json::Value>, String)>,
+    Vec<Vec<ParagraphListParagraph>>,
+) {
+    let mut new_choices = Vec::new();
+    let mut new_paragraphs = Vec::new();
+
+    // 獲取當前語言的選項文字
+    let text_choices = &text.choices;
+    
+    // 獲取選項的目標和類型
+    let paragraph_choices = &full_paragraph.choices;
+    
+    // 遍歷文字選項，並與對應的選項配置匹配
+    for (i, choice_text) in text_choices.iter().enumerate() {
+        let (target_id, type_, key, value) = if let Some(choice) = paragraph_choices.get(i) {
+            match choice {
+                ParagraphChoice::Simple(_) => (String::new(), String::new(), None, None),
+                ParagraphChoice::Complex { to, type_, key, value, .. } => {
+                    (to.clone(), type_.clone(), key.clone(), value.clone())
+                },
+            }
+        } else {
+            (String::new(), String::new(), None, None)
+        };
+
+        // 根據目標段落ID找到對應的章節ID
+        let target_chapter_id = if !target_id.is_empty() {
+            paragraph_data.read().iter()
+                .find(|p| p.id == target_id)
+                .map(|p| p.chapter_id.clone())
+                .unwrap_or_default()
+        } else {
+            String::new()
+        };
+
+        // 添加新的選項
+        new_choices.push((
+            choice_text.clone(),
+            target_id.clone(),
+            type_,
+            key,
+            value,
+            target_chapter_id.clone(),
+        ));
+
+        // 如果有目標章節，則添加該章節的段落列表
+        if !target_chapter_id.is_empty() {
+            let selected_lang = paragraph_language.read().clone();
+            let filtered_paragraphs = paragraph_data.read().iter()
+                .filter(|item| item.chapter_id == target_chapter_id)
+                .map(|item| {
+                    let has_translation = item.texts.iter().any(|text| text.lang == selected_lang);
+                    let preview = item.texts.iter()
+                        .find(|t| t.lang == selected_lang)
+                        .or_else(|| item.texts.iter().find(|t| t.lang == "en-US" || t.lang == "en-GB"))
+                        .or_else(|| item.texts.first())
+                        .map(|text| text.paragraphs.lines().next().unwrap_or("").to_string())
+                        .unwrap_or_else(|| format!("[{}]", item.id));
+
+                    ParagraphListParagraph {
+                        id: item.id.clone(),
+                        preview,
+                        has_translation,
+                    }
+                })
+                .collect::<Vec<_>>();
+            
+            new_paragraphs.push(filtered_paragraphs);
+        } else {
+            new_paragraphs.push(Vec::new());
+        }
+    }
+
+    (new_choices, new_paragraphs)
 }
