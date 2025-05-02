@@ -1078,6 +1078,16 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
                                                         choice_chapters_open.set(vec![false; choices_len]);
                                                         choice_paragraphs_open.set(vec![false; choices_len]);
                                                         choice_paragraphs_search.set(vec![String::new(); choices_len]);
+                                                    } else {
+                                                        // 如果找不到當前語言的翻譯，只清空段落內容和選項標題
+                                                        paragraphs.set(String::new());
+                                                        
+                                                        // 保留目標章節和段落的選擇，只清空選項標題
+                                                        let current_choices = choices.read().clone();
+                                                        let new_choices = current_choices.iter().map(|(_, to, type_, key, value, target_chapter)| {
+                                                            (String::new(), to.clone(), type_.clone(), key.clone(), value.clone(), target_chapter.clone())
+                                                        }).collect();
+                                                        choices.set(new_choices);
                                                     }
                                                 }
                                             }
