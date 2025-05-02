@@ -15,7 +15,7 @@ pub static ACTIONS: &str = "/collections/actions/records";
 pub static PUBLIC_COLLECTIONS: &str = "/collections/public";
 #[allow(dead_code)]
 pub static AUTH_TOKEN: &str = ""; // 不需要認證 token，因為 collections 應該可以被任何用戶訪問
-pub static LANGUAGES: [Language; 5] = [
+pub static LANGUAGES: [Language; 6] = [
     Language {
         name: "English (US)",
         code: "en-US",
@@ -35,5 +35,9 @@ pub static LANGUAGES: [Language; 5] = [
     Language {
         name: "正體中文",
         code: "zh-TW",
+    },
+    Language {
+        name: "简体中文",
+        code: "zh-CN",
     },
 ];

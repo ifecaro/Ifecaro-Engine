@@ -13,7 +13,8 @@ struct Language {
 const LANGUAGES: &[Language] = &[
     Language { code: "zh-TW", name: "繁體中文" },
     Language { code: "zh-CN", name: "简体中文" },
-    Language { code: "en-US", name: "English" },
+    Language { code: "en-US", name: "English (US)" },
+    Language { code: "en-GB", name: "English (UK)" },
     Language { code: "es-ES", name: "Español (España)" },
     Language { code: "es-CL", name: "Español (Chile)" },
 ];
