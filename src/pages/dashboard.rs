@@ -1335,10 +1335,16 @@ fn process_paragraph_select(
 
         // 根據目標段落ID找到對應的章節ID
         let target_chapter_id = if !target_id.is_empty() {
-            paragraph_data.read().iter()
-                .find(|p| p.id == target_id)
-                .map(|p| p.chapter_id.clone())
-                .unwrap_or_default()
+            // 檢查目標段落是否存在
+            if paragraph_data.read().iter().any(|p| p.id == target_id) {
+                paragraph_data.read().iter()
+                    .find(|p| p.id == target_id)
+                    .map(|p| p.chapter_id.clone())
+                    .unwrap_or_default()
+            } else {
+                // 如果目標段落不存在，清空所有相關的選擇
+                String::new()
+            }
         } else {
             String::new()
         };
@@ -1346,10 +1352,10 @@ fn process_paragraph_select(
         // 添加新的選項
         new_choices.push((
             choice_text.clone(),
-            target_id.clone(),
-            type_,
-            key,
-            value,
+            if target_chapter_id.is_empty() { String::new() } else { target_id.clone() },
+            if target_chapter_id.is_empty() { String::new() } else { type_ },
+            if target_chapter_id.is_empty() { None } else { key },
+            if target_chapter_id.is_empty() { None } else { value },
             target_chapter_id.clone(),
         ));
 
