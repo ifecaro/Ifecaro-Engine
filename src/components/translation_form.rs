@@ -12,7 +12,9 @@ pub enum ParagraphChoice {
         to: String,
         #[serde(rename = "type")]
         type_: String,
+        #[serde(skip_serializing_if = "Option::is_none")]
         key: Option<String>,
+        #[serde(skip_serializing_if = "Option::is_none")]
         value: Option<serde_json::Value>,
     },
     Simple(String),

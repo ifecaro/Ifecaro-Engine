@@ -548,16 +548,29 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
 
             // 構建選項數據
             let paragraph_choices: Vec<ParagraphChoice> = choices.iter().map(|(_, to, type_, key, value, _)| {
-                if !type_.is_empty() || key.is_some() || value.is_some() {
-                    ParagraphChoice::Complex {
-                        to: to.clone(),
-                        type_: type_.clone(),
-                        key: key.clone(),
-                        value: value.clone(),
+                // 構建一個基本的 Complex 結構
+                let mut complex = ParagraphChoice::Complex {
+                    to: to.clone(),
+                    type_: type_.clone(),
+                    key: None,
+                    value: None,
+                };
+
+                // 只有在有值時才設置 key 和 value
+                if let Some(k) = key {
+                    if !k.is_empty() {
+                        if let ParagraphChoice::Complex { key, .. } = &mut complex {
+                            *key = Some(k.to_string());
+                        }
                     }
-                } else {
-                    ParagraphChoice::Simple(to.clone())
                 }
+                if let Some(v) = value {
+                    if let ParagraphChoice::Complex { value, .. } = &mut complex {
+                        *value = Some(v.clone());
+                    }
+                }
+
+                complex
             }).collect();
 
             spawn_local({
