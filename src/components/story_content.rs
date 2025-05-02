@@ -157,7 +157,7 @@ pub fn StoryContent(props: StoryContentProps) -> Element {
                         } else {
                             rsx! {
                                 p { 
-                                    class: "indent-10",
+                                    class: "indent-10 tracking-wide leading-relaxed text-justify",
                                     {p}
                                 }
                             }
