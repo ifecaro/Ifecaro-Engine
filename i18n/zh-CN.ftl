@@ -19,4 +19,5 @@ submit-success = 提交成功！
 select-language = 选择语言
 select-chapter = 选择章节
 continue-reading = 点击屏幕任意处继续
-start-reading = 点击屏幕任意处开始 
+start-reading = 点击屏幕任意处开始
+loading = 加载中... 

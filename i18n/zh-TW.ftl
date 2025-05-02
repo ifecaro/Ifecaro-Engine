@@ -20,3 +20,4 @@ select-language = 選擇語言
 select-chapter = 選擇章節
 continue-reading = 點擊螢幕任意處繼續
 start-reading = 點擊螢幕任意處開始 
+loading = 載入中... 

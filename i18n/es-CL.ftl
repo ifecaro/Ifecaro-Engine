@@ -19,4 +19,5 @@ submit-success = ¡Enviado exitosamente!
 select-language = Seleccionar Idioma
 select-chapter = Seleccionar Capítulo
 continue-reading = Haz clic en cualquier parte de la pantalla para continuar
-start-reading = Haz clic en cualquier parte de la pantalla para comenzar 
+start-reading = Haz clic en cualquier lugar para comenzar
+loading = Cargando... 

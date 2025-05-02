@@ -19,4 +19,5 @@ submit-success = Successfully submitted!
 select-language = Select Language
 select-chapter = Select Chapter
 continue-reading = Click anywhere on the screen to continue
-start-reading = Click anywhere on the screen to start 
+start-reading = Click anywhere to start
+loading = Loading... 

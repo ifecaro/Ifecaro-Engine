@@ -3,6 +3,7 @@ use dioxus_core::IntoDynNode;
 use dioxus_core::fc_to_builder;
 use wasm_bindgen_futures::spawn_local;
 use serde::Deserialize;
+use dioxus_i18n::t;
 use crate::components::story_content::{StoryContent, Choice, Action};
 use crate::contexts::story_context::use_story_context;
 use crate::contexts::language_context::LanguageState;
@@ -231,7 +232,7 @@ pub fn Story(props: StoryProps) -> Element {
             } else {
                 div { 
                     class: "text-white",
-                    "載入中..." 
+                    "{t!(\"loading\")}" 
                 }
             }
         }
