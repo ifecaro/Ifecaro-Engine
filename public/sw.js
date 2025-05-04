@@ -1,18 +1,18 @@
-const CACHE_VERSION = 'v2';
+const CACHE_VERSION = 'v3';
 const CACHE_NAME = `ifecaro-cache-${CACHE_VERSION}`;
 
 // 靜態資源清單
 const STATIC_RESOURCES = [
     '/',
-    '/assets/dioxus/Ifecaro-Engine.js',
-    '/assets/dioxus/Ifecaro-Engine_bg.wasm',
-    '/public/tailwind.css',
-    '/public/fonts/NotoSansTC-Regular.woff2',
-    '/public/img/icons/favicon.ico',
-    '/public/img/icons/apple-touch-icon.png',
-    '/public/img/icons/android-chrome-192x192.png',
-    '/public/img/icons/android-chrome-512x512.png',
-    '/public/manifest.json'
+    '/assets/ifecaro.js',
+    '/assets/ifecaro_bg.wasm',
+    '/assets/tailwind.css',
+    '/assets/fonts/NotoSansTC-Regular.woff2',
+    '/assets/icons/favicon.ico',
+    '/assets/icons/apple-touch-icon.png',
+    '/assets/icons/android-chrome-192x192.png',
+    '/assets/icons/android-chrome-512x512.png',
+    '/assets/manifest.json'
 ];
 
 // 需要 Network First 策略的 API 路徑
@@ -22,21 +22,29 @@ const API_PATHS = [
 
 // 檢查資源是否需要更新
 async function checkResourceUpdate(request) {
-    const cachedResponse = await caches.match(request);
-
-    if (!cachedResponse) return true; // 如果沒有快取，需要更新
-
     try {
+        const cachedResponse = await caches.match(request);
+        if (!cachedResponse) return true;
+
         const networkResponse = await fetch(request);
+        if (!networkResponse.ok) return false;
+
+        // 檢查 ETag 或 Last-Modified
+        const cachedETag = cachedResponse.headers.get('ETag');
+        const networkETag = networkResponse.headers.get('ETag');
+
+        if (cachedETag && networkETag && cachedETag !== networkETag) {
+            return true;
+        }
+
+        // 如果沒有 ETag，則比較內容
         const networkContent = await networkResponse.text();
-        const networkHash = btoa(networkContent).substring(0, 8);
-
         const cachedContent = await cachedResponse.text();
-        const cachedHash = btoa(cachedContent).substring(0, 8);
 
-        return networkHash !== cachedHash;
+        return networkContent !== cachedContent;
     } catch (error) {
-        return false; // 如果網路請求失敗，使用快取的內容
+        console.error('檢查資源更新失敗:', error);
+        return false;
     }
 }
 
@@ -44,21 +52,41 @@ async function checkResourceUpdate(request) {
 self.addEventListener('install', event => {
     event.waitUntil(
         caches.open(CACHE_NAME)
-            .then(cache => cache.addAll(STATIC_RESOURCES))
-            .then(() => self.skipWaiting()) // 立即啟用新的 service worker
+            .then(cache => {
+                console.log('正在快取靜態資源...');
+                return cache.addAll(STATIC_RESOURCES);
+            })
+            .then(() => {
+                console.log('Service Worker 安裝完成');
+                return self.skipWaiting();
+            })
+            .catch(error => {
+                console.error('Service Worker 安裝失敗:', error);
+            })
     );
 });
 
 // 啟用新的 service worker
 self.addEventListener('activate', event => {
     event.waitUntil(
-        caches.keys().then(cacheNames => {
-            return Promise.all(
-                cacheNames
-                    .filter(cacheName => cacheName.startsWith('ifecaro-cache-') && cacheName !== CACHE_NAME)
-                    .map(cacheName => caches.delete(cacheName))
-            );
-        }).then(() => self.clients.claim()) // 立即控制所有頁面
+        caches.keys()
+            .then(cacheNames => {
+                return Promise.all(
+                    cacheNames
+                        .filter(cacheName => cacheName.startsWith('ifecaro-cache-') && cacheName !== CACHE_NAME)
+                        .map(cacheName => {
+                            console.log('刪除舊的快取:', cacheName);
+                            return caches.delete(cacheName);
+                        })
+                );
+            })
+            .then(() => {
+                console.log('Service Worker 已啟用');
+                return self.clients.claim();
+            })
+            .catch(error => {
+                console.error('Service Worker 啟用失敗:', error);
+            })
     );
 });
 
@@ -74,15 +102,24 @@ self.addEventListener('fetch', event => {
         event.respondWith(
             fetch(event.request)
                 .then(response => {
+                    if (!response.ok) throw new Error('網路請求失敗');
+
                     // 如果網路請求成功，更新快取
                     const responseToCache = response.clone();
                     caches.open(CACHE_NAME)
-                        .then(cache => cache.put(event.request, responseToCache));
+                        .then(cache => cache.put(event.request, responseToCache))
+                        .catch(error => console.error('快取更新失敗:', error));
+
                     return response;
                 })
-                .catch(() => {
+                .catch(async () => {
                     // 如果網路請求失敗，嘗試從快取中獲取
-                    return caches.match(event.request);
+                    const cachedResponse = await caches.match(event.request);
+                    if (cachedResponse) {
+                        console.log('使用快取的 API 回應');
+                        return cachedResponse;
+                    }
+                    throw new Error('無法獲取資源');
                 })
         );
     } else {
@@ -97,21 +134,33 @@ self.addEventListener('fetch', event => {
                             // 在背景更新快取
                             fetch(event.request)
                                 .then(networkResponse => {
-                                    const responseToCache = networkResponse.clone();
-                                    caches.open(CACHE_NAME)
-                                        .then(cache => cache.put(event.request, responseToCache));
+                                    if (networkResponse.ok) {
+                                        const responseToCache = networkResponse.clone();
+                                        caches.open(CACHE_NAME)
+                                            .then(cache => cache.put(event.request, responseToCache))
+                                            .catch(error => console.error('背景更新快取失敗:', error));
+                                    }
                                 })
-                                .catch(() => { }); // 忽略更新失敗
+                                .catch(error => console.error('背景更新失敗:', error));
                         }
                         return cachedResponse;
                     }
+
                     // 如果快取中沒有，從網路獲取
                     return fetch(event.request)
                         .then(response => {
+                            if (!response.ok) throw new Error('網路請求失敗');
+
                             const responseToCache = response.clone();
                             caches.open(CACHE_NAME)
-                                .then(cache => cache.put(event.request, responseToCache));
+                                .then(cache => cache.put(event.request, responseToCache))
+                                .catch(error => console.error('快取更新失敗:', error));
+
                             return response;
+                        })
+                        .catch(error => {
+                            console.error('獲取資源失敗:', error);
+                            return new Response('無法獲取資源', { status: 503 });
                         });
                 })
         );

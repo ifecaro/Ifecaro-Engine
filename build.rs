@@ -27,7 +27,7 @@ fn main() {
 
     // Copy PWA assets
     println!("Copying PWA assets...");
-    let build_dir = Path::new("target/dx/simon-cheng/release/web");
+    let build_dir = Path::new("target/dx/ifecaro/release/web");
     let public_dir = build_dir.join("public");
     
     // Create necessary directories
@@ -73,7 +73,7 @@ fn main() {
                 "public.tar.gz",
                 "public/",
             ])
-            .current_dir("target/dx/simon-cheng/release/web")
+            .current_dir("target/dx/ifecaro/release/web")
             .status()
             .expect("Failed to execute tar command");
 
@@ -85,7 +85,7 @@ fn main() {
         println!("Uploading file to server...");
         let scp_status = Command::new("scp")
             .args([
-                "target/dx/simon-cheng/release/web/public.tar.gz",
+                "target/dx/ifecaro/release/web/public.tar.gz",
                 "togekk@38.242.233.231:~/ifecaro",
             ])
             .status()
