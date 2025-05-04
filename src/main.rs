@@ -9,7 +9,6 @@ mod models;
 
 use dioxus::{
     prelude::*,
-    document::{Stylesheet, Script},
 };
 use crate::{
     enums::route::Route,
