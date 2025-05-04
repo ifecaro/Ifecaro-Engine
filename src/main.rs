@@ -29,21 +29,6 @@ fn main() {
 #[component]
 fn App() -> Element {
     rsx! {
-        head {
-            link { rel: "icon", r#type: "image/x-icon", href: "/img/icons/favicon.ico" }
-            link { rel: "shortcut icon", r#type: "image/x-icon", href: "/img/icons/favicon.ico" }
-            link { rel: "apple-touch-icon", sizes: "180x180", href: "/img/icons/apple-touch-icon.png" }
-            link { rel: "icon", r#type: "image/png", sizes: "32x32", href: "/img/icons/favicon-32x32.png" }
-            link { rel: "icon", r#type: "image/png", sizes: "16x16", href: "/img/icons/favicon-16x16.png" }
-            link { rel: "manifest", href: "/manifest.json" }
-            Stylesheet { href: asset!("public/tailwind.css") }
-            Script { src: asset!("public/sw.js") }
-            link { rel: "modulepreload", href: asset!("public/sw.js") }
-            meta { name: "theme-color", content: "#000000" }
-            meta { name: "apple-mobile-web-app-capable", content: "yes" }
-            meta { name: "apple-mobile-web-app-status-bar-style", content: "black" }
-            meta { name: "apple-mobile-web-app-title", content: "Ifecaro" }
-        }
         LanguageProvider {
             StoryProvider {
                 Router::<Route> {}
