@@ -12,18 +12,17 @@
     <link rel="icon" type="image/png" sizes="16x16" href="/img/icons/favicon-16x16.png">
     <link rel="manifest" href="/manifest.json">
     <link href="/assets/tailwind.css" rel="stylesheet">
+    <link href="/assets/wasm-loader.css" rel="stylesheet">
     <script type="text/javascript" src="/assets/sw.js" async></script>
     <meta name="theme-color" content="#000000">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black">
     <meta name="apple-mobile-web-app-title" content="Ifecaro">
-    <link rel="stylesheet" href="/assets/wasm-loader.css">
 </head>
 
 <body>
     <div id="main"></div>
     <div class="loading-container" id="loadingContainer" style="display: none;">
-        <h1 class="text-2xl font-bold mb-4">載入中...</h1>
         <div class="progress-container">
             <div class="progress-bar">
                 <div class="progress" id="progress"></div>
@@ -36,29 +35,120 @@
         </div>
     </div>
 
-    <script type="module">
-        const wasmPath = "/{wasm_path}"; // 請替換為實際 wasm 路徑
-        const jsPath = "/{js_path}";     // 請替換為實際 js 路徑
+    <script>
+        (function () {
+            // 更新進度條
+            function updateProgress(percent, loaded, total, speed) {
+                const progress = document.getElementById('progress');
+                const loadingText = document.getElementById('loadingText');
+                const downloadSize = document.getElementById('downloadSize');
+                const downloadSpeed = document.getElementById('downloadSpeed');
 
-        function startApp() {
-            import("/assets/wasm-loader.js").then(mod => {
-                mod.loadWasm({ wasmPath, jsPath });
-            });
-        }
+                progress.style.width = `${percent}%`;
+                loadingText.textContent = `${Math.round(percent)}%`;
 
-        if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('/sw.js', { scope: '/' }).then(reg => {
-                if (!navigator.serviceWorker.controller) {
-                    navigator.serviceWorker.addEventListener('controllerchange', () => {
-                        startApp();
-                    });
-                } else {
-                    startApp();
+                // 格式化檔案大小
+                const formatSize = (bytes) => {
+                    if (bytes < 1024) return bytes + ' B';
+                    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(2) + ' KB';
+                    return (bytes / (1024 * 1024)).toFixed(2) + ' MB';
+                };
+
+                // 格式化速度
+                const formatSpeed = (bytesPerSecond) => {
+                    if (bytesPerSecond < 1024) return bytesPerSecond.toFixed(1) + ' B/s';
+                    if (bytesPerSecond < 1024 * 1024) return (bytesPerSecond / 1024).toFixed(1) + ' KB/s';
+                    return (bytesPerSecond / (1024 * 1024)).toFixed(1) + ' MB/s';
+                };
+
+                downloadSize.textContent = `${formatSize(loaded)} / ${formatSize(total)}`;
+                downloadSpeed.textContent = formatSpeed(speed);
+            }
+
+            // 載入 WASM
+            const wasmUrl = "/{wasm_path}";
+            const jsUrl = "/{js_path}";
+
+            async function loadWasm() {
+                try {
+                    // 顯示進度條
+                    document.getElementById('loadingContainer').style.display = 'flex';
+
+                    // 下載 WASM
+                    const response = await fetch(wasmUrl);
+                    if (!response.ok) throw new Error('WASM 檔案載入失敗');
+
+                    const contentLength = response.headers.get('content-length');
+                    const total = parseInt(contentLength, 10);
+                    let loaded = 0;
+                    let startTime = Date.now();
+                    const collectedChunks = [];
+
+                    const reader = response.body.getReader();
+
+                    function pump() {
+                        return reader.read().then(({ done, value }) => {
+                            if (done) {
+                                return collectedChunks;
+                            }
+
+                            collectedChunks.push(value);
+                            loaded += value.length;
+
+                            // 用總下載量除以總耗時計算平均速度
+                            const currentTime = Date.now();
+                            const timeElapsed = (currentTime - startTime) / 1000; // 秒
+                            const averageSpeed = timeElapsed > 0 ? loaded / timeElapsed : 0;
+
+                            const progress = (loaded / total) * 100;
+                            updateProgress(progress, loaded, total, averageSpeed);
+
+                            return pump();
+                        });
+                    }
+
+                    const chunks = await pump();
+                    const blob = new Blob(chunks);
+                    const bytes = await blob.arrayBuffer();
+
+                    // 載入 JavaScript 模組
+                    const { default: init } = await import(jsUrl);
+
+                    // 直接使用 init 函數
+                    const wasm = await init(bytes);
+
+                    // 載入完成後顯示主頁面
+                    document.getElementById('loadingContainer').style.display = 'none';
+                    document.getElementById('main').style.display = 'block';
+
+                    // 移除 WASM 載入相關的資源
+                    const wasmLoaderCss = document.querySelector('link[href="/assets/wasm-loader.css"]');
+                    if (wasmLoaderCss) wasmLoaderCss.remove();
+
+                    const wasmScript = document.querySelector('script[src="/assets/sw.js"]');
+                    if (wasmScript) wasmScript.remove();
+
+                    const wasmLoaderScript = document.querySelector('script:not([src])');
+                    if (wasmLoaderScript) wasmLoaderScript.remove();
+
+                    // 只在沒有 __wbindgen_start 或 main 函數時才調用
+                    if (!wasm.__wbindgen_start && !wasm.main) {
+                        if (wasm.__wbindgen_start) {
+                            wasm.__wbindgen_start();
+                        } else if (wasm.main) {
+                            wasm.main();
+                        }
+                    }
+                } catch (error) {
+                    console.error('載入失敗:', error);
+                    document.getElementById('loadingContainer').style.display = 'flex';
+                    document.querySelector('.loading-text').textContent = '載入失敗，請重新整理頁面';
                 }
-            });
-        } else {
-            startApp();
-        }
+            }
+
+            // 直接載入 WASM
+            loadWasm();
+        })();
     </script>
 </body>
 
