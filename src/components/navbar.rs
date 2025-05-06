@@ -87,7 +87,7 @@ pub fn Navbar(closure_signal: Signal<Option<Closure<dyn FnMut(Event)>>>) -> Elem
                     div {
                         class: "flex-1 sm:flex-none relative language-dropdown text-center",
                         Dropdown {
-                            label: t.select_language,
+                            label: String::new(),
                             value: current_language.read().to_string(),
                             options: filtered_languages.read().clone(),
                             is_open: *is_open.read(),
@@ -113,9 +113,13 @@ pub fn Navbar(closure_signal: Signal<Option<Closure<dyn FnMut(Event)>>>) -> Elem
                                 search_query.set(String::new());
                             },
                             display_fn: display_language,
-                            class: String::from("w-48 mx-auto"),
+                            class: String::new(),
                             search_placeholder: t.search_language,
-                            button_class: String::from("text-xs font-medium"),
+                            button_class: String::from("flex-1 sm:flex-none text-center text-xs text-gray-700 dark:text-white hover:text-gray-900 dark:hover:text-gray-300 transition-colors duration-200 py-2 cursor-pointer"),
+                            show_arrow: false,
+                            label_class: String::new(),
+                            dropdown_width: Some("min-w-max".to_string()),
+                            dropdown_position: Some("right-0".to_string()),
                         }
                     }
                 }

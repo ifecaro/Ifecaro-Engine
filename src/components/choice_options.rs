@@ -88,6 +88,8 @@ pub fn ChoiceOptions(props: ChoiceOptionsProps) -> Element {
                             },
                             has_error: false,
                             selected_language: props.selected_language.clone(),
+                            button_class: None,
+                            label_class: None,
                         }
                     }
 
@@ -108,6 +110,8 @@ pub fn ChoiceOptions(props: ChoiceOptionsProps) -> Element {
                             has_error: false,
                             t: props.t.clone(),
                             selected_language: props.selected_language.clone(),
+                            button_class: None,
+                            label_class: None,
                         }
                     }
 

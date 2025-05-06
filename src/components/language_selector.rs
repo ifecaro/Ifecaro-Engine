@@ -160,7 +160,9 @@ pub fn LanguageSelector(props: LanguageSelectorProps) -> Element {
                 is_open.set(false);
                 search_query.set(String::new());
             },
-            display_fn: display_language
+            display_fn: display_language,
+            button_class: None,
+            label_class: None,
         }
     }
 } 

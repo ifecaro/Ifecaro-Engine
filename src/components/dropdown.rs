@@ -4,6 +4,8 @@ use dioxus::prelude::*;
 pub struct DropdownProps<T: Clone + PartialEq + 'static> {
     /// 下拉選單的標籤
     pub label: String,
+    /// 下拉選單的 label 樣式（選填）
+    pub label_class: Option<String>,
     /// 當前選中的值
     pub value: String,
     /// 可選項列表
@@ -29,9 +31,8 @@ pub struct DropdownProps<T: Clone + PartialEq + 'static> {
     /// 可選的佔位符文本
     #[props(default = "搜尋...".to_string())]
     pub search_placeholder: String,
-    /// 可選的按鈕類名
-    #[props(default = String::new())]
-    pub button_class: String,
+    /// 可選的按鈕類名（選填）
+    pub button_class: Option<String>,
     /// 可選的下拉選單類名
     #[props(default = String::new())]
     pub dropdown_class: String,
@@ -47,6 +48,15 @@ pub struct DropdownProps<T: Clone + PartialEq + 'static> {
     /// 是否為必填
     #[props(default = false)]
     pub required: bool,
+    /// 是否顯示下拉箭頭
+    #[props(default = true)]
+    pub show_arrow: bool,
+    /// 下拉選單寬度 class（選填）
+    #[props(default = None)]
+    pub dropdown_width: Option<String>,
+    /// 下拉選單位置 class（選填）
+    #[props(default = None)]
+    pub dropdown_position: Option<String>,
 }
 
 #[component]
@@ -60,16 +70,12 @@ pub fn Dropdown<T: Clone + PartialEq + 'static>(props: DropdownProps<T>) -> Elem
     let search_query = props.search_query.clone();
     let display_fn = props.display_fn;
     
-    // 合併自定義類名
-    let button_class = if props.disabled {
-        format!("w-full px-4 py-2.5 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 shadow-sm cursor-not-allowed transition-all duration-200 ease-in-out flex justify-between items-center relative {}", props.button_class)
-    } else if props.has_error {
-        format!("w-full px-4 py-2.5 text-sm border border-red-500 dark:border-red-500 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all duration-200 ease-in-out hover:border-red-500 dark:hover:border-red-500 flex justify-between items-center relative {}", props.button_class)
-    } else {
-        format!("w-full px-4 py-2.5 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-200 ease-in-out hover:border-green-500 dark:hover:border-green-500 flex justify-between items-center relative {}", props.button_class)
-    };
+    let button_class = props.button_class.clone().unwrap_or_else(|| "w-full px-4 py-2.5 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-200 ease-in-out hover:border-green-500 dark:hover:border-green-500 flex justify-between items-center relative".to_string());
+    let label_class = props.label_class.clone().unwrap_or_else(|| "block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2".to_string());
     
-    let dropdown_container_class = format!("absolute left-0 right-0 top-full mt-2 rounded-md shadow-lg bg-white dark:bg-gray-800 ring-1 ring-black ring-opacity-5 transition-all duration-200 ease-in-out transform origin-top {dropdown_class} z-[1000] {}", props.dropdown_class);
+    let width_class = props.dropdown_width.clone().unwrap_or_else(|| "w-full".to_string());
+    let position_class = props.dropdown_position.clone().unwrap_or_else(|| "left-0".to_string());
+    let dropdown_container_class = format!("absolute {} top-full mt-2 rounded-md shadow-lg bg-white dark:bg-gray-800 ring-1 ring-black ring-opacity-5 transition-all duration-200 ease-in-out transform origin-top {dropdown_class} z-[1000] {} {}", position_class, props.dropdown_class, width_class);
     
     let search_input_class = format!("w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent {}", props.search_input_class);
     
@@ -91,7 +97,7 @@ pub fn Dropdown<T: Clone + PartialEq + 'static>(props: DropdownProps<T>) -> Elem
             }}
 
             label { 
-                class: "block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2",
+                class: label_class,
                 "{props.label}"
                 {if props.required {
                     rsx! {
@@ -119,12 +125,14 @@ pub fn Dropdown<T: Clone + PartialEq + 'static>(props: DropdownProps<T>) -> Elem
                         class: "block truncate",
                         "{props.value}" 
                     }
-                    svg { 
-                        class: "flex-shrink-0 fill-current h-4 w-4 transition-transform duration-200 ease-in-out",
-                        xmlns: "http://www.w3.org/2000/svg",
-                        view_box: "0 0 20 20",
-                        path { 
-                            d: "M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"
+                    if props.show_arrow {
+                        svg { 
+                            class: "flex-shrink-0 fill-current h-4 w-4 transition-transform duration-200 ease-in-out",
+                            xmlns: "http://www.w3.org/2000/svg",
+                            view_box: "0 0 20 20",
+                            path { 
+                                d: "M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"
+                            }
                         }
                     }
                 }

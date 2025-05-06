@@ -1099,6 +1099,8 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
                                         display_fn: display_language,
                                         has_error: false,
                                         search_placeholder: t.search_language,
+                                        button_class: None,
+                                        label_class: None,
                                     }
                                 }
 
