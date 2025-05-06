@@ -26,7 +26,6 @@ struct Data {
 #[allow(dead_code)]
 struct Paragraph {
     id: String,
-    index: usize,
     #[serde(default)]
     chapter_id: String,
     texts: Vec<Text>,

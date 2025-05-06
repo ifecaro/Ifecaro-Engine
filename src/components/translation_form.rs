@@ -53,7 +53,6 @@ impl ParagraphChoice {
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 pub struct Paragraph {
     pub id: String,
-    pub index: usize,
     #[serde(default)]
     pub chapter_id: String,
     pub texts: Vec<Text>,

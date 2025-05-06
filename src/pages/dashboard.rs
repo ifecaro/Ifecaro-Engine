@@ -578,20 +578,12 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
                 async move {
                     let client = reqwest::Client::new();
                     
-                    // 計算新段落的 index
-                    let max_index = paragraph_data.read().iter()
-                        .map(|p| p.index)
-                        .max()
-                        .unwrap_or(0);
-                    let new_index = max_index + 1;
-                    
                     // 建立新的段落資料
                     let chapter_id = selected_chapter.read().clone();
                     
                     // 建立新的段落資料
                     let new_paragraph = if chapter_id.is_empty() {
                         serde_json::json!({
-                            "index": if is_edit_mode { selected_paragraph.read().as_ref().map(|p| p.index).unwrap_or(new_index) } else { new_index },
                             "texts": if is_edit_mode {
                                 // 在編輯模式下，保留所有現有的翻譯，只更新當前語言的翻譯
                                 let mut existing_texts = selected_paragraph.read().as_ref().map(|p| p.texts.clone()).unwrap_or_default();
@@ -608,7 +600,6 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
                     } else {
                         serde_json::json!({
                             "chapter_id": chapter_id,
-                            "index": if is_edit_mode { selected_paragraph.read().as_ref().map(|p| p.index).unwrap_or(new_index) } else { new_index },
                             "texts": if is_edit_mode {
                                 // 在編輯模式下，保留所有現有的翻譯，只更新當前語言的翻譯
                                 let mut existing_texts = selected_paragraph.read().as_ref().map(|p| p.texts.clone()).unwrap_or_default();
