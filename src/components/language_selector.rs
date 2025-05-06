@@ -102,7 +102,7 @@ pub const AVAILABLE_LANGUAGES: &[Language] = &[
 ];
 
 #[allow(dead_code)]
-fn display_language(lang: &&Language) -> String {
+pub fn display_language(lang: &&Language) -> String {
     lang.name.to_string()
 }
 
