@@ -36,6 +36,6 @@ paragraph_content = 段落内容
 continue_reading = 点击屏幕任意处继续
 start_reading = 点击屏幕任意处开始
 target_chapter = 目标章节
-untranslated = 未翻译
+untranslated = 未翻譯
 loading = 加载中...
 not_applicable = 不适用 
