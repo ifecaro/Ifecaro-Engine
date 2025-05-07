@@ -45,7 +45,7 @@ regex = "1.10.3"
 js-sys = "0.3.69"
 # reqwest = { version = "0.12.4", features = ["json"] }
 wasm-bindgen-futures = "0.4.40"
-dioxus-i18n = "0.3.0"
+dioxus-i18n = "0.4.2"
 unic-langid = { version = "0.9.4", features = ["unic-langid-macros"] }
 
 # Debug

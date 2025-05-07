@@ -1,9 +1,9 @@
 use dioxus::prelude::*;
-use crate::enums::translations::Translations;
 use crate::components::form::{TextareaField, ChoiceOptions};
 use crate::components::paragraph_list::{Paragraph as ParagraphListItem, ParagraphList};
 use serde::{Serialize, Deserialize};
 use std::sync::Arc;
+use dioxus_i18n::t;
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 #[serde(untagged)]
@@ -68,7 +68,6 @@ pub struct Text {
 
 #[derive(Props, Clone, PartialEq)]
 pub struct TranslationFormProps {
-    t: Translations,
     paragraphs: String,
     new_caption: String,
     new_goto: String,
@@ -111,7 +110,6 @@ pub fn TranslationForm(props: TranslationFormProps) -> Element {
     let _new_goto_error = props.new_goto_error;
     let _available_paragraphs = props.available_paragraphs.clone();
     let selected_paragraph = props.selected_paragraph.clone();
-    let t = props.t.clone();
 
     let mut choices = use_signal(|| Vec::<(String, String, String, Option<String>, Option<serde_json::Value>, String)>::new());
     let mut action_type_open = use_signal(|| vec![false]);
@@ -135,8 +133,8 @@ pub fn TranslationForm(props: TranslationFormProps) -> Element {
             div { class: "space-y-4",
                 // 段落選擇器
                 ParagraphList {
-                    label: props.t.paragraph,
-                    value: props.selected_paragraph.as_ref().map(|p| p.id.clone()).unwrap_or_else(|| "選擇段落".to_string()),
+                    label: t!("select_paragraph"),
+                    value: props.selected_paragraph.as_ref().map(|p| p.id.clone()).unwrap_or_else(|| t!("select_paragraph")),
                     paragraphs: props.available_paragraphs.clone(),
                     is_open: *is_paragraph_open.read(),
                     search_query: paragraph_search_query.read().to_string(),
@@ -150,13 +148,12 @@ pub fn TranslationForm(props: TranslationFormProps) -> Element {
                         is_paragraph_open.set(false);
                     },
                     has_error: false,
-                    t: props.t.clone(),
                 }
 
                 // 段落內容欄位
                 TextareaField {
-                    label: t.paragraph_content,
-                    placeholder: t.paragraph_content,
+                    label: Box::leak(t!("paragraph_content").into_boxed_str()),
+                    placeholder: Box::leak(t!("paragraph_content").into_boxed_str()),
                     value: paragraphs.to_string(),
                     required: true,
                     has_error: paragraphs_error,
@@ -170,7 +167,6 @@ pub fn TranslationForm(props: TranslationFormProps) -> Element {
 
                 // 選項設定
                 ChoiceOptions {
-                    t: t.clone(),
                     choices: choices.read().clone(),
                     on_choice_change: move |(index, field, value): (usize, String, String)| {
                         let mut choices_write = choices.write();
@@ -223,7 +219,7 @@ pub fn TranslationForm(props: TranslationFormProps) -> Element {
                     class: "w-full px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:opacity-50 disabled:cursor-not-allowed",
                     disabled: !*is_form_valid.read(),
                     onclick: move |_| props.on_submit.call(()),
-                    "{t.submit}"
+                    {t!("submit")}
                 }
             }
         }

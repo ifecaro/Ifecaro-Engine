@@ -144,7 +144,13 @@ pub fn StoryContent(props: StoryContentProps) -> Element {
                 },
                 div {
                     class: "text-white text-xl font-bold",
-                    { if *is_focused.read() { t!("continue-reading") } else { t!("start-reading") } }
+                    {
+                        if *is_focused.read() {
+                            t!("continue_reading")
+                        } else {
+                            t!("start_reading")
+                        }
+                    }
                 }
             }
             article {

@@ -1,5 +1,5 @@
 use dioxus::prelude::*;
-use crate::enums::translations::Translations;
+use dioxus_i18n::t;
 
 #[derive(Clone, PartialEq)]
 pub struct Language {
@@ -108,7 +108,6 @@ pub fn display_language(lang: &&Language) -> String {
 
 #[derive(Props, Clone, PartialEq)]
 pub struct LanguageSelectorProps {
-    t: Translations,
     selected_lang: String,
     on_language_change: EventHandler<String>,
 }
@@ -145,7 +144,7 @@ pub fn LanguageSelector(props: LanguageSelectorProps) -> Element {
 
     rsx! {
         crate::components::dropdown::Dropdown {
-            label: props.t.select_language.to_string(),
+            label: t!("select_language"),
             value: current_language.read().to_string(),
             options: filtered_languages.read().clone(),
             is_open: *is_open.read(),
@@ -163,6 +162,7 @@ pub fn LanguageSelector(props: LanguageSelectorProps) -> Element {
             display_fn: display_language,
             button_class: None,
             label_class: None,
+            search_placeholder: t!("search_language"),
         }
     }
 } 

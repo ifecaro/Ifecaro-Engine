@@ -1,12 +1,11 @@
 use dioxus::prelude::*;
-use crate::enums::translations::Translations;
+use dioxus_i18n::t;
 use crate::components::form::{TextareaField, ChoiceOptions};
 use crate::components::paragraph_list::Paragraph;
 use std::sync::Arc;
 
 #[derive(Props, Clone, PartialEq)]
 pub struct ParagraphFormProps {
-    t: Translations,
     paragraphs: String,
     new_caption: String,
     new_goto: String,
@@ -43,7 +42,6 @@ pub struct ParagraphFormProps {
 
 #[component]
 pub fn ParagraphForm(props: ParagraphFormProps) -> Element {
-    let t = props.t.clone();
     let mut choices = use_signal(|| Vec::<(String, String, String, Option<String>, Option<serde_json::Value>, String)>::new());
     let available_chapters = use_signal(|| Vec::<crate::pages::dashboard::Chapter>::new());
     let selected_language = use_signal(|| String::new());
@@ -76,8 +74,8 @@ pub fn ParagraphForm(props: ParagraphFormProps) -> Element {
         div { class: "space-y-8",
             // 段落內容欄位
             TextareaField {
-                label: t.paragraph,
-                placeholder: t.paragraph,
+                label: Box::leak(t!("paragraph_content").into_boxed_str()),
+                placeholder: Box::leak(t!("paragraph_content").into_boxed_str()),
                 value: paragraphs.to_string(),
                 required: true,
                 has_error: paragraphs_error,
@@ -91,7 +89,6 @@ pub fn ParagraphForm(props: ParagraphFormProps) -> Element {
 
             // 選項設定
             ChoiceOptions {
-                t: t.clone(),
                 choices: choices.read().clone(),
                 on_choice_change: move |(index, field, value): (usize, String, String)| {
                     let mut choices_write = choices.write();
@@ -141,10 +138,10 @@ pub fn ParagraphForm(props: ParagraphFormProps) -> Element {
 
             // 提交按鈕
             button {
-                class: "w-full px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed",
+                class: "w-full px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed",
                 disabled: !*is_form_valid.read(),
                 onclick: move |_| props.on_submit.call(()),
-                {t.submit}
+                {t!("submit")}
             }
         }
     }

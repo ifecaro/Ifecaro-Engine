@@ -1,8 +1,6 @@
 use dioxus::prelude::*;
 use serde::{Deserialize, Serialize};
 use wasm_bindgen_futures::spawn_local;
-use crate::enums::translations::Translations;
-use crate::components::form::{TextareaField, ChoiceOptions};
 use dioxus::events::FormEvent;
 use crate::components::dropdown::Dropdown;
 use crate::components::translation_form::{Paragraph, Text, ParagraphChoice};
@@ -19,6 +17,8 @@ use wasm_bindgen::closure::Closure;
 use wasm_bindgen::JsCast;
 use std::rc::Rc;
 use crate::components::{translation_form::Paragraph as TranslationFormParagraph, paragraph_list::Paragraph as ParagraphListParagraph};
+use dioxus_i18n::t;
+use crate::components::form::{TextareaField, ChoiceOptions};
 
 thread_local! {
     static CURRENT_LANGUAGE: RefCell<String> = RefCell::new(String::from("zh-TW"));
@@ -177,7 +177,6 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
     let mut selected_paragraph = use_signal(|| None::<Paragraph>);
     let mut is_edit_mode = use_signal(|| false);
     let paragraph_data = use_signal(|| Vec::<Paragraph>::new());
-    let t = Translations::get(&current_lang);
     let mut _should_scroll = use_signal(|| false);
     let target_chapter = use_signal(|| String::new());
     let _extra_target_chapters = use_signal(|| Vec::<String>::new());
@@ -1018,7 +1017,7 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
                                 "translate-y-2 opacity-0 hidden"
                             }
                         ),
-                        "{t.submit_success}"
+                        {t!("submit_success")}
                     }
                     // 錯誤 Toast
                     div {
@@ -1047,7 +1046,7 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
                                 div {
                                     class: "w-full",
                                     Dropdown {
-                                        label: t.select_language,
+                                        label: t!("select_language"),
                                         value: current_language.read().to_string(),
                                         options: filtered_languages.read().clone(),
                                         is_open: *is_open.read(),
@@ -1098,7 +1097,7 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
                                         },
                                         display_fn: display_language,
                                         has_error: false,
-                                        search_placeholder: t.search_language,
+                                        search_placeholder: Box::leak(t!("search_language").into_boxed_str()),
                                         button_class: None,
                                         label_class: None,
                                     }
@@ -1109,7 +1108,7 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
                                     class: "w-full",
                                     ChapterSelector {
                                         key: format!("chapter-dropdown-{}", paragraph_language.read()),
-                                        label: t.select_chapter,
+                                        label: Box::leak(t!("select_chapter").into_boxed_str()),
                                         value: selected_chapter.read().clone(),
                                         chapters: available_chapters.read().clone(),
                                         is_open: *is_chapter_open.read(),
@@ -1145,8 +1144,8 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
                                         div { 
                                             class: "w-full",
                                             crate::components::paragraph_list::ParagraphList {
-                                                label: t.select_paragraph,
-                                                value: selected_paragraph.read().as_ref().map(|p| p.id.clone()).unwrap_or(t.select_paragraph.to_string()),
+                                                label: t!("select_paragraph"),
+                                                value: selected_paragraph.read().as_ref().map(|p| p.id.clone()).unwrap_or(t!("select_paragraph").to_string()),
                                                 paragraphs: available_paragraphs.read().clone(),
                                                 is_open: *is_paragraph_open.read(),
                                                 search_query: paragraph_search_query.read().to_string(),
@@ -1173,7 +1172,6 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
                                                 }),
                                                 has_error: false,
                                                 disabled: !*is_edit_mode.read(),
-                                                t: t.clone(),
                                                 selected_language: paragraph_language.read().clone(),
                                             }
                                         }
@@ -1217,8 +1215,8 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
                             div { 
                                 class: "w-full",
                                 TextareaField {
-                                    label: t.paragraph_content,
-                                    placeholder: t.paragraph_content,
+                                    label: Box::leak(t!("paragraph_content").into_boxed_str()),
+                                    placeholder: Box::leak(t!("paragraph_content").into_boxed_str()),
                                     value: paragraphs.read().to_string(),
                                     required: true,
                                     has_error: *paragraphs_error.read(),
@@ -1236,7 +1234,6 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
                             div {
                                 class: "w-full",
                                 ChoiceOptions {
-                                    t: t.clone(),
                                     choices: choices.read().clone(),
                                     on_choice_change: handle_choice_change,
                                     on_add_choice: handle_add_choice,
@@ -1248,7 +1245,7 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
                                             id: String::new(),
                                             titles: vec![ChapterTitle {
                                                 lang: paragraph_language.read().clone(),
-                                                title: "N/A".to_string(),
+                                                title: t!("not_applicable"),
                                             }],
                                             order: -1,
                                         });
@@ -1285,7 +1282,7 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
                                 onclick: move |_| {
                                     handle_submit(());
                                 },
-                                "{t.submit}"
+                                {t!("submit")}
                             }
                         }
                     }

@@ -5,6 +5,7 @@ use crate::contexts::language_context::LanguageState;
 use dioxus::hooks::use_context;
 use std::cell::RefCell;
 use std::thread_local;
+use dioxus_i18n::t;
 
 thread_local! {
     static SELECTED_LANGUAGE: RefCell<String> = RefCell::new(String::new());
@@ -108,7 +109,7 @@ pub fn ChapterSelector(props: ChapterSelectorProps) -> Element {
             display_fn: display_chapter_title,
             has_error: props.has_error,
             class: props.class,
-            search_placeholder: "搜尋章節...",
+            search_placeholder: t!("search_chapter"),
             button_class: None,
             label_class: None,
             dropdown_class: "",

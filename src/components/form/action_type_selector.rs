@@ -1,5 +1,6 @@
 use dioxus::prelude::*;
 use crate::components::dropdown::Dropdown;
+use dioxus_i18n::t;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct ActionType {
@@ -56,7 +57,7 @@ pub fn ActionTypeSelector(props: ActionTypeSelectorProps) -> Element {
             display_fn: display_action_type,
             has_error: props.has_error,
             class: props.class,
-            search_placeholder: "搜尋動作類型...",
+            search_placeholder: t!("search_action_type"),
             button_class: None,
             label_class: None,
             dropdown_class: "",

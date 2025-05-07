@@ -6,7 +6,6 @@ use web_sys::Event;
 use crate::contexts::language_context::LanguageState;
 use crate::components::dropdown::Dropdown;
 use crate::components::language_selector::{AVAILABLE_LANGUAGES, Language, display_language};
-use crate::enums::translations::Translations;
 
 #[component]
 pub fn Navbar(closure_signal: Signal<Option<Closure<dyn FnMut(Event)>>>) -> Element {
@@ -14,9 +13,6 @@ pub fn Navbar(closure_signal: Signal<Option<Closure<dyn FnMut(Event)>>>) -> Elem
     let route: Route = use_route();
     let mut state = use_context::<Signal<LanguageState>>();
     let current_lang = state.read().current_language.clone();
-    let current_lang_for_t = current_lang.clone();
-    let current_lang_for_memo = current_lang.clone();
-    let t = Translations::get(&current_lang_for_t);
     let mut is_open = use_signal(|| false);
     let mut search_query = use_signal(|| String::new());
 
@@ -30,12 +26,14 @@ pub fn Navbar(closure_signal: Signal<Option<Closure<dyn FnMut(Event)>>>) -> Elem
             .collect::<Vec<_>>()
     });
 
-    let current_language = use_memo(move || {
+    let current_language = {
+        let lang_code = state.read().current_language.clone();
         AVAILABLE_LANGUAGES.iter()
-            .find(|l| l.code == current_lang_for_memo)
+            .find(|l| l.code == lang_code)
             .map(|l| l.name)
             .unwrap_or("繁體中文")
-    });
+            .to_string()
+    };
 
     use_effect(move || {
         let document = web_sys::window().unwrap().document().unwrap();
@@ -61,12 +59,6 @@ pub fn Navbar(closure_signal: Signal<Option<Closure<dyn FnMut(Event)>>>) -> Elem
         })()
     });
 
-    let dropdown_class = if *is_open.read() {
-        "translate-y-0 opacity-100"
-    } else {
-        "-translate-y-2 opacity-0 pointer-events-none"
-    };
-
     rsx! {
         div { 
             class: "fixed top-0 left-0 right-0 w-full bg-white dark:bg-gray-900 z-[9999]",
@@ -88,7 +80,7 @@ pub fn Navbar(closure_signal: Signal<Option<Closure<dyn FnMut(Event)>>>) -> Elem
                         class: "flex-1 sm:flex-none relative language-dropdown text-center",
                         Dropdown {
                             label: String::new(),
-                            value: current_language.read().to_string(),
+                            value: current_language,
                             options: filtered_languages.read().clone(),
                             is_open: *is_open.read(),
                             search_query: search_query.read().to_string(),
@@ -114,7 +106,7 @@ pub fn Navbar(closure_signal: Signal<Option<Closure<dyn FnMut(Event)>>>) -> Elem
                             },
                             display_fn: display_language,
                             class: String::new(),
-                            search_placeholder: t.search_language,
+                            search_placeholder: t!("search_language"),
                             button_class: String::from("flex-1 sm:flex-none text-center text-xs text-gray-700 dark:text-white hover:text-gray-900 dark:hover:text-gray-300 transition-colors duration-200 py-2 cursor-pointer"),
                             show_arrow: false,
                             label_class: String::new(),

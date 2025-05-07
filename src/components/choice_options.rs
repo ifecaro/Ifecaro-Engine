@@ -2,12 +2,11 @@ use dioxus::prelude::*;
 use crate::components::dropdown::Dropdown;
 use crate::components::chapter_selector::ChapterSelector;
 use crate::components::paragraph_list::ParagraphList;
-use crate::enums::translations::Translations;
+use dioxus_i18n::t;
 use crate::components::translation_form::{Chapter, ChapterTitle};
 
 #[derive(Props, Clone, PartialEq)]
 pub struct ChoiceOptionsProps {
-    pub t: Translations,
     pub choices: Vec<(String, String, String, Option<String>, Option<serde_json::Value>, String)>,
     pub on_choice_change: EventHandler<(usize, String, String)>,
     pub on_add_choice: EventHandler<()>,
@@ -42,7 +41,7 @@ pub fn ChoiceOptions(props: ChoiceOptionsProps) -> Element {
                             class: "flex-1",
                             label {
                                 class: "block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1",
-                                "{props.t.choice_caption}"
+                                "{t!("choice_caption")}"
                             }
                             input {
                                 class: "w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white",
@@ -76,7 +75,7 @@ pub fn ChoiceOptions(props: ChoiceOptionsProps) -> Element {
                     div {
                         class: "w-full",
                         ChapterSelector {
-                            label: props.t.target_chapter,
+                            label: t!("target_chapter"),
                             value: choice.5.clone(),
                             chapters: props.available_chapters.clone(),
                             is_open: props.choice_chapters_open[index],
@@ -97,7 +96,7 @@ pub fn ChoiceOptions(props: ChoiceOptionsProps) -> Element {
                     div {
                         class: "w-full",
                         ParagraphList {
-                            label: props.t.target_paragraph,
+                            label: t!("target_paragraph"),
                             value: choice.1.clone(),
                             paragraphs: props.choice_paragraphs[index].clone(),
                             is_open: props.choice_paragraphs_open[index],
@@ -108,7 +107,6 @@ pub fn ChoiceOptions(props: ChoiceOptionsProps) -> Element {
                                 props.on_choice_change.call((index, "goto".to_string(), id));
                             },
                             has_error: false,
-                            t: props.t.clone(),
                             selected_language: props.selected_language.clone(),
                             button_class: None,
                             label_class: None,
@@ -120,7 +118,7 @@ pub fn ChoiceOptions(props: ChoiceOptionsProps) -> Element {
                         class: "w-full",
                         label {
                             class: "block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1",
-                            "{props.t.action_type}"
+                            "{t!("action_type")}"
                         }
                         div {
                             class: "relative",
@@ -161,7 +159,7 @@ pub fn ChoiceOptions(props: ChoiceOptionsProps) -> Element {
                                 class: "w-full",
                                 label {
                                     class: "block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1",
-                                    "{props.t.action_key}"
+                                    "{t!("action_key")}"
                                 }
                                 input {
                                     class: "w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white",
@@ -176,7 +174,7 @@ pub fn ChoiceOptions(props: ChoiceOptionsProps) -> Element {
                                 class: "w-full",
                                 label {
                                     class: "block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1",
-                                    "{props.t.action_value}"
+                                    "{t!("action_value")}"
                                 }
                                 input {
                                     class: "w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white",
@@ -196,7 +194,7 @@ pub fn ChoiceOptions(props: ChoiceOptionsProps) -> Element {
             button {
                 class: "w-full mt-4 px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500",
                 onclick: move |_| props.on_add_choice.call(()),
-                "{props.t.add_choice}"
+                "{t!("add_choice")}"
             }
         }
     }

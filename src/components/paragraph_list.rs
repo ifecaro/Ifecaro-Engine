@@ -1,6 +1,6 @@
 use dioxus::prelude::*;
 use crate::components::dropdown::Dropdown;
-use crate::enums::translations::Translations;
+use dioxus_i18n::t;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Paragraph {
@@ -27,7 +27,6 @@ pub struct ParagraphListProps {
     pub disabled: bool,
     #[props(default = false)]
     pub required: bool,
-    pub t: Translations,
     #[props(default = String::new())]
     pub selected_language: String,
 }
@@ -40,7 +39,7 @@ struct DisplayParagraph {
 
 #[component]
 pub fn ParagraphList(props: ParagraphListProps) -> Element {
-    let untranslated_text = props.t.untranslated;
+    let untranslated_text = t!("untranslated");
 
     // 將 Paragraph 轉換為 DisplayParagraph
     let convert_to_display = |p: &Paragraph| {
@@ -84,7 +83,7 @@ pub fn ParagraphList(props: ParagraphListProps) -> Element {
             display_fn: |p: &DisplayParagraph| p.display_text.clone(),
             has_error: props.has_error,
             class: props.class,
-            search_placeholder: props.t.search_paragraph,
+            search_placeholder: t!("search_paragraph"),
             button_class: None,
             label_class: None,
             dropdown_class: "",

@@ -1,7 +1,5 @@
 use dioxus::prelude::*;
-use dioxus::hooks::use_context;
-use crate::contexts::language_context::LanguageState;
-use crate::enums::translations::Translations;
+use dioxus_i18n::t;
 
 #[derive(Props, Clone, PartialEq)]
 pub struct TitleProps {
@@ -10,13 +8,10 @@ pub struct TitleProps {
 
 #[component]
 pub fn Title(props: TitleProps) -> Element {
-    let state = use_context::<Signal<LanguageState>>();
-    let t = Translations::get(&state.read().current_language);
-
     let title = match props.title {
-        "Dashboard" => t.dashboard,
-        "Story" => t.story,
-        _ => props.title,
+        "Dashboard" => t!("dashboard"),
+        "Story" => t!("story"),
+        _ => props.title.to_string(),
     };
 
     rsx! {
