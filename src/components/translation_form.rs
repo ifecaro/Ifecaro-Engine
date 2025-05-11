@@ -16,6 +16,8 @@ pub enum ParagraphChoice {
         key: Option<String>,
         #[serde(skip_serializing_if = "Option::is_none")]
         value: Option<serde_json::Value>,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        same_page: Option<bool>,
     },
     Simple(String),
 }
@@ -45,6 +47,13 @@ impl ParagraphChoice {
     pub fn get_value(&self) -> Option<serde_json::Value> {
         match self {
             ParagraphChoice::Complex { value, .. } => value.clone(),
+            ParagraphChoice::Simple(_) => None,
+        }
+    }
+
+    pub fn get_same_page(&self) -> Option<bool> {
+        match self {
+            ParagraphChoice::Complex { same_page, .. } => *same_page,
             ParagraphChoice::Simple(_) => None,
         }
     }
@@ -167,7 +176,7 @@ pub fn TranslationForm(props: TranslationFormProps) -> Element {
 
                 // 選項設定
                 ChoiceOptions {
-                    choices: choices.read().clone(),
+                    choices: choices.read().clone().into_iter().map(|(a,b,c,d,e,f)| (a,b,c,d,e,f,false)).collect(),
                     on_choice_change: move |(index, field, value): (usize, String, String)| {
                         let mut choices_write = choices.write();
                         match field.as_str() {

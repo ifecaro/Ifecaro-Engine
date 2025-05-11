@@ -27,3 +27,4 @@ paragraph_title = Paragraph Title
 not_applicable = N/A
 options = Options
 option_text = Option Text 
+same_page = Show on same page 

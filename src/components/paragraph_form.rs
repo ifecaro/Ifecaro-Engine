@@ -89,7 +89,7 @@ pub fn ParagraphForm(props: ParagraphFormProps) -> Element {
 
             // 選項設定
             ChoiceOptions {
-                choices: choices.read().clone(),
+                choices: choices.read().clone().into_iter().map(|(a,b,c,d,e,f)| (a,b,c,d,e,f,false)).collect(),
                 on_choice_change: move |(index, field, value): (usize, String, String)| {
                     let mut choices_write = choices.write();
                     match field.as_str() {

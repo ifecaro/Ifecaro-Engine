@@ -39,3 +39,4 @@ target_chapter = 目標章節
 untranslated = 未翻譯
 loading = 載入中...
 not_applicable = 不適用 
+same_page = 在同頁顯示 

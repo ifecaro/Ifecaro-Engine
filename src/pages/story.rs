@@ -57,6 +57,8 @@ pub struct ComplexChoice {
     pub key: Option<String>,
     #[serde(default)]
     pub value: Option<serde_json::Value>,
+    #[serde(default)]
+    pub same_page: Option<bool>,
 }
 
 #[derive(Deserialize, Clone, Debug, PartialEq)]
@@ -106,12 +108,14 @@ pub fn Story(props: StoryProps) -> Element {
     let enabled_choices = use_signal(|| Vec::<String>::new());
     let has_loaded = use_signal(|| false);
     let paragraph_data = use_signal(|| Vec::<Paragraph>::new());
+    let expanded_paragraphs = use_signal(|| Vec::<Paragraph>::new());
     
     // 載入段落數據
     {
         let mut has_loaded = has_loaded.clone();
         let mut paragraph_data = paragraph_data.clone();
         let mut story_context = story_context.clone();
+        let mut expanded_paragraphs = expanded_paragraphs.clone();
         use_effect(move || {
             let paragraphs_url = format!("{}{}", BASE_API_URL, PARAGRAPHS);
             let client = reqwest::Client::new();
@@ -128,6 +132,7 @@ pub fn Story(props: StoryProps) -> Element {
                                         Ok(data) => {
                                             if let Some(first_paragraph) = data.items.first() {
                                                 story_context.write().target_paragraph_id = Some(first_paragraph.id.clone());
+                                                expanded_paragraphs.set(vec![first_paragraph.clone()]);
                                             }
                                             paragraph_data.set(data.items);
                                             has_loaded.set(true);
@@ -156,6 +161,7 @@ pub fn Story(props: StoryProps) -> Element {
         let paragraph_data = paragraph_data.clone();
         let state = state.clone();
         let story_context = story_context.clone();
+        let expanded_paragraphs = expanded_paragraphs.clone();
         
         use_effect(move || {
             let target_id = story_context.read().target_paragraph_id.clone();
@@ -214,25 +220,101 @@ pub fn Story(props: StoryProps) -> Element {
         });
     }
     
+    let on_choice_click = {
+        let paragraph_data = paragraph_data.clone();
+        let mut expanded_paragraphs = expanded_paragraphs.clone();
+        let mut story_context = story_context.clone();
+        move |goto: String| {
+            let paragraphs = paragraph_data.read();
+            let last_paragraph = {
+                let expanded = expanded_paragraphs.read();
+                expanded.last().cloned()
+            };
+            if let Some(target_paragraph) = paragraphs.iter().find(|p| p.id == goto) {
+                let mut same_page = false;
+                if let Some(last) = last_paragraph {
+                    if let Some(idx) = last.choices.iter().position(|choice| choice.to == goto) {
+                        if let Some(choice) = last.choices.get(idx) {
+                            same_page = choice.same_page.unwrap_or(false);
+                        }
+                    }
+                }
+                if same_page {
+                    let mut expanded = expanded_paragraphs.read().clone();
+                    expanded.push(target_paragraph.clone());
+                    let _ = expanded_paragraphs;
+                    expanded_paragraphs = expanded_paragraphs.clone();
+                    expanded_paragraphs.set(expanded);
+                } else {
+                    let _ = expanded_paragraphs;
+                    expanded_paragraphs = expanded_paragraphs.clone();
+                    expanded_paragraphs.set(vec![target_paragraph.clone()]);
+                }
+                story_context.write().target_paragraph_id = Some(goto);
+            }
+        }
+    };
+    
     rsx! {
         div {
             class: "max-w-3xl mx-auto py-8 md:p-8",
-            if let Some(text) = current_text.read().as_ref() {
-                StoryContent {
-                    paragraph: text.paragraphs.clone(),
-                    choices: current_choices.read().clone(),
-                    enabled_choices: enabled_choices.read().clone(),
-                    on_choice_click: move |goto: String| {
-                        let mut story_context = story_context.write();
-                        story_context.target_paragraph_id = Some(goto.clone());
-                        drop(story_context);
+            {
+                // 合併所有段落內容
+                let mut merged_paragraph = String::new();
+                let mut merged_choices = Vec::new();
+                let mut merged_enabled_choices = Vec::new();
+                let expanded = expanded_paragraphs.read();
+                let paragraph_data_read = paragraph_data.read();
+                for (i, paragraph) in expanded.iter().enumerate() {
+                    if let Some(text) = paragraph.texts.iter().find(|t| t.lang == state().current_language) {
+                        if !merged_paragraph.is_empty() {
+                            merged_paragraph.push_str("\n\n");
+                        }
+                        merged_paragraph.push_str(&text.paragraphs);
+                        // 只合併最後一個段落的選項
+                        if i == expanded.len() - 1 {
+                            merged_choices = text.choices.iter().enumerate().map(|(index, c)| {
+                                let choice: StoryChoice = if let Some(complex_choice) = paragraph.choices.get(index) {
+                                    StoryChoice::Complex(complex_choice.clone())
+                                } else {
+                                    StoryChoice::Simple(c.clone())
+                                };
+                                let mut choice_obj: Choice = choice.into();
+                                choice_obj.caption = c.clone();
+                                choice_obj
+                            }).collect();
+                            merged_enabled_choices = {
+                                let mut enabled = Vec::new();
+                                for choice in &text.choices {
+                                    let target_paragraph = paragraph_data_read.iter().find(|p| {
+                                        if let Some(complex_choice) = paragraph.choices.get(text.choices.iter().position(|c| c == choice).unwrap_or(0)) {
+                                            p.id == complex_choice.to
+                                        } else {
+                                            p.id == *choice
+                                        }
+                                    });
+                                    if let Some(target_paragraph) = target_paragraph {
+                                        if target_paragraph.texts.iter().any(|t| t.lang == state().current_language) {
+                                            enabled.push(choice.clone());
+                                        }
+                                    }
+                                }
+                                enabled
+                            };
+                        }
                     }
                 }
-            } else {
-                div { 
-                    class: "text-white",
-                    "{t!(\"loading\")}" 
+                rsx! {
+                    StoryContent {
+                        paragraph: merged_paragraph,
+                        choices: merged_choices,
+                        enabled_choices: merged_enabled_choices,
+                        on_choice_click: on_choice_click.clone(),
+                    }
                 }
+            }
+            if !*has_loaded.read() {
+                div { class: "text-white", "{t!(\"loading\")}" }
             }
         }
     }

@@ -5,7 +5,7 @@ use crate::components::paragraph_list::{Paragraph, ParagraphList};
 
 #[derive(Props, Clone, PartialEq)]
 pub struct ChoiceOptionsProps {
-    pub choices: Vec<(String, String, String, Option<String>, Option<serde_json::Value>, String)>,
+    pub choices: Vec<(String, String, String, Option<String>, Option<serde_json::Value>, String, bool)>,
     pub on_choice_change: EventHandler<(usize, String, String)>,
     pub on_add_choice: EventHandler<()>,
     pub on_remove_choice: EventHandler<usize>,
@@ -28,7 +28,7 @@ pub struct ChoiceOptionsProps {
 pub fn ChoiceOptions(props: ChoiceOptionsProps) -> Element {
     rsx! {
         // 渲染所有選項
-        {props.choices.iter().enumerate().map(|(index, (caption, goto, action_type, action_key, action_value, target_chapter))| {
+        {props.choices.iter().enumerate().map(|(index, (caption, goto, action_type, action_key, action_value, target_chapter, same_page))| {
             rsx! {
                 div {
                     key: "{index}",
@@ -152,6 +152,23 @@ pub fn ChoiceOptions(props: ChoiceOptionsProps) -> Element {
                                         },
                                         on_blur: move |_| {}
                                     }
+                                }
+                            }
+                            // same_page checkbox
+                            div {
+                                class: "flex items-center mt-2",
+                                input {
+                                    r#type: "checkbox",
+                                    checked: *same_page,
+                                    onchange: move |evt| {
+                                        let checked = evt.value() == "true";
+                                        props.on_choice_change.call((index, "same_page".to_string(), checked.to_string()));
+                                    },
+                                    class: "form-checkbox h-4 w-4 text-blue-600 transition duration-150 ease-in-out",
+                                }
+                                label {
+                                    class: "ml-2 text-sm text-gray-700 dark:text-gray-300",
+                                    {t!("same_page")}
                                 }
                             }
                             

@@ -157,18 +157,15 @@ pub fn StoryContent(props: StoryContentProps) -> Element {
                 class: "prose-sm dark:prose-invert lg:prose-base mx-auto max-w-3xl p-8 text-gray-900 dark:text-white bg-white dark:bg-transparent",
                 div {
                     class: "whitespace-pre-wrap lg:mt-16 space-y-8",
-                    {paragraph.split('\n').map(|p| {
-                        if p.trim().is_empty() {
-                            rsx! { br {} }
-                        } else {
-                            rsx! {
-                                p { 
-                                    class: "indent-10 tracking-wide leading-relaxed text-justify",
-                                    {p}
-                                }
+                    {paragraph.split('\n')
+                        .filter(|p| !p.trim().is_empty())
+                        .map(|p| rsx! {
+                            p {
+                                class: "indent-10 tracking-wide leading-relaxed text-justify",
+                                {p}
                             }
-                        }
-                    })}
+                        })
+                    }
                 }
                 ol {
                     class: "mt-10 w-full md:w-fit list-decimal",

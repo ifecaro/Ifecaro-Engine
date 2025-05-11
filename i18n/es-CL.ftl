@@ -39,3 +39,4 @@ target_chapter = Capítulo Objetivo
 untranslated = Sin traducir
 loading = Cargando...
 not_applicable = No aplica 
+same_page = Mostrar en la misma página 
