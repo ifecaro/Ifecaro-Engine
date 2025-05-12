@@ -150,8 +150,11 @@ pub fn Story(props: StoryProps) -> Element {
                         map.insert(key.as_string().unwrap_or_default(), value.as_string().unwrap_or_default());
                     }
                 }
-                settings_context.write().settings = map;
-                settings_context.write().loaded = true;
+                {
+                    let mut ctx = settings_context.write();
+                    ctx.settings = map;
+                    ctx.loaded = true;
+                }
                 // 2. 再載入段落資料
                 let paragraphs_url = format!("{}{}", BASE_API_URL, PARAGRAPHS);
                 let client = reqwest::Client::new();
@@ -169,7 +172,10 @@ pub fn Story(props: StoryProps) -> Element {
                                                 data.items.first()
                                             };
                                             if let Some(first_paragraph) = first_paragraph {
-                                                story_context.write().target_paragraph_id = Some(first_paragraph.id.clone());
+                                                {
+                                                    let mut ctx = story_context.write();
+                                                    ctx.target_paragraph_id = Some(first_paragraph.id.clone());
+                                                }
                                                 expanded_paragraphs.set(vec![first_paragraph.clone()]);
                                             }
                                             paragraph_data.set(data.items);
@@ -343,7 +349,10 @@ pub fn Story(props: StoryProps) -> Element {
                     expanded_paragraphs = expanded_paragraphs.clone();
                     expanded_paragraphs.set(vec![(*target_paragraph).clone()]);
                 }
-                story_context.write().target_paragraph_id = Some(goto);
+                {
+                    let mut ctx = story_context.write();
+                    ctx.target_paragraph_id = Some(goto);
+                }
             }
         }
     };
