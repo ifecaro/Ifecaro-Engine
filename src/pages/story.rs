@@ -335,6 +335,10 @@ pub fn Story(props: StoryProps) -> Element {
                     expanded_paragraphs = expanded_paragraphs.clone();
                     expanded_paragraphs.set(expanded);
                 } else {
+                    // 切換新頁時自動捲動到頁首
+                    if let Some(window) = web_sys::window() {
+                        window.scroll_to_with_x_and_y(0.0, 0.0);
+                    }
                     let _ = expanded_paragraphs;
                     expanded_paragraphs = expanded_paragraphs.clone();
                     expanded_paragraphs.set(vec![(*target_paragraph).clone()]);
