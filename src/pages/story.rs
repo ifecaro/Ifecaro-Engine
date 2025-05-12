@@ -7,13 +7,14 @@ use dioxus_i18n::t;
 use crate::components::story_content::{StoryContent, Choice, Action};
 use crate::contexts::story_context::use_story_context;
 use crate::contexts::language_context::LanguageState;
-use crate::constants::config::{BASE_API_URL, PARAGRAPHS};
+use crate::constants::config::{BASE_API_URL, PARAGRAPHS, CHAPTERS};
 use crate::services::indexeddb::set_setting_to_indexeddb;
 use crate::contexts::settings_context::use_settings_context;
 use crate::services::indexeddb::get_settings_from_indexeddb;
 use wasm_bindgen::closure::Closure;
 use wasm_bindgen::JsCast;
 use wasm_bindgen::JsValue;
+use crate::services::indexeddb::set_choice_to_indexeddb;
 
 #[derive(Deserialize, Clone, Debug)]
 #[allow(dead_code)]
@@ -104,6 +105,12 @@ pub struct StoryProps {
     pub lang: String,
 }
 
+#[derive(Deserialize, Clone, Debug)]
+struct Chapter {
+    id: String,
+    order: i32,
+}
+
 #[component]
 pub fn Story(props: StoryProps) -> Element {
     let state = use_context::<Signal<LanguageState>>();
@@ -115,6 +122,7 @@ pub fn Story(props: StoryProps) -> Element {
     let enabled_choices = use_signal(|| Vec::<String>::new());
     let paragraph_data = use_signal(|| Vec::<Paragraph>::new());
     let expanded_paragraphs = use_signal(|| Vec::<Paragraph>::new());
+    let chapters = use_signal(|| Vec::<Chapter>::new());
     
     // 載入設定與段落數據（合併為一個 async 流程）
     {
@@ -174,6 +182,35 @@ pub fn Story(props: StoryProps) -> Element {
                         }
                     },
                     Err(_e) => {}
+                }
+            });
+            (move || {})()
+        });
+    }
+    
+    // 載入章節列表
+    {
+        let mut chapters = chapters.clone();
+        use_effect(move || {
+            spawn_local(async move {
+                let chapters_url = format!("{}{}", BASE_API_URL, CHAPTERS);
+                let client = reqwest::Client::new();
+                if let Ok(response) = client.get(&chapters_url).send().await {
+                    if response.status().is_success() {
+                        if let Ok(text) = response.text().await {
+                            if let Ok(json) = serde_json::from_str::<serde_json::Value>(&text) {
+                                if let Some(items) = json.get("items").and_then(|i| i.as_array()) {
+                                    let mut result = Vec::new();
+                                    for item in items {
+                                        let id = item.get("id").and_then(|v| v.as_str()).unwrap_or("").to_string();
+                                        let order = item.get("order").and_then(|v| v.as_i64()).unwrap_or(0) as i32;
+                                        result.push(Chapter { id, order });
+                                    }
+                                    chapters.set(result);
+                                }
+                            }
+                        }
+                    }
                 }
             });
             (move || {})()
@@ -252,6 +289,7 @@ pub fn Story(props: StoryProps) -> Element {
         let paragraph_data = paragraph_data.clone();
         let mut expanded_paragraphs = expanded_paragraphs.clone();
         let mut story_context = story_context.clone();
+        let chapters = chapters.clone();
         move |(goto, choice_index): (String, usize)| {
             let paragraphs = paragraph_data.read();
             let last_paragraph = {
@@ -272,6 +310,16 @@ pub fn Story(props: StoryProps) -> Element {
                 }
             }
             if let Some(ref target_paragraph) = paragraphs.iter().find(|p| p.id == goto) {
+                // 第一章 id 通常是 "gmld01c8s9982iy"，其後才記錄
+                if let Some(ref last) = last_paragraph {
+                    if !last.chapter_id.is_empty() && last.chapter_id != "gmld01c8s9982iy" {
+                        // 查找章節 order
+                        let order = chapters.read().iter().find(|c| c.id == last.chapter_id).map(|c| c.order).unwrap_or(0);
+                        if order != 0 {
+                            set_choice_to_indexeddb(&last.chapter_id, &goto);
+                        }
+                    }
+                }
                 let mut same_page = false;
                 if let Some(ref last) = last_paragraph {
                     if let Some(idx) = last.choices.iter().position(|choice| choice.to == goto) {
