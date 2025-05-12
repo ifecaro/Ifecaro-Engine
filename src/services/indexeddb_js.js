@@ -122,4 +122,39 @@ export function setChoiceToIndexedDB(chapterId, paragraphId) {
     };
     request.onerror = function (event) {
     };
+}
+
+// 取得段落選擇紀錄，所有章節都存在 'choices' object store，key 為 chapterId
+export function getChoiceFromIndexedDB(chapterId, callback) {
+    const request = indexedDB.open('ifecaro', 2);
+    request.onupgradeneeded = function (event) {
+        const db = event.target.result;
+        if (!db.objectStoreNames.contains('settings')) {
+            db.createObjectStore('settings');
+        }
+        if (!db.objectStoreNames.contains('choices')) {
+            db.createObjectStore('choices');
+        }
+    };
+    request.onsuccess = function (event) {
+        const db = event.target.result;
+        const tx = db.transaction('choices', 'readonly');
+        const store = tx.objectStore('choices');
+        const getReq = store.get(chapterId);
+        getReq.onsuccess = function () {
+            let choices = getReq.result || [];
+            if (!Array.isArray(choices)) choices = [];
+            callback(choices);
+            db.close();
+        };
+        getReq.onerror = function (e) {
+            callback([]);
+            db.close();
+        };
+        tx.oncomplete = function () { };
+        tx.onerror = function (e) { };
+    };
+    request.onerror = function (event) {
+        callback([]);
+    };
 } 

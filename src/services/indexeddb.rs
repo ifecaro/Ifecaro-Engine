@@ -10,4 +10,7 @@ extern "C" {
 
     #[wasm_bindgen(js_name = setChoiceToIndexedDB)]
     pub fn set_choice_to_indexeddb(chapter_id: &str, paragraph_id: &str);
+
+    #[wasm_bindgen(js_name = getChoiceFromIndexedDB)]
+    pub fn get_choice_from_indexeddb(chapter_id: &str, callback: &js_sys::Function);
 } 

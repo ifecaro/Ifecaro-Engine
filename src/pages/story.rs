@@ -15,6 +15,7 @@ use wasm_bindgen::closure::Closure;
 use wasm_bindgen::JsCast;
 use wasm_bindgen::JsValue;
 use crate::services::indexeddb::set_choice_to_indexeddb;
+use crate::services::indexeddb::get_choice_from_indexeddb;
 
 #[derive(Deserialize, Clone, Debug)]
 #[allow(dead_code)]
@@ -232,7 +233,7 @@ pub fn Story(props: StoryProps) -> Element {
         let paragraph_data = paragraph_data.clone();
         let state = state.clone();
         let story_context = story_context.clone();
-        let _expanded_paragraphs = expanded_paragraphs.clone();
+        let mut expanded_paragraphs = expanded_paragraphs.clone();
         
         use_effect(move || {
             let target_id = story_context.read().target_paragraph_id.clone();
@@ -287,6 +288,51 @@ pub fn Story(props: StoryProps) -> Element {
         let state = state.clone();
         use_effect(move || {
             state().set_language(&props.lang);
+            (move || {})()
+        });
+    }
+    
+    // 自動跳轉到已選段落
+    {
+        let paragraph_data = paragraph_data.clone();
+        let mut expanded_paragraphs = expanded_paragraphs.clone();
+        let story_context = story_context.clone();
+        let chapters = chapters.clone();
+        use_effect(move || {
+            let paragraph_data = paragraph_data.read();
+            let chapters = chapters.read();
+            // 只在段落與章節都載入後執行
+            if paragraph_data.is_empty() || chapters.is_empty() {
+                return;
+            }
+            // 取得目前章節 id
+            let current_paragraph = expanded_paragraphs.read().last().cloned();
+            let chapter_id = current_paragraph.as_ref().map(|p| p.chapter_id.clone()).unwrap_or_default();
+            if chapter_id.is_empty() {
+                return;
+            }
+            // 查詢 indexedDB
+            let paragraph_data = paragraph_data.clone();
+            let mut expanded_paragraphs = expanded_paragraphs.clone();
+            let mut story_context = story_context.clone();
+            let cb = Closure::wrap(Box::new(move |js_value: JsValue| {
+                let arr = js_sys::Array::from(&js_value);
+                if let Some(paragraph_id) = arr.get(0).as_string() {
+                    // 找到該段落
+                    if let Some(target) = paragraph_data.iter().find(|p| p.id == paragraph_id) {
+                        let mut expanded = expanded_paragraphs.read().clone();
+                        // 避免重複 push
+                        if !expanded.iter().any(|p| p.id == paragraph_id) {
+                            expanded.push(target.clone());
+                            expanded_paragraphs.set(expanded);
+                            let mut ctx = story_context.write();
+                            ctx.target_paragraph_id = Some(paragraph_id);
+                        }
+                    }
+                }
+            }) as Box<dyn FnMut(JsValue)>);
+            get_choice_from_indexeddb(&chapter_id, cb.as_ref().unchecked_ref());
+            cb.forget();
             (move || {})()
         });
     }
