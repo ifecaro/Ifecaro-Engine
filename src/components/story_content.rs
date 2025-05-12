@@ -5,14 +5,13 @@ use serde_json;
 use crate::KeyboardState;
 use wasm_bindgen::JsCast;
 use web_sys::{Window, Document};
-use crate::contexts::story_context::{use_story_context, StoryContext};
 use dioxus_i18n::t;
 
 #[derive(Props, Clone, PartialEq)]
 pub struct StoryContentProps {
     pub paragraph: String,
     pub choices: Vec<Choice>,
-    pub on_choice_click: EventHandler<String>,
+    pub on_choice_click: EventHandler<(String, usize)>,
     pub enabled_choices: Vec<String>,
 }
 
@@ -74,7 +73,6 @@ pub fn StoryContent(props: StoryContentProps) -> Element {
     let enabled_choices = Arc::new(props.enabled_choices.clone());
     let on_choice_click = props.on_choice_click.clone();
     let mut keyboard_state = use_context::<Signal<KeyboardState>>();
-    let story_context = use_story_context();
     
     let mut show_filter = use_signal(|| true);
     let mut is_focused = use_signal(|| false);
@@ -95,13 +93,6 @@ pub fn StoryContent(props: StoryContentProps) -> Element {
         is_mobile.set(*is_mobile_memo.read());
     });
     
-    let handle_choice = use_callback(
-        |(goto, on_choice_click, mut story_context): (String, EventHandler<String>, Signal<StoryContext>)| {
-            story_context.write().target_paragraph_id = Some(goto.clone());
-            on_choice_click.call(goto);
-        },
-    );
-    
     use_effect(move || show_filter.set(true));
     
     rsx! {
@@ -119,7 +110,7 @@ pub fn StoryContent(props: StoryContentProps) -> Element {
                                 let goto = choice.action.to.clone();
                                 if enabled_choices.contains(&choice.caption) {
                                     keyboard_state.write().selected_index = idx as i32;
-                                    handle_choice.call((goto, on_choice_click.clone(), story_context.clone()));
+                                    on_choice_click.call((goto.clone(), idx));
                                 }
                             }
                             event.stop_propagation();
@@ -175,17 +166,14 @@ pub fn StoryContent(props: StoryContentProps) -> Element {
                         let is_enabled = enabled_choices.contains(&caption);
                         let is_selected = keyboard_state.read().selected_index == index as i32;
                         let on_click = {
-                            let _caption = caption.clone();
                             let goto = goto.clone();
                             let on_choice_click = on_choice_click.clone();
-                            let story_context = story_context.clone();
                             let mut keyboard_state = keyboard_state.clone();
-                            let handle_choice = handle_choice.clone();
                             move |evt: Event<MouseData>| {
                                 evt.stop_propagation();
                                 if is_enabled {
                                     keyboard_state.write().selected_index = index as i32;
-                                    handle_choice.call((goto.clone(), on_choice_click.clone(), story_context.clone()));
+                                    on_choice_click.call((goto.clone(), index));
                                 }
                             }
                         };

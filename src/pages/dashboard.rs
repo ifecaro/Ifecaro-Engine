@@ -381,16 +381,14 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
         let choices = choices.read();
         let has_any_choices = !choices.is_empty();
         
-        let choices_valid = choices.iter().all(|(choice_text, to, type_, _key, _value, target_chapter, _same_page)| {
+        let choices_valid = choices.iter().all(|(_choice_text, to, type_, _key, _value, _target_chapter, _same_page)| {
             // 如果選項有內容，則需要驗證
-            let has_content = !choice_text.trim().is_empty() || 
-                             !to.trim().is_empty() || 
-                             !type_.trim().is_empty() || 
-                             !target_chapter.trim().is_empty();
+            let has_content = !to.trim().is_empty() || 
+                             !type_.trim().is_empty();
             
             if has_content {
                 // 如果有內容，則必須有標題
-                !choice_text.trim().is_empty()
+                !to.trim().is_empty()
             } else {
                 // 如果沒有內容，則視為有效
                 true
@@ -420,19 +418,17 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
                     
                     // 檢查選項數量或內容是否有變化
                     current_choices.len() != new_choices.len() ||
-                        current_choices.iter().zip(new_choices.iter()).any(|(old_choice, (choice_text, to, type_, _key, _value, target_chapter, _same_page))| {
+                        current_choices.iter().zip(new_choices.iter()).any(|(old_choice, (choice_text, to, type_, _key, _value, _target_chapter, _same_page))| {
                             // 檢查選項內容是否有變化
                             let has_content = !choice_text.trim().is_empty() || 
                                             !to.trim().is_empty() || 
-                                            !type_.trim().is_empty() || 
-                                            !target_chapter.trim().is_empty();
+                                            !type_.trim().is_empty();
                             
                             if has_content {
                                 // 檢查所有欄位是否有變化
                                 old_choice != choice_text ||
                                 !to.is_empty() ||
-                                !type_.is_empty() ||
-                                !target_chapter.is_empty()
+                                !type_.is_empty()
                             } else {
                                 false
                             }
@@ -448,15 +444,13 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
             let has_paragraph = !paragraphs.read().trim().is_empty() && !selected_chapter.read().is_empty();
             
             // 檢查選項是否有效變更
-            let has_valid_choices = choices.read().iter().any(|(choice_text, to, type_, _key, _value, target_chapter, _same_page)| {
-                let has_content = !choice_text.trim().is_empty() || 
-                                !to.trim().is_empty() || 
-                                !type_.trim().is_empty() || 
-                                !target_chapter.trim().is_empty();
+            let has_valid_choices = choices.read().iter().any(|(_choice_text, to, type_, _key, _value, _target_chapter, _same_page)| {
+                let has_content = !to.trim().is_empty() || 
+                                !type_.trim().is_empty();
                 
                 // 如果有其他內容，必須有標題
                 if has_content {
-                    !choice_text.trim().is_empty()
+                    !to.trim().is_empty()
                 } else {
                     false
                 }
@@ -548,7 +542,7 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
             };
 
             // 構建選項數據
-            let paragraph_choices: Vec<ParagraphChoice> = choices.iter().map(|(choice_text, to, type_, key, value, target_chapter, same_page)| {
+            let paragraph_choices: Vec<ParagraphChoice> = choices.iter().map(|(_choice_text, to, type_, key, value, _target_chapter, same_page)| {
                 let mut complex = ParagraphChoice::Complex {
                     to: to.clone(),
                     type_: type_.clone(),
@@ -1078,8 +1072,8 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
                                                         
                                                         // 保留目標章節和段落的選擇，只清空選項標題
                                                         let current_choices = choices.read().clone();
-                                                        let new_choices = current_choices.iter().map(|(_, to, type_, key, value, target_chapter, _same_page)| {
-                                                            (String::new(), to.clone(), type_.clone(), key.clone(), value.clone(), target_chapter.clone(), false)
+                                                        let new_choices = current_choices.iter().map(|(_, to, type_, key, value, _target_chapter, _same_page)| {
+                                                            (String::new(), to.clone(), type_.clone(), key.clone(), value.clone(), String::new(), false)
                                                         }).collect();
                                                         choices.set(new_choices);
                                                     }

@@ -8,6 +8,12 @@ use crate::components::story_content::{StoryContent, Choice, Action};
 use crate::contexts::story_context::use_story_context;
 use crate::contexts::language_context::LanguageState;
 use crate::constants::config::{BASE_API_URL, PARAGRAPHS};
+use crate::services::indexeddb::set_setting_to_indexeddb;
+use crate::contexts::settings_context::use_settings_context;
+use crate::services::indexeddb::get_settings_from_indexeddb;
+use wasm_bindgen::closure::Closure;
+use wasm_bindgen::JsCast;
+use wasm_bindgen::JsValue;
 
 #[derive(Deserialize, Clone, Debug)]
 #[allow(dead_code)]
@@ -101,41 +107,64 @@ pub struct StoryProps {
 #[component]
 pub fn Story(props: StoryProps) -> Element {
     let state = use_context::<Signal<LanguageState>>();
-    let mut story_context = use_story_context();
+    let story_context = use_story_context();
+    let settings_context = use_settings_context();
     let current_paragraph = use_signal(|| None::<Paragraph>);
     let current_text = use_signal(|| None::<Text>);
     let current_choices = use_signal(|| Vec::<Choice>::new());
     let enabled_choices = use_signal(|| Vec::<String>::new());
-    let has_loaded = use_signal(|| false);
     let paragraph_data = use_signal(|| Vec::<Paragraph>::new());
     let expanded_paragraphs = use_signal(|| Vec::<Paragraph>::new());
     
-    // 載入段落數據
+    // 載入設定與段落數據（合併為一個 async 流程）
     {
-        let mut has_loaded = has_loaded.clone();
         let mut paragraph_data = paragraph_data.clone();
-        let mut story_context = story_context.clone();
         let mut expanded_paragraphs = expanded_paragraphs.clone();
+        let mut story_context = story_context.clone();
+        let mut settings_context = settings_context.clone();
         use_effect(move || {
-            let paragraphs_url = format!("{}{}", BASE_API_URL, PARAGRAPHS);
-            let client = reqwest::Client::new();
-            
             spawn_local(async move {
-                match client.get(&paragraphs_url)
-                    .send()
-                    .await {
+                // 1. 先讀取 settings（indexedDB）
+                let settings = wasm_bindgen_futures::JsFuture::from(js_sys::Promise::new(&mut |resolve, _reject| {
+                    let cb = Closure::wrap(Box::new(move |js_value: wasm_bindgen::JsValue| {
+                        resolve.call1(&JsValue::NULL, &js_value).unwrap();
+                    }) as Box<dyn FnMut(wasm_bindgen::JsValue)>);
+                    get_settings_from_indexeddb(cb.as_ref().unchecked_ref());
+                    cb.forget();
+                }));
+                let js_value = settings.await.unwrap();
+                let mut map = std::collections::HashMap::new();
+                if let Some(obj) = js_sys::Object::try_from(&js_value) {
+                    let keys = js_sys::Object::keys(&obj);
+                    for i in 0..keys.length() {
+                        let key = keys.get(i);
+                        let value = js_sys::Reflect::get(&obj, &key).unwrap_or(js_sys::JsString::from("").into());
+                        map.insert(key.as_string().unwrap_or_default(), value.as_string().unwrap_or_default());
+                    }
+                }
+                settings_context.write().settings = map;
+                settings_context.write().loaded = true;
+                // 2. 再載入段落資料
+                let paragraphs_url = format!("{}{}", BASE_API_URL, PARAGRAPHS);
+                let client = reqwest::Client::new();
+                match client.get(&paragraphs_url).send().await {
                     Ok(response) => {
                         if response.status().is_success() {
                             match response.text().await {
                                 Ok(text) => {
                                     match serde_json::from_str::<Data>(&text) {
                                         Ok(data) => {
-                                            if let Some(first_paragraph) = data.items.first() {
+                                            let skip_setting = settings_context.read().settings.get("settings_done").map(|v| v == "true").unwrap_or(false);
+                                            let first_paragraph = if skip_setting {
+                                                data.items.iter().find(|p| p.id == "gmld01c8s9982iy")
+                                            } else {
+                                                data.items.first()
+                                            };
+                                            if let Some(first_paragraph) = first_paragraph {
                                                 story_context.write().target_paragraph_id = Some(first_paragraph.id.clone());
                                                 expanded_paragraphs.set(vec![first_paragraph.clone()]);
                                             }
                                             paragraph_data.set(data.items);
-                                            has_loaded.set(true);
                                         },
                                         Err(_e) => {}
                                     }
@@ -147,7 +176,6 @@ pub fn Story(props: StoryProps) -> Element {
                     Err(_e) => {}
                 }
             });
-            
             (move || {})()
         });
     }
@@ -161,7 +189,7 @@ pub fn Story(props: StoryProps) -> Element {
         let paragraph_data = paragraph_data.clone();
         let state = state.clone();
         let story_context = story_context.clone();
-        let expanded_paragraphs = expanded_paragraphs.clone();
+        let _expanded_paragraphs = expanded_paragraphs.clone();
         
         use_effect(move || {
             let target_id = story_context.read().target_paragraph_id.clone();
@@ -224,15 +252,28 @@ pub fn Story(props: StoryProps) -> Element {
         let paragraph_data = paragraph_data.clone();
         let mut expanded_paragraphs = expanded_paragraphs.clone();
         let mut story_context = story_context.clone();
-        move |goto: String| {
+        move |(goto, choice_index): (String, usize)| {
             let paragraphs = paragraph_data.read();
             let last_paragraph = {
                 let expanded = expanded_paragraphs.read();
                 expanded.last().cloned()
             };
-            if let Some(target_paragraph) = paragraphs.iter().find(|p| p.id == goto) {
+            if let Some(ref current_paragraph) = last_paragraph {
+                if let Some(choice) = current_paragraph.choices.get(choice_index) {
+                    if choice.type_ == "settings" || choice.type_ == "setting" {
+                        if let (Some(key), Some(value)) = (choice.key.as_ref(), choice.value.as_ref()) {
+                            let value_str = match value {
+                                serde_json::Value::String(s) => s.clone(),
+                                _ => value.to_string(),
+                            };
+                            set_setting_to_indexeddb(key, &value_str);
+                        }
+                    }
+                }
+            }
+            if let Some(ref target_paragraph) = paragraphs.iter().find(|p| p.id == goto) {
                 let mut same_page = false;
-                if let Some(last) = last_paragraph {
+                if let Some(ref last) = last_paragraph {
                     if let Some(idx) = last.choices.iter().position(|choice| choice.to == goto) {
                         if let Some(choice) = last.choices.get(idx) {
                             same_page = choice.same_page.unwrap_or(false);
@@ -241,14 +282,14 @@ pub fn Story(props: StoryProps) -> Element {
                 }
                 if same_page {
                     let mut expanded = expanded_paragraphs.read().clone();
-                    expanded.push(target_paragraph.clone());
+                    expanded.push((*target_paragraph).clone());
                     let _ = expanded_paragraphs;
                     expanded_paragraphs = expanded_paragraphs.clone();
                     expanded_paragraphs.set(expanded);
                 } else {
                     let _ = expanded_paragraphs;
                     expanded_paragraphs = expanded_paragraphs.clone();
-                    expanded_paragraphs.set(vec![target_paragraph.clone()]);
+                    expanded_paragraphs.set(vec![(*target_paragraph).clone()]);
                 }
                 story_context.write().target_paragraph_id = Some(goto);
             }
@@ -313,7 +354,7 @@ pub fn Story(props: StoryProps) -> Element {
                     }
                 }
             }
-            if !*has_loaded.read() {
+            if paragraph_data.read().is_empty() {
                 div { class: "text-white", "{t!(\"loading\")}" }
             }
         }

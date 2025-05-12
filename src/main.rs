@@ -6,6 +6,7 @@ mod pages;
 mod contexts;
 mod constants;
 mod models;
+mod services;
 
 use dioxus::{
     prelude::*,
@@ -16,6 +17,7 @@ use crate::{
     contexts::language_context::{LanguageProvider, LanguageState},
     components::story_content::Choice,
     contexts::story_context::{use_story_context, provide_story_context, StoryContext},
+    contexts::settings_context::SettingsContext,
 };
 use std::sync::Arc;
 use wasm_bindgen::closure::Closure;
@@ -27,6 +29,7 @@ fn main() {
 
 #[component]
 fn App() -> Element {
+    provide_context(Signal::new(SettingsContext::default()));
     rsx! {
         LanguageProvider {
             StoryProvider {
