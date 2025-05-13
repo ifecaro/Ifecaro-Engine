@@ -48,6 +48,8 @@ wasm-bindgen-futures = "0.4.40"
 dioxus-i18n = "0.4.2"
 unic-langid = { version = "0.9.4", features = ["unic-langid-macros"] }
 rand = "0.8"
+getrandom = { version = "0.2", features = ["js"] }
+futures-channel = "0.3"
 
 # Debug
 tracing = { version = "0.1.40", features = [
@@ -56,6 +58,7 @@ tracing = { version = "0.1.40", features = [
 ] }
 dioxus-logger = { git = "https://github.com/DogeDark/dioxus-logger.git" }
 dioxus-core = "0.6.3"
+gloo-timers = { version = "0.3", features = ["futures"] }
 
 [profile]
 

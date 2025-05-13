@@ -152,6 +152,7 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
             None,
             String::new(),
             false,
+            None,
         ));
         initial_choices
     });
@@ -377,58 +378,38 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
 
     let is_form_valid = use_memo(move || {
         let main_fields_valid = !paragraphs.read().trim().is_empty() && !selected_chapter.read().is_empty();
-        
         let choices = choices.read();
         let has_any_choices = !choices.is_empty();
-        
-        let choices_valid = choices.iter().all(|(_choice_text, to, type_, _key, _value, _target_chapter, _same_page)| {
-            // 如果選項有內容，則需要驗證
-            let has_content = !to.trim().is_empty() || 
-                             !type_.trim().is_empty();
-            
+        let choices_valid = choices.iter().all(|(_choice_text, to, type_, _key, _value, _target_chapter, _same_page, _time_limit)| {
+            let has_content = !to.trim().is_empty() || !type_.trim().is_empty();
             if has_content {
-                // 如果有內容，則必須有標題
                 !to.trim().is_empty()
             } else {
-                // 如果沒有內容，則視為有效
                 true
             }
         });
-        
         main_fields_valid && (!has_any_choices || choices_valid)
     });
 
     let has_changes = use_memo(move || {
         if *is_edit_mode.read() {
-            // 編輯模式
             let paragraphs_changed = paragraphs.read().to_string() != selected_paragraph.read().as_ref()
                 .map(|p| p.texts.iter().find(|t| t.lang == *paragraph_language.read())
                     .map(|t| t.paragraphs.clone())
                     .unwrap_or_default())
                 .unwrap_or_default();
-            
             let has_option_changes = {
                 let current_paragraph = selected_paragraph.read();
-                
                 if let Some(paragraph) = current_paragraph.as_ref() {
                     let current_choices = &paragraph.texts.iter().find(|t| t.lang == *paragraph_language.read())
                         .map(|t| t.choices.clone())
                         .unwrap_or_default();
                     let new_choices = choices.read();
-                    
-                    // 檢查選項數量或內容是否有變化
                     current_choices.len() != new_choices.len() ||
-                        current_choices.iter().zip(new_choices.iter()).any(|(old_choice, (choice_text, to, type_, _key, _value, _target_chapter, _same_page))| {
-                            // 檢查選項內容是否有變化
-                            let has_content = !choice_text.trim().is_empty() || 
-                                            !to.trim().is_empty() || 
-                                            !type_.trim().is_empty();
-                            
+                        current_choices.iter().zip(new_choices.iter()).any(|(old_choice, (choice_text, to, type_, _key, _value, _target_chapter, _same_page, _time_limit))| {
+                            let has_content = !choice_text.trim().is_empty() || !to.trim().is_empty() || !type_.trim().is_empty();
                             if has_content {
-                                // 檢查所有欄位是否有變化
-                                old_choice != choice_text ||
-                                !to.is_empty() ||
-                                !type_.is_empty()
+                                old_choice != choice_text || !to.is_empty() || !type_.is_empty()
                             } else {
                                 false
                             }
@@ -437,25 +418,17 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
                     false
                 }
             };
-            
             paragraphs_changed || has_option_changes
         } else {
-            // 新增模式
             let has_paragraph = !paragraphs.read().trim().is_empty() && !selected_chapter.read().is_empty();
-            
-            // 檢查選項是否有效變更
-            let has_valid_choices = choices.read().iter().any(|(_choice_text, to, type_, _key, _value, _target_chapter, _same_page)| {
-                let has_content = !to.trim().is_empty() || 
-                                !type_.trim().is_empty();
-                
-                // 如果有其他內容，必須有標題
+            let has_valid_choices = choices.read().iter().any(|(_choice_text, to, type_, _key, _value, _target_chapter, _same_page, _time_limit)| {
+                let has_content = !to.trim().is_empty() || !type_.trim().is_empty();
                 if has_content {
                     !to.trim().is_empty()
                 } else {
                     false
                 }
             });
-            
             has_paragraph || has_valid_choices
         }
     });
@@ -499,6 +472,7 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
                     new_value.clone(),
                     String::new(),
                     false,
+                    None,
                 );
                 
                 // 更新狀態
@@ -536,19 +510,20 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
             let text = Text {
                 lang: paragraph_language.read().clone(),
                 paragraphs: paragraphs.clone(),
-                choices: choices.iter().map(|(choice_text, _, _, _, _, _, _)| {
+                choices: choices.iter().map(|(choice_text, _, _, _, _, _, _, _)| {
                     choice_text.clone()
                 }).collect(),
             };
 
             // 構建選項數據
-            let paragraph_choices: Vec<ParagraphChoice> = choices.iter().map(|(_choice_text, to, type_, key, value, _target_chapter, same_page)| {
+            let paragraph_choices: Vec<ParagraphChoice> = choices.iter().map(|(choice_text, to, type_, key, value, _target_chapter, same_page, time_limit)| {
                 let mut complex = ParagraphChoice::Complex {
                     to: to.clone(),
                     type_: type_.clone(),
                     key: None,
                     value: None,
                     same_page: Some(*same_page),
+                    time_limit: *time_limit,
                 };
                 if let Some(k) = key {
                     if !k.is_empty() {
@@ -693,6 +668,7 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
             None,
             String::new(),
             false,
+            None,
         ));
         choices.set(current_choices);
 
@@ -870,6 +846,9 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
                 "same_page" => {
                     choice.6 = value == "true";
                 },
+                "time_limit" => {
+                    choice.7 = value.parse::<u32>().ok();
+                },
                 _ => {}
             }
         }
@@ -963,6 +942,7 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
             None,
             String::new(),
             false,
+            None,
         ));
         
         // 重置相關的選項狀態
@@ -1072,8 +1052,8 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
                                                         
                                                         // 保留目標章節和段落的選擇，只清空選項標題
                                                         let current_choices = choices.read().clone();
-                                                        let new_choices = current_choices.iter().map(|(_, to, type_, key, value, _target_chapter, _same_page)| {
-                                                            (String::new(), to.clone(), type_.clone(), key.clone(), value.clone(), String::new(), false)
+                                                        let new_choices = current_choices.iter().map(|(_, to, type_, key, value, _target_chapter, _same_page, _time_limit)| {
+                                                            (String::new(), to.clone(), type_.clone(), key.clone(), value.clone(), String::new(), false, None)
                                                         }).collect();
                                                         choices.set(new_choices);
                                                     }
@@ -1283,7 +1263,7 @@ fn process_paragraph_select(
     paragraph_data: &Signal<Vec<TranslationFormParagraph>>,
     paragraph_language: &Signal<String>,
 ) -> (
-    Vec<(String, String, String, Option<String>, Option<serde_json::Value>, String, bool)>,
+    Vec<(String, String, String, Option<String>, Option<serde_json::Value>, String, bool, Option<u32>)>,
     Vec<Vec<ParagraphListParagraph>>,
 ) {
     let mut new_choices = Vec::new();
@@ -1291,15 +1271,15 @@ fn process_paragraph_select(
     let text_choices = &text.choices;
     let paragraph_choices = &full_paragraph.choices;
     for (i, choice_text) in text_choices.iter().enumerate() {
-        let (target_id, type_, key, value, same_page) = if let Some(choice) = paragraph_choices.get(i) {
+        let (target_id, type_, key, value, same_page, time_limit) = if let Some(choice) = paragraph_choices.get(i) {
             match choice {
-                ParagraphChoice::Simple(_) => (String::new(), String::new(), None, None, false),
-                ParagraphChoice::Complex { to, type_, key, value, same_page, .. } => {
-                    (to.clone(), type_.clone(), key.clone(), value.clone(), same_page.unwrap_or(false))
+                ParagraphChoice::Simple(_) => (String::new(), String::new(), None, None, false, None),
+                ParagraphChoice::Complex { to, type_, key, value, same_page, time_limit, .. } => {
+                    (to.clone(), type_.clone(), key.clone(), value.clone(), same_page.unwrap_or(false), *time_limit)
                 },
             }
         } else {
-            (String::new(), String::new(), None, None, false)
+            (String::new(), String::new(), None, None, false, None)
         };
         let target_chapter_id = if !target_id.is_empty() {
             if paragraph_data.read().iter().any(|p| p.id == target_id) {
@@ -1321,6 +1301,7 @@ fn process_paragraph_select(
             if target_chapter_id.is_empty() { None } else { value },
             target_chapter_id.clone(),
             same_page,
+            time_limit,
         ));
         if !target_chapter_id.is_empty() {
             let selected_lang = paragraph_language.read().clone();

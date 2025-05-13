@@ -24,7 +24,7 @@ pub struct ParagraphFormProps {
     on_add_choice: EventHandler<()>,
     on_remove_choice: EventHandler<usize>,
     on_submit: EventHandler<()>,
-    choices: Vec<(String, String, String, Option<String>, Option<serde_json::Value>, String)>,
+    choices: Vec<(String, String, String, Option<String>, Option<serde_json::Value>, String, Option<u32>)>,
     available_chapters: Vec<crate::pages::dashboard::Chapter>,
     selected_language: String,
     choice_paragraphs: Vec<Paragraph>,
@@ -42,7 +42,7 @@ pub struct ParagraphFormProps {
 
 #[component]
 pub fn ParagraphForm(props: ParagraphFormProps) -> Element {
-    let mut choices = use_signal(|| Vec::<(String, String, String, Option<String>, Option<serde_json::Value>, String)>::new());
+    let mut choices = use_signal(|| Vec::<(String, String, String, Option<String>, Option<serde_json::Value>, String, Option<u32>)>::new());
     let available_chapters = use_signal(|| Vec::<crate::pages::dashboard::Chapter>::new());
     let selected_language = use_signal(|| String::new());
     let choice_paragraphs = use_signal(|| Vec::<Paragraph>::new());
@@ -89,7 +89,7 @@ pub fn ParagraphForm(props: ParagraphFormProps) -> Element {
 
             // 選項設定
             ChoiceOptions {
-                choices: choices.read().clone().into_iter().map(|(a,b,c,d,e,f)| (a,b,c,d,e,f,false)).collect(),
+                choices: choices.read().clone().into_iter().map(|(a,b,c,d,e,f,g)| (a,b,c,d,e,f,false,g)).collect(),
                 on_choice_change: move |(index, field, value): (usize, String, String)| {
                     let mut choices_write = choices.write();
                     match field.as_str() {
@@ -99,6 +99,7 @@ pub fn ParagraphForm(props: ParagraphFormProps) -> Element {
                         "action_key" => choices_write[index].3 = Some(value),
                         "action_value" => choices_write[index].4 = Some(serde_json::Value::String(value)),
                         "target_chapter" => choices_write[index].5 = value,
+                        "time_limit" => choices_write[index].6 = value.parse::<u32>().ok(),
                         _ => {}
                     }
                 },
@@ -110,6 +111,7 @@ pub fn ParagraphForm(props: ParagraphFormProps) -> Element {
                         None,
                         None,
                         String::new(),
+                        None,
                     ));
                 },
                 on_remove_choice: move |index| {

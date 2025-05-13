@@ -6,10 +6,11 @@ use crate::KeyboardState;
 use wasm_bindgen::JsCast;
 use web_sys::{Window, Document};
 use dioxus_i18n::t;
+use crate::contexts::story_context::use_story_context;
 
 #[derive(Props, Clone, PartialEq)]
 pub struct StoryContentProps {
-    pub paragraph: String,
+    pub paragraph: Signal<String>,
     pub choices: Vec<Choice>,
     pub on_choice_click: EventHandler<(String, usize)>,
     pub enabled_choices: Vec<String>,
@@ -68,11 +69,40 @@ fn get_window_document() -> Option<(Window, Document)> {
 
 #[component]
 pub fn StoryContent(props: StoryContentProps) -> Element {
-    let paragraph = Arc::new(props.paragraph.clone());
+    let paragraph = props.paragraph.read().clone();
     let choices = Arc::new(props.choices.clone());
     let enabled_choices = Arc::new(props.enabled_choices.clone());
     let on_choice_click = props.on_choice_click.clone();
     let mut keyboard_state = use_context::<Signal<KeyboardState>>();
+    let story_ctx = use_story_context();
+    let target_paragraph_id = story_ctx.read().target_paragraph_id.clone();
+    let countdowns = use_signal(|| vec![]);
+    let max_times = use_signal(|| vec![]);
+    let story_ctx = use_story_context();
+    let target_paragraph_id = story_ctx.read().target_paragraph_id.clone();
+    // 新增一個 signal 控制動畫啟動
+    let progress_started = use_signal(|| vec![]);
+    // 段落 id 變動時重設倒數
+    {
+        let mut countdowns = countdowns.clone();
+        let mut max_times = max_times.clone();
+        let mut progress_started = progress_started.clone();
+        let story_ctx = story_ctx.clone();
+        use_effect(move || {
+            let time_limits = story_ctx.read().countdowns.read().clone();
+            countdowns.set(time_limits.clone());
+            max_times.set(time_limits.clone());
+            // 初始化動畫啟動狀態
+            progress_started.set(vec![false; time_limits.len()]);
+            // 下一個 tick 啟動動畫
+            gloo_timers::callback::Timeout::new(10, move || {
+                let mut arr = progress_started.write();
+                for v in arr.iter_mut() {
+                    *v = true;
+                }
+            }).forget();
+        });
+    }
     
     let mut show_filter = use_signal(|| true);
     let mut is_focused = use_signal(|| false);
@@ -148,7 +178,7 @@ pub fn StoryContent(props: StoryContentProps) -> Element {
                 class: "prose-sm dark:prose-invert lg:prose-base mx-auto max-w-3xl p-8 text-gray-900 dark:text-white bg-white dark:bg-transparent",
                 div {
                     class: "whitespace-pre-wrap lg:mt-16 space-y-8",
-                    {paragraph.split('\n')
+                    {props.paragraph.read().split('\n')
                         .filter(|p| !p.trim().is_empty())
                         .map(|p| rsx! {
                             p {
@@ -177,12 +207,19 @@ pub fn StoryContent(props: StoryContentProps) -> Element {
                                 }
                             }
                         };
-                        
+                        let countdown = countdowns.read().get(index).copied().unwrap_or(0);
+                        let max_time = max_times.read().get(index).copied().unwrap_or(0);
+                        let animation_name = format!("progress-bar-{}", index);
+                        let keyframes = format!(
+                            "@keyframes {} {{ from {{ width: 100%; }} to {{ width: 0%; }} }}",
+                            animation_name
+                        );
+                        let duration = format!("{}s", max_time);
                         rsx! {
                             li {
-                                class: {
+                                class: {{
                                     format!(
-                                        "p-4 rounded-lg transition-colors duration-200 {} {}",
+                                        "p-4 rounded-lg transition-colors duration-200 relative {} {}",
                                         if is_enabled {
                                             "cursor-pointer text-gray-900 hover:text-gray-700 dark:text-white dark:hover:text-gray-300"
                                         } else {
@@ -194,9 +231,19 @@ pub fn StoryContent(props: StoryContentProps) -> Element {
                                             ""
                                         }
                                     )
-                                },
+                                }},
                                 onclick: on_click,
-                                {caption}
+                                span { class: "mr-2", {caption} }
+                                { (countdown > 0).then(|| rsx! {
+                                    style { "{keyframes}" }
+                                    div {
+                                        class: "w-full h-px bg-current mt-2",
+                                        style: format!(
+                                            "animation: {} linear {} forwards;",
+                                            animation_name, duration
+                                        ),
+                                    }
+                                }) }
                             }
                         }
                     })}

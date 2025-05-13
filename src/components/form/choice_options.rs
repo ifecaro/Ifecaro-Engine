@@ -5,7 +5,7 @@ use crate::components::paragraph_list::{Paragraph, ParagraphList};
 
 #[derive(Props, Clone, PartialEq)]
 pub struct ChoiceOptionsProps {
-    pub choices: Vec<(String, String, String, Option<String>, Option<serde_json::Value>, String, bool)>,
+    pub choices: Vec<(String, String, String, Option<String>, Option<serde_json::Value>, String, bool, Option<u32>)>,
     pub on_choice_change: EventHandler<(usize, String, String)>,
     pub on_add_choice: EventHandler<()>,
     pub on_remove_choice: EventHandler<usize>,
@@ -28,7 +28,7 @@ pub struct ChoiceOptionsProps {
 pub fn ChoiceOptions(props: ChoiceOptionsProps) -> Element {
     rsx! {
         // 渲染所有選項
-        {props.choices.iter().enumerate().map(|(index, (caption, goto, action_type, action_key, action_value, target_chapter, same_page))| {
+        {props.choices.iter().enumerate().map(|(index, (caption, goto, action_type, action_key, action_value, target_chapter, same_page, time_limit))| {
             rsx! {
                 div {
                     key: "{index}",
@@ -170,6 +170,18 @@ pub fn ChoiceOptions(props: ChoiceOptionsProps) -> Element {
                                     class: "ml-2 text-sm text-gray-700 dark:text-gray-300",
                                     {t!("same_page")}
                                 }
+                            }
+                            // 秒數輸入框
+                            InputField {
+                                label: t!("time_limit_seconds"),
+                                value: time_limit.map(|v| v.to_string()).unwrap_or_default(),
+                                on_input: move |value| {
+                                    props.on_choice_change.call((index, "time_limit".to_string(), value));
+                                },
+                                placeholder: t!("time_limit_seconds"),
+                                has_error: false,
+                                required: false,
+                                on_blur: move |_| {},
                             }
                             
                             // 刪除按鈕

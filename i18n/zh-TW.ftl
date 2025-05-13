@@ -40,3 +40,4 @@ untranslated = 未翻譯
 loading = 載入中...
 not_applicable = 不適用 
 same_page = 在同頁顯示 
+time_limit_seconds = 選項時間限制（秒） 

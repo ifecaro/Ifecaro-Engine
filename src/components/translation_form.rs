@@ -18,6 +18,8 @@ pub enum ParagraphChoice {
         value: Option<serde_json::Value>,
         #[serde(default, skip_serializing_if = "Option::is_none")]
         same_page: Option<bool>,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        time_limit: Option<u32>,
     },
     Simple(String),
 }
@@ -54,6 +56,13 @@ impl ParagraphChoice {
     pub fn get_same_page(&self) -> Option<bool> {
         match self {
             ParagraphChoice::Complex { same_page, .. } => *same_page,
+            ParagraphChoice::Simple(_) => None,
+        }
+    }
+
+    pub fn get_time_limit(&self) -> Option<u32> {
+        match self {
+            ParagraphChoice::Complex { time_limit, .. } => *time_limit,
             ParagraphChoice::Simple(_) => None,
         }
     }
@@ -120,7 +129,7 @@ pub fn TranslationForm(props: TranslationFormProps) -> Element {
     let _available_paragraphs = props.available_paragraphs.clone();
     let selected_paragraph = props.selected_paragraph.clone();
 
-    let mut choices = use_signal(|| Vec::<(String, String, String, Option<String>, Option<serde_json::Value>, String)>::new());
+    let mut choices = use_signal(|| Vec::<(String, String, String, Option<String>, Option<serde_json::Value>, String, Option<u32>)>::new());
     let mut action_type_open = use_signal(|| vec![false]);
 
     let is_form_valid = {
@@ -176,7 +185,7 @@ pub fn TranslationForm(props: TranslationFormProps) -> Element {
 
                 // 選項設定
                 ChoiceOptions {
-                    choices: choices.read().clone().into_iter().map(|(a,b,c,d,e,f)| (a,b,c,d,e,f,false)).collect(),
+                    choices: choices.read().clone().into_iter().map(|(a,b,c,d,e,f,g)| (a,b,c,d,e,f,false,g)).collect(),
                     on_choice_change: move |(index, field, value): (usize, String, String)| {
                         let mut choices_write = choices.write();
                         match field.as_str() {
@@ -186,6 +195,7 @@ pub fn TranslationForm(props: TranslationFormProps) -> Element {
                             "action_key" => choices_write[index].3 = Some(value),
                             "action_value" => choices_write[index].4 = Some(serde_json::Value::String(value)),
                             "target_chapter" => choices_write[index].5 = value,
+                            "time_limit" => choices_write[index].6 = value.parse::<u32>().ok(),
                             _ => {}
                         }
                     },
@@ -197,6 +207,7 @@ pub fn TranslationForm(props: TranslationFormProps) -> Element {
                             None,
                             None,
                             String::new(),
+                            None,
                         ));
                     },
                     on_remove_choice: move |index| {
