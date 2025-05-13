@@ -1,9 +1,7 @@
 use dioxus::prelude::*;
-use dioxus_core::IntoDynNode;
 use dioxus_core::fc_to_builder;
 use wasm_bindgen_futures::spawn_local;
 use serde::Deserialize;
-use dioxus_i18n::t;
 use crate::components::story_content::{StoryContent, Choice, Action};
 use crate::contexts::story_context::use_story_context;
 use crate::contexts::language_context::LanguageState;
@@ -19,7 +17,6 @@ use crate::services::indexeddb::get_choice_from_indexeddb;
 use rand::prelude::SliceRandom;
 use std::rc::Rc;
 use std::cell::RefCell;
-use tracing;
 
 #[derive(Deserialize, Clone, Debug)]
 #[allow(dead_code)]
@@ -35,6 +32,7 @@ struct Data {
 }
 
 #[derive(Deserialize, Clone, Debug)]
+#[allow(dead_code)]
 pub struct Paragraph {
     pub id: String,
     #[serde(default)]
@@ -51,8 +49,8 @@ pub struct Paragraph {
     pub updated: String,
 }
 
-#[derive(Deserialize, Clone, Debug, PartialEq)]
-struct Text {
+#[derive(Deserialize, Clone, Debug)]
+pub struct Text {
     lang: String,
     paragraphs: String,
     choices: Vec<String>,
@@ -120,7 +118,7 @@ struct Chapter {
 #[component]
 pub fn Story(props: StoryProps) -> Element {
     let state = use_context::<Signal<LanguageState>>();
-    let mut story_context = use_story_context();
+    let story_context = use_story_context();
     let settings_context = use_settings_context();
     let current_paragraph = use_signal(|| None::<Paragraph>);
     let current_text = use_signal(|| None::<Text>);
@@ -129,16 +127,10 @@ pub fn Story(props: StoryProps) -> Element {
     let paragraph_data = use_signal(|| Vec::<Paragraph>::new());
     let mut _expanded_paragraphs = use_signal(|| Vec::<Paragraph>::new());
     let chapters = use_signal(|| Vec::<Chapter>::new());
-    let mut merged_time_limits: Vec<u32> = Vec::new();
     let last_paragraph_id = Rc::new(RefCell::new(String::new()));
     let last_paragraph_id_effect = last_paragraph_id.clone();
     let story_context = story_context.clone();
-    let expanded = _expanded_paragraphs.clone();
-    let state = state.clone();
-    let mut merged_paragraph = use_signal(|| String::new());
-    let mut merged_paragraph_str = String::new();
-    let mut merged_choices: Vec<Choice> = Vec::new();
-    let mut merged_enabled_choices: Vec<String> = Vec::new();
+    let merged_paragraph = use_signal(|| String::new());
     
     // 載入設定與段落數據（合併為一個 async 流程）
     {

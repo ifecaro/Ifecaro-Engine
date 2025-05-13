@@ -1,0 +1,163 @@
+    Checking ifecaro v0.12.0 (/home/deck/code/Ifecaro-Engine)
+warning: unused import: `dioxus_core::IntoDynNode`
+ --> src/pages/story.rs:2:5
+  |
+2 | use dioxus_core::IntoDynNode;
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` on by default
+
+warning: unused import: `dioxus_i18n::t`
+ --> src/pages/story.rs:6:5
+  |
+6 | use dioxus_i18n::t;
+  |     ^^^^^^^^^^^^^^
+
+warning: unused import: `tracing`
+  --> src/pages/story.rs:22:5
+   |
+22 | use tracing;
+   |     ^^^^^^^
+
+warning: unused variable: `paragraph`
+  --> src/components/story_content.rs:72:9
+   |
+72 |     let paragraph = props.paragraph.read().clone();
+   |         ^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_paragraph`
+   |
+   = note: `#[warn(unused_variables)]` on by default
+
+warning: unused variable: `target_paragraph_id`
+  --> src/components/story_content.rs:78:9
+   |
+78 |     let target_paragraph_id = story_ctx.read().target_paragraph_id.clone();
+   |         ^^^^^^^^^^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_target_paragraph_id`
+
+warning: unused variable: `target_paragraph_id`
+  --> src/components/story_content.rs:82:9
+   |
+82 |     let target_paragraph_id = story_ctx.read().target_paragraph_id.clone();
+   |         ^^^^^^^^^^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_target_paragraph_id`
+
+warning: unused variable: `merged_time_limits`
+   --> src/pages/story.rs:132:13
+    |
+132 |     let mut merged_time_limits: Vec<u32> = Vec::new();
+    |             ^^^^^^^^^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_merged_time_limits`
+
+warning: unused variable: `expanded`
+   --> src/pages/story.rs:136:9
+    |
+136 |     let expanded = _expanded_paragraphs.clone();
+    |         ^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_expanded`
+
+warning: unused variable: `merged_paragraph_str`
+   --> src/pages/story.rs:139:13
+    |
+139 |     let mut merged_paragraph_str = String::new();
+    |             ^^^^^^^^^^^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_merged_paragraph_str`
+
+warning: unused variable: `merged_choices`
+   --> src/pages/story.rs:140:13
+    |
+140 |     let mut merged_choices: Vec<Choice> = Vec::new();
+    |             ^^^^^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_merged_choices`
+
+warning: unused variable: `merged_enabled_choices`
+   --> src/pages/story.rs:141:13
+    |
+141 |     let mut merged_enabled_choices: Vec<String> = Vec::new();
+    |             ^^^^^^^^^^^^^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_merged_enabled_choices`
+
+warning: variable does not need to be mutable
+   --> src/pages/story.rs:123:9
+    |
+123 |     let mut story_context = use_story_context();
+    |         ----^^^^^^^^^^^^^
+    |         |
+    |         help: remove this `mut`
+    |
+    = note: `#[warn(unused_mut)]` on by default
+
+warning: variable does not need to be mutable
+   --> src/pages/story.rs:132:9
+    |
+132 |     let mut merged_time_limits: Vec<u32> = Vec::new();
+    |         ----^^^^^^^^^^^^^^^^^^
+    |         |
+    |         help: remove this `mut`
+
+warning: variable does not need to be mutable
+   --> src/pages/story.rs:138:9
+    |
+138 |     let mut merged_paragraph = use_signal(|| String::new());
+    |         ----^^^^^^^^^^^^^^^^
+    |         |
+    |         help: remove this `mut`
+
+warning: variable does not need to be mutable
+   --> src/pages/story.rs:139:9
+    |
+139 |     let mut merged_paragraph_str = String::new();
+    |         ----^^^^^^^^^^^^^^^^^^^^
+    |         |
+    |         help: remove this `mut`
+
+warning: variable does not need to be mutable
+   --> src/pages/story.rs:140:9
+    |
+140 |     let mut merged_choices: Vec<Choice> = Vec::new();
+    |         ----^^^^^^^^^^^^^^
+    |         |
+    |         help: remove this `mut`
+
+warning: variable does not need to be mutable
+   --> src/pages/story.rs:141:9
+    |
+141 |     let mut merged_enabled_choices: Vec<String> = Vec::new();
+    |         ----^^^^^^^^^^^^^^^^^^^^^^
+    |         |
+    |         help: remove this `mut`
+
+warning: unused variable: `choice_text`
+   --> src/pages/dashboard.rs:519:80
+    |
+519 | ... = choices.iter().map(|(choice_text, to, type_, key, value, _target_chapter, same_page, time_limit)| {
+    |                            ^^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_choice_text`
+
+warning: type `pages::story::Text` is more private than the item `pages::story::Paragraph::texts`
+  --> src/pages/story.rs:42:5
+   |
+42 |     pub texts: Vec<Text>,
+   |     ^^^^^^^^^^^^^^^^^^^^ field `pages::story::Paragraph::texts` is reachable at visibility `pub(crate)`
+   |
+note: but type `pages::story::Text` is only usable at visibility `pub(self)`
+  --> src/pages/story.rs:55:1
+   |
+55 | struct Text {
+   | ^^^^^^^^^^^
+   = note: `#[warn(private_interfaces)]` on by default
+
+warning: fields `collection_id`, `collection_name`, `created`, and `updated` are never read
+  --> src/pages/story.rs:45:9
+   |
+38 | pub struct Paragraph {
+   |            --------- fields in this struct
+...
+45 |     pub collection_id: String,
+   |         ^^^^^^^^^^^^^
+46 |     #[serde(rename = "collectionName", default)]
+47 |     pub collection_name: String,
+   |         ^^^^^^^^^^^^^^^
+48 |     #[serde(default)]
+49 |     pub created: String,
+   |         ^^^^^^^
+50 |     #[serde(default)]
+51 |     pub updated: String,
+   |         ^^^^^^^
+   |
+   = note: `Paragraph` has derived impls for the traits `Debug` and `Clone`, but these are intentionally ignored during dead code analysis
+   = note: `#[warn(dead_code)]` on by default
+
+warning: `ifecaro` (bin "ifecaro") generated 20 warnings (run `cargo fix --bin "ifecaro"` to apply 9 suggestions)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 2.49s

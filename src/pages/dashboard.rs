@@ -516,7 +516,7 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
             };
 
             // 構建選項數據
-            let paragraph_choices: Vec<ParagraphChoice> = choices.iter().map(|(choice_text, to, type_, key, value, _target_chapter, same_page, time_limit)| {
+            let paragraph_choices: Vec<ParagraphChoice> = choices.iter().map(|(_choice_text, to, type_, key, value, _target_chapter, same_page, time_limit)| {
                 let mut complex = ParagraphChoice::Complex {
                     to: to.clone(),
                     type_: type_.clone(),

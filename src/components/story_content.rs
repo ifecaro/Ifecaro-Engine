@@ -69,22 +69,15 @@ fn get_window_document() -> Option<(Window, Document)> {
 
 #[component]
 pub fn StoryContent(props: StoryContentProps) -> Element {
-    let paragraph = props.paragraph.read().clone();
     let choices = Arc::new(props.choices.clone());
     let enabled_choices = Arc::new(props.enabled_choices.clone());
     let on_choice_click = props.on_choice_click.clone();
     let mut keyboard_state = use_context::<Signal<KeyboardState>>();
     let story_ctx = use_story_context();
-    let target_paragraph_id = story_ctx.read().target_paragraph_id.clone();
     let countdowns = use_signal(|| vec![]);
     let max_times = use_signal(|| vec![]);
-    let story_ctx = use_story_context();
-    let target_paragraph_id = story_ctx.read().target_paragraph_id.clone();
-    // 新增一個 signal 控制動畫啟動
     let progress_started = use_signal(|| vec![]);
-    // 新增一個 signal 控制倒數結束的選項
     let mut disabled_by_countdown = use_signal(|| vec![]);
-    // 段落 id 變動時重設倒數
     {
         let mut countdowns = countdowns.clone();
         let mut max_times = max_times.clone();
@@ -95,11 +88,8 @@ pub fn StoryContent(props: StoryContentProps) -> Element {
             let time_limits = story_ctx.read().countdowns.read().clone();
             countdowns.set(time_limits.clone());
             max_times.set(time_limits.clone());
-            // 初始化動畫啟動狀態
             progress_started.set(vec![false; time_limits.len()]);
-            // 初始化禁用狀態
             disabled_by_countdown.set(vec![false; time_limits.len()]);
-            // 下一個 tick 啟動動畫
             gloo_timers::callback::Timeout::new(10, move || {
                 let mut arr = progress_started.write();
                 for v in arr.iter_mut() {
@@ -137,7 +127,6 @@ pub fn StoryContent(props: StoryContentProps) -> Element {
             onkeydown: move |event: Event<KeyboardData>| {
                 match event.data.key() {
                     key => {
-                        // 處理數字鍵 1-9
                         if let Some(num) = key.to_string().parse::<usize>().ok() {
                             if num > 0 && num <= choices.len() {
                                 let idx = num - 1;
@@ -248,9 +237,7 @@ pub fn StoryContent(props: StoryContentProps) -> Element {
                                             "animation: {} linear {} forwards;",
                                             animation_name, duration
                                         ),
-                                        // 監聽動畫結束
                                         onanimationend: move |_| {
-                                            // 只禁用原本 countdown > 0 的選項
                                             if countdown > 0 {
                                                 let mut arr = disabled_by_countdown.write();
                                                 if !arr.get(index).copied().unwrap_or(false) {
