@@ -82,11 +82,14 @@ pub fn StoryContent(props: StoryContentProps) -> Element {
     let target_paragraph_id = story_ctx.read().target_paragraph_id.clone();
     // 新增一個 signal 控制動畫啟動
     let progress_started = use_signal(|| vec![]);
+    // 新增一個 signal 控制倒數結束的選項
+    let mut disabled_by_countdown = use_signal(|| vec![]);
     // 段落 id 變動時重設倒數
     {
         let mut countdowns = countdowns.clone();
         let mut max_times = max_times.clone();
         let mut progress_started = progress_started.clone();
+        let mut disabled_by_countdown = disabled_by_countdown.clone();
         let story_ctx = story_ctx.clone();
         use_effect(move || {
             let time_limits = story_ctx.read().countdowns.read().clone();
@@ -94,6 +97,8 @@ pub fn StoryContent(props: StoryContentProps) -> Element {
             max_times.set(time_limits.clone());
             // 初始化動畫啟動狀態
             progress_started.set(vec![false; time_limits.len()]);
+            // 初始化禁用狀態
+            disabled_by_countdown.set(vec![false; time_limits.len()]);
             // 下一個 tick 啟動動畫
             gloo_timers::callback::Timeout::new(10, move || {
                 let mut arr = progress_started.write();
@@ -193,7 +198,8 @@ pub fn StoryContent(props: StoryContentProps) -> Element {
                     {choices.iter().enumerate().map(|(index, choice)| {
                         let caption = choice.caption.clone();
                         let goto = choice.action.to.clone();
-                        let is_enabled = enabled_choices.contains(&caption);
+                        let is_enabled = enabled_choices.contains(&caption)
+                            && !disabled_by_countdown.read().get(index).copied().unwrap_or(false);
                         let is_selected = keyboard_state.read().selected_index == index as i32;
                         let on_click = {
                             let goto = goto.clone();
@@ -242,6 +248,16 @@ pub fn StoryContent(props: StoryContentProps) -> Element {
                                             "animation: {} linear {} forwards;",
                                             animation_name, duration
                                         ),
+                                        // 監聽動畫結束
+                                        onanimationend: move |_| {
+                                            // 只禁用原本 countdown > 0 的選項
+                                            if countdown > 0 {
+                                                let mut arr = disabled_by_countdown.write();
+                                                if !arr.get(index).copied().unwrap_or(false) {
+                                                    arr[index] = true;
+                                                }
+                                            }
+                                        },
                                     }
                                 }) }
                             }
