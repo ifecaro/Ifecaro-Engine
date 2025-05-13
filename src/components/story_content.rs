@@ -132,7 +132,8 @@ pub fn StoryContent(props: StoryContentProps) -> Element {
                                 let idx = num - 1;
                                 let choice = &choices[idx];
                                 let goto = choice.action.to.clone();
-                                if enabled_choices.contains(&choice.caption) {
+                                let is_disabled = disabled_by_countdown.read().get(idx).copied().unwrap_or(false);
+                                if enabled_choices.contains(&choice.caption) && !is_disabled {
                                     keyboard_state.write().selected_index = idx as i32;
                                     on_choice_click.call((goto.clone(), idx));
                                 }
