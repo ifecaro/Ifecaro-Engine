@@ -14,6 +14,16 @@ fn main() {
         panic!("Tailwind CSS compilation failed");
     }
 
+    // Run cargo test before build
+    println!("Running cargo test...");
+    let test_status = Command::new("cargo")
+        .arg("test")
+        .status()
+        .expect("Failed to execute cargo test");
+    if !test_status.success() {
+        panic!("cargo test failed");
+    }
+
     // Execute dx build
     println!("Running dx build...");
     let dx_status = Command::new("dx")
