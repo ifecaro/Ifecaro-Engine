@@ -51,9 +51,9 @@ pub struct Paragraph {
 
 #[derive(Deserialize, Clone, Debug)]
 pub struct Text {
-    lang: String,
-    paragraphs: String,
-    choices: Vec<String>,
+    pub lang: String,
+    pub paragraphs: String,
+    pub choices: Vec<String>,
 }
 
 #[derive(Deserialize, Clone, Debug, PartialEq)]
@@ -113,6 +113,40 @@ pub struct StoryProps {
 struct Chapter {
     id: String,
     order: i32,
+}
+
+/// 合併多個段落的 paragraphs 欄位，根據語言與 reader_mode 規則
+#[allow(dead_code)]
+pub fn merge_paragraphs_for_lang(
+    expanded: &[Paragraph],
+    current_language: &str,
+    reader_mode: bool,
+    is_settings_chapter: bool,
+    choice_ids: &[String],
+) -> String {
+    let mut merged_paragraph_str = String::new();
+    if reader_mode && !is_settings_chapter {
+        for (idx, paragraph) in expanded.iter().enumerate() {
+            if idx == 0 || (choice_ids.contains(&paragraph.id) && paragraph.chapter_id != "settingschapter") {
+                if let Some(text) = paragraph.texts.iter().find(|t| t.lang == current_language) {
+                    if !merged_paragraph_str.is_empty() {
+                        merged_paragraph_str.push_str("\n\n");
+                    }
+                    merged_paragraph_str.push_str(&text.paragraphs);
+                }
+            }
+        }
+    } else {
+        for paragraph in expanded.iter() {
+            if let Some(text) = paragraph.texts.iter().find(|t| t.lang == current_language) {
+                if !merged_paragraph_str.is_empty() {
+                    merged_paragraph_str.push_str("\n\n");
+                }
+                merged_paragraph_str.push_str(&text.paragraphs);
+            }
+        }
+    }
+    merged_paragraph_str
 }
 
 #[component]
