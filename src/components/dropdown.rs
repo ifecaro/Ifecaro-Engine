@@ -71,6 +71,11 @@ pub fn Dropdown<T: Clone + PartialEq + 'static>(props: DropdownProps<T>) -> Elem
     let display_fn = props.display_fn;
     
     let button_class = props.button_class.clone().unwrap_or_else(|| "w-full px-4 py-2.5 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-200 ease-in-out hover:border-green-500 dark:hover:border-green-500 flex justify-between items-center relative".to_string());
+    let button_class = if props.disabled {
+        format!("{} opacity-50 cursor-not-allowed", button_class)
+    } else {
+        button_class
+    };
     let label_class = props.label_class.clone().unwrap_or_else(|| "block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2".to_string());
     
     let width_class = props.dropdown_width.clone().unwrap_or_else(|| "w-full".to_string());

@@ -89,3 +89,7 @@ codegen-units = 1
 [[bin]]
 name = "build-script"
 path = "build.rs"
+
+[dev-dependencies]
+dioxus-ssr = "0.6.2"
+pretty_assertions = "1.4.1"
