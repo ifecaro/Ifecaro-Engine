@@ -184,4 +184,41 @@ pub fn Dropdown<T: Clone + PartialEq + 'static>(props: DropdownProps<T>) -> Elem
             }
         }
     }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use dioxus::prelude::*;
+
+    #[test]
+    fn test_dropdown_disabled_class() {
+        let dropdown = Dropdown(DropdownProps {
+            label: "Test".to_string(),
+            label_class: None,
+            value: "".to_string(),
+            options: vec!["A".to_string(), "B".to_string()],
+            is_open: false,
+            search_query: "".to_string(),
+            on_toggle: EventHandler::new(|_| {}),
+            on_search: EventHandler::new(|_| {}),
+            on_select: EventHandler::new(|_| {}),
+            display_fn: |s: &String| s.clone(),
+            has_error: false,
+            class: String::new(),
+            search_placeholder: "搜尋...".to_string(),
+            button_class: None,
+            dropdown_class: String::new(),
+            search_input_class: String::new(),
+            option_class: String::new(),
+            disabled: true,
+            required: false,
+            show_arrow: true,
+            dropdown_width: None,
+            dropdown_position: None,
+        });
+        let html = dioxus_ssr::render(&dropdown);
+        assert!(html.contains("opacity-50"), "disabled dropdown should have opacity-50 class");
+        assert!(html.contains("cursor-not-allowed"), "disabled dropdown should have cursor-not-allowed class");
+    }
 } 
