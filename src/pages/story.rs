@@ -300,10 +300,14 @@ pub fn Story(props: StoryProps) -> Element {
                     current_paragraph.set(Some(paragraph.clone()));
                     if let Some(_text) = paragraph.texts.iter().find(|t| t.lang == state().current_language) {
                         current_text.set(Some(paragraph.texts.iter().find(|t| t.lang == state().current_language).cloned().unwrap()));
-                        let choices: Vec<Choice> = paragraph.choices.iter().map(|c| {
+                        let choices: Vec<Choice> = paragraph.choices.iter().enumerate().map(|(index, c)| {
                             let choice: StoryChoice = StoryChoice::Complex(c.clone());
                             let mut choice_obj: Choice = choice.into();
-                            choice_obj.caption = c.to.clone();
+                            if let Some(text) = paragraph.texts.iter().find(|t| t.lang == state().current_language) {
+                                if let Some(caption) = text.choices.get(index) {
+                                    choice_obj.caption = caption.clone();
+                                }
+                            }
                             choice_obj
                         }).collect();
                         current_choices.set(choices.clone());
