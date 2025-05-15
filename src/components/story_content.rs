@@ -72,6 +72,58 @@ fn get_window_document() -> Option<(Window, Document)> {
     Some((window, document))
 }
 
+#[derive(Props, Clone, PartialEq)]
+pub struct StoryContentUIProps {
+    pub paragraph: String,
+    pub choices: Vec<Choice>,
+    pub enabled_choices: Vec<String>,
+    pub disabled_by_countdown: Vec<bool>,
+}
+
+#[component]
+pub fn StoryContentUI(props: StoryContentUIProps) -> Element {
+    rsx! {
+        article {
+            class: "prose-sm dark:prose-invert lg:prose-base mx-auto max-w-3xl p-8 text-gray-900 dark:text-white bg-white dark:bg-transparent",
+            div {
+                class: "whitespace-pre-wrap lg:mt-16 space-y-8",
+                {props.paragraph.split('\n')
+                    .filter(|p| !p.trim().is_empty())
+                    .map(|p| rsx! {
+                        p {
+                            class: "indent-10 tracking-wide leading-relaxed text-justify",
+                            {p}
+                        }
+                    })
+                }
+            }
+            ol {
+                class: "mt-10 w-full md:w-fit list-decimal",
+                {props.choices.iter().enumerate().map(|(index, choice)| {
+                    let caption = &choice.caption;
+                    let is_enabled = props.enabled_choices.contains(caption)
+                        && !props.disabled_by_countdown.get(index).copied().unwrap_or(false);
+                    rsx! {
+                        li {
+                            class: {{
+                                format!(
+                                    "p-4 rounded-lg transition-colors duration-200 relative {}",
+                                    if is_enabled {
+                                        "cursor-pointer text-gray-900 hover:text-gray-700 dark:text-white dark:hover:text-gray-300"
+                                    } else {
+                                        "opacity-50 cursor-not-allowed text-gray-400 dark:text-gray-400"
+                                    }
+                                )
+                            }},
+                            span { class: "mr-2", {caption.clone()} }
+                        }
+                    }
+                })}
+            }
+        }
+    }
+}
+
 #[component]
 pub fn StoryContent(props: StoryContentProps) -> Element {
     let choices = Arc::new(props.choices.clone());
@@ -249,7 +301,7 @@ pub fn StoryContent(props: StoryContentProps) -> Element {
                                         )
                                     }},
                                     onclick: on_click,
-                                    span { class: "mr-2", {caption} }
+                                    span { class: "mr-2", {caption.clone()} }
                                     { (countdown > 0).then(|| rsx! {
                                         style { "{keyframes}" }
                                         div {

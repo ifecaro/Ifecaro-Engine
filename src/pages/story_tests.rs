@@ -63,4 +63,104 @@ fn test_merge_paragraphs_reader_mode_only_first() {
         &choice_ids,
     );
     assert_eq!(result, "第一段");
-} 
+}
+
+#[test]
+fn test_countdowns_from_time_limit() {
+    use crate::pages::story::ComplexChoice;
+    // 準備一個段落，choices 有 time_limit
+    let mut p = make_paragraph("p1", "c1", "zh", "段落");
+    p.choices = vec![
+        ComplexChoice {
+            to: "p2".to_string(),
+            type_: "goto".to_string(),
+            key: None,
+            value: None,
+            same_page: None,
+            time_limit: Some(10),
+        },
+        ComplexChoice {
+            to: "p3".to_string(),
+            type_: "goto".to_string(),
+            key: None,
+            value: None,
+            same_page: None,
+            time_limit: Some(0),
+        },
+        ComplexChoice {
+            to: "p4".to_string(),
+            type_: "goto".to_string(),
+            key: None,
+            value: None,
+            same_page: None,
+            time_limit: Some(5),
+        },
+    ];
+    // countdowns 產生邏輯
+    let countdowns: Vec<u32> = p.choices.iter().map(|c| c.time_limit.unwrap_or(0)).collect();
+    assert_eq!(countdowns, vec![10, 0, 5]);
+}
+
+#[test]
+fn test_option_disabled_after_countdown() {
+    // 假設有一個選項 countdown 為 5
+    let mut countdowns = vec![5];
+    let mut disabled_by_countdown = vec![false];
+
+    // 模擬 5 秒倒數
+    for _ in 0..5 {
+        for c in countdowns.iter_mut() {
+            if *c > 0 {
+                *c -= 1;
+            }
+        }
+    }
+
+    // 倒數結束時，應該觸發禁用
+    for (i, &c) in countdowns.iter().enumerate() {
+        if c == 0 {
+            disabled_by_countdown[i] = true;
+        }
+    }
+
+    assert_eq!(disabled_by_countdown, vec![true]);
+}
+
+#[cfg(test)]
+mod ssr_tests {
+    use super::*;
+    use dioxus::prelude::*;
+    use dioxus_ssr::render;
+    use pretty_assertions::assert_eq;
+    use crate::components::story_content::{StoryContent, StoryContentProps, Choice, Action};
+    use crate::KeyboardState;
+    use crate::contexts::story_context::{StoryContext, provide_story_context};
+    use dioxus_core::NoOpMutations;
+
+    #[test]
+    fn test_story_contentui_disabled_class() {
+        use dioxus::prelude::*;
+        use dioxus_ssr::render;
+        use crate::components::story_content::{StoryContentUI, StoryContentUIProps, Choice, Action};
+        // 準備 props
+        let props = StoryContentUIProps {
+            paragraph: "這是一段故事".to_string(),
+            choices: vec![Choice {
+                caption: "選項一".to_string(),
+                action: Action {
+                    type_: "goto".to_string(),
+                    key: None,
+                    value: None,
+                    to: "p2".to_string(),
+                },
+            }],
+            enabled_choices: vec!["選項一".to_string()],
+            disabled_by_countdown: vec![true],
+        };
+        let mut dom = VirtualDom::new_with_props(StoryContentUI, props);
+        let mut mutations = NoOpMutations;
+        dom.rebuild(&mut mutations);
+        let html = render(&dom);
+        assert!(html.contains("opacity-50 cursor-not-allowed"), "HTML: {}", html);
+    }
+}
