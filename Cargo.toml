@@ -1,6 +1,6 @@
 [package]
 name = "ifecaro"
-version = "0.12.0"
+version = "0.13.0"
 edition = "2021"
 build = false      # 禁用構建腳本
 

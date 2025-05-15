@@ -298,33 +298,23 @@ pub fn Story(props: StoryProps) -> Element {
             if let Some(target_id) = target_id {
                 if let Some(paragraph) = paragraph_data.read().iter().find(|p| &p.id == &target_id) {
                     current_paragraph.set(Some(paragraph.clone()));
-                    if let Some(text) = paragraph.texts.iter().find(|t| t.lang == state().current_language) {
-                        current_text.set(Some(text.clone()));
-                        let choices: Vec<Choice> = text.choices.iter().enumerate().map(|(index, c)| {
-                            let choice: StoryChoice = if let Some(complex_choice) = paragraph.choices.get(index) {
-                                StoryChoice::Complex(complex_choice.clone())
-                            } else {
-                                StoryChoice::Simple(c.clone())
-                            };
+                    if let Some(_text) = paragraph.texts.iter().find(|t| t.lang == state().current_language) {
+                        current_text.set(Some(paragraph.texts.iter().find(|t| t.lang == state().current_language).cloned().unwrap()));
+                        let choices: Vec<Choice> = paragraph.choices.iter().map(|c| {
+                            let choice: StoryChoice = StoryChoice::Complex(c.clone());
                             let mut choice_obj: Choice = choice.into();
-                            choice_obj.caption = c.clone();
+                            choice_obj.caption = c.to.clone();
                             choice_obj
                         }).collect();
                         current_choices.set(choices.clone());
                         // 檢查每個選項的目標段落是否有當前語言的翻譯
                         let mut enabled = Vec::new();
                         let paragraph_data_read = paragraph_data.read();
-                        for choice in &text.choices {
-                            let target_paragraph = paragraph_data_read.iter().find(|p| {
-                                if let Some(complex_choice) = paragraph.choices.get(text.choices.iter().position(|c| c == choice).unwrap_or(0)) {
-                                    p.id == complex_choice.to
-                                } else {
-                                    p.id == *choice
-                                }
-                            });
+                        for choice in &paragraph.choices {
+                            let target_paragraph = paragraph_data_read.iter().find(|p| p.id == choice.to);
                             if let Some(target_paragraph) = target_paragraph {
                                 if target_paragraph.texts.iter().any(|t| t.lang == state().current_language) {
-                                    enabled.push(choice.clone());
+                                    enabled.push(choice.to.clone());
                                 }
                             }
                         }
@@ -665,7 +655,7 @@ pub fn Story(props: StoryProps) -> Element {
         if let Some(paragraph) = expanded.last() {
             if *last_paragraph_id_effect.borrow() != paragraph.id {
                 *last_paragraph_id_effect.borrow_mut() = paragraph.id.clone();
-                if let Some(text) = paragraph.texts.iter().find(|t| t.lang == state().current_language) {
+                if let Some(_text) = paragraph.texts.iter().find(|t| t.lang == state().current_language) {
                     let mut story_context = story_context.clone();
                     let countdowns_vec = paragraph.choices.iter().map(|c| c.time_limit.unwrap_or(0)).collect::<Vec<u32>>();
                     story_context.write().countdowns.set(countdowns_vec);

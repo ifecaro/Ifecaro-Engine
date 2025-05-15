@@ -1303,7 +1303,7 @@ dependencies = [
 
 [[package]]
 name = "ifecaro"
-version = "0.12.0"
+version = "0.13.0"
 dependencies = [
  "dioxus",
  "dioxus-core",
