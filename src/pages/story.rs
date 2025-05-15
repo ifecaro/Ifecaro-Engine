@@ -665,9 +665,10 @@ pub fn Story(props: StoryProps) -> Element {
         if let Some(paragraph) = expanded.last() {
             if *last_paragraph_id_effect.borrow() != paragraph.id {
                 *last_paragraph_id_effect.borrow_mut() = paragraph.id.clone();
-                if let Some(_text) = paragraph.texts.iter().find(|t| t.lang == state().current_language) {
+                if let Some(text) = paragraph.texts.iter().find(|t| t.lang == state().current_language) {
                     let mut story_context = story_context.clone();
-                    story_context.write().countdowns.set(vec![]);
+                    let countdowns_vec = paragraph.choices.iter().map(|c| c.time_limit.unwrap_or(0)).collect::<Vec<u32>>();
+                    story_context.write().countdowns.set(countdowns_vec);
                 }
             }
         }
