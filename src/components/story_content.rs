@@ -14,6 +14,11 @@ pub struct StoryContentProps {
     pub choices: Vec<Choice>,
     pub on_choice_click: EventHandler<(String, usize)>,
     pub enabled_choices: Vec<String>,
+    pub countdowns: Signal<Vec<u32>>,
+    pub max_times: Signal<Vec<u32>>,
+    pub progress_started: Signal<Vec<bool>>,
+    pub disabled_by_countdown: Signal<Vec<bool>>,
+    pub reader_mode: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -74,28 +79,40 @@ pub fn StoryContent(props: StoryContentProps) -> Element {
     let on_choice_click = props.on_choice_click.clone();
     let mut keyboard_state = use_context::<Signal<KeyboardState>>();
     let story_ctx = use_story_context();
-    let countdowns = use_signal(|| vec![]);
-    let max_times = use_signal(|| vec![]);
-    let progress_started = use_signal(|| vec![]);
-    let mut disabled_by_countdown = use_signal(|| vec![]);
+    let countdowns = props.countdowns.clone();
+    let max_times = props.max_times.clone();
+    let progress_started = props.progress_started.clone();
+    let mut disabled_by_countdown = props.disabled_by_countdown.clone();
     {
         let mut countdowns = countdowns.clone();
         let mut max_times = max_times.clone();
-        let mut progress_started = progress_started.clone();
-        let mut disabled_by_countdown = disabled_by_countdown.clone();
         let story_ctx = story_ctx.clone();
         use_effect(move || {
             let time_limits = story_ctx.read().countdowns.read().clone();
             countdowns.set(time_limits.clone());
             max_times.set(time_limits.clone());
+        });
+    }
+    {
+        let mut progress_started = progress_started.clone();
+        let story_ctx = story_ctx.clone();
+        use_effect(move || {
+            let time_limits = story_ctx.read().countdowns.read().clone();
             progress_started.set(vec![false; time_limits.len()]);
-            disabled_by_countdown.set(vec![false; time_limits.len()]);
             gloo_timers::callback::Timeout::new(10, move || {
                 let mut arr = progress_started.write();
                 for v in arr.iter_mut() {
                     *v = true;
                 }
             }).forget();
+        });
+    }
+    {
+        let mut disabled_by_countdown = disabled_by_countdown.clone();
+        let story_ctx = story_ctx.clone();
+        use_effect(move || {
+            let time_limits = story_ctx.read().countdowns.read().clone();
+            disabled_by_countdown.set(vec![false; time_limits.len()]);
         });
     }
     
@@ -119,6 +136,8 @@ pub fn StoryContent(props: StoryContentProps) -> Element {
     });
     
     use_effect(move || show_filter.set(true));
+    
+    let is_settings_chapter = story_ctx.read().is_settings_chapter();
     
     rsx! {
         div {
@@ -183,74 +202,76 @@ pub fn StoryContent(props: StoryContentProps) -> Element {
                         })
                     }
                 }
-                ol {
-                    class: "mt-10 w-full md:w-fit list-decimal",
-                    {choices.iter().enumerate().map(|(index, choice)| {
-                        let caption = choice.caption.clone();
-                        let goto = choice.action.to.clone();
-                        let is_enabled = enabled_choices.contains(&caption)
-                            && !disabled_by_countdown.read().get(index).copied().unwrap_or(false);
-                        let is_selected = keyboard_state.read().selected_index == index as i32;
-                        let on_click = {
-                            let goto = goto.clone();
-                            let on_choice_click = on_choice_click.clone();
-                            let mut keyboard_state = keyboard_state.clone();
-                            move |evt: Event<MouseData>| {
-                                evt.stop_propagation();
-                                if is_enabled {
-                                    keyboard_state.write().selected_index = index as i32;
-                                    on_choice_click.call((goto.clone(), index));
+                if is_settings_chapter || !props.reader_mode {
+                    ol {
+                        class: "mt-10 w-full md:w-fit list-decimal",
+                        {choices.iter().enumerate().map(|(index, choice)| {
+                            let caption = choice.caption.clone();
+                            let goto = choice.action.to.clone();
+                            let is_enabled = enabled_choices.contains(&caption)
+                                && !disabled_by_countdown.read().get(index).copied().unwrap_or(false);
+                            let is_selected = keyboard_state.read().selected_index == index as i32;
+                            let on_click = {
+                                let goto = goto.clone();
+                                let on_choice_click = on_choice_click.clone();
+                                let mut keyboard_state = keyboard_state.clone();
+                                move |evt: Event<MouseData>| {
+                                    evt.stop_propagation();
+                                    if is_enabled {
+                                        keyboard_state.write().selected_index = index as i32;
+                                        on_choice_click.call((goto.clone(), index));
+                                    }
+                                }
+                            };
+                            let countdown = countdowns.read().get(index).copied().unwrap_or(0);
+                            let max_time = max_times.read().get(index).copied().unwrap_or(0);
+                            let animation_name = format!("progress-bar-{}", index);
+                            let keyframes = format!(
+                                "@keyframes {} {{ from {{ width: 100%; }} to {{ width: 0%; }} }}",
+                                animation_name
+                            );
+                            let duration = format!("{}s", max_time);
+                            rsx! {
+                                li {
+                                    class: {{
+                                        format!(
+                                            "p-4 rounded-lg transition-colors duration-200 relative {} {}",
+                                            if is_enabled {
+                                                "cursor-pointer text-gray-900 hover:text-gray-700 dark:text-white dark:hover:text-gray-300"
+                                            } else {
+                                                "opacity-50 cursor-not-allowed text-gray-400 dark:text-gray-400"
+                                            },
+                                            if is_selected {
+                                                "text-gray-100 dark:text-gray-300"
+                                            } else {
+                                                ""
+                                            }
+                                        )
+                                    }},
+                                    onclick: on_click,
+                                    span { class: "mr-2", {caption} }
+                                    { (countdown > 0).then(|| rsx! {
+                                        style { "{keyframes}" }
+                                        div {
+                                            class: "w-full h-px bg-current mt-2",
+                                            style: format!(
+                                                "animation: {} linear {} forwards;",
+                                                animation_name, duration
+                                            ),
+                                            onanimationend: move |_| {
+                                                if countdown > 0 {
+                                                    let mut arr = disabled_by_countdown.write();
+                                                    if !arr.get(index).copied().unwrap_or(false) {
+                                                        arr[index] = true;
+                                                    }
+                                                }
+                                            },
+                                        }
+                                    }) }
                                 }
                             }
-                        };
-                        let countdown = countdowns.read().get(index).copied().unwrap_or(0);
-                        let max_time = max_times.read().get(index).copied().unwrap_or(0);
-                        let animation_name = format!("progress-bar-{}", index);
-                        let keyframes = format!(
-                            "@keyframes {} {{ from {{ width: 100%; }} to {{ width: 0%; }} }}",
-                            animation_name
-                        );
-                        let duration = format!("{}s", max_time);
-                        rsx! {
-                            li {
-                                class: {{
-                                    format!(
-                                        "p-4 rounded-lg transition-colors duration-200 relative {} {}",
-                                        if is_enabled {
-                                            "cursor-pointer text-gray-900 hover:text-gray-700 dark:text-white dark:hover:text-gray-300"
-                                        } else {
-                                            "opacity-50 cursor-not-allowed text-gray-400 dark:text-gray-400"
-                                        },
-                                        if is_selected {
-                                            "text-gray-100 dark:text-gray-300"
-                                        } else {
-                                            ""
-                                        }
-                                    )
-                                }},
-                                onclick: on_click,
-                                span { class: "mr-2", {caption} }
-                                { (countdown > 0).then(|| rsx! {
-                                    style { "{keyframes}" }
-                                    div {
-                                        class: "w-full h-px bg-current mt-2",
-                                        style: format!(
-                                            "animation: {} linear {} forwards;",
-                                            animation_name, duration
-                                        ),
-                                        onanimationend: move |_| {
-                                            if countdown > 0 {
-                                                let mut arr = disabled_by_countdown.write();
-                                                if !arr.get(index).copied().unwrap_or(false) {
-                                                    arr[index] = true;
-                                                }
-                                            }
-                                        },
-                                    }
-                                }) }
-                            }
-                        }
-                    })}
+                        })}
+                    }
                 }
             }
         }

@@ -2,12 +2,15 @@ use dioxus::prelude::*;
 use crate::components::story_content::Choice;
 use crate::pages::story::Paragraph;
 
+#[derive(Debug)]
 #[allow(dead_code)]
 pub struct StoryContext {
     pub current_choices: Vec<Choice>,
     pub target_paragraph_id: Option<String>,
     pub countdowns: Signal<Vec<u32>>,
     pub paragraphs: Signal<Vec<Paragraph>>,
+    pub is_settings_chapter: Signal<bool>,
+    pub choice_ids: Signal<Vec<String>>,
 }
 
 impl StoryContext {
@@ -17,7 +20,17 @@ impl StoryContext {
             target_paragraph_id: None,
             countdowns: Signal::new(Vec::new()),
             paragraphs: Signal::new(Vec::new()),
+            is_settings_chapter: Signal::new(false),
+            choice_ids: Signal::new(Vec::new()),
         }
+    }
+
+    pub fn set_is_settings_chapter(&mut self, value: bool) {
+        self.is_settings_chapter.set(value);
+    }
+
+    pub fn is_settings_chapter(&self) -> bool {
+        *self.is_settings_chapter.read()
     }
 }
 

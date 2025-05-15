@@ -99,29 +99,29 @@ export function setChoiceToIndexedDB(chapterId, paragraphId) {
         const db = event.target.result;
         const tx = db.transaction('choices', 'readwrite');
         const store = tx.objectStore('choices');
+        // 先讀出原本的陣列
         const getReq = store.get(chapterId);
         getReq.onsuccess = function () {
-            let choices = getReq.result || [];
-            if (!Array.isArray(choices)) choices = [];
-            if (!choices.includes(paragraphId)) {
-                choices.push(paragraphId);
-            }
-            const putReq = store.put(choices, chapterId);
-            putReq.onsuccess = function () {
-            };
-            putReq.onerror = function (e) {
-            };
+            let arr = getReq.result;
+            if (!Array.isArray(arr)) arr = [];
+            // 單選只保留一個，若要多選可改 push
+            arr = [paragraphId];
+            const putReq = store.put(arr, chapterId);
+            putReq.onsuccess = function () { };
+            putReq.onerror = function (e) { };
         };
         getReq.onerror = function (e) {
+            // 若讀取失敗直接存新陣列
+            const putReq = store.put([paragraphId], chapterId);
+            putReq.onsuccess = function () { };
+            putReq.onerror = function (e) { };
         };
         tx.oncomplete = function () {
             db.close();
         };
-        tx.onerror = function (e) {
-        };
+        tx.onerror = function (e) { };
     };
-    request.onerror = function (event) {
-    };
+    request.onerror = function (event) { };
 }
 
 // 取得段落選擇紀錄，所有章節都存在 'choices' object store，key 為 chapterId
@@ -142,9 +142,9 @@ export function getChoiceFromIndexedDB(chapterId, callback) {
         const store = tx.objectStore('choices');
         const getReq = store.get(chapterId);
         getReq.onsuccess = function () {
-            let choices = getReq.result || [];
-            if (!Array.isArray(choices)) choices = [];
-            callback(choices);
+            let arr = getReq.result;
+            if (!Array.isArray(arr)) arr = [];
+            callback(arr);
             db.close();
         };
         getReq.onerror = function (e) {
