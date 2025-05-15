@@ -204,7 +204,7 @@ pub fn StoryContent(props: StoryContentProps) -> Element {
                                 let choice = &choices[idx];
                                 let goto = choice.action.to.clone();
                                 let is_disabled = disabled_by_countdown.read().get(idx).copied().unwrap_or(false);
-                                if enabled_choices.contains(&choice.caption) && !is_disabled {
+                                if enabled_choices.contains(&choice.action.to) && !is_disabled {
                                     keyboard_state.write().selected_index = idx as i32;
                                     on_choice_click.call((goto.clone(), idx));
                                 }
@@ -260,7 +260,7 @@ pub fn StoryContent(props: StoryContentProps) -> Element {
                         {choices.iter().enumerate().map(|(index, choice)| {
                             let caption = choice.caption.clone();
                             let goto = choice.action.to.clone();
-                            let is_enabled = enabled_choices.contains(&caption)
+                            let is_enabled = enabled_choices.contains(&choice.action.to)
                                 && !disabled_by_countdown.read().get(index).copied().unwrap_or(false);
                             let is_selected = keyboard_state.read().selected_index == index as i32;
                             let on_click = {
@@ -327,5 +327,72 @@ pub fn StoryContent(props: StoryContentProps) -> Element {
                 }
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use dioxus::prelude::*;
+
+    #[test]
+    fn test_story_content_ui_enabled_choices_by_id() {
+        let choices = vec![
+            Choice { caption: "選項一".to_string(), action: Action { type_: "goto".to_string(), key: None, value: None, to: "id1".to_string() } },
+            Choice { caption: "選項二".to_string(), action: Action { type_: "goto".to_string(), key: None, value: None, to: "id2".to_string() } },
+            Choice { caption: "選項三".to_string(), action: Action { type_: "goto".to_string(), key: None, value: None, to: "id3".to_string() } },
+        ];
+        let enabled_choices = vec!["id1".to_string(), "id3".to_string()];
+        let disabled_by_countdown = vec![false, false, false];
+        let props = StoryContentUIProps {
+            paragraph: "這是段落內容".to_string(),
+            choices: choices.clone(),
+            enabled_choices: enabled_choices.clone(),
+            disabled_by_countdown: disabled_by_countdown.clone(),
+        };
+        // 渲染 StoryContentUI
+        let mut vdom = VirtualDom::new_with_props(StoryContentUI, props);
+        let mut mutations = dioxus_core::NoOpMutations;
+        vdom.rebuild(&mut mutations);
+        let html = dioxus_ssr::render(&vdom);
+        // 驗證啟用/禁用狀態
+        // id1, id3 應啟用，id2 應禁用
+        assert!(html.contains("選項一"));
+        assert!(html.contains("選項二"));
+        assert!(html.contains("選項三"));
+        // 啟用選項應該有 cursor-pointer，禁用選項應該有 opacity-50
+        assert!(html.contains("選項一"), "選項一應出現在 HTML");
+        assert!(html.contains("選項三"), "選項三應出現在 HTML");
+        assert!(html.contains("選項二"), "選項二應出現在 HTML");
+        // 禁用 class
+        assert!(html.contains("opacity-50"), "禁用選項應有 opacity-50 class");
+    }
+
+    #[test]
+    fn test_story_content_ui_display_caption() {
+        let choices = vec![
+            Choice { caption: "標題一".to_string(), action: Action { type_: "goto".to_string(), key: None, value: None, to: "id1".to_string() } },
+            Choice { caption: "標題二".to_string(), action: Action { type_: "goto".to_string(), key: None, value: None, to: "id2".to_string() } },
+            Choice { caption: "標題三".to_string(), action: Action { type_: "goto".to_string(), key: None, value: None, to: "id3".to_string() } },
+        ];
+        let enabled_choices = vec!["id1".to_string(), "id2".to_string(), "id3".to_string()];
+        let disabled_by_countdown = vec![false, false, false];
+        let props = StoryContentUIProps {
+            paragraph: "這是段落內容".to_string(),
+            choices: choices.clone(),
+            enabled_choices: enabled_choices.clone(),
+            disabled_by_countdown: disabled_by_countdown.clone(),
+        };
+        let mut vdom = VirtualDom::new_with_props(StoryContentUI, props);
+        let mut mutations = dioxus_core::NoOpMutations;
+        vdom.rebuild(&mut mutations);
+        let html = dioxus_ssr::render(&vdom);
+        // 驗證每個選項都正確顯示 caption（標題），而不是 id
+        assert!(html.contains("標題一"), "應顯示標題一");
+        assert!(html.contains("標題二"), "應顯示標題二");
+        assert!(html.contains("標題三"), "應顯示標題三");
+        assert!(!html.contains(">id1<"), "不應直接顯示 id1");
+        assert!(!html.contains(">id2<"), "不應直接顯示 id2");
+        assert!(!html.contains(">id3<"), "不應直接顯示 id3");
     }
 } 

@@ -308,6 +308,7 @@ pub fn Story(props: StoryProps) -> Element {
                                     choice_obj.caption = caption.clone();
                                 }
                             }
+                            choice_obj.action.to = c.to.clone();
                             choice_obj
                         }).collect();
                         current_choices.set(choices.clone());
