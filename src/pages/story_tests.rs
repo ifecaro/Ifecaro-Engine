@@ -156,6 +156,7 @@ mod ssr_tests {
             }],
             enabled_choices: vec!["選項一".to_string()],
             disabled_by_countdown: vec![true],
+            chapter_title: "章節標題測試".to_string(),
         };
         let mut dom = VirtualDom::new_with_props(StoryContentUI, props);
         let mut mutations = NoOpMutations;

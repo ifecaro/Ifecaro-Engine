@@ -110,8 +110,15 @@ pub struct StoryProps {
 }
 
 #[derive(Deserialize, Clone, Debug)]
+struct ChapterTitle {
+    lang: String,
+    title: String,
+}
+
+#[derive(Deserialize, Clone, Debug)]
 struct Chapter {
     id: String,
+    titles: Vec<ChapterTitle>,
     order: i32,
 }
 
@@ -260,7 +267,18 @@ pub fn Story(props: StoryProps) -> Element {
                                     for item in items {
                                         let id = item.get("id").and_then(|v| v.as_str()).unwrap_or("").to_string();
                                         let order = item.get("order").and_then(|v| v.as_i64()).unwrap_or(0) as i32;
-                                        result.push(Chapter { id, order });
+                                        let titles = item.get("titles").and_then(|v| v.as_array()).map(|arr| {
+                                            arr.iter().filter_map(|title_obj| {
+                                                let lang = title_obj.get("lang").and_then(|v| v.as_str()).unwrap_or("").to_string();
+                                                let title = title_obj.get("title").and_then(|v| v.as_str()).unwrap_or("").to_string();
+                                                if !lang.is_empty() && !title.is_empty() {
+                                                    Some(ChapterTitle { lang, title })
+                                                } else {
+                                                    None
+                                                }
+                                            }).collect::<Vec<_>>()
+                                        }).unwrap_or_default();
+                                        result.push(Chapter { id, titles, order });
                                     }
                                     chapters.set(result);
                                 }
@@ -699,6 +717,28 @@ pub fn Story(props: StoryProps) -> Element {
     }
     
     let reader_mode = settings_context.read().settings.get("reader_mode").map(|v| v == "true").unwrap_or(false);
+    // 取得目前章節標題
+    let chapter_title = {
+        let expanded = _expanded_paragraphs.read();
+        let chapters = chapters.read();
+        let state = state.read();
+        let current_lang = &state.current_language;
+        let chapter_id = expanded.last().map(|p| p.chapter_id.clone()).unwrap_or_default();
+        if chapter_id.is_empty() {
+            String::new()
+        } else {
+            chapters.iter()
+                .find(|c| c.id == chapter_id)
+                .and_then(|chapter| {
+                    chapter.titles.iter()
+                        .find(|t| &t.lang == current_lang)
+                        .or_else(|| chapter.titles.iter().find(|t| t.lang == "en-US" || t.lang == "en-GB"))
+                        .or_else(|| chapter.titles.first())
+                        .map(|t| t.title.clone())
+                })
+                .unwrap_or_default()
+        }
+    };
     rsx! {
         StoryContent {
             paragraph: merged_paragraph.clone(),
@@ -710,6 +750,7 @@ pub fn Story(props: StoryProps) -> Element {
             progress_started: progress_started.clone(),
             disabled_by_countdown: disabled_by_countdown.clone(),
             reader_mode: reader_mode,
+            chapter_title: chapter_title,
         }
     }
 }
