@@ -214,30 +214,31 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
     let _paragraph_previews = use_signal(|| Vec::<crate::components::paragraph_list::Paragraph>::new());
 
     let update_paragraph_previews = Rc::new(RefCell::new(move || {
-        let selected_language = paragraph_language.read().clone();
-        let selected_chapter_id = selected_chapter.read().clone();
-        
+        let selected_language = if let Ok(lang) = paragraph_language.try_read() { lang.clone() } else { return; };
+        let selected_chapter_id = if let Ok(chap) = selected_chapter.try_read() { chap.clone() } else { return; };
         if selected_language.is_empty() || selected_chapter_id.is_empty() {
-            available_paragraphs.set(Vec::new());
+            if let Ok(mut ap) = available_paragraphs.try_write() { ap.clear(); }
             return;
         }
-        
+        let para_data = if let Ok(pd) = paragraph_data.try_read() { pd.clone() } else { return; };
         // 將段落分成兩組
-        let (translated_paragraphs, untranslated_paragraphs): (Vec<_>, Vec<_>) = paragraph_data
-            .read()
+        let (translated_paragraphs, untranslated_paragraphs): (Vec<_>, Vec<_>) = para_data
             .iter()
             .filter(|p| p.chapter_id == selected_chapter_id)
             .map(|p| {
                 let has_translation = p.texts.iter().any(|text| text.lang == selected_language);
-                
                 let preview = p.texts
                     .iter()
                     .find(|text| text.lang == selected_language)
                     .or_else(|| p.texts.iter().find(|text| text.lang == "en-US" || text.lang == "en-GB"))
                     .or_else(|| p.texts.first())
-                    .map(|text| text.paragraphs.lines().next().unwrap_or_default().to_string())
+                    .map(|text| {
+                        match text.paragraphs.lines().next() {
+                            Some(line) => line.to_string(),
+                            None => String::new(),
+                        }
+                    })
                     .unwrap_or_default();
-                
                 (crate::components::paragraph_list::Paragraph {
                     id: p.id.clone(),
                     preview,
@@ -245,26 +246,63 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
                 }, has_translation)
             })
             .partition(|(_, has_translation)| *has_translation);
-        
         // 合併段落，先放有翻譯的，再放沒有翻譯的
         let mut all_paragraphs = translated_paragraphs.into_iter().map(|(p, _)| p).collect::<Vec<_>>();
         all_paragraphs.extend(untranslated_paragraphs.into_iter().map(|(p, _)| p));
-        
-        available_paragraphs.set(all_paragraphs);
+        if let Ok(mut ap) = available_paragraphs.try_write() {
+            *ap = all_paragraphs;
+        }
     }));
+
+    // 處理 toast 顯示
+    use_effect(move || {
+        if *show_toast.read() {
+            toast_visible.set(true);
+            if let Some(window) = window() {
+                let closure = Closure::wrap(Box::new(move || {
+                    toast_visible.set(false);
+                    show_toast.set(false);
+                }) as Box<dyn FnMut()>);
+                let timeout_result = window.set_timeout_with_callback_and_timeout_and_arguments_0(
+                    closure.as_ref().unchecked_ref(),
+                    3000,
+                );
+                match timeout_result {
+                    Ok(timeout) => {
+                        (move || {
+                            window.clear_timeout_with_handle(timeout);
+                            closure.forget(); // 防止 closure 被過早釋放
+                        })()
+                    },
+                    Err(_) => {
+                        // 設定 timeout 失敗，直接關閉 toast
+                        toast_visible.set(false);
+                        show_toast.set(false);
+                    }
+                }
+            } else {
+                // window 不存在，直接關閉 toast
+                toast_visible.set(false);
+                show_toast.set(false);
+            }
+        }
+    });
 
     // 載入章節列表
     use_effect(move || {
         let chapters_url = format!("{}{}", BASE_API_URL, CHAPTERS);
         let client = reqwest::Client::new();
         let mut available_chapters = available_chapters.clone();
-        
         wasm_bindgen_futures::spawn_local(async move {
-            let auth_token = env::var("AUTH_TOKEN").unwrap_or_else(|_| "YOUR_AUTH_TOKEN".to_string());
-            match client.get(&chapters_url)
+            let auth_token = match env::var("AUTH_TOKEN") {
+                Ok(token) => token,
+                Err(_) => "YOUR_AUTH_TOKEN".to_string(),
+            };
+            let req = client.get(&chapters_url)
                 .header("Authorization", format!("Bearer {}", auth_token))
                 .send()
-                .await {
+                .await;
+            match req {
                 Ok(response) => {
                     if response.status().is_success() {
                         match response.json::<serde_json::Value>().await {
@@ -282,16 +320,13 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
                                                 })
                                                 .collect();
                                             let order = item.get("order")?.as_i64().unwrap_or(0) as i32;
-                                            
                                             Some(Chapter { id, titles, order })
                                         })
                                         .collect();
-                                    
                                     // 按 order 排序
                                     let mut sorted_chapters = chapters;
                                     sorted_chapters.sort_by(|a, b| a.order.cmp(&b.order));
-                                    
-                                    available_chapters.set(sorted_chapters);
+                                    if let Ok(mut s) = available_chapters.try_write() { *s = sorted_chapters; }
                                 }
                             }
                             Err(_) => {
@@ -307,7 +342,6 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
                 }
             }
         });
-        
         (move || {})()
     });
 
@@ -320,33 +354,37 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
             let mut has_loaded = has_loaded.clone();
             let mut paragraph_data = paragraph_data.clone();
             let update_paragraph_previews = update_paragraph_previews.clone();
-
             wasm_bindgen_futures::spawn_local(async move {
-                let auth_token = env::var("AUTH_TOKEN").unwrap_or_else(|_| "YOUR_AUTH_TOKEN".to_string());
-                match client.get(&paragraphs_url)
+                let auth_token = match env::var("AUTH_TOKEN") {
+                    Ok(token) => token,
+                    Err(_) => "YOUR_AUTH_TOKEN".to_string(),
+                };
+                let req = client.get(&paragraphs_url)
                     .header("Authorization", format!("Bearer {}", auth_token))
                     .send()
-                    .await {
+                    .await;
+                match req {
                     Ok(response) => {
                         match response.json::<Data>().await {
                             Ok(data) => {
-                                paragraph_data.set(data.items.clone());
-                                (*update_paragraph_previews.borrow_mut())();
-                                has_loaded.set(true);
+                                if let Ok(mut s) = paragraph_data.try_write() { *s = data.items.clone(); }
+                                if let Ok(mut cb) = update_paragraph_previews.try_borrow_mut() {
+                                    (*cb)();
+                                }
+                                if let Ok(mut s) = has_loaded.try_write() { *s = true; }
                             }
                             Err(e) => {
-                                show_error_toast.set(true);
-                                error_message.set(format!("解析段落數據失敗：{}", e));
+                                if let Ok(mut s) = show_error_toast.try_write() { *s = true; }
+                                if let Ok(mut s) = error_message.try_write() { *s = format!("解析段落數據失敗：{}", e); }
                             }
                         }
                     }
                     Err(e) => {
-                        show_error_toast.set(true);
-                        error_message.set(format!("載入段落請求失敗：{}", e));
+                        if let Ok(mut s) = show_error_toast.try_write() { *s = true; }
+                        if let Ok(mut s) = error_message.try_write() { *s = format!("載入段落請求失敗：{}", e); }
                     }
                 }
             });
-            
             (move || {})()
         });
     }
@@ -370,66 +408,97 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
     });
 
     let current_language = use_memo(move || {
-        AVAILABLE_LANGUAGES.iter()
-            .find(|l| l.code == *paragraph_language.read())
-            .map(|l| l.name)
-            .unwrap_or("繁體中文")
+        if let Ok(lang_code) = paragraph_language.try_read() {
+            AVAILABLE_LANGUAGES.iter()
+                .find(|l| l.code == *lang_code)
+                .map(|l| l.name)
+                .unwrap_or("繁體中文")
+        } else {
+            "繁體中文"
+        }
     });
 
     let is_form_valid = use_memo(move || {
-        let main_fields_valid = !paragraphs.read().trim().is_empty() && !selected_chapter.read().is_empty();
-        let choices = choices.read();
-        let has_any_choices = !choices.is_empty();
-        let choices_valid = choices.iter().all(|(_choice_text, to, type_, _key, _value, _target_chapter, _same_page, _time_limit)| {
-            let has_content = !to.trim().is_empty() || !type_.trim().is_empty();
-            if has_content {
-                !to.trim().is_empty()
-            } else {
-                true
-            }
-        });
-        main_fields_valid && (!has_any_choices || choices_valid)
-    });
-
-    let has_changes = use_memo(move || {
-        if *is_edit_mode.read() {
-            let paragraphs_changed = paragraphs.read().to_string() != selected_paragraph.read().as_ref()
-                .map(|p| p.texts.iter().find(|t| t.lang == *paragraph_language.read())
-                    .map(|t| t.paragraphs.clone())
-                    .unwrap_or_default())
-                .unwrap_or_default();
-            let has_option_changes = {
-                let current_paragraph = selected_paragraph.read();
-                if let Some(paragraph) = current_paragraph.as_ref() {
-                    let current_choices = &paragraph.texts.iter().find(|t| t.lang == *paragraph_language.read())
-                        .map(|t| t.choices.clone())
-                        .unwrap_or_default();
-                    let new_choices = choices.read();
-                    current_choices.len() != new_choices.len() ||
-                        current_choices.iter().zip(new_choices.iter()).any(|(old_choice, (choice_text, to, type_, _key, _value, _target_chapter, _same_page, _time_limit))| {
-                            let has_content = !choice_text.trim().is_empty() || !to.trim().is_empty() || !type_.trim().is_empty();
-                            if has_content {
-                                old_choice != choice_text || !to.is_empty() || !type_.is_empty()
-                            } else {
-                                false
-                            }
-                        })
-                } else {
-                    false
-                }
-            };
-            paragraphs_changed || has_option_changes
+        let main_fields_valid = if let (Ok(p), Ok(c)) = (paragraphs.try_read(), selected_chapter.try_read()) {
+            !p.trim().is_empty() && !c.is_empty()
         } else {
-            let has_paragraph = !paragraphs.read().trim().is_empty() && !selected_chapter.read().is_empty();
-            let has_valid_choices = choices.read().iter().any(|(_choice_text, to, type_, _key, _value, _target_chapter, _same_page, _time_limit)| {
+            false
+        };
+        let has_any_choices = if let Ok(choices) = choices.try_read() {
+            !choices.is_empty()
+        } else {
+            false
+        };
+        let choices_valid = if let Ok(choices) = choices.try_read() {
+            choices.iter().all(|(_choice_text, to, type_, _key, _value, _target_chapter, _same_page, _time_limit)| {
                 let has_content = !to.trim().is_empty() || !type_.trim().is_empty();
                 if has_content {
                     !to.trim().is_empty()
                 } else {
-                    false
+                    true
                 }
-            });
-            has_paragraph || has_valid_choices
+            })
+        } else {
+            false
+        };
+        main_fields_valid && (!has_any_choices || choices_valid)
+    });
+
+    let has_changes = use_memo(move || {
+        if let Ok(edit_mode) = is_edit_mode.try_read() {
+            if *edit_mode {
+                let paragraphs_changed = if let (Ok(p), Ok(sel_para), Ok(lang)) = (paragraphs.try_read(), selected_paragraph.try_read(), paragraph_language.try_read()) {
+                    p.to_string() != sel_para.as_ref()
+                        .map(|p| p.texts.iter().find(|t| t.lang == *lang)
+                            .map(|t| t.paragraphs.clone())
+                            .unwrap_or_default())
+                        .unwrap_or_default()
+                } else {
+                    false
+                };
+                let has_option_changes = if let (Ok(sel_para), Ok(lang), Ok(new_choices)) = (selected_paragraph.try_read(), paragraph_language.try_read(), choices.try_read()) {
+                    if let Some(paragraph) = sel_para.as_ref() {
+                        let current_choices = &paragraph.texts.iter().find(|t| t.lang == *lang)
+                            .map(|t| t.choices.clone())
+                            .unwrap_or_default();
+                        current_choices.len() != new_choices.len() ||
+                            current_choices.iter().zip(new_choices.iter()).any(|(old_choice, (choice_text, to, type_, _key, _value, _target_chapter, _same_page, _time_limit))| {
+                                let has_content = !choice_text.trim().is_empty() || !to.trim().is_empty() || !type_.trim().is_empty();
+                                if has_content {
+                                    old_choice != choice_text || !to.is_empty() || !type_.is_empty()
+                                } else {
+                                    false
+                                }
+                            })
+                    } else {
+                        false
+                    }
+                } else {
+                    false
+                };
+                paragraphs_changed || has_option_changes
+            } else {
+                let has_paragraph = if let (Ok(p), Ok(c)) = (paragraphs.try_read(), selected_chapter.try_read()) {
+                    !p.trim().is_empty() && !c.is_empty()
+                } else {
+                    false
+                };
+                let has_valid_choices = if let Ok(choices) = choices.try_read() {
+                    choices.iter().any(|(_choice_text, to, type_, _key, _value, _target_chapter, _same_page, _time_limit)| {
+                        let has_content = !to.trim().is_empty() || !type_.trim().is_empty();
+                        if has_content {
+                            !to.trim().is_empty()
+                        } else {
+                            false
+                        }
+                    })
+                } else {
+                    false
+                };
+                has_paragraph || has_valid_choices
+            }
+        } else {
+            false
         }
     });
 
@@ -617,32 +686,34 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
                                         if response.status().is_success() {
                                             match response.json::<Data>().await {
                                                 Ok(data) => {
-                                                    paragraph_data.set(data.items.clone());
-                                                    (*update_paragraph_previews.borrow_mut())();
+                                                    if let Ok(mut s) = paragraph_data.try_write() { *s = data.items.clone(); }
+                                                    if let Ok(mut cb) = update_paragraph_previews.try_borrow_mut() {
+                                                        (*cb)();
+                                                    }
                                                 },
                                                 Err(e) => {
-                                                    show_error_toast.set(true);
-                                                    error_message.set(format!("解析段落數據失敗：{}", e));
+                                                    if let Ok(mut s) = show_error_toast.try_write() { *s = true; }
+                                                    if let Ok(mut s) = error_message.try_write() { *s = format!("解析段落數據失敗：{}", e); }
                                                 }
                                             }
                                         } else {
-                                            show_error_toast.set(true);
-                                            error_message.set(format!("載入段落失敗，狀態碼：{}", response.status()));
+                                            if let Ok(mut s) = show_error_toast.try_write() { *s = true; }
+                                            if let Ok(mut s) = error_message.try_write() { *s = format!("載入段落失敗，狀態碼：{}", response.status()); }
                                         }
                                     },
                                     Err(e) => {
-                                        show_error_toast.set(true);
-                                        error_message.set(format!("載入段落請求失敗：{}", e));
+                                        if let Ok(mut s) = show_error_toast.try_write() { *s = true; }
+                                        if let Ok(mut s) = error_message.try_write() { *s = format!("載入段落請求失敗：{}", e); }
                                     }
                                 }
                             } else {
-                                show_error_toast.set(true);
-                                error_message.set(format!("保存段落失敗，狀態碼：{}", status));
+                                if let Ok(mut s) = show_error_toast.try_write() { *s = true; }
+                                if let Ok(mut s) = error_message.try_write() { *s = format!("保存段落失敗，狀態碼：{}", status); }
                             }
                         },
                         Err(e) => {
-                            show_error_toast.set(true);
-                            error_message.set(format!("保存段落請求失敗：{}", e));
+                            if let Ok(mut s) = show_error_toast.try_write() { *s = true; }
+                            if let Ok(mut s) = error_message.try_write() { *s = format!("保存段落請求失敗：{}", e); }
                         }
                     }
                 }
@@ -727,34 +798,14 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
         choice_paragraphs.set(current_paragraphs);
     };
 
-    // 處理 toast 顯示
-    use_effect(move || {
-        if *show_toast.read() {
-            toast_visible.set(true);
-            let window = window().unwrap();
-            let closure = Closure::wrap(Box::new(move || {
-                toast_visible.set(false);
-                show_toast.set(false);
-            }) as Box<dyn FnMut()>);
-            
-            let timeout = window.set_timeout_with_callback_and_timeout_and_arguments_0(
-                closure.as_ref().unchecked_ref(),
-                3000,
-            ).unwrap();
-            
-            (move || {
-                window.clear_timeout_with_handle(timeout);
-                closure.forget(); // 防止 closure 被過早釋放
-            })()
-        }
-    });
-
     // 在語言變更時更新段落預覽
     {
         let update_paragraph_previews = update_paragraph_previews.clone();
         use_effect(move || {
             let _ = paragraph_language.read().clone();
-            (*update_paragraph_previews.borrow_mut())();
+            if let Ok(mut cb) = update_paragraph_previews.try_borrow_mut() {
+                (*cb)();
+            }
             
             (move || {})()
         });
@@ -765,7 +816,9 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
         let update_paragraph_previews = update_paragraph_previews.clone();
         use_effect(move || {
             let _ = selected_chapter.read().clone();
-            (*update_paragraph_previews.borrow_mut())();
+            if let Ok(mut cb) = update_paragraph_previews.try_borrow_mut() {
+                (*cb)();
+            }
             
             (move || {})()
         });
@@ -776,7 +829,9 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
         let update_paragraph_previews = update_paragraph_previews.clone();
         use_effect(move || {
             let _ = target_chapter.read().clone();
-            (*update_paragraph_previews.borrow_mut())();
+            if let Ok(mut cb) = update_paragraph_previews.try_borrow_mut() {
+                (*cb)();
+            }
             
             (move || {})()
         });
@@ -827,8 +882,13 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
                                     .find(|t| t.lang == selected_lang)
                                     .or_else(|| item.texts.iter().find(|t| t.lang == "en-US" || t.lang == "en-GB"))
                                     .or_else(|| item.texts.first())
-                                    .map(|text| text.paragraphs.lines().next().unwrap_or("").to_string())
-                                    .unwrap_or_else(|| format!("[{}]", item.id));
+                                    .map(|text| {
+                                        match text.paragraphs.lines().next() {
+                                            Some(line) => line.to_string(),
+                                            None => String::new(),
+                                        }
+                                    })
+                                    .unwrap_or_default();
                                 crate::components::paragraph_list::Paragraph {
                                     id: item.id.clone(),
                                     preview,
@@ -1026,7 +1086,9 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
                                             move |lang: &Language| {
                                                 let current_lang = lang.code.to_string();
                                                 paragraph_language.set(current_lang.clone());
-                                                (*update_paragraph_previews.borrow_mut())();
+                                                if let Ok(mut cb) = update_paragraph_previews.try_borrow_mut() {
+                                                    (*cb)();
+                                                }
                                                 is_open.set(false);
                                                 search_query.set(String::new());
                                                 
@@ -1090,7 +1152,9 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
                                                 is_chapter_open.set(false);
                                                 chapter_search_query.set(String::new());
                                                 validate_field(&chapter.id, &mut chapter_error);
-                                                (*update_paragraph_previews.borrow_mut())();
+                                                if let Ok(mut cb) = update_paragraph_previews.try_borrow_mut() {
+                                                    (*cb)();
+                                                }
                                             }
                                         },
                                         has_error: *chapter_error.read(),
@@ -1313,7 +1377,12 @@ fn process_paragraph_select(
                         .find(|t| t.lang == selected_lang)
                         .or_else(|| item.texts.iter().find(|t| t.lang == "en-US" || t.lang == "en-GB"))
                         .or_else(|| item.texts.first())
-                        .map(|text| text.paragraphs.lines().next().unwrap_or("").to_string())
+                        .map(|text| {
+                            match text.paragraphs.lines().next() {
+                                Some(line) => line.to_string(),
+                                None => String::new(),
+                            }
+                        })
                         .unwrap_or_else(|| format!("[{}]", item.id));
                     ParagraphListParagraph {
                         id: item.id.clone(),
