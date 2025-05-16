@@ -9,6 +9,7 @@ pub struct StoryContext {
     pub target_paragraph_id: Option<String>,
     pub countdowns: Signal<Vec<u32>>,
     pub paragraphs: Signal<Vec<Paragraph>>,
+    pub chapters: Signal<Vec<crate::pages::story::Chapter>>,
     pub is_settings_chapter: Signal<bool>,
     pub choice_ids: Signal<Vec<String>>,
 }
@@ -20,6 +21,7 @@ impl StoryContext {
             target_paragraph_id: None,
             countdowns: Signal::new(Vec::new()),
             paragraphs: Signal::new(Vec::new()),
+            chapters: Signal::new(Vec::new()),
             is_settings_chapter: Signal::new(false),
             choice_ids: Signal::new(Vec::new()),
         }

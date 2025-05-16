@@ -17,6 +17,7 @@ use crate::services::indexeddb::get_choice_from_indexeddb;
 use rand::prelude::SliceRandom;
 use std::rc::Rc;
 use std::cell::RefCell;
+use crate::contexts::story_merged_context::{use_story_merged_context, provide_story_merged_context};
 
 #[derive(Deserialize, Clone, Debug)]
 #[allow(dead_code)]
@@ -115,8 +116,8 @@ struct ChapterTitle {
     title: String,
 }
 
-#[derive(Deserialize, Clone, Debug)]
-struct Chapter {
+#[derive(Clone, Debug)]
+pub struct Chapter {
     id: String,
     titles: Vec<ChapterTitle>,
     order: i32,
@@ -158,6 +159,8 @@ pub fn merge_paragraphs_for_lang(
 
 #[component]
 pub fn Story(props: StoryProps) -> Element {
+    provide_story_merged_context();
+    let story_merged_context = use_story_merged_context();
     let state = use_context::<Signal<LanguageState>>();
     let story_context = use_story_context();
     let settings_context = use_settings_context();
@@ -165,9 +168,16 @@ pub fn Story(props: StoryProps) -> Element {
     let current_text = use_signal(|| None::<Text>);
     let current_choices = use_signal(|| Vec::<Choice>::new());
     let enabled_choices = use_signal(|| Vec::<String>::new());
-    let paragraph_data = use_signal(|| Vec::<Paragraph>::new());
-    let mut _expanded_paragraphs = use_signal(|| Vec::<Paragraph>::new());
-    let chapters = use_signal(|| Vec::<Chapter>::new());
+    let paragraph_data = use_signal(|| story_context.read().paragraphs.read().clone());
+    let mut _expanded_paragraphs = use_signal(|| {
+        let ctx = story_context.read();
+        let paragraphs = ctx.paragraphs.read();
+        if !paragraphs.is_empty() {
+            vec![paragraphs[0].clone()]
+        } else {
+            Vec::new()
+        }
+    });
     let last_paragraph_id = Rc::new(RefCell::new(String::new()));
     let last_paragraph_id_effect = last_paragraph_id.clone();
     let story_context = story_context.clone();
@@ -177,7 +187,7 @@ pub fn Story(props: StoryProps) -> Element {
     let progress_started = use_signal(|| vec![]);
     let disabled_by_countdown = use_signal(|| vec![]);
     
-    // 載入設定與段落數據（合併為一個 async 流程）
+    // 只負責背景抓資料，抓到後再更新 context
     {
         let mut paragraph_data = paragraph_data.clone();
         let mut _expanded_paragraphs = _expanded_paragraphs.clone();
@@ -233,8 +243,8 @@ pub fn Story(props: StoryProps) -> Element {
                                                 }
                                                 _expanded_paragraphs.set(vec![first_paragraph.clone()]);
                                             }
+                                            // 這裡先 set 到 paragraph_data（signal），再 set 到 context
                                             paragraph_data.set(data.items.clone());
-                                            // 寫入 context
                                             story_context.write().paragraphs.set(data.items.clone());
                                         },
                                         Err(_e) => {}
@@ -253,7 +263,7 @@ pub fn Story(props: StoryProps) -> Element {
     
     // 載入章節列表
     {
-        let mut chapters = chapters.clone();
+        let mut story_context = story_context.clone();
         use_effect(move || {
             spawn_local(async move {
                 let chapters_url = format!("{}{}", BASE_API_URL, CHAPTERS);
@@ -280,7 +290,7 @@ pub fn Story(props: StoryProps) -> Element {
                                         }).unwrap_or_default();
                                         result.push(Chapter { id, titles, order });
                                     }
-                                    chapters.set(result);
+                                    story_context.write().chapters.set(result);
                                 }
                             }
                         }
@@ -469,13 +479,12 @@ pub fn Story(props: StoryProps) -> Element {
         let paragraph_data = paragraph_data.clone();
         let mut _expanded_paragraphs = _expanded_paragraphs.clone();
         let story_context = story_context.clone();
-        let chapters = chapters.clone();
         move |(goto, choice_index): (String, usize)| {
             let expanded_vec = _expanded_paragraphs.read().clone();
             let last_paragraph = expanded_vec.last().cloned();
             if let Some(ref last) = last_paragraph {
                 if !last.chapter_id.is_empty() {
-                    let order = chapters.read().iter().find(|c| c.id == last.chapter_id).map(|c| c.order).unwrap_or(0);
+                    let order = story_context.read().chapters.read().iter().find(|c| c.id == last.chapter_id).map(|c| c.order).unwrap_or(0);
                     if order != 0 {
                         set_choice_to_indexeddb(&last.chapter_id, &goto);
                         let mut story_context = story_context.clone();
@@ -547,7 +556,7 @@ pub fn Story(props: StoryProps) -> Element {
             if let Some(ref target_paragraph) = paragraphs.iter().find(|p| p.id == goto) {
                 if let Some(ref last) = last_paragraph {
                     if !last.chapter_id.is_empty() {
-                        let order = chapters.read().iter().find(|c| c.id == last.chapter_id).map(|c| c.order).unwrap_or(0);
+                        let order = story_context.read().chapters.read().iter().find(|c| c.id == last.chapter_id).map(|c| c.order).unwrap_or(0);
                         if order != 0 {
                             set_choice_to_indexeddb(&last.chapter_id, &goto);
                             let mut story_context = story_context.clone();
@@ -586,85 +595,30 @@ pub fn Story(props: StoryProps) -> Element {
         }
     };
     
-    // 合併段落內容、選項、enabled_choices、time_limits 都搬進 effect
+    // 合併段落內容寫入 merged context
     {
         let expanded = _expanded_paragraphs.clone();
         let paragraph_data = paragraph_data.clone();
         let state = state.clone();
-        let mut merged_paragraph = merged_paragraph.clone();
-        let mut current_choices = current_choices.clone();
-        let mut enabled_choices = enabled_choices.clone();
         let story_context = story_context.clone();
         let settings_context = settings_context.clone();
+        let story_merged_context = story_merged_context.clone();
         use_effect(move || {
             let expanded = expanded.read();
             let paragraph_data_read = paragraph_data.read();
-            let mut merged_paragraph_str = String::new();
-            let mut merged_choices: Vec<Choice> = Vec::new();
-            let mut merged_enabled_choices: Vec<String> = Vec::new();
             let reader_mode = settings_context.read().settings.get("reader_mode").map(|v| v == "true").unwrap_or(false);
             let chapter_id = expanded.last().map(|p| p.chapter_id.clone()).unwrap_or_default();
             let is_settings_chapter = chapter_id == "settingschapter";
-            let mut story_context = story_context.clone();
-            story_context.write().set_is_settings_chapter(is_settings_chapter);
-            if reader_mode && !is_settings_chapter {
-                let choice_ids = story_context.read().choice_ids.read().clone();
-                for (i, paragraph) in expanded.iter().enumerate() {
-                    // 第一個段落一定要合併，其他段落依 choice_ids 決定
-                    if i == 0 || (choice_ids.contains(&paragraph.id) && paragraph.chapter_id != "settingschapter") {
-                        if let Some(text) = paragraph.texts.iter().find(|t| t.lang == state().current_language) {
-                            if !merged_paragraph_str.is_empty() {
-                                merged_paragraph_str.push_str("\n\n");
-                            }
-                            merged_paragraph_str.push_str(&text.paragraphs);
-                        }
-                    }
-                }
-                merged_choices.clear();
-                merged_enabled_choices.clear();
-            } else {
-                for (i, paragraph) in expanded.iter().enumerate() {
-                    if let Some(text) = paragraph.texts.iter().find(|t| t.lang == state().current_language) {
-                        if !merged_paragraph_str.is_empty() {
-                            merged_paragraph_str.push_str("\n\n");
-                        }
-                        merged_paragraph_str.push_str(&text.paragraphs);
-                        if i == expanded.len() - 1 {
-                            merged_choices = text.choices.iter().enumerate().map(|(index, c)| {
-                                let choice: StoryChoice = if let Some(complex_choice) = paragraph.choices.get(index) {
-                                    StoryChoice::Complex(complex_choice.clone())
-                                } else {
-                                    StoryChoice::Simple(c.clone())
-                                };
-                                let mut choice_obj: Choice = choice.into();
-                                choice_obj.caption = c.clone();
-                                choice_obj
-                            }).collect();
-                            merged_enabled_choices = {
-                                let mut enabled = Vec::new();
-                                for choice in &text.choices {
-                                    let target_paragraph = paragraph_data_read.iter().find(|p| {
-                                        if let Some(complex_choice) = paragraph.choices.get(text.choices.iter().position(|c| c == choice).unwrap_or(0)) {
-                                            p.id == complex_choice.to
-                                        } else {
-                                            p.id == *choice
-                                        }
-                                    });
-                                    if let Some(target_paragraph) = target_paragraph {
-                                        if target_paragraph.texts.iter().any(|t| t.lang == state().current_language) {
-                                            enabled.push(choice.clone());
-                                        }
-                                    }
-                                }
-                                enabled
-                            };
-                        }
-                    }
-                }
-            }
-            merged_paragraph.set(merged_paragraph_str);
-            current_choices.set(merged_choices);
-            enabled_choices.set(merged_enabled_choices);
+            let choice_ids = story_context.read().choice_ids.read().clone();
+            let merged_paragraph_str = merge_paragraphs_for_lang(
+                &expanded,
+                &state.read().current_language,
+                reader_mode,
+                is_settings_chapter,
+                &choice_ids,
+            );
+            let mut merged_paragraph_signal = story_merged_context.read().merged_paragraph.clone();
+            merged_paragraph_signal.set(merged_paragraph_str);
             ()
         });
     }
@@ -691,11 +645,10 @@ pub fn Story(props: StoryProps) -> Element {
     // 初始化時同步所有章節的 choice_ids
     {
         let story_context = story_context.clone();
-        let chapters = chapters.clone();
         use_effect(move || {
             let mut story_context = story_context.clone();
-            let chapters = chapters.read().clone();
             spawn_local(async move {
+                let chapters = story_context.read().chapters.read().clone();
                 let mut all_ids = Vec::new();
                 for chapter in chapters {
                     let (tx, rx) = futures_channel::oneshot::channel();
@@ -720,7 +673,8 @@ pub fn Story(props: StoryProps) -> Element {
     // 取得目前章節標題
     let chapter_title = {
         let expanded = _expanded_paragraphs.read();
-        let chapters = chapters.read();
+        let ctx = story_context.read();
+        let chapters = ctx.chapters.read();
         let state = state.read();
         let current_lang = &state.current_language;
         let chapter_id = expanded.last().map(|p| p.chapter_id.clone()).unwrap_or_default();
@@ -741,7 +695,7 @@ pub fn Story(props: StoryProps) -> Element {
     };
     rsx! {
         StoryContent {
-            paragraph: merged_paragraph.clone(),
+            paragraph: story_merged_context.read().merged_paragraph.clone(),
             choices: current_choices.read().clone(),
             enabled_choices: enabled_choices.read().clone(),
             on_choice_click: on_choice_click.clone(),
