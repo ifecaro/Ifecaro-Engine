@@ -128,19 +128,11 @@ fn test_option_disabled_after_countdown() {
 
 #[cfg(test)]
 mod ssr_tests {
-    use super::*;
-    use dioxus::prelude::*;
-    use dioxus_ssr::render;
-    use pretty_assertions::assert_eq;
-    use crate::components::story_content::{StoryContent, StoryContentProps, Choice, Action};
-    use crate::KeyboardState;
-    use crate::contexts::story_context::{StoryContext, provide_story_context};
     use dioxus_core::NoOpMutations;
+    use dioxus::prelude::VirtualDom;
 
     #[test]
     fn test_story_contentui_disabled_class() {
-        use dioxus::prelude::*;
-        use dioxus_ssr::render;
         use crate::components::story_content::{StoryContentUI, StoryContentUIProps, Choice, Action};
         // 準備 props
         let props = StoryContentUIProps {
@@ -161,7 +153,7 @@ mod ssr_tests {
         let mut dom = VirtualDom::new_with_props(StoryContentUI, props);
         let mut mutations = NoOpMutations;
         dom.rebuild(&mut mutations);
-        let html = render(&dom);
+        let html = dioxus_ssr::render(&dom);
         assert!(html.contains("opacity-50 cursor-not-allowed"), "HTML: {}", html);
     }
 }

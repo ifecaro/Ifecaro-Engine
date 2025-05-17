@@ -1,10 +1,8 @@
 use dioxus::prelude::*;
 use dioxus_ssr::render;
-use crate::components::story_content::{StoryContent, StoryContentProps, StoryContentUI, StoryContentUIProps, Choice, Action};
+use crate::components::story_content::{StoryContentUI, StoryContentUIProps, Choice, Action};
 use dioxus_core::NoOpMutations;
 use dioxus::prelude::VirtualDom;
-use dioxus::prelude::Signal;
-use dioxus::prelude::EventHandler;
 
 #[test]
 fn test_story_content_ui_enabled_choices_by_id() {

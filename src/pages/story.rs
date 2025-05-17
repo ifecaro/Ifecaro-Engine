@@ -181,7 +181,7 @@ pub fn Story(props: StoryProps) -> Element {
     let last_paragraph_id = Rc::new(RefCell::new(String::new()));
     let last_paragraph_id_effect = last_paragraph_id.clone();
     let story_context = story_context.clone();
-    let merged_paragraph = use_signal(|| String::new());
+    let _merged_paragraph = use_signal(|| String::new());
     let countdowns = use_signal(|| vec![]);
     let max_times = use_signal(|| vec![]);
     let progress_started = use_signal(|| vec![]);
@@ -343,9 +343,9 @@ pub fn Story(props: StoryProps) -> Element {
                         current_choices.set(choices.clone());
                         // 檢查每個選項的目標段落是否有當前語言的翻譯
                         let mut enabled = Vec::new();
-                        let paragraph_data_read = paragraph_data.read();
+                        let _paragraph_data_read = paragraph_data.read();
                         for choice in &paragraph.choices {
-                            let target_paragraph = paragraph_data_read.iter().find(|p| p.id == choice.to);
+                            let target_paragraph = _paragraph_data_read.iter().find(|p| p.id == choice.to);
                             if let Some(target_paragraph) = target_paragraph {
                                 if target_paragraph.texts.iter().any(|t| t.lang == state().current_language) {
                                     enabled.push(choice.to.clone());
@@ -458,7 +458,7 @@ pub fn Story(props: StoryProps) -> Element {
             spawn_local(async move {
                 let mut all_ids = Vec::new();
                 for chapter in chapters {
-                    let chapter_id = chapter.id.clone();
+                    let _chapter_id = chapter.id.clone();
                     let (tx, rx) = futures_channel::oneshot::channel();
                     let cb = Closure::once(Box::new(move |js_value: JsValue| {
                         let arr = js_sys::Array::from(&js_value);
@@ -512,7 +512,7 @@ pub fn Story(props: StoryProps) -> Element {
     let on_choice_click = {
         let paragraph_data = paragraph_data.clone();
         let mut _expanded_paragraphs = _expanded_paragraphs.clone();
-        let mut story_context = story_context.clone();
+        let story_context = story_context.clone();
         let mut show_chapter_title = show_chapter_title.clone();
         move |(goto, choice_index): (String, usize)| {
             let expanded_vec = _expanded_paragraphs.read().clone();
@@ -527,7 +527,7 @@ pub fn Story(props: StoryProps) -> Element {
                     }
                 }
             }
-            let paragraphs = paragraph_data.read();
+            let _paragraph_data_read = paragraph_data.read();
             let mut is_setting_action = false;
             let mut setting_key = None;
             let mut setting_value = None;
@@ -550,7 +550,7 @@ pub fn Story(props: StoryProps) -> Element {
                 // async: 設定寫入後馬上 get_settings 並更新 context，再跳轉
                 let mut settings_context = settings_context.clone();
                 let mut _expanded_paragraphs = _expanded_paragraphs.clone();
-                let paragraphs = paragraphs.clone();
+                let paragraphs = _paragraph_data_read.clone();
                 let goto = goto.clone();
                 let mut story_context = story_context.clone();
                 let mut show_chapter_title = show_chapter_title.clone();
@@ -590,7 +590,7 @@ pub fn Story(props: StoryProps) -> Element {
                 });
                 return;
             }
-            if let Some(ref target_paragraph) = paragraphs.iter().find(|p| p.id == goto) {
+            if let Some(ref target_paragraph) = _paragraph_data_read.iter().find(|p| p.id == goto) {
                 if let Some(ref last) = last_paragraph {
                     if !last.chapter_id.is_empty() {
                         let order = story_context.read().chapters.read().iter().find(|c| c.id == last.chapter_id).map(|c| c.order).unwrap_or(0);
@@ -625,8 +625,7 @@ pub fn Story(props: StoryProps) -> Element {
                     _expanded_paragraphs = _expanded_paragraphs.clone();
                     _expanded_paragraphs.set(vec![(*target_paragraph).clone()]);
                     show_chapter_title.set(false);
-                }
-                {
+                    // 加回 target_paragraph_id 設定
                     let mut story_context = story_context.clone();
                     story_context.write().target_paragraph_id = Some(goto);
                 }
@@ -644,7 +643,7 @@ pub fn Story(props: StoryProps) -> Element {
         let story_merged_context = story_merged_context.clone();
         use_effect(move || {
             let expanded = expanded.read();
-            let paragraph_data_read = paragraph_data.read();
+            let _paragraph_data_read = paragraph_data.read();
             let reader_mode = settings_context.read().settings.get("reader_mode").map(|v| v == "true").unwrap_or(false);
             let chapter_id = expanded.last().map(|p| p.chapter_id.clone()).unwrap_or_default();
             let is_settings_chapter = chapter_id == "settingschapter";
@@ -663,10 +662,11 @@ pub fn Story(props: StoryProps) -> Element {
     }
     
     // 寫入 context
-    let mut story_context = story_context.clone();
+    let story_context = story_context.clone();
     let expanded = _expanded_paragraphs.clone();
     let state = state.clone();
     use_effect(move || {
+        let mut story_context = story_context.clone();
         let expanded = expanded.read();
         if let Some(paragraph) = expanded.last() {
             let is_settings_chapter = paragraph.chapter_id == "settingschapter";
@@ -674,7 +674,6 @@ pub fn Story(props: StoryProps) -> Element {
             if *last_paragraph_id_effect.borrow() != paragraph.id {
                 *last_paragraph_id_effect.borrow_mut() = paragraph.id.clone();
                 if let Some(_text) = paragraph.texts.iter().find(|t| t.lang == state().current_language) {
-                    let mut story_context = story_context.clone();
                     let countdowns_vec = paragraph.choices.iter().map(|c| c.time_limit.unwrap_or(0)).collect::<Vec<u32>>();
                     story_context.write().countdowns.set(countdowns_vec);
                 }

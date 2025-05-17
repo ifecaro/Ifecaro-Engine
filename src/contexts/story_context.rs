@@ -27,6 +27,7 @@ impl StoryContext {
         }
     }
 
+    #[allow(dead_code)]
     pub fn set_is_settings_chapter(&mut self, value: bool) {
         self.is_settings_chapter.set(value);
     }
