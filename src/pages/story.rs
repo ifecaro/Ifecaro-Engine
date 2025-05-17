@@ -186,6 +186,7 @@ pub fn Story(props: StoryProps) -> Element {
     let max_times = use_signal(|| vec![]);
     let progress_started = use_signal(|| vec![]);
     let disabled_by_countdown = use_signal(|| vec![]);
+    let show_chapter_title = use_signal(|| true);
     
     // 只負責背景抓資料，抓到後再更新 context
     {
@@ -446,6 +447,39 @@ pub fn Story(props: StoryProps) -> Element {
         });
     }
     
+    // 初始化時同步所有章節的 choice_ids
+    {
+        use_effect(move || {
+            let chapters = use_context::<Signal<crate::contexts::story_context::StoryContext>>().read().chapters.read().clone();
+            if chapters.is_empty() {
+                return;
+            }
+            let mut story_context = use_context::<Signal<crate::contexts::story_context::StoryContext>>();
+            spawn_local(async move {
+                let mut all_ids = Vec::new();
+                for chapter in chapters {
+                    let chapter_id = chapter.id.clone();
+                    let (tx, rx) = futures_channel::oneshot::channel();
+                    let cb = Closure::once(Box::new(move |js_value: JsValue| {
+                        let arr = js_sys::Array::from(&js_value);
+                        let ids: Vec<String> = arr.iter().filter_map(|v| v.as_string()).collect();
+                        let _ = tx.send(ids);
+                    }) as Box<dyn FnOnce(JsValue)>);
+                    get_choice_from_indexeddb(&chapter.id, cb.as_ref().unchecked_ref());
+                    cb.forget();
+                    if let Ok(ids) = rx.await {
+                        all_ids.extend(ids);
+                    }
+                }
+                let current_ids = story_context.read().choice_ids.read().clone();
+                if current_ids != all_ids {
+                    story_context.write().choice_ids.set(all_ids);
+                }
+            });
+            ()
+        });
+    }
+    
     // 自動跳轉到已選段落（只讀，寫入分離 async block，資料 clone）
     {
         let paragraph_data = paragraph_data.clone();
@@ -478,7 +512,8 @@ pub fn Story(props: StoryProps) -> Element {
     let on_choice_click = {
         let paragraph_data = paragraph_data.clone();
         let mut _expanded_paragraphs = _expanded_paragraphs.clone();
-        let story_context = story_context.clone();
+        let mut story_context = story_context.clone();
+        let mut show_chapter_title = show_chapter_title.clone();
         move |(goto, choice_index): (String, usize)| {
             let expanded_vec = _expanded_paragraphs.read().clone();
             let last_paragraph = expanded_vec.last().cloned();
@@ -518,6 +553,7 @@ pub fn Story(props: StoryProps) -> Element {
                 let paragraphs = paragraphs.clone();
                 let goto = goto.clone();
                 let mut story_context = story_context.clone();
+                let mut show_chapter_title = show_chapter_title.clone();
                 wasm_bindgen_futures::spawn_local(async move {
                     if let (Some(key), Some(value)) = (setting_key, setting_value) {
                         set_setting_to_indexeddb(&key, &value);
@@ -549,6 +585,7 @@ pub fn Story(props: StoryProps) -> Element {
                     if let Some(target_paragraph) = paragraphs.iter().find(|p| p.id == goto) {
                         _expanded_paragraphs.set(vec![target_paragraph.clone()]);
                         story_context.write().target_paragraph_id = Some(goto.clone());
+                        show_chapter_title.set(true);
                     }
                 });
                 return;
@@ -578,6 +615,7 @@ pub fn Story(props: StoryProps) -> Element {
                     let _ = _expanded_paragraphs;
                     _expanded_paragraphs = _expanded_paragraphs.clone();
                     _expanded_paragraphs.set(expanded);
+                    show_chapter_title.set(true);
                 } else {
                     // 切換新頁時自動捲動到頁首
                     if let Some(window) = web_sys::window() {
@@ -586,6 +624,7 @@ pub fn Story(props: StoryProps) -> Element {
                     let _ = _expanded_paragraphs;
                     _expanded_paragraphs = _expanded_paragraphs.clone();
                     _expanded_paragraphs.set(vec![(*target_paragraph).clone()]);
+                    show_chapter_title.set(false);
                 }
                 {
                     let mut story_context = story_context.clone();
@@ -624,12 +663,14 @@ pub fn Story(props: StoryProps) -> Element {
     }
     
     // 寫入 context
-    let story_context = story_context.clone();
+    let mut story_context = story_context.clone();
     let expanded = _expanded_paragraphs.clone();
     let state = state.clone();
     use_effect(move || {
         let expanded = expanded.read();
         if let Some(paragraph) = expanded.last() {
+            let is_settings_chapter = paragraph.chapter_id == "settingschapter";
+            story_context.write().is_settings_chapter.set(is_settings_chapter);
             if *last_paragraph_id_effect.borrow() != paragraph.id {
                 *last_paragraph_id_effect.borrow_mut() = paragraph.id.clone();
                 if let Some(_text) = paragraph.texts.iter().find(|t| t.lang == state().current_language) {
@@ -642,55 +683,32 @@ pub fn Story(props: StoryProps) -> Element {
         ()
     });
     
-    // 初始化時同步所有章節的 choice_ids
-    {
-        let story_context = story_context.clone();
-        use_effect(move || {
-            let mut story_context = story_context.clone();
-            spawn_local(async move {
-                let chapters = story_context.read().chapters.read().clone();
-                let mut all_ids = Vec::new();
-                for chapter in chapters {
-                    let (tx, rx) = futures_channel::oneshot::channel();
-                    let cb = Closure::once(Box::new(move |js_value: JsValue| {
-                        let arr = js_sys::Array::from(&js_value);
-                        let ids: Vec<String> = arr.iter().filter_map(|v| v.as_string()).collect();
-                        let _ = tx.send(ids);
-                    }) as Box<dyn FnOnce(JsValue)>);
-                    get_choice_from_indexeddb(&chapter.id, cb.as_ref().unchecked_ref());
-                    cb.forget();
-                    if let Ok(ids) = rx.await {
-                        all_ids.extend(ids);
-                    }
-                }
-                story_context.write().choice_ids.set(all_ids);
-            });
-            ()
-        });
-    }
-    
     let reader_mode = settings_context.read().settings.get("reader_mode").map(|v| v == "true").unwrap_or(false);
     // 取得目前章節標題
     let chapter_title = {
-        let expanded = _expanded_paragraphs.read();
-        let ctx = story_context.read();
-        let chapters = ctx.chapters.read();
-        let state = state.read();
-        let current_lang = &state.current_language;
-        let chapter_id = expanded.last().map(|p| p.chapter_id.clone()).unwrap_or_default();
-        if chapter_id.is_empty() {
+        if !*show_chapter_title.read() {
             String::new()
         } else {
-            chapters.iter()
-                .find(|c| c.id == chapter_id)
-                .and_then(|chapter| {
-                    chapter.titles.iter()
-                        .find(|t| &t.lang == current_lang)
-                        .or_else(|| chapter.titles.iter().find(|t| t.lang == "en-US" || t.lang == "en-GB"))
-                        .or_else(|| chapter.titles.first())
-                        .map(|t| t.title.clone())
-                })
-                .unwrap_or_default()
+            let expanded = _expanded_paragraphs.read();
+            let ctx = story_context.read();
+            let chapters = ctx.chapters.read();
+            let state = state.read();
+            let current_lang = &state.current_language;
+            let chapter_id = expanded.last().map(|p| p.chapter_id.clone()).unwrap_or_default();
+            if chapter_id.is_empty() {
+                String::new()
+            } else {
+                chapters.iter()
+                    .find(|c| c.id == chapter_id)
+                    .and_then(|chapter| {
+                        chapter.titles.iter()
+                            .find(|t| &t.lang == current_lang)
+                            .or_else(|| chapter.titles.iter().find(|t| t.lang == "en-US" || t.lang == "en-GB"))
+                            .or_else(|| chapter.titles.first())
+                            .map(|t| t.title.clone())
+                    })
+                    .unwrap_or_default()
+            }
         }
     };
     rsx! {

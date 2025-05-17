@@ -250,7 +250,7 @@ pub fn StoryContent(props: StoryContentProps) -> Element {
                     }
                 }
             }
-            if !is_settings_chapter {
+            if !is_settings_chapter && !props.chapter_title.is_empty() {
                 div {
                     class: "w-full flex items-center justify-center min-h-[calc(100vh_-_56px)]",
                     div {
