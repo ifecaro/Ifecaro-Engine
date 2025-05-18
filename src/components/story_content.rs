@@ -299,7 +299,7 @@ pub fn StoryContent(props: StoryContentProps) -> Element {
                             let max_time = max_times.read().get(index).copied().unwrap_or(0);
                             let animation_name = format!("progress-bar-{}", index);
                             let keyframes = format!(
-                                "@keyframes {} {{ from {{ width: 100%; }} to {{ width: 0%; }} }}",
+                                "@keyframes {} {{ from {{ transform: scaleX(1); }} to {{ transform: scaleX(0); }} }}",
                                 animation_name
                             );
                             let duration = format!("{}s", max_time);
@@ -325,7 +325,7 @@ pub fn StoryContent(props: StoryContentProps) -> Element {
                                     { (countdown > 0).then(|| rsx! {
                                         style { "{keyframes}" }
                                         div {
-                                            class: "w-full h-px bg-current mt-2",
+                                            class: "w-full h-px bg-current mt-2 origin-left",
                                             style: format!(
                                                 "animation: {} linear {} forwards;",
                                                 animation_name, duration

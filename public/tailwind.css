@@ -605,6 +605,9 @@
   .flex-shrink-0 {
     flex-shrink: 0;
   }
+  .origin-left {
+    transform-origin: left;
+  }
   .origin-top {
     transform-origin: top;
   }
