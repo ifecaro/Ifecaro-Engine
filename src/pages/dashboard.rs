@@ -12,13 +12,11 @@ use std::thread_local;
 use crate::components::language_selector::{Language, AVAILABLE_LANGUAGES};
 use std::env;
 use crate::constants::config::{BASE_API_URL, PARAGRAPHS, CHAPTERS};
-use web_sys::window;
-use wasm_bindgen::closure::Closure;
-use wasm_bindgen::JsCast;
 use std::rc::Rc;
 use crate::components::{translation_form::Paragraph as TranslationFormParagraph, paragraph_list::Paragraph as ParagraphListParagraph};
 use dioxus_i18n::t;
 use crate::components::form::{TextareaField, ChoiceOptions};
+use gloo_timers::callback::Timeout;
 
 thread_local! {
     static CURRENT_LANGUAGE: RefCell<String> = RefCell::new(String::from("zh-TW"));
@@ -164,7 +162,7 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
     let mut action_type_open = use_signal(|| vec![false]);
     let _show_extra_options = use_signal(|| Vec::<()>::new());
     let mut show_toast = use_signal(|| false);
-    let mut toast_visible = use_signal(|| false);
+    let toast_visible = use_signal(|| false);
     let _init_done = use_signal(|| false);
     let mut is_open = use_signal(|| false);
     let mut search_query = use_signal(|| String::new());
@@ -257,34 +255,14 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
     // 處理 toast 顯示
     use_effect(move || {
         if *show_toast.read() {
+            let mut toast_visible = toast_visible.clone();
+            let mut show_toast = show_toast.clone();
             toast_visible.set(true);
-            if let Some(window) = window() {
-                let closure = Closure::wrap(Box::new(move || {
-                    toast_visible.set(false);
-                    show_toast.set(false);
-                }) as Box<dyn FnMut()>);
-                let timeout_result = window.set_timeout_with_callback_and_timeout_and_arguments_0(
-                    closure.as_ref().unchecked_ref(),
-                    3000,
-                );
-                match timeout_result {
-                    Ok(timeout) => {
-                        (move || {
-                            window.clear_timeout_with_handle(timeout);
-                            closure.forget(); // 防止 closure 被過早釋放
-                        })()
-                    },
-                    Err(_) => {
-                        // 設定 timeout 失敗，直接關閉 toast
-                        toast_visible.set(false);
-                        show_toast.set(false);
-                    }
-                }
-            } else {
-                // window 不存在，直接關閉 toast
+            // 3 秒後自動隱藏
+            Timeout::new(3000, move || {
                 toast_visible.set(false);
                 show_toast.set(false);
-            }
+            }).forget();
         }
     });
 
@@ -690,6 +668,7 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
                                                     if let Ok(mut cb) = update_paragraph_previews.try_borrow_mut() {
                                                         (*cb)();
                                                     }
+                                                    if let Ok(mut s) = show_toast.try_write() { *s = true; }
                                                 },
                                                 Err(e) => {
                                                     if let Ok(mut s) = show_error_toast.try_write() { *s = true; }
