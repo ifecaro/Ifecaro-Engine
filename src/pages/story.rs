@@ -199,12 +199,21 @@ pub fn Story(props: StoryProps) -> Element {
                 // 1. 先讀取 settings（indexedDB）
                 let settings = wasm_bindgen_futures::JsFuture::from(js_sys::Promise::new(&mut |resolve, _reject| {
                     let cb = Closure::wrap(Box::new(move |js_value: wasm_bindgen::JsValue| {
-                        resolve.call1(&JsValue::NULL, &js_value).unwrap();
+                        resolve.call1(&JsValue::NULL, &js_value).unwrap_or_else(|e| {
+                            tracing::error!("Failed to call resolve: {:?}", e);
+                            e
+                        });
                     }) as Box<dyn FnMut(wasm_bindgen::JsValue)>);
                     get_settings_from_indexeddb(cb.as_ref().unchecked_ref());
                     cb.forget();
                 }));
-                let js_value = settings.await.unwrap();
+                let js_value = match settings.await {
+                    Ok(val) => val,
+                    Err(e) => {
+                        tracing::error!("Failed to await settings: {:?}", e);
+                        return;
+                    }
+                };
                 let mut map = std::collections::HashMap::new();
                 if let Some(obj) = js_sys::Object::try_from(&js_value) {
                     let keys = js_sys::Object::keys(&obj);
@@ -327,8 +336,8 @@ pub fn Story(props: StoryProps) -> Element {
             if let Some(target_id) = target_id {
                 if let Some(paragraph) = paragraph_data.read().iter().find(|p| &p.id == &target_id) {
                     current_paragraph.set(Some(paragraph.clone()));
-                    if let Some(_text) = paragraph.texts.iter().find(|t| t.lang == state().current_language) {
-                        current_text.set(Some(paragraph.texts.iter().find(|t| t.lang == state().current_language).cloned().unwrap()));
+                    if let Some(text) = paragraph.texts.iter().find(|t| t.lang == state().current_language) {
+                        current_text.set(Some(text.clone()));
                         let choices: Vec<Choice> = paragraph.choices.iter().enumerate().map(|(index, c)| {
                             let choice: StoryChoice = StoryChoice::Complex(c.clone());
                             let mut choice_obj: Choice = choice.into();
@@ -373,9 +382,13 @@ pub fn Story(props: StoryProps) -> Element {
                                 let mut path = vec![paragraph.clone()];
                                 let mut current = paragraph.clone();
                                 loop {
-                                    let text = current.texts.iter().find(|t| t.lang == state().current_language);
-                                    if text.is_none() { break; }
-                                    let text = text.unwrap();
+                                    let text = match current.texts.iter().find(|t| t.lang == state().current_language) {
+                                        Some(t) => t,
+                                        None => {
+                                            tracing::error!("No text found for current language in reader_mode loop: {}", state().current_language);
+                                            break;
+                                        }
+                                    };
                                     if text.choices.is_empty() { break; }
                                     let mut choice_ids: Vec<String> = Vec::new();
                                     for (i, c) in text.choices.iter().enumerate() {
@@ -405,15 +418,28 @@ pub fn Story(props: StoryProps) -> Element {
                                         if !id.is_empty() {
                                             id
                                         } else {
-                                            valid_choice_ids.choose(&mut rand::thread_rng()).cloned().unwrap()
+                                            match valid_choice_ids.choose(&mut rand::thread_rng()).cloned() {
+                                                Some(val) => val,
+                                                None => {
+                                                    tracing::error!("No valid choice id found (context_choice_id empty)");
+                                                    break;
+                                                }
+                                            }
                                         }
                                     } else {
-                                        let chosen = valid_choice_ids.choose(&mut rand::thread_rng()).cloned().unwrap();
-                                        if !current.chapter_id.is_empty() {
-                                            set_choice_to_indexeddb(&current.chapter_id, &chosen);
-                                            story_context.write().choice_ids.set(vec![chosen.clone()]);
+                                        match valid_choice_ids.choose(&mut rand::thread_rng()).cloned() {
+                                            Some(chosen) => {
+                                                if !current.chapter_id.is_empty() {
+                                                    set_choice_to_indexeddb(&current.chapter_id, &chosen);
+                                                    story_context.write().choice_ids.set(vec![chosen.clone()]);
+                                                }
+                                                chosen
+                                            },
+                                            None => {
+                                                tracing::error!("No valid choice id found (no context_choice_id)");
+                                                break;
+                                            }
                                         }
-                                        chosen
                                     };
                                     if let Some(next) = paragraph_data.iter().find(|p| p.id == next_id) {
                                         if visited.contains(&next.id) { break; }
@@ -560,12 +586,21 @@ pub fn Story(props: StoryProps) -> Element {
                         // 取得最新 settings
                         let settings = wasm_bindgen_futures::JsFuture::from(js_sys::Promise::new(&mut |resolve, _reject| {
                             let cb = Closure::wrap(Box::new(move |js_value: wasm_bindgen::JsValue| {
-                                resolve.call1(&JsValue::NULL, &js_value).unwrap();
+                                resolve.call1(&JsValue::NULL, &js_value).unwrap_or_else(|e| {
+                                    tracing::error!("Failed to call resolve: {:?}", e);
+                                    e
+                                });
                             }) as Box<dyn FnMut(wasm_bindgen::JsValue)>);
                             get_settings_from_indexeddb(cb.as_ref().unchecked_ref());
                             cb.forget();
                         }));
-                        let js_value = settings.await.unwrap();
+                        let js_value = match settings.await {
+                            Ok(val) => val,
+                            Err(e) => {
+                                tracing::error!("Failed to await settings: {:?}", e);
+                                return;
+                            }
+                        };
                         let mut map = std::collections::HashMap::new();
                         if let Some(obj) = js_sys::Object::try_from(&js_value) {
                             let keys = js_sys::Object::keys(&obj);
