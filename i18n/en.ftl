@@ -40,4 +40,5 @@ untranslated = Untranslated
 loading = Loading...
 not_applicable = Not applicable
 same_page = Show on the same page
-time_limit_seconds = Option time limit (seconds) 
+time_limit_seconds = Option time limit (seconds)
+submit_failed = Submit failed! 

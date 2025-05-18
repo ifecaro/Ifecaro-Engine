@@ -41,3 +41,4 @@ loading = Cargando...
 not_applicable = No aplica 
 same_page = Mostrar en la misma página 
 time_limit_seconds = Option time limit (seconds) 
+submit_failed = ¡Error al enviar! 
