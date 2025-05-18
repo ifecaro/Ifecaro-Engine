@@ -162,7 +162,10 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
     let mut action_type_open = use_signal(|| vec![false]);
     let _show_extra_options = use_signal(|| Vec::<()>::new());
     let mut show_toast = use_signal(|| false);
-    let toast_visible = use_signal(|| false);
+    let mut toast_visible = use_signal(|| false);
+    let mut toast_animating_out = use_signal(|| false);
+    let mut error_toast_visible = use_signal(|| false);
+    let mut error_toast_animating_out = use_signal(|| false);
     let _init_done = use_signal(|| false);
     let mut is_open = use_signal(|| false);
     let mut search_query = use_signal(|| String::new());
@@ -197,7 +200,6 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
     let mut paragraphs_error = use_signal(|| false);
     let mut chapter_error = use_signal(|| false);
     let has_loaded = use_signal(|| false);
-    let error_toast_visible = use_signal(|| false);
 
     let _new_action_type = use_signal(|| String::new());
     let _new_action_key = use_signal(|| None::<String>);
@@ -255,13 +257,43 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
     // 處理 toast 顯示
     use_effect(move || {
         if *show_toast.read() {
-            let mut toast_visible = toast_visible.clone();
-            let mut show_toast = show_toast.clone();
             toast_visible.set(true);
+            toast_animating_out.set(false);
+            let mut toast_visible = toast_visible.clone();
+            let mut toast_animating_out = toast_animating_out.clone();
+            let mut show_toast = show_toast.clone();
             // 3 秒後自動隱藏
             Timeout::new(3000, move || {
-                toast_visible.set(false);
-                show_toast.set(false);
+                // 先設置為正在退場
+                toast_animating_out.set(true);
+                // 等待退場動畫完成（400ms）後再隱藏
+                Timeout::new(500, move || {
+                    toast_visible.set(false);
+                    toast_animating_out.set(false);
+                    show_toast.set(false);
+                }).forget();
+            }).forget();
+        }
+    });
+
+    // 處理錯誤 toast 顯示
+    use_effect(move || {
+        if *show_error_toast.read() {
+            error_toast_visible.set(true);
+            error_toast_animating_out.set(false);
+            let mut error_toast_visible = error_toast_visible.clone();
+            let mut error_toast_animating_out = error_toast_animating_out.clone();
+            let mut show_error_toast = show_error_toast.clone();
+            // 3 秒後自動隱藏
+            Timeout::new(3000, move || {
+                // 先設置為正在退場
+                error_toast_animating_out.set(true);
+                // 等待退場動畫完成（400ms）後再隱藏
+                Timeout::new(500, move || {
+                    error_toast_visible.set(false);
+                    error_toast_animating_out.set(false);
+                    show_error_toast.set(false);
+                }).forget();
             }).forget();
         }
     });
@@ -1013,26 +1045,36 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
                 div {
                     class: "fixed bottom-4 right-4 z-50",
                     // 成功 Toast
-                    div {
-                        class: format!("bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg transition-all duration-300 transform {}",
-                            if *toast_visible.read() {
-                                "translate-y-0 opacity-100"
-                            } else {
-                                "translate-y-2 opacity-0 hidden"
-                            }
-                        ),
-                        {t!("submit_success")}
+                    if *toast_visible.read() {
+                        div {
+                            class: format!("bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg {} {}",
+                                if *toast_animating_out.read() {
+                                    "toast-animate-out"
+                                } else {
+                                    "toast-animate-in"
+                                },
+                                "will-change-transform will-change-opacity"
+                            ),
+                            {t!("submit_success")}
+                        }
                     }
                     // 錯誤 Toast
-                    div {
-                        class: format!("bg-red-500 text-white px-6 py-3 rounded-lg shadow-lg transition-all duration-300 transform {}",
-                            if *error_toast_visible.read() {
-                                "translate-y-0 opacity-100"
-                            } else {
-                                "translate-y-2 opacity-0 hidden"
+                    if *error_toast_visible.read() {
+                        div {
+                            class: format!("bg-red-500 text-white px-6 py-3 rounded-lg shadow-lg {} {}",
+                                if *error_toast_animating_out.read() {
+                                    "toast-animate-out"
+                                } else {
+                                    "toast-animate-in"
+                                },
+                                "will-change-transform will-change-opacity"
+                            ),
+                            {t!("submit_failed")}
+                            div {
+                                class: "mt-2 text-sm",
+                                {error_message.read().clone()}
                             }
-                        ),
-                        "{error_message.read()}"
+                        }
                     }
                 }
                 div {
