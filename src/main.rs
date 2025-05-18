@@ -18,6 +18,8 @@ use crate::{
     components::story_content::Choice,
     contexts::story_context::{use_story_context, provide_story_context, StoryContext},
     contexts::settings_context::SettingsContext,
+    contexts::chapter_context::ChapterProvider,
+    contexts::paragraph_context::ParagraphProvider,
 };
 use std::sync::Arc;
 use wasm_bindgen::closure::Closure;
@@ -32,8 +34,12 @@ fn App() -> Element {
     provide_context(Signal::new(SettingsContext::default()));
     rsx! {
         LanguageProvider {
-            StoryProvider {
-                Router::<Route> {}
+            ChapterProvider {
+                ParagraphProvider {
+                    StoryProvider {
+                        Router::<Route> {}
+                    }
+                }
             }
         }
     }

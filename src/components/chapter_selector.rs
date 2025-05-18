@@ -1,6 +1,6 @@
 use dioxus::prelude::*;
 use crate::components::dropdown::Dropdown;
-use crate::pages::dashboard::Chapter;
+use crate::contexts::chapter_context::Chapter;
 use crate::contexts::language_context::LanguageState;
 use dioxus::hooks::use_context;
 use std::cell::RefCell;

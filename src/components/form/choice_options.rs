@@ -2,6 +2,7 @@ use dioxus::prelude::*;
 use dioxus_i18n::t;
 use crate::components::form::{InputField, ActionTypeSelector};
 use crate::components::paragraph_list::{Paragraph, ParagraphList};
+use crate::contexts::chapter_context::Chapter;
 
 #[derive(Props, Clone, PartialEq)]
 pub struct ChoiceOptionsProps {
@@ -9,7 +10,7 @@ pub struct ChoiceOptionsProps {
     pub on_choice_change: EventHandler<(usize, String, String)>,
     pub on_add_choice: EventHandler<()>,
     pub on_remove_choice: EventHandler<usize>,
-    pub available_chapters: Vec<crate::pages::dashboard::Chapter>,
+    pub available_chapters: Vec<Chapter>,
     pub selected_language: String,
     pub choice_chapters_open: Vec<bool>,
     pub choice_chapters_search: Vec<String>,
@@ -69,7 +70,7 @@ pub fn ChoiceOptions(props: ChoiceOptionsProps) -> Element {
                                     let on_chapter_search = props.on_chapter_search.clone();
                                     move |query| on_chapter_search.call((index, query))
                                 },
-                                on_select: move |chapter: crate::pages::dashboard::Chapter| {
+                                on_select: move |chapter: Chapter| {
                                     props.on_choice_change.call((index, "target_chapter".to_string(), chapter.id.clone()));
                                 },
                                 has_error: false,

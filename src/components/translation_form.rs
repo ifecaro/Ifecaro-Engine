@@ -4,6 +4,8 @@ use crate::components::paragraph_list::{Paragraph as ParagraphListItem, Paragrap
 use serde::{Serialize, Deserialize};
 use std::sync::Arc;
 use dioxus_i18n::t;
+use dioxus::events::FormEvent;
+use crate::contexts::chapter_context::Chapter;
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 #[serde(untagged)]
@@ -113,7 +115,7 @@ pub fn TranslationForm(props: TranslationFormProps) -> Element {
     let mut is_paragraph_open = use_signal(|| false);
     let mut paragraph_search_query = use_signal(|| String::new());
     
-    let available_chapters = use_signal(|| Vec::<crate::pages::dashboard::Chapter>::new());
+    let available_chapters = use_signal(|| Vec::<Chapter>::new());
     let selected_language = use_signal(|| String::new());
     let choice_paragraphs = use_signal(|| Vec::<ParagraphListItem>::new());
 

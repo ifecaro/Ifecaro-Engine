@@ -2,6 +2,7 @@ use dioxus::prelude::*;
 use dioxus_i18n::t;
 use crate::components::form::{TextareaField, ChoiceOptions};
 use crate::components::paragraph_list::Paragraph;
+use crate::contexts::chapter_context::Chapter;
 use std::sync::Arc;
 
 #[derive(Props, Clone, PartialEq)]
@@ -25,7 +26,7 @@ pub struct ParagraphFormProps {
     on_remove_choice: EventHandler<usize>,
     on_submit: EventHandler<()>,
     choices: Vec<(String, String, String, Option<String>, Option<serde_json::Value>, String, Option<u32>)>,
-    available_chapters: Vec<crate::pages::dashboard::Chapter>,
+    available_chapters: Vec<Chapter>,
     selected_language: String,
     choice_paragraphs: Vec<Paragraph>,
     choice_chapters_open: Vec<bool>,
@@ -43,7 +44,7 @@ pub struct ParagraphFormProps {
 #[component]
 pub fn ParagraphForm(props: ParagraphFormProps) -> Element {
     let mut choices = use_signal(|| Vec::<(String, String, String, Option<String>, Option<serde_json::Value>, String, Option<u32>)>::new());
-    let available_chapters = use_signal(|| Vec::<crate::pages::dashboard::Chapter>::new());
+    let available_chapters = use_signal(|| Vec::<Chapter>::new());
     let selected_language = use_signal(|| String::new());
     let choice_paragraphs = use_signal(|| Vec::<Paragraph>::new());
     let mut action_type_open = use_signal(|| vec![false]);
