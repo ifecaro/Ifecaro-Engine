@@ -164,7 +164,7 @@ pub fn ChoiceOptions(props: ChoiceOptionsProps) -> Element {
                                         let checked = evt.value() == "true";
                                         props.on_choice_change.call((index, "same_page".to_string(), checked.to_string()));
                                     },
-                                    class: "form-checkbox h-4 w-4 text-blue-600 transition duration-150 ease-in-out",
+                                    class: "form-checkbox h-4 w-4 text-blue-600 transition-transform transition-opacity duration-150 ease-in-out will-change-transform will-change-opacity",
                                 }
                                 label {
                                     class: "ml-2 text-sm text-gray-700 dark:text-gray-300",
@@ -186,7 +186,7 @@ pub fn ChoiceOptions(props: ChoiceOptionsProps) -> Element {
                             
                             // 刪除按鈕
                             button {
-                                class: "w-full mt-2 px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 transition-colors duration-200",
+                                class: "w-full mt-2 px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 transition-transform transition-opacity duration-200 will-change-transform will-change-opacity",
                                 onclick: move |_| props.on_remove_choice.call(index),
                                 {t!("delete_option")}
                             }
@@ -198,7 +198,7 @@ pub fn ChoiceOptions(props: ChoiceOptionsProps) -> Element {
 
         // 新增選項按鈕
         button {
-            class: "w-full mt-4 border-2 border-dashed border-gray-200 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors duration-200 flex items-center justify-center",
+            class: "w-full mt-4 border-2 border-dashed border-gray-200 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-transform transition-opacity duration-200 will-change-transform will-change-opacity flex items-center justify-center",
             onclick: move |_| props.on_add_choice.call(()),
             div {
                 class: "flex items-center space-x-2 text-gray-500 dark:text-gray-400 p-4",

@@ -117,9 +117,9 @@ pub fn StoryContentUI(props: StoryContentUIProps) -> Element {
                         li {
                             class: {{
                                 format!(
-                                    "p-4 rounded-lg transition-colors duration-200 relative {}",
+                                    "p-4 rounded-lg transition duration-200 relative {}",
                                     if is_enabled {
-                                        "cursor-pointer text-gray-900 hover:text-gray-700 dark:text-white dark:hover:text-gray-300"
+                                        "cursor-pointer text-gray-900 hover:text-gray-700 dark:text-white dark:hover:text-gray-300 transition-opacity transition-transform"
                                     } else {
                                         "opacity-50 cursor-not-allowed text-gray-400 dark:text-gray-400"
                                     }
@@ -226,8 +226,8 @@ pub fn StoryContent(props: StoryContentProps) -> Element {
             },
             div {
                 class: {
-                    format!("fixed inset-0 backdrop-blur-sm z-10 flex items-center justify-center transition-opacity duration-500 cursor-pointer {}",
-                        if !*show_filter.read() || *is_mobile.read() { "opacity-0 pointer-events-none" } else { "opacity-100" }
+                    format!("fixed inset-0 backdrop-blur-sm z-10 flex items-center justify-center transition duration-500 cursor-pointer will-change-transform will-change-opacity {}",
+                        if !*show_filter.read() || *is_mobile.read() { "opacity-0 pointer-events-none transform translate-y-2" } else { "opacity-100 transform translate-y-0" }
                     )
                 },
                 onclick: move |_| {
@@ -307,9 +307,9 @@ pub fn StoryContent(props: StoryContentProps) -> Element {
                                 li {
                                     class: {{
                                         format!(
-                                            "p-4 rounded-lg transition-colors duration-200 relative {} {}",
+                                            "p-4 rounded-lg transition duration-200 relative {} {}",
                                             if is_enabled {
-                                                "cursor-pointer text-gray-900 hover:text-gray-700 dark:text-white dark:hover:text-gray-300"
+                                                "cursor-pointer text-gray-900 hover:text-gray-700 dark:text-white dark:hover:text-gray-300 transition-opacity transition-transform"
                                             } else {
                                                 "opacity-50 cursor-not-allowed text-gray-400 dark:text-gray-400"
                                             },
@@ -325,7 +325,7 @@ pub fn StoryContent(props: StoryContentProps) -> Element {
                                     { (countdown > 0).then(|| rsx! {
                                         style { "{keyframes}" }
                                         div {
-                                            class: "w-full h-px bg-current mt-2 origin-left",
+                                            class: "w-full h-px bg-current mt-2 origin-left will-change-transform",
                                             style: format!(
                                                 "animation: {} linear {} forwards;",
                                                 animation_name, duration
