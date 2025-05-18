@@ -574,7 +574,9 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
         }
     };
 
-    let handle_submit = {
+    let is_submitting = use_signal(|| false);
+
+    let mut handle_submit = {
         let mut show_error_toast = show_error_toast.clone();
         let mut error_message = error_message.clone();
         let mut paragraph_data = paragraph_data.clone();
@@ -584,8 +586,10 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
         let choices = choices.read().clone();
         let is_edit_mode = is_edit_mode.read().clone();
         let update_paragraph_previews = update_paragraph_previews.clone();
-        
+        let mut is_submitting = is_submitting.clone();
         move |_| {
+            if *is_submitting.read() { return; }
+            is_submitting.set(true);
             let text = Text {
                 lang: paragraph_language.read().clone(),
                 paragraphs: paragraphs.clone(),
@@ -621,6 +625,7 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
 
             spawn_local({
                 let update_paragraph_previews = update_paragraph_previews.clone();
+                let mut is_submitting = is_submitting.clone();
                 async move {
                     let client = reqwest::Client::new();
                     
@@ -701,30 +706,36 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
                                                         (*cb)();
                                                     }
                                                     if let Ok(mut s) = show_toast.try_write() { *s = true; }
+                                                    is_submitting.set(false);
                                                 },
                                                 Err(e) => {
                                                     if let Ok(mut s) = show_error_toast.try_write() { *s = true; }
                                                     if let Ok(mut s) = error_message.try_write() { *s = format!("解析段落數據失敗：{}", e); }
+                                                    is_submitting.set(false);
                                                 }
                                             }
                                         } else {
                                             if let Ok(mut s) = show_error_toast.try_write() { *s = true; }
                                             if let Ok(mut s) = error_message.try_write() { *s = format!("載入段落失敗，狀態碼：{}", response.status()); }
+                                            is_submitting.set(false);
                                         }
                                     },
                                     Err(e) => {
                                         if let Ok(mut s) = show_error_toast.try_write() { *s = true; }
                                         if let Ok(mut s) = error_message.try_write() { *s = format!("載入段落請求失敗：{}", e); }
+                                        is_submitting.set(false);
                                     }
                                 }
                             } else {
                                 if let Ok(mut s) = show_error_toast.try_write() { *s = true; }
                                 if let Ok(mut s) = error_message.try_write() { *s = format!("保存段落失敗，狀態碼：{}", status); }
+                                is_submitting.set(false);
                             }
                         },
                         Err(e) => {
                             if let Ok(mut s) = show_error_toast.try_write() { *s = true; }
                             if let Ok(mut s) = error_message.try_write() { *s = format!("保存段落請求失敗：{}", e); }
+                            is_submitting.set(false);
                         }
                     }
                 }
@@ -1327,7 +1338,8 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
                                     let selected_para = selected_paragraph.read().is_none();
                                     let has_changes = *has_changes.read();
                                     let is_valid = *is_form_valid.read();
-                                    (edit_mode && selected_para) || !has_changes || !is_valid
+                                    let submitting = *is_submitting.read();
+                                    (edit_mode && selected_para) || !has_changes || !is_valid || submitting
                                 },
                                 onclick: move |_| {
                                     handle_submit(());
