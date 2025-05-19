@@ -181,6 +181,14 @@ pub fn StoryContent(props: StoryContentProps) -> Element {
     let mut show_filter = use_signal(|| true);
     let mut is_focused = use_signal(|| false);
     let mut is_mobile = use_signal(|| false);
+    let mut is_countdown_paused = use_signal(|| true);
+    {
+        let show_filter = show_filter.clone();
+        let mut is_countdown_paused = is_countdown_paused.clone();
+        use_effect(move || {
+            is_countdown_paused.set(*show_filter.read());
+        });
+    }
     
     let is_mobile_memo = use_memo(move || {
         if let Some((window, _)) = get_window_document() {
@@ -303,6 +311,7 @@ pub fn StoryContent(props: StoryContentProps) -> Element {
                                 animation_name
                             );
                             let duration = format!("{}s", max_time);
+                            let animation_play_state = if *is_countdown_paused.read() { "paused" } else { "running" };
                             rsx! {
                                 li {
                                     class: {{
@@ -327,8 +336,8 @@ pub fn StoryContent(props: StoryContentProps) -> Element {
                                         div {
                                             class: "w-full h-px bg-current mt-2 origin-left will-change-transform",
                                             style: format!(
-                                                "animation: {} linear {} forwards;",
-                                                animation_name, duration
+                                                "animation: {} linear {} forwards;animation-play-state:{};",
+                                                animation_name, duration, animation_play_state
                                             ),
                                             onanimationend: move |_| {
                                                 if countdown > 0 {
