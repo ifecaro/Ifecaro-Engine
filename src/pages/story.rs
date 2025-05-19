@@ -179,7 +179,7 @@ pub fn Story(props: StoryProps) -> Element {
         }
     });
     let last_paragraph_id = Rc::new(RefCell::new(String::new()));
-    let last_paragraph_id_effect = last_paragraph_id.clone();
+    let _last_paragraph_id_effect = last_paragraph_id.clone();
     let story_context = story_context.clone();
     let _merged_paragraph = use_signal(|| String::new());
     let countdowns = use_signal(|| vec![]);
@@ -702,7 +702,7 @@ pub fn Story(props: StoryProps) -> Element {
         let expanded = _expanded_paragraphs.clone();
         let state = state.clone();
         let last_paragraph_id = last_paragraph_id.clone();
-        let mut expanded = expanded.read();
+        let expanded = expanded.read();
         if let Some(paragraph) = expanded.last() {
             let is_settings_chapter = paragraph.chapter_id == "settingschapter";
             story_context.write().is_settings_chapter.set(is_settings_chapter);

@@ -181,7 +181,7 @@ pub fn StoryContent(props: StoryContentProps) -> Element {
     let mut show_filter = use_signal(|| true);
     let mut is_focused = use_signal(|| false);
     let mut is_mobile = use_signal(|| false);
-    let mut is_countdown_paused = use_signal(|| true);
+    let is_countdown_paused = use_signal(|| true);
     {
         let show_filter = show_filter.clone();
         let mut is_countdown_paused = is_countdown_paused.clone();
@@ -240,11 +240,15 @@ pub fn StoryContent(props: StoryContentProps) -> Element {
                 },
                 onclick: move |_| {
                     show_filter.set(false);
-                    is_focused.set(true);
                     if let Some((_, document)) = get_window_document() {
                         if let Ok(Some(container)) = document.query_selector(".story-content-container") {
                             let _ = container.unchecked_into::<web_sys::HtmlElement>().focus();
                         }
+                    }
+                },
+                ontransitionend: move |_| {
+                    if !*show_filter.read() {
+                        is_focused.set(true);
                     }
                 },
                 div {
