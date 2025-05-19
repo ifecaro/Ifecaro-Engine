@@ -200,7 +200,7 @@ pub fn Story(props: StoryProps) -> Element {
                 let settings = wasm_bindgen_futures::JsFuture::from(js_sys::Promise::new(&mut |resolve, _reject| {
                     let cb = Closure::wrap(Box::new(move |js_value: wasm_bindgen::JsValue| {
                         resolve.call1(&JsValue::NULL, &js_value).unwrap_or_else(|e| {
-                            tracing::error!("Failed to call resolve: {:?}", e);
+                            // 日誌已清空
                             e
                         });
                     }) as Box<dyn FnMut(wasm_bindgen::JsValue)>);
@@ -209,8 +209,8 @@ pub fn Story(props: StoryProps) -> Element {
                 }));
                 let js_value = match settings.await {
                     Ok(val) => val,
-                    Err(e) => {
-                        tracing::error!("Failed to await settings: {:?}", e);
+                    Err(_e) => {
+                        // 日誌已清空
                         return;
                     }
                 };
@@ -385,7 +385,7 @@ pub fn Story(props: StoryProps) -> Element {
                                     let text = match current.texts.iter().find(|t| t.lang == state().current_language) {
                                         Some(t) => t,
                                         None => {
-                                            tracing::error!("No text found for current language in reader_mode loop: {}", state().current_language);
+                                            // 日誌已清空
                                             break;
                                         }
                                     };
@@ -421,7 +421,7 @@ pub fn Story(props: StoryProps) -> Element {
                                             match valid_choice_ids.choose(&mut rand::thread_rng()).cloned() {
                                                 Some(val) => val,
                                                 None => {
-                                                    tracing::error!("No valid choice id found (context_choice_id empty)");
+                                                    // 日誌已清空
                                                     break;
                                                 }
                                             }
@@ -436,7 +436,7 @@ pub fn Story(props: StoryProps) -> Element {
                                                 chosen
                                             },
                                             None => {
-                                                tracing::error!("No valid choice id found (no context_choice_id)");
+                                                // 日誌已清空
                                                 break;
                                             }
                                         }
@@ -587,7 +587,7 @@ pub fn Story(props: StoryProps) -> Element {
                         let settings = wasm_bindgen_futures::JsFuture::from(js_sys::Promise::new(&mut |resolve, _reject| {
                             let cb = Closure::wrap(Box::new(move |js_value: wasm_bindgen::JsValue| {
                                 resolve.call1(&JsValue::NULL, &js_value).unwrap_or_else(|e| {
-                                    tracing::error!("Failed to call resolve: {:?}", e);
+                                    // 日誌已清空
                                     e
                                 });
                             }) as Box<dyn FnMut(wasm_bindgen::JsValue)>);
@@ -596,8 +596,8 @@ pub fn Story(props: StoryProps) -> Element {
                         }));
                         let js_value = match settings.await {
                             Ok(val) => val,
-                            Err(e) => {
-                                tracing::error!("Failed to await settings: {:?}", e);
+                            Err(_e) => {
+                                // 日誌已清空
                                 return;
                             }
                         };
@@ -696,20 +696,22 @@ pub fn Story(props: StoryProps) -> Element {
         });
     }
     
-    // 寫入 context
-    let story_context = story_context.clone();
-    let expanded = _expanded_paragraphs.clone();
-    let state = state.clone();
+    // 主要效果：設置settings、更新paragraph_id、初始化倒數計時
     use_effect(move || {
         let mut story_context = story_context.clone();
-        let expanded = expanded.read();
+        let expanded = _expanded_paragraphs.clone();
+        let state = state.clone();
+        let last_paragraph_id = last_paragraph_id.clone();
+        let mut expanded = expanded.read();
         if let Some(paragraph) = expanded.last() {
             let is_settings_chapter = paragraph.chapter_id == "settingschapter";
             story_context.write().is_settings_chapter.set(is_settings_chapter);
-            if *last_paragraph_id_effect.borrow() != paragraph.id {
-                *last_paragraph_id_effect.borrow_mut() = paragraph.id.clone();
+            if *last_paragraph_id.borrow() != paragraph.id {
+                *last_paragraph_id.borrow_mut() = paragraph.id.clone();
+                // 只在段落ID變動時初始化倒數計時
                 if let Some(_text) = paragraph.texts.iter().find(|t| t.lang == state().current_language) {
                     let countdowns_vec = paragraph.choices.iter().map(|c| c.time_limit.unwrap_or(0)).collect::<Vec<u32>>();
+                    // 日誌已清空
                     story_context.write().countdowns.set(countdowns_vec);
                 }
             }
