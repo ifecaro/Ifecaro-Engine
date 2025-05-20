@@ -225,6 +225,77 @@ pub fn StoryContent(props: StoryContentProps) -> Element {
     
     let is_settings_chapter = story_ctx.read().is_settings_chapter();
     
+    let has_countdown = use_memo(move || countdowns.read().iter().any(|&c| c > 0));
+    let show_choices = use_signal(|| true);
+    {
+        let show_choices = show_choices.clone();
+        let mut is_countdown_paused = is_countdown_paused.clone();
+        let has_countdown = has_countdown.clone();
+        let show_filter = show_filter.clone();
+        use_effect(move || {
+            let mut show_choices = show_choices.clone();
+            if !*has_countdown.read() {
+                show_choices.set(true);
+                is_countdown_paused.set(false);
+                return;
+            }
+            // 遮罩還在時，倒數必須暫停
+            if *show_filter.read() {
+                show_choices.set(false);
+                is_countdown_paused.set(true);
+                return;
+            }
+            if let Some((_, document)) = get_window_document() {
+                let document2 = document.clone();
+                let mut is_countdown_paused = is_countdown_paused.clone();
+                // 一開始就到底，直接顯示選項
+                if let Ok(Some(article)) = document.query_selector("article") {
+                    let scroll_top = article.scroll_top();
+                    let scroll_height = article.scroll_height();
+                    let client_height = article.client_height();
+                    let at_bottom = (scroll_top + client_height as i32) >= scroll_height as i32 - 2;
+                    if at_bottom {
+                        show_choices.set(true);
+                        is_countdown_paused.set(false);
+                    } else {
+                        show_choices.set(false);
+                        is_countdown_paused.set(true);
+                    }
+                }
+                let closure = wasm_bindgen::closure::Closure::wrap(Box::new(move |_event: web_sys::Event| {
+                    if let Ok(Some(article)) = document2.query_selector("article") {
+                        let scroll_top = article.scroll_top();
+                        let scroll_height = article.scroll_height();
+                        let client_height = article.client_height();
+                        let at_bottom = (scroll_top + client_height as i32) >= scroll_height as i32 - 2;
+                        if at_bottom {
+                            show_choices.set(true);
+                            is_countdown_paused.set(false);
+                        } else {
+                            show_choices.set(false);
+                            is_countdown_paused.set(true);
+                        }
+                    }
+                }) as Box<dyn FnMut(_)>);
+                if let Ok(Some(article)) = document.query_selector("article") {
+                    let _ = article.add_event_listener_with_callback("scroll", closure.as_ref().unchecked_ref());
+                }
+                closure.forget();
+            }
+        });
+    }
+    
+    // 動畫 class 控制
+    let fadein_class = if *has_countdown.read() {
+        if *show_choices.read() {
+            "animate-fadein-choices opacity-100"
+        } else {
+            "opacity-0"
+        }
+    } else {
+        ""
+    };
+    
     rsx! {
         div {
             class: "relative story-content-container",
@@ -306,78 +377,95 @@ pub fn StoryContent(props: StoryContentProps) -> Element {
                     }
                 }
                 if is_settings_chapter || !props.reader_mode {
-                    ol {
-                        class: "mt-10 w-full md:w-fit list-decimal",
-                        {choices.iter().enumerate().map(|(index, choice)| {
-                            let caption = choice.caption.clone();
-                            let goto = choice.action.to.clone();
-                            let is_enabled = enabled_choices.contains(&choice.action.to)
-                                && !disabled_by_countdown.read().get(index).copied().unwrap_or(false);
-                            let is_selected = keyboard_state.read().selected_index == index as i32;
-                            let on_click = {
-                                let goto = goto.clone();
-                                let on_choice_click = on_choice_click.clone();
-                                let mut keyboard_state = keyboard_state.clone();
-                                move |evt: Event<MouseData>| {
-                                    evt.stop_propagation();
-                                    if is_enabled {
-                                        keyboard_state.write().selected_index = index as i32;
-                                        on_choice_click.call((goto.clone(), index));
+                    if *show_choices.read() {
+                        ol {
+                            class: format!("mt-10 w-full md:w-fit list-decimal transition-opacity transition-transform duration-500 {}", fadein_class),
+                            {choices.iter().enumerate().map(|(index, choice)| {
+                                let caption = choice.caption.clone();
+                                let goto = choice.action.to.clone();
+                                let is_enabled = enabled_choices.contains(&choice.action.to)
+                                    && !disabled_by_countdown.read().get(index).copied().unwrap_or(false);
+                                let is_selected = keyboard_state.read().selected_index == index as i32;
+                                let on_click = {
+                                    let goto = goto.clone();
+                                    let on_choice_click = on_choice_click.clone();
+                                    let mut keyboard_state = keyboard_state.clone();
+                                    move |evt: Event<MouseData>| {
+                                        evt.stop_propagation();
+                                        if is_enabled {
+                                            keyboard_state.write().selected_index = index as i32;
+                                            on_choice_click.call((goto.clone(), index));
+                                        }
+                                    }
+                                };
+                                let countdown = countdowns.read().get(index).copied().unwrap_or(0);
+                                let max_time = max_times.read().get(index).copied().unwrap_or(0);
+                                let animation_name = format!("progress-bar-{}", index);
+                                let keyframes = format!(
+                                    "@keyframes {} {{ from {{ transform: scaleX(1); }} to {{ transform: scaleX(0); }} }}",
+                                    animation_name
+                                );
+                                let duration = format!("{}s", max_time);
+                                let animation_play_state = if *is_countdown_paused.read() { "paused" } else { "running" };
+                                rsx! {
+                                    li {
+                                        class: {{
+                                            format!(
+                                                "p-4 rounded-lg transition duration-200 relative {} {}",
+                                                if is_enabled {
+                                                    "cursor-pointer text-gray-900 hover:text-gray-700 dark:text-white dark:hover:text-gray-300 transition-opacity transition-transform"
+                                                } else {
+                                                    "opacity-50 cursor-not-allowed text-gray-400 dark:text-gray-400"
+                                                },
+                                                if is_selected {
+                                                    "text-gray-100 dark:text-gray-300"
+                                                } else {
+                                                    ""
+                                                }
+                                            )
+                                        }},
+                                        onclick: on_click,
+                                        span { class: "mr-2", {caption.clone()} }
+                                        { (countdown > 0 && !disabled_by_countdown.read().get(index).copied().unwrap_or(false)).then(|| rsx! {
+                                            style { "{keyframes}" }
+                                            div {
+                                                class: "w-full h-px bg-current mt-2 origin-left will-change-transform",
+                                                style: format!(
+                                                    "animation: {} linear {} forwards;animation-play-state:{};",
+                                                    animation_name, duration, animation_play_state
+                                                ),
+                                                onanimationend: move |_| {
+                                                    if countdown > 0 {
+                                                        let mut arr = disabled_by_countdown.write();
+                                                        if !arr.get(index).copied().unwrap_or(false) {
+                                                            arr[index] = true;
+                                                        }
+                                                    }
+                                                },
+                                            }
+                                        }) }
                                     }
                                 }
-                            };
-                            let countdown = countdowns.read().get(index).copied().unwrap_or(0);
-                            let max_time = max_times.read().get(index).copied().unwrap_or(0);
-                            let animation_name = format!("progress-bar-{}", index);
-                            let keyframes = format!(
-                                "@keyframes {} {{ from {{ transform: scaleX(1); }} to {{ transform: scaleX(0); }} }}",
-                                animation_name
-                            );
-                            let duration = format!("{}s", max_time);
-                            let animation_play_state = if *is_countdown_paused.read() { "paused" } else { "running" };
-                            rsx! {
-                                li {
-                                    class: {{
-                                        format!(
-                                            "p-4 rounded-lg transition duration-200 relative {} {}",
-                                            if is_enabled {
-                                                "cursor-pointer text-gray-900 hover:text-gray-700 dark:text-white dark:hover:text-gray-300 transition-opacity transition-transform"
-                                            } else {
-                                                "opacity-50 cursor-not-allowed text-gray-400 dark:text-gray-400"
-                                            },
-                                            if is_selected {
-                                                "text-gray-100 dark:text-gray-300"
-                                            } else {
-                                                ""
-                                            }
-                                        )
-                                    }},
-                                    onclick: on_click,
-                                    span { class: "mr-2", {caption.clone()} }
-                                    { (countdown > 0).then(|| rsx! {
-                                        style { "{keyframes}" }
-                                        div {
-                                            class: "w-full h-px bg-current mt-2 origin-left will-change-transform",
-                                            style: format!(
-                                                "animation: {} linear {} forwards;animation-play-state:{};",
-                                                animation_name, duration, animation_play_state
-                                            ),
-                                            onanimationend: move |_| {
-                                                if countdown > 0 {
-                                                    let mut arr = disabled_by_countdown.write();
-                                                    if !arr.get(index).copied().unwrap_or(false) {
-                                                        arr[index] = true;
-                                                    }
-                                                }
-                                            },
-                                        }
-                                    }) }
-                                }
-                            }
-                        })}
+                            })}
+                        }
                     }
                 }
             }
         }
     }
-} 
+}
+
+/*
+@layer utilities {
+  @keyframes fadein-choices {
+    from { opacity: 0; transform: translateY(1.5rem); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .animate-fadein-choices {
+    animation: fadein-choices 0.7s cubic-bezier(0.4,0,0.2,1) forwards;
+    will-change: opacity, transform;
+  }
+  .opacity-0 { opacity: 0; }
+  .opacity-100 { opacity: 1; }
+}
+*/ 
