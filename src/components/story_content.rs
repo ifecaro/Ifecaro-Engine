@@ -207,6 +207,22 @@ pub fn StoryContent(props: StoryContentProps) -> Element {
     
     use_effect(move || show_filter.set(true));
     
+    // 監聽自訂事件 show_filter，收到時顯示遮罩
+    {
+        let show_filter = show_filter.clone();
+        use_effect(move || {
+            if let Some((_, document)) = get_window_document() {
+                let mut show_filter = show_filter.clone();
+                let handler = wasm_bindgen::closure::Closure::wrap(Box::new(move |_event: web_sys::CustomEvent| {
+                    show_filter.set(true);
+                }) as Box<dyn FnMut(web_sys::CustomEvent)>);
+                document.add_event_listener_with_callback("show_filter", handler.as_ref().unchecked_ref()).unwrap();
+                handler.forget();
+            }
+            (|| {})()
+        });
+    }
+    
     let is_settings_chapter = story_ctx.read().is_settings_chapter();
     
     rsx! {
@@ -231,6 +247,9 @@ pub fn StoryContent(props: StoryContentProps) -> Element {
                         }
                     }
                 }
+            },
+            onblur: move |_| {
+                show_filter.set(true);
             },
             div {
                 class: {

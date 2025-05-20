@@ -18,6 +18,7 @@ use rand::prelude::SliceRandom;
 use std::rc::Rc;
 use std::cell::RefCell;
 use crate::contexts::story_merged_context::{use_story_merged_context, provide_story_merged_context};
+use tracing;
 
 #[derive(Deserialize, Clone, Debug)]
 #[allow(dead_code)]
@@ -718,6 +719,29 @@ pub fn Story(props: StoryProps) -> Element {
         }
         ()
     });
+    
+    // 監聽頁面可見性變化，失去焦點時顯示遮罩
+    {
+        use_effect(move || {
+            use wasm_bindgen::JsCast;
+            use web_sys::window;
+            let window = window().unwrap();
+            let document = std::rc::Rc::new(window.document().unwrap());
+            let doc_cloned = std::rc::Rc::clone(&document);
+            let closure = wasm_bindgen::closure::Closure::wrap(Box::new(move || {
+                let hidden = doc_cloned.hidden();
+                if hidden {
+                    if let Some(container) = doc_cloned.query_selector(".story-content-container").ok().flatten() {
+                        let event = web_sys::CustomEvent::new("show_filter").unwrap();
+                        let _ = container.dispatch_event(&event);
+                    }
+                }
+            }) as Box<dyn FnMut()>);
+            document.add_event_listener_with_callback("visibilitychange", closure.as_ref().unchecked_ref()).unwrap();
+            closure.forget();
+            (|| {})()
+        });
+    }
     
     let reader_mode = settings_context.read().settings.get("reader_mode").map(|v| v == "true").unwrap_or(false);
     // 取得目前章節標題
