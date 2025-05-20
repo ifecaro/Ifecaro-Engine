@@ -205,7 +205,13 @@ pub fn StoryContent(props: StoryContentProps) -> Element {
         is_mobile.set(*is_mobile_memo.read());
     });
     
-    use_effect(move || show_filter.set(true));
+    use_effect(move || {
+        if *is_mobile_memo.read() {
+            show_filter.set(false);
+        } else {
+            show_filter.set(true);
+        }
+    });
     
     // 監聽自訂事件 show_filter，收到時顯示遮罩
     {
@@ -329,10 +335,12 @@ pub fn StoryContent(props: StoryContentProps) -> Element {
                     )
                 },
                 onclick: move |_| {
-                    show_filter.set(false);
-                    if let Some((_, document)) = get_window_document() {
-                        if let Ok(Some(container)) = document.query_selector(".story-content-container") {
-                            let _ = container.unchecked_into::<web_sys::HtmlElement>().focus();
+                    if !*is_mobile.read() {
+                        show_filter.set(false);
+                        if let Some((_, document)) = get_window_document() {
+                            if let Ok(Some(container)) = document.query_selector(".story-content-container") {
+                                let _ = container.unchecked_into::<web_sys::HtmlElement>().focus();
+                            }
                         }
                     }
                 },
