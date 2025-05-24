@@ -1,0 +1,13 @@
+version: "3.8"
+services:
+  app:
+    build: .
+    volumes:
+      - ./:/app
+    ports:
+      - "9999:9999"
+      - "3000:3000"
+    environment:
+      - RUST_LOG=debug
+
+    command: bash -c "tailwindcss -i ./src/input.css -o ./public/tailwind.css -w & dx serve --port 9999"
