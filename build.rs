@@ -3,6 +3,8 @@ use std::fs;
 use std::path::Path;
 
 fn main() {
+    dotenv::dotenv().ok();
+
     // Compile Tailwind CSS
     println!("Compiling Tailwind CSS...");
     let tailwind_status = Command::new("tailwindcss")
@@ -93,10 +95,11 @@ fn main() {
 
         // Upload file to server (Unix/Linux only)
         println!("Uploading file to server...");
+        let scp_target = std::env::var("SCP_TARGET").unwrap_or_else(|_| "togekk@38.242.233.231:~/ifecaro".to_string());
         let scp_status = Command::new("scp")
             .args([
                 "target/dx/ifecaro/release/web/public.tar.gz",
-                "togekk@38.242.233.231:~/ifecaro",
+                &scp_target,
             ])
             .status()
             .expect("Failed to execute scp command");

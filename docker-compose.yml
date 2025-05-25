@@ -4,10 +4,11 @@ services:
     build: .
     volumes:
       - ./:/app
+      - ~/.ssh:/root/.ssh:ro
     ports:
       - "9999:9999"
-      - "3000:3000"
+    env_file:
+      - .env
     environment:
       - RUST_LOG=debug
-
-    command: bash -c "tailwindcss -i ./src/input.css -o ./public/tailwind.css -w & dx serve --port 9999"
+    command: bash -c "mkdir -p /root/.ssh && ssh-keyscan 38.242.233.231 >> /root/.ssh/known_hosts; tailwindcss -i ./src/input.css -o ./public/tailwind.css -w & dx serve --port 9999"

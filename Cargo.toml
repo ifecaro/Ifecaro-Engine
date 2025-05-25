@@ -93,3 +93,4 @@ path = "build.rs"
 [dev-dependencies]
 dioxus-ssr = "0.6.2"
 pretty_assertions = "1.4.1"
+dotenv = "0.15"
