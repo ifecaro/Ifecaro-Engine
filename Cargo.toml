@@ -59,6 +59,7 @@ tracing = { version = "0.1.40", features = [
 dioxus-logger = { git = "https://github.com/DogeDark/dioxus-logger.git" }
 dioxus-core = "0.6.3"
 gloo-timers = { version = "0.3", features = ["futures"] }
+dotenv = "0.15"
 
 [profile]
 
@@ -93,4 +94,3 @@ path = "build.rs"
 [dev-dependencies]
 dioxus-ssr = "0.6.2"
 pretty_assertions = "1.4.1"
-dotenv = "0.15"
