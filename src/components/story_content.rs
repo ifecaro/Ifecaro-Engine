@@ -7,6 +7,8 @@ use wasm_bindgen::JsCast;
 use web_sys::{Window, Document};
 use dioxus_i18n::t;
 use crate::contexts::story_context::use_story_context;
+use std::collections::hash_map::DefaultHasher;
+use std::hash::{Hash, Hasher};
 
 #[derive(Props, Clone, PartialEq)]
 pub struct StoryContentProps {
@@ -182,13 +184,6 @@ pub fn StoryContent(props: StoryContentProps) -> Element {
     let mut is_focused = use_signal(|| false);
     let mut is_mobile = use_signal(|| false);
     let is_countdown_paused = use_signal(|| true);
-    {
-        let show_filter = show_filter.clone();
-        let mut is_countdown_paused = is_countdown_paused.clone();
-        use_effect(move || {
-            is_countdown_paused.set(*show_filter.read());
-        });
-    }
     
     let is_mobile_memo = use_memo(move || {
         if let Some((window, _)) = get_window_document() {
@@ -232,7 +227,7 @@ pub fn StoryContent(props: StoryContentProps) -> Element {
     let is_settings_chapter = story_ctx.read().is_settings_chapter();
     
     let has_countdown = use_memo(move || countdowns.read().iter().any(|&c| c > 0));
-    let show_choices = use_signal(|| true);
+    let show_choices = use_signal(|| !*has_countdown.read());
     {
         let show_choices = show_choices.clone();
         let mut is_countdown_paused = is_countdown_paused.clone();
@@ -252,6 +247,21 @@ pub fn StoryContent(props: StoryContentProps) -> Element {
                 return;
             }
             if let Some((_, document)) = get_window_document() {
+                // 先檢查當前滾動狀態
+                if let Ok(Some(article)) = document.query_selector("article") {
+                    let rect = article.get_bounding_client_rect();
+                    let window = web_sys::window().unwrap();
+                    let inner_height = window.inner_height().unwrap().as_f64().unwrap_or(0.0);
+                    let at_bottom = rect.bottom() <= inner_height + 2.0;
+                    if at_bottom {
+                        show_choices.set(true);
+                        is_countdown_paused.set(false);
+                    } else {
+                        show_choices.set(false);
+                        is_countdown_paused.set(true);
+                    }
+                }
+                
                 // 監聽 window
                 let mut show_choices_w = show_choices.clone();
                 let mut is_countdown_paused_w = is_countdown_paused.clone();
@@ -399,7 +409,11 @@ pub fn StoryContent(props: StoryContentProps) -> Element {
                             };
                             let countdown = countdowns.read().get(index).copied().unwrap_or(0);
                             let max_time = max_times.read().get(index).copied().unwrap_or(0);
-                            let animation_name = format!("progress-bar-{}", index);
+                            // 使用段落內容的 hash 來確保每個段落的動畫都是獨立的
+                            let mut hasher = DefaultHasher::new();
+                            props.paragraph.read().hash(&mut hasher);
+                            let paragraph_hash = hasher.finish();
+                            let animation_name = format!("progress-bar-{}-{}", index, paragraph_hash);
                             let keyframes = format!(
                                 "@keyframes {} {{ from {{ transform: scaleX(1); }} to {{ transform: scaleX(0); }} }}",
                                 animation_name
