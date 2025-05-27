@@ -770,6 +770,19 @@ pub fn Story(props: StoryProps) -> Element {
             }
         }
     };
+    let current_paragraph_id = use_signal(|| String::new());
+    
+    // 監聽 _expanded_paragraphs 變化並更新 current_paragraph_id
+    {
+        let mut current_paragraph_id = current_paragraph_id.clone();
+        let _expanded_paragraphs = _expanded_paragraphs.clone();
+        use_effect(move || {
+            let expanded = _expanded_paragraphs.read();
+            let new_id = expanded.last().map(|p| p.id.clone()).unwrap_or_default();
+            current_paragraph_id.set(new_id);
+        });
+    }
+    
     rsx! {
         StoryContent {
             paragraph: story_merged_context.read().merged_paragraph.clone(),
@@ -782,6 +795,7 @@ pub fn Story(props: StoryProps) -> Element {
             disabled_by_countdown: disabled_by_countdown.clone(),
             reader_mode: reader_mode,
             chapter_title: chapter_title,
+            current_paragraph_id: current_paragraph_id,
         }
     }
 }

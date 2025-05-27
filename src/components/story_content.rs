@@ -9,6 +9,10 @@ use dioxus_i18n::t;
 use crate::contexts::story_context::use_story_context;
 use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
+use crate::services::indexeddb::{set_disabled_choice_to_indexeddb, get_disabled_choices_from_indexeddb};
+use wasm_bindgen::closure::Closure;
+use wasm_bindgen::JsValue;
+use wasm_bindgen_futures::spawn_local;
 
 #[derive(Props, Clone, PartialEq)]
 pub struct StoryContentProps {
@@ -22,6 +26,7 @@ pub struct StoryContentProps {
     pub disabled_by_countdown: Signal<Vec<bool>>,
     pub reader_mode: bool,
     pub chapter_title: String,
+    pub current_paragraph_id: Signal<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -147,6 +152,9 @@ pub fn StoryContent(props: StoryContentProps) -> Element {
     let max_times = props.max_times.clone();
     let progress_started = props.progress_started.clone();
     let mut disabled_by_countdown = props.disabled_by_countdown.clone();
+    
+    // 使用從 props 傳入的當前段落 ID signal
+    let current_paragraph_id_signal = props.current_paragraph_id.clone();
     {
         let mut countdowns = countdowns.clone();
         let mut max_times = max_times.clone();
@@ -177,6 +185,53 @@ pub fn StoryContent(props: StoryContentProps) -> Element {
         use_effect(move || {
             let time_limits = story_ctx.read().countdowns.read().clone();
             disabled_by_countdown.set(vec![false; time_limits.len()]);
+        });
+    }
+    
+    // 從 IndexedDB 載入停用狀態
+    {
+        let mut disabled_by_countdown = disabled_by_countdown.clone();
+        let current_paragraph_id_signal = current_paragraph_id_signal.clone();
+        let story_ctx = story_ctx.clone();
+        use_effect(move || {
+            let paragraph_id = current_paragraph_id_signal.read().clone();
+            if paragraph_id.is_empty() {
+                return;
+            }
+            
+            // 檢查是否是設定章節，如果是則跳過
+            let is_settings_chapter = story_ctx.read().is_settings_chapter();
+            if is_settings_chapter {
+                return;
+            }
+            
+            let paragraph_id_for_async = paragraph_id.clone();
+            spawn_local(async move {
+                let (tx, rx) = futures_channel::oneshot::channel();
+                let cb = Closure::once(Box::new(move |js_value: JsValue| {
+                    let disabled_indices: Vec<usize> = if let Ok(array) = js_value.dyn_into::<js_sys::Array>() {
+                        array.iter()
+                            .filter_map(|v| v.as_f64().map(|n| n as usize))
+                            .collect()
+                    } else {
+                        Vec::new()
+                    };
+                    let _ = tx.send(disabled_indices);
+                }) as Box<dyn FnOnce(JsValue)>);
+                
+                get_disabled_choices_from_indexeddb(&paragraph_id_for_async, cb.as_ref().unchecked_ref());
+                cb.forget();
+                
+                if let Ok(disabled_indices) = rx.await {
+                    let mut current_disabled = disabled_by_countdown.read().clone();
+                    for &index in &disabled_indices {
+                        if index < current_disabled.len() {
+                            current_disabled[index] = true;
+                        }
+                    }
+                    disabled_by_countdown.set(current_disabled);
+                }
+            });
         });
     }
     
@@ -420,6 +475,8 @@ pub fn StoryContent(props: StoryContentProps) -> Element {
                             );
                             let duration = format!("{}s", max_time);
                             let animation_play_state = if *is_countdown_paused.read() { "paused" } else { "running" };
+                            let current_paragraph_id_clone = current_paragraph_id_signal.read().clone();
+                            let story_ctx_clone = story_ctx.clone();
                             rsx! {
                                 li {
                                     class: {{
@@ -452,6 +509,12 @@ pub fn StoryContent(props: StoryContentProps) -> Element {
                                                     let mut arr = disabled_by_countdown.write();
                                                     if !arr.get(index).copied().unwrap_or(false) {
                                                         arr[index] = true;
+                                                        // 保存停用狀態到 IndexedDB（設定章節除外）
+                                                        let is_settings_chapter = story_ctx_clone.read().is_settings_chapter();
+                                                        if !current_paragraph_id_clone.is_empty() && !is_settings_chapter {
+                                                            set_disabled_choice_to_indexeddb(&current_paragraph_id_clone, index as u32);
+                                                        } else if is_settings_chapter {
+                                                        }
                                                     }
                                                 }
                                             },
