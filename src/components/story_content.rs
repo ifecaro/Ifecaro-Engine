@@ -13,6 +13,7 @@ use crate::services::indexeddb::{set_disabled_choice_to_indexeddb, get_disabled_
 use wasm_bindgen::closure::Closure;
 use wasm_bindgen::JsValue;
 use wasm_bindgen_futures::spawn_local;
+use crate::contexts::settings_context::use_settings_context;
 
 #[derive(Props, Clone, PartialEq)]
 pub struct StoryContentProps {
@@ -148,6 +149,7 @@ pub fn StoryContent(props: StoryContentProps) -> Element {
     let on_choice_click = props.on_choice_click.clone();
     let mut keyboard_state = use_context::<Signal<KeyboardState>>();
     let story_ctx = use_story_context();
+    let settings_ctx = use_settings_context();
     let countdowns = props.countdowns.clone();
     let max_times = props.max_times.clone();
     let progress_started = props.progress_started.clone();
@@ -358,6 +360,13 @@ pub fn StoryContent(props: StoryContentProps) -> Element {
         "opacity-0 pointer-events-none"
     };
     
+    // 檢查 time_left 設定
+    let time_left_enabled = use_memo(move || {
+        settings_ctx.read().settings.get("time_left")
+            .map(|v| v != "false")
+            .unwrap_or(false) // 預設為不啟用
+    });
+    
     rsx! {
         div {
             class: "relative story-content-container",
@@ -499,7 +508,9 @@ pub fn StoryContent(props: StoryContentProps) -> Element {
                                     { (countdown > 0 && !disabled_by_countdown.read().get(index).copied().unwrap_or(false)).then(|| rsx! {
                                         style { "{keyframes}" }
                                         div {
-                                            class: "w-full h-px bg-current mt-2 origin-left will-change-transform",
+                                            class: format!("w-full h-px bg-current mt-2 origin-left will-change-transform {}", 
+                                                if *time_left_enabled.read() { "" } else { "opacity-0" }
+                                            ),
                                             style: format!(
                                                 "animation: {} linear {} forwards;animation-play-state:{};",
                                                 animation_name, duration, animation_play_state
