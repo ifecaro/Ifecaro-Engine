@@ -32,6 +32,9 @@ pub fn ChoiceOptions(props: ChoiceOptionsProps) -> Element {
     rsx! {
         // 渲染所有選項
         {props.choices.iter().enumerate().map(|(index, (caption, goto_list, action_type, action_key, action_value, target_chapter, same_page, time_limit))| {
+            // 檢查動作類型是否為空（None）
+            let is_action_disabled = action_type.is_empty();
+            
             rsx! {
                 div {
                     key: "{index}",
@@ -132,31 +135,43 @@ pub fn ChoiceOptions(props: ChoiceOptionsProps) -> Element {
                                         }
                                     }
 
-                                    InputField {
-                                        label: t!("action_key"),
-                                        placeholder: t!("action_key"),
-                                        value: action_key.clone().unwrap_or_default(),
-                                        required: false,
-                                        has_error: false,
-                                        on_input: move |value: String| {
-                                            props.on_choice_change.call((index, "action_key".to_string(), value));
-                                        },
-                                        on_blur: move |_| {}
+                                    div {
+                                        class: if is_action_disabled { "opacity-50" } else { "" },
+                                        InputField {
+                                            label: t!("action_key"),
+                                            placeholder: t!("action_key"),
+                                            value: action_key.clone().unwrap_or_default(),
+                                            required: false,
+                                            has_error: false,
+                                            disabled: is_action_disabled,
+                                            on_input: move |value: String| {
+                                                if !is_action_disabled {
+                                                    props.on_choice_change.call((index, "action_key".to_string(), value));
+                                                }
+                                            },
+                                            on_blur: move |_| {}
+                                        }
                                     }
 
-                                    InputField {
-                                        label: t!("action_value"),
-                                        placeholder: t!("action_value"),
-                                        value: action_value.clone().map(|v| match v {
-                                            serde_json::Value::String(s) => s.clone(),
-                                            _ => v.to_string()
-                                        }).unwrap_or_default(),
-                                        required: false,
-                                        has_error: false,
-                                        on_input: move |value: String| {
-                                            props.on_choice_change.call((index, "action_value".to_string(), value));
-                                        },
-                                        on_blur: move |_| {}
+                                    div {
+                                        class: if is_action_disabled { "opacity-50" } else { "" },
+                                        InputField {
+                                            label: t!("action_value"),
+                                            placeholder: t!("action_value"),
+                                            value: action_value.clone().map(|v| match v {
+                                                serde_json::Value::String(s) => s.clone(),
+                                                _ => v.to_string()
+                                            }).unwrap_or_default(),
+                                            required: false,
+                                            has_error: false,
+                                            disabled: is_action_disabled,
+                                            on_input: move |value: String| {
+                                                if !is_action_disabled {
+                                                    props.on_choice_change.call((index, "action_value".to_string(), value));
+                                                }
+                                            },
+                                            on_blur: move |_| {}
+                                        }
                                     }
                                 }
                             }
