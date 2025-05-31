@@ -28,7 +28,7 @@ pub struct Choice {
     pub action: Action,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize)]
 pub struct Action {
     #[serde(rename = "type")]
     pub type_: String,
@@ -36,5 +36,43 @@ pub struct Action {
     pub key: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub value: Option<serde_json::Value>,
-    pub to: String,
+    pub to: Vec<String>,
+}
+
+impl<'de> serde::Deserialize<'de> for Action {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        #[derive(Deserialize)]
+        #[serde(untagged)]
+        enum ToField {
+            Multiple(Vec<String>),
+            Single(String),
+        }
+        
+        #[derive(Deserialize)]
+        struct Helper {
+            #[serde(rename = "type")]
+            type_: String,
+            #[serde(default, skip_serializing_if = "Option::is_none")]
+            key: Option<String>,
+            #[serde(default, skip_serializing_if = "Option::is_none")]
+            value: Option<serde_json::Value>,
+            to: ToField,
+        }
+        
+        let helper = Helper::deserialize(deserializer)?;
+        let to = match helper.to {
+            ToField::Multiple(vec) => vec,
+            ToField::Single(s) => if s.is_empty() { Vec::new() } else { vec![s] },
+        };
+        
+        Ok(Action {
+            type_: helper.type_,
+            key: helper.key,
+            value: helper.value,
+            to,
+        })
+    }
 } 

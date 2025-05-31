@@ -70,7 +70,7 @@ impl From<crate::models::story::Choice> for Choice {
                 type_: choice.action.type_,
                 key: choice.action.key,
                 value: choice.action.value,
-                to: choice.action.to,
+                to: choice.action.to.first().cloned().unwrap_or_default(),
             },
         }
     }
