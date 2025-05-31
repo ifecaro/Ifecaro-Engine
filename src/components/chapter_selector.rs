@@ -75,12 +75,18 @@ pub fn ChapterSelector(props: ChapterSelectorProps) -> Element {
         props.chapters.iter()
             .find(|c| c.id == props.value)
             .map(|c| {
-                c.titles.iter()
-                    .find(|t| t.lang == selected_lang)
-                    .or_else(|| c.titles.iter().find(|t| t.lang == "en-US" || t.lang == "en-GB"))
-                    .or_else(|| c.titles.first())
-                    .map(|t| t.title.clone())
-                    .unwrap_or_default()
+                // 先尋找當前語言的翻譯
+                if let Some(title) = c.titles.iter().find(|t| t.lang == selected_lang) {
+                    title.title.clone()
+                } else {
+                    // 如果找不到當前語言的翻譯，使用英文或第一個可用的翻譯，並加上未翻譯標示
+                    let fallback_title = c.titles.iter()
+                        .find(|t| t.lang == "en-US" || t.lang == "en-GB")
+                        .or_else(|| c.titles.first())
+                        .map(|t| t.title.clone())
+                        .unwrap_or_default();
+                    format!("（{}）{}", t!("untranslated"), fallback_title)
+                }
             })
             .unwrap_or_else(|| props.label.clone())
     };
@@ -88,12 +94,18 @@ pub fn ChapterSelector(props: ChapterSelectorProps) -> Element {
     // 定義顯示函數，使用 thread_local 變量獲取當前選擇的語言
     fn display_chapter_title(chapter: &Chapter) -> String {
         let selected_lang = SELECTED_LANGUAGE.with(|lang| lang.borrow().clone());
-        chapter.titles.iter()
-            .find(|t| t.lang == selected_lang)
-            .or_else(|| chapter.titles.iter().find(|t| t.lang == "en-US" || t.lang == "en-GB"))
-            .or_else(|| chapter.titles.first())
-            .map(|t| t.title.clone())
-            .unwrap_or_default()
+        // 先尋找當前語言的翻譯
+        if let Some(title) = chapter.titles.iter().find(|t| t.lang == selected_lang) {
+            title.title.clone()
+        } else {
+            // 如果找不到當前語言的翻譯，使用英文或第一個可用的翻譯，並加上未翻譯標示
+            let fallback_title = chapter.titles.iter()
+                .find(|t| t.lang == "en-US" || t.lang == "en-GB")
+                .or_else(|| chapter.titles.first())
+                .map(|t| t.title.clone())
+                .unwrap_or_default();
+            format!("（{}）{}", dioxus_i18n::t!("untranslated"), fallback_title)
+        }
     }
 
     rsx! {

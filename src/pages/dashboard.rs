@@ -993,12 +993,45 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
                                                         // 如果找不到當前語言的翻譯，只清空段落內容和選項標題
                                                         paragraphs.set(String::new());
                                                         
-                                                        // 保留目標章節和段落的選擇，只清空選項標題
+                                                        // 保留目標章節和段落的選擇，只清空選項標題，但重新生成目標段落預覽
                                                         let current_choices = choices.read().clone();
-                                                        let new_choices = current_choices.iter().map(|(_, to, type_, key, value, _target_chapter, _same_page, _time_limit)| {
-                                                            (String::new(), to.clone(), type_.clone(), key.clone(), value.clone(), String::new(), false, None)
+                                                        let new_choices = current_choices.iter().map(|(_, to, type_, key, value, target_chapter, same_page, time_limit)| {
+                                                            (String::new(), to.clone(), type_.clone(), key.clone(), value.clone(), target_chapter.clone(), *same_page, *time_limit)
                                                         }).collect();
                                                         choices.set(new_choices);
+                                                        
+                                                        // 重新生成所有目標段落的預覽，使用當前語言
+                                                        let mut current_paragraphs = choice_paragraphs.read().clone();
+                                                        for (index, (_, _, _, _, _, target_chapter, _, _)) in current_choices.iter().enumerate() {
+                                                            if !target_chapter.is_empty() {
+                                                                let chapter_paragraphs = paragraph_state.read().get_by_chapter(target_chapter);
+                                                                let filtered_paragraphs = chapter_paragraphs.iter()
+                                                                    .map(|item| {
+                                                                        let has_translation = item.texts.iter().any(|text| text.lang == current_lang);
+                                                                        let preview = item.texts.iter()
+                                                                            .find(|t| t.lang == current_lang)
+                                                                            .or_else(|| item.texts.iter().find(|t| t.lang == "en-US" || t.lang == "en-GB"))
+                                                                            .or_else(|| item.texts.first())
+                                                                            .map(|text| {
+                                                                                match text.paragraphs.lines().next() {
+                                                                                    Some(line) => line.to_string(),
+                                                                                    None => String::new(),
+                                                                                }
+                                                                            })
+                                                                            .unwrap_or_else(|| format!("[{}]", item.id));
+                                                                        crate::components::paragraph_list::Paragraph {
+                                                                            id: item.id.clone(),
+                                                                            preview,
+                                                                            has_translation,
+                                                                        }
+                                                                    })
+                                                                    .collect::<Vec<_>>();
+                                                                if index < current_paragraphs.len() {
+                                                                    current_paragraphs[index] = filtered_paragraphs;
+                                                                }
+                                                            }
+                                                        }
+                                                        choice_paragraphs.set(current_paragraphs);
                                                     }
                                                 }
                                             }
