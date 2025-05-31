@@ -191,6 +191,8 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
     let update_paragraph_previews = Rc::new(RefCell::new(move || {
         let selected_language = if let Ok(lang) = paragraph_language.try_read() { lang.clone() } else { return; };
         let selected_chapter_id = if let Ok(chap) = selected_chapter.try_read() { chap.clone() } else { return; };
+        let interface_language = language_state.read().current_language.clone();
+        
         if selected_language.is_empty() || selected_chapter_id.is_empty() {
             if let Ok(mut ap) = available_paragraphs.try_write() { ap.clear(); }
             return;
@@ -207,6 +209,7 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
                 let preview = p.texts
                     .iter()
                     .find(|text| text.lang == selected_language)
+                    .or_else(|| p.texts.iter().find(|text| text.lang == interface_language))
                     .or_else(|| p.texts.iter().find(|text| text.lang == "en-US" || text.lang == "en-GB"))
                     .or_else(|| p.texts.first())
                     .map(|text| {
@@ -494,6 +497,7 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
                     }
                     if !value.is_empty() {
                         let selected_lang = paragraph_language.read().clone();
+                        let interface_language = language_state.read().current_language.clone();
                         // 從 context 中獲取段落
                         let chapter_paragraphs = paragraph_state.read().get_by_chapter(&value);
                         let filtered_paragraphs = chapter_paragraphs.iter()
@@ -501,6 +505,7 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
                                 let has_translation = item.texts.iter().any(|text| text.lang == selected_lang);
                                 let preview = item.texts.iter()
                                     .find(|t| t.lang == selected_lang)
+                                    .or_else(|| item.texts.iter().find(|t| t.lang == interface_language))
                                     .or_else(|| item.texts.iter().find(|t| t.lang == "en-US" || t.lang == "en-GB"))
                                     .or_else(|| item.texts.first())
                                     .map(|text| {
@@ -1010,6 +1015,7 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
                                                                         let has_translation = item.texts.iter().any(|text| text.lang == current_lang);
                                                                         let preview = item.texts.iter()
                                                                             .find(|t| t.lang == current_lang)
+                                                                            .or_else(|| item.texts.iter().find(|t| t.lang == language_state.read().current_language))
                                                                             .or_else(|| item.texts.iter().find(|t| t.lang == "en-US" || t.lang == "en-GB"))
                                                                             .or_else(|| item.texts.first())
                                                                             .map(|text| {
@@ -1291,12 +1297,15 @@ fn process_paragraph_select(
         
         if !target_chapter_id.is_empty() {
             let selected_lang = paragraph_language.read().clone();
+            // 獲取界面語言作為回退選項
+            let interface_lang = CURRENT_LANGUAGE.with(|lang| lang.borrow().clone());
             let filtered_paragraphs = paragraph_state.read().get_by_chapter(&target_chapter_id)
                 .iter()
                 .map(|item| {
                     let has_translation = item.texts.iter().any(|text| text.lang == selected_lang);
                     let preview = item.texts.iter()
                         .find(|t| t.lang == selected_lang)
+                        .or_else(|| item.texts.iter().find(|t| t.lang == interface_lang))
                         .or_else(|| item.texts.iter().find(|t| t.lang == "en-US" || t.lang == "en-GB"))
                         .or_else(|| item.texts.first())
                         .map(|text| {
