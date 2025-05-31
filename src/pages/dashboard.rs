@@ -130,26 +130,13 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
     });
 
     let mut paragraphs = use_signal(|| String::new());
-    let mut choices = use_signal(|| {
-        let mut initial_choices = Vec::new();
-        initial_choices.push((
-            String::new(),
-            Vec::<String>::new(),
-            String::new(),
-            None,
-            None,
-            String::new(),
-            false,
-            None,
-        ));
-        initial_choices
-    });
-    let mut choice_chapters_open = use_signal(|| vec![false]);
-    let mut choice_chapters_search = use_signal(|| vec![String::new()]);
-    let mut choice_paragraphs_open = use_signal(|| vec![false]);
-    let mut choice_paragraphs_search = use_signal(|| vec![String::new()]);
-    let mut choice_paragraphs = use_signal(|| vec![Vec::<crate::components::paragraph_list::Paragraph>::new()]);
-    let mut action_type_open = use_signal(|| vec![false]);
+    let mut choices = use_signal(|| Vec::new());
+    let mut choice_chapters_open = use_signal(|| Vec::new());
+    let mut choice_chapters_search = use_signal(|| Vec::new());
+    let mut choice_paragraphs_open = use_signal(|| Vec::new());
+    let mut choice_paragraphs_search = use_signal(|| Vec::new());
+    let mut choice_paragraphs = use_signal(|| Vec::new());
+    let mut action_type_open = use_signal(|| Vec::new());
     let _show_extra_options = use_signal(|| Vec::<()>::new());
     let mut show_toast = use_signal(|| false);
     let mut toast_visible = use_signal(|| false);
@@ -355,7 +342,7 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
             false
         };
         let choices_valid = if let Ok(choices) = choices.try_read() {
-            choices.iter().all(|(_choice_text, to, type_, _key, _value, _target_chapter, _same_page, _time_limit)| {
+            choices.iter().all(|(_choice_text, to, type_, _key, _value, _target_chapter, _same_page, _time_limit): &(String, Vec<String>, String, Option<String>, Option<serde_json::Value>, String, bool, Option<u32>)| {
                 let has_content = !to.is_empty() || !type_.trim().is_empty();
                 if has_content {
                     !to.is_empty()
@@ -408,10 +395,10 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
                                     ContextParagraphChoice::Simple(texts) => (texts.clone(), "goto".to_string(), None, None, false, None),
                                     ContextParagraphChoice::SimpleOld(text) => (vec![text.clone()], "goto".to_string(), None, None, false, None),
                                     ContextParagraphChoice::Complex { to, type_, key, value, same_page, time_limit, .. } => {
-                                        (to.clone(), type_.clone(), key.clone(), value.clone(), same_page.unwrap_or(false), *time_limit)
+                                        (to.clone(), type_.clone(), key.clone(), value.clone(), same_page.unwrap_or(false), time_limit.clone())
                                     },
                                     ContextParagraphChoice::ComplexOld { to, type_, key, value, same_page, time_limit, .. } => {
-                                        (vec![to.clone()], type_.clone(), key.clone(), value.clone(), same_page.unwrap_or(false), *time_limit)
+                                        (vec![to.clone()], type_.clone(), key.clone(), value.clone(), same_page.unwrap_or(false), time_limit.clone())
                                     },
                                 };
                                 
@@ -894,35 +881,19 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
     let mut reset_choices = move || {
         let mut choices_write = choices.write();
         choices_write.clear();
-        choices_write.push((
-            String::new(),
-            Vec::<String>::new(),
-            String::new(),
-            None,
-            None,
-            String::new(),
-            false,
-            None,
-        ));
         
         // 重置相關的選項狀態
         action_type_open.write().clear();
-        action_type_open.write().push(false);
         
         choice_chapters_open.write().clear();
-        choice_chapters_open.write().push(false);
         
         choice_chapters_search.write().clear();
-        choice_chapters_search.write().push(String::new());
         
         choice_paragraphs_open.write().clear();
-        choice_paragraphs_open.write().push(false);
         
         choice_paragraphs_search.write().clear();
-        choice_paragraphs_search.write().push(String::new());
         
         choice_paragraphs.write().clear();
-        choice_paragraphs.write().push(Vec::new());
     };
 
     rsx! {
