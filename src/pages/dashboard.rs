@@ -479,7 +479,12 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
                     choice.1 = value.split(',').map(|s| s.trim().to_string()).collect();
                 },
                 "action_type" => {
-                    choice.2 = value;
+                    choice.2 = value.clone();
+                    // 當動作類型設為空（None）時，清空動作鍵值和動作值
+                    if value.is_empty() {
+                        choice.3 = None;
+                        choice.4 = None;
+                    }
                 },
                 "action_key" => {
                     choice.3 = Some(value);

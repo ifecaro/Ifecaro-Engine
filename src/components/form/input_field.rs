@@ -10,11 +10,14 @@ pub struct InputFieldProps {
     on_input: EventHandler<String>,
     on_blur: EventHandler<()>,
     children: Option<Element>,
+    #[props(default = false)]
+    disabled: bool,
 }
 
 #[component]
 pub fn InputField(props: InputFieldProps) -> Element {
     let error_class = if props.has_error { "border-red-500" } else { "" };
+    let disabled_class = if props.disabled { "bg-gray-100 dark:bg-gray-600 cursor-not-allowed" } else { "" };
     
     rsx! {
         div { class: "space-y-2",
@@ -34,13 +37,22 @@ pub fn InputField(props: InputFieldProps) -> Element {
             }
             div { class: "flex items-center space-x-3",
                 input {
-                    class: "flex-1 block w-full px-4 py-2.5 text-sm border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 dark:bg-gray-700 dark:text-white {error_class}",
+                    class: "flex-1 block w-full px-4 py-2.5 text-sm border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 dark:bg-gray-700 dark:text-white {error_class} {disabled_class}",
                     r#type: "text",
                     placeholder: "{props.placeholder}",
                     required: props.required,
+                    disabled: props.disabled,
                     value: "{props.value}",
-                    oninput: move |evt| props.on_input.call(evt.value().to_string()),
-                    onblur: move |_| props.on_blur.call(())
+                    oninput: move |evt| {
+                        if !props.disabled {
+                            props.on_input.call(evt.value().to_string())
+                        }
+                    },
+                    onblur: move |_| {
+                        if !props.disabled {
+                            props.on_blur.call(())
+                        }
+                    }
                 }
                 if let Some(children) = &props.children {
                     {children}
