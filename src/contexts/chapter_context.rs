@@ -1,7 +1,6 @@
 use dioxus::prelude::*;
 use serde::{Deserialize, Serialize};
 use wasm_bindgen_futures::spawn_local;
-use std::env;
 use crate::constants::config::{BASE_API_URL, CHAPTERS};
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
@@ -54,13 +53,7 @@ pub fn ChapterProvider(props: ChapterProviderProps) -> Element {
                 let chapters_url = format!("{}{}", BASE_API_URL, CHAPTERS);
                 let client = reqwest::Client::new();
                 
-                let auth_token = match env::var("AUTH_TOKEN") {
-                    Ok(token) => token,
-                    Err(_) => "YOUR_AUTH_TOKEN".to_string(),
-                };
-                
                 match client.get(&chapters_url)
-                    .header("Authorization", format!("Bearer {}", auth_token))
                     .send()
                     .await 
                 {

@@ -134,7 +134,7 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
         let mut initial_choices = Vec::new();
         initial_choices.push((
             String::new(),
-            String::new(),
+            Vec::<String>::new(),
             String::new(),
             None,
             None,
@@ -356,9 +356,9 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
         };
         let choices_valid = if let Ok(choices) = choices.try_read() {
             choices.iter().all(|(_choice_text, to, type_, _key, _value, _target_chapter, _same_page, _time_limit)| {
-                let has_content = !to.trim().is_empty() || !type_.trim().is_empty();
+                let has_content = !to.is_empty() || !type_.trim().is_empty();
                 if has_content {
-                    !to.trim().is_empty()
+                    !to.is_empty()
                 } else {
                     true
                 }
@@ -388,7 +388,7 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
                             .unwrap_or_default();
                         current_choices.len() != new_choices.len() ||
                             current_choices.iter().zip(new_choices.iter()).any(|(old_choice, (choice_text, to, type_, _key, _value, _target_chapter, _same_page, _time_limit))| {
-                                let has_content = !choice_text.trim().is_empty() || !to.trim().is_empty() || !type_.trim().is_empty();
+                                let has_content = !choice_text.trim().is_empty() || !to.is_empty() || !type_.trim().is_empty();
                                 if has_content {
                                     old_choice != choice_text || !to.is_empty() || !type_.is_empty()
                                 } else {
@@ -410,9 +410,9 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
                 };
                 let has_valid_choices = if let Ok(choices) = choices.try_read() {
                     choices.iter().any(|(_choice_text, to, type_, _key, _value, _target_chapter, _same_page, _time_limit)| {
-                        let has_content = !to.trim().is_empty() || !type_.trim().is_empty();
+                        let has_content = !to.is_empty() || !type_.trim().is_empty();
                         if has_content {
-                            !to.trim().is_empty()
+                            !to.is_empty()
                         } else {
                             false
                         }
@@ -444,7 +444,7 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
                     choice.0 = value;
                 },
                 "goto" => {
-                    choice.1 = value;
+                    choice.1 = value.split(',').map(|s| s.trim().to_string()).collect();
                 },
                 "action_type" => {
                     choice.2 = value;
@@ -462,7 +462,7 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
                         *is_open = false;
                     }
                     choice_chapters_open.set(current);
-                    choice.1 = String::new();
+                    choice.1 = Vec::<String>::new();
                     choices.set(current_choices.clone());
                     let mut current_paragraphs = choice_paragraphs.read().clone();
                     while current_paragraphs.len() <= index {
@@ -508,6 +508,24 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
                 },
                 _ => {}
             }
+        }
+        choices.set(current_choices);
+    };
+
+    let handle_choice_add_paragraph = move |(index, paragraph_id): (usize, String)| {
+        let mut current_choices = choices.read().clone();
+        if let Some(choice) = current_choices.get_mut(index) {
+            if !choice.1.contains(&paragraph_id) {
+                choice.1.push(paragraph_id);
+            }
+        }
+        choices.set(current_choices);
+    };
+
+    let handle_choice_remove_paragraph = move |(index, paragraph_id): (usize, String)| {
+        let mut current_choices = choices.read().clone();
+        if let Some(choice) = current_choices.get_mut(index) {
+            choice.1.retain(|id| id != &paragraph_id);
         }
         choices.set(current_choices);
     };
@@ -577,9 +595,9 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
             };
 
             // 構建選項數據
-            let paragraph_choices: Vec<ContextParagraphChoice> = choices.iter().map(|(_choice_text, to, type_, key, value, _target_chapter, same_page, time_limit)| {
+            let paragraph_choices: Vec<ContextParagraphChoice> = choices.iter().map(|(_choice_text, to_list, type_, key, value, _target_chapter, same_page, time_limit)| {
                 let mut complex = ContextParagraphChoice::Complex {
-                    to: to.clone(),
+                    to: to_list.clone(),
                     type_: type_.clone(),
                     key: None,
                     value: None,
@@ -735,7 +753,7 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
         let mut current_choices = choices.read().clone();
         current_choices.push((
             String::new(),
-            String::new(),
+            Vec::<String>::new(),
             String::new(),
             None,
             None,
@@ -841,7 +859,7 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
         choices_write.clear();
         choices_write.push((
             String::new(),
-            String::new(),
+            Vec::<String>::new(),
             String::new(),
             None,
             None,
@@ -1120,6 +1138,8 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
                                 ChoiceOptions {
                                     choices: choices.read().clone(),
                                     on_choice_change: handle_choice_change,
+                                    on_choice_add_paragraph: handle_choice_add_paragraph,
+                                    on_choice_remove_paragraph: handle_choice_remove_paragraph,
                                     on_add_choice: handle_add_choice,
                                     on_remove_choice: handle_remove_choice,
                                     available_chapters: {
@@ -1183,7 +1203,7 @@ fn process_paragraph_select(
     paragraph_state: &Signal<ParagraphState>,
     paragraph_language: &Signal<String>,
 ) -> (
-    Vec<(String, String, String, Option<String>, Option<serde_json::Value>, String, bool, Option<u32>)>,
+    Vec<(String, Vec<String>, String, Option<String>, Option<serde_json::Value>, String, bool, Option<u32>)>,
     Vec<Vec<ParagraphListParagraph>>,
 ) {
     let mut new_choices = Vec::new();
@@ -1191,28 +1211,35 @@ fn process_paragraph_select(
     let text_choices = &text.choices;
     let paragraph_choices = &full_paragraph.choices;
     for (i, choice_text) in text_choices.iter().enumerate() {
-        let (target_id, type_, key, value, same_page, time_limit) = if let Some(choice) = paragraph_choices.get(i) {
+        let (target_ids, type_, key, value, same_page, time_limit) = if let Some(choice) = paragraph_choices.get(i) {
             match choice {
-                ContextParagraphChoice::Simple(text) => (text.clone(), "goto".to_string(), None, None, false, None),
+                ContextParagraphChoice::Simple(texts) => (texts.clone(), "goto".to_string(), None, None, false, None),
+                ContextParagraphChoice::SimpleOld(text) => (vec![text.clone()], "goto".to_string(), None, None, false, None),
                 ContextParagraphChoice::Complex { to, type_, key, value, same_page, time_limit, .. } => {
                     (to.clone(), type_.clone(), key.clone(), value.clone(), same_page.unwrap_or(false), *time_limit)
                 },
+                ContextParagraphChoice::ComplexOld { to, type_, key, value, same_page, time_limit, .. } => {
+                    (vec![to.clone()], type_.clone(), key.clone(), value.clone(), same_page.unwrap_or(false), *time_limit)
+                },
             }
         } else {
-            (String::new(), String::new(), None, None, false, None)
+            (Vec::new(), String::new(), None, None, false, None)
         };
-        let target_chapter_id = if !target_id.is_empty() {
-            if paragraph_state.read().get_by_id(&target_id).is_some() {
-                paragraph_state.read().get_by_id(&target_id).map(|p| p.chapter_id.clone()).unwrap_or_default()
+        
+        // 獲取所有目標段落的章節ID（應該都在同一個章節）
+        let target_chapter_id = if !target_ids.is_empty() {
+            if let Some(first_paragraph) = paragraph_state.read().get_by_id(&target_ids[0]) {
+                first_paragraph.chapter_id
             } else {
                 String::new()
             }
         } else {
             String::new()
         };
+        
         new_choices.push((
             choice_text.clone(),
-            if target_chapter_id.is_empty() { String::new() } else { target_id.clone() },
+            if target_chapter_id.is_empty() { Vec::new() } else { target_ids.clone() },
             if target_chapter_id.is_empty() { String::new() } else { type_ },
             if target_chapter_id.is_empty() { None } else { key },
             if target_chapter_id.is_empty() { None } else { value },
@@ -1220,6 +1247,7 @@ fn process_paragraph_select(
             same_page,
             time_limit,
         ));
+        
         if !target_chapter_id.is_empty() {
             let selected_lang = paragraph_language.read().clone();
             let filtered_paragraphs = paragraph_state.read().get_by_chapter(&target_chapter_id)

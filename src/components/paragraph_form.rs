@@ -25,7 +25,7 @@ pub struct ParagraphFormProps {
     on_add_choice: EventHandler<()>,
     on_remove_choice: EventHandler<usize>,
     on_submit: EventHandler<()>,
-    choices: Vec<(String, String, String, Option<String>, Option<serde_json::Value>, String, Option<u32>)>,
+    choices: Vec<(String, Vec<String>, String, Option<String>, Option<serde_json::Value>, String, Option<u32>)>,
     available_chapters: Vec<Chapter>,
     selected_language: String,
     choice_paragraphs: Vec<Paragraph>,
@@ -43,7 +43,7 @@ pub struct ParagraphFormProps {
 
 #[component]
 pub fn ParagraphForm(props: ParagraphFormProps) -> Element {
-    let mut choices = use_signal(|| Vec::<(String, String, String, Option<String>, Option<serde_json::Value>, String, Option<u32>)>::new());
+    let mut choices = use_signal(|| Vec::<(String, Vec<String>, String, Option<String>, Option<serde_json::Value>, String, Option<u32>)>::new());
     let available_chapters = use_signal(|| Vec::<Chapter>::new());
     let selected_language = use_signal(|| String::new());
     let choice_paragraphs = use_signal(|| Vec::<Paragraph>::new());
@@ -95,7 +95,7 @@ pub fn ParagraphForm(props: ParagraphFormProps) -> Element {
                     let mut choices_write = choices.write();
                     match field.as_str() {
                         "caption" => choices_write[index].0 = value,
-                        "goto" => choices_write[index].1 = value,
+                        "goto" => choices_write[index].1 = value.split(',').map(|s| s.trim().to_string()).collect(),
                         "action_type" => choices_write[index].2 = value,
                         "action_key" => choices_write[index].3 = Some(value),
                         "action_value" => choices_write[index].4 = Some(serde_json::Value::String(value)),
@@ -104,10 +104,24 @@ pub fn ParagraphForm(props: ParagraphFormProps) -> Element {
                         _ => {}
                     }
                 },
+                on_choice_add_paragraph: move |(index, paragraph_id): (usize, String)| {
+                    let mut choices_write = choices.write();
+                    if let Some(choice) = choices_write.get_mut(index) {
+                        if !choice.1.contains(&paragraph_id) {
+                            choice.1.push(paragraph_id);
+                        }
+                    }
+                },
+                on_choice_remove_paragraph: move |(index, paragraph_id): (usize, String)| {
+                    let mut choices_write = choices.write();
+                    if let Some(choice) = choices_write.get_mut(index) {
+                        choice.1.retain(|id| id != &paragraph_id);
+                    }
+                },
                 on_add_choice: move |_| {
                     choices.write().push((
                         String::new(),
-                        String::new(),
+                        Vec::<String>::new(),
                         String::new(),
                         None,
                         None,

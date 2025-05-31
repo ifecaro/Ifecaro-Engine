@@ -1,13 +1,15 @@
 use dioxus::prelude::*;
 use dioxus_i18n::t;
 use crate::components::form::{InputField, ActionTypeSelector};
-use crate::components::paragraph_list::{Paragraph, ParagraphList};
+use crate::components::paragraph_list::{Paragraph, MultiSelectParagraphList};
 use crate::contexts::chapter_context::Chapter;
 
 #[derive(Props, Clone, PartialEq)]
 pub struct ChoiceOptionsProps {
-    pub choices: Vec<(String, String, String, Option<String>, Option<serde_json::Value>, String, bool, Option<u32>)>,
+    pub choices: Vec<(String, Vec<String>, String, Option<String>, Option<serde_json::Value>, String, bool, Option<u32>)>,
     pub on_choice_change: EventHandler<(usize, String, String)>,
+    pub on_choice_add_paragraph: EventHandler<(usize, String)>,
+    pub on_choice_remove_paragraph: EventHandler<(usize, String)>,
     pub on_add_choice: EventHandler<()>,
     pub on_remove_choice: EventHandler<usize>,
     pub available_chapters: Vec<Chapter>,
@@ -29,7 +31,7 @@ pub struct ChoiceOptionsProps {
 pub fn ChoiceOptions(props: ChoiceOptionsProps) -> Element {
     rsx! {
         // 渲染所有選項
-        {props.choices.iter().enumerate().map(|(index, (caption, goto, action_type, action_key, action_value, target_chapter, same_page, time_limit))| {
+        {props.choices.iter().enumerate().map(|(index, (caption, goto_list, action_type, action_key, action_value, target_chapter, same_page, time_limit))| {
             rsx! {
                 div {
                     key: "{index}",
@@ -76,10 +78,10 @@ pub fn ChoiceOptions(props: ChoiceOptionsProps) -> Element {
                                 has_error: false,
                                 selected_language: props.selected_language.clone(),
                             }
-                            // 目標段落選擇器
-                            ParagraphList {
+                            // 多選目標段落選擇器
+                            MultiSelectParagraphList {
                                 label: t!("goto_target"),
-                                value: goto.clone(),
+                                selected_ids: goto_list.clone(),
                                 paragraphs: props.choice_paragraphs.get(index).cloned().unwrap_or_default(),
                                 is_open: props.choice_paragraphs_open.get(index).copied().unwrap_or(false),
                                 search_query: props.choice_paragraphs_search.get(index).cloned().unwrap_or_default(),
@@ -92,7 +94,10 @@ pub fn ChoiceOptions(props: ChoiceOptionsProps) -> Element {
                                     move |query| on_paragraph_search.call((index, query))
                                 },
                                 on_select: move |id| {
-                                    props.on_choice_change.call((index, "goto".to_string(), id));
+                                    props.on_choice_add_paragraph.call((index, id));
+                                },
+                                on_remove: move |id| {
+                                    props.on_choice_remove_paragraph.call((index, id));
                                 },
                                 has_error: false,
                                 selected_language: props.selected_language.clone(),
@@ -199,25 +204,9 @@ pub fn ChoiceOptions(props: ChoiceOptionsProps) -> Element {
 
         // 新增選項按鈕
         button {
-            class: "w-full mt-4 border-2 border-dashed border-gray-200 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-transform transition-opacity duration-200 will-change-transform will-change-opacity flex items-center justify-center",
+            class: "w-full px-4 py-3 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg text-gray-600 dark:text-gray-400 hover:border-gray-400 dark:hover:border-gray-500 hover:text-gray-700 dark:hover:text-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors duration-200",
             onclick: move |_| props.on_add_choice.call(()),
-            div {
-                class: "flex items-center space-x-2 text-gray-500 dark:text-gray-400 p-4",
-                svg {
-                    xmlns: "http://www.w3.org/2000/svg",
-                    class: "h-5 w-5",
-                    fill: "none",
-                    view_box: "0 0 24 24",
-                    stroke: "currentColor",
-                    stroke_width: "2",
-                    path {
-                        stroke_linecap: "round",
-                        stroke_linejoin: "round",
-                        d: "M12 4v16m8-8H4"
-                    }
-                }
-                span { {t!("add_option")} }
-            }
+            {t!("add_option")}
         }
     }
 }
