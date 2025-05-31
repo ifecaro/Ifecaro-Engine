@@ -14,6 +14,7 @@ use wasm_bindgen::JsCast;
 use wasm_bindgen::JsValue;
 use crate::services::indexeddb::set_choice_to_indexeddb;
 use crate::services::indexeddb::get_choice_from_indexeddb;
+use crate::services::indexeddb::{set_random_choice_to_indexeddb};
 use rand::prelude::SliceRandom;
 use rand::prelude::IteratorRandom;
 use std::rc::Rc;
@@ -393,12 +394,29 @@ pub fn Story(props: StoryProps) -> Element {
                                     choice_obj.caption = caption.clone();
                                 }
                             }
-                            // 從多目標段落中隨機選擇一個作為實際目標
-                            if !c.to.is_empty() {
-                                choice_obj.action.to = c.to.iter()
+                            // 檢查是否有多個目標，如果有則進行隨機選擇
+                            if c.to.len() > 1 {
+                                // 進行隨機選擇
+                                let selected_target = c.to.iter()
                                     .choose(&mut rand::thread_rng())
                                     .cloned()
                                     .unwrap_or_default();
+                                choice_obj.action.to = selected_target.clone();
+                                
+                                // 異步記錄選擇到 IndexedDB
+                                let paragraph_id = paragraph.id.clone();
+                                let choice_index = index as u32;
+                                let original_choices = c.to.clone();
+                                let selected = selected_target.clone();
+                                spawn_local(async move {
+                                    let js_array = js_sys::Array::new();
+                                    for choice in &original_choices {
+                                        js_array.push(&JsValue::from_str(choice));
+                                    }
+                                    set_random_choice_to_indexeddb(&paragraph_id, choice_index, &js_array, &selected);
+                                });
+                            } else if !c.to.is_empty() {
+                                choice_obj.action.to = c.to.first().cloned().unwrap_or_default();
                             }
                             choice_obj
                         }).collect();
@@ -406,26 +424,14 @@ pub fn Story(props: StoryProps) -> Element {
                         // 檢查每個選項的目標段落是否有當前語言的翻譯
                         let mut enabled = Vec::new();
                         let _paragraph_data_read = paragraph_data.read();
-                        for choice in &paragraph.choices {
-                            // 檢查多目標段落中是否至少有一個目標有當前語言的翻譯
-                            let has_valid_target = choice.to.iter().any(|target_id| {
+                        // 使用已經隨機選擇後的 choices 來檢查
+                        for choice in &choices {
+                            let target_id = &choice.action.to;
+                            if !target_id.is_empty() {
                                 if let Some(target_paragraph) = _paragraph_data_read.iter().find(|p| p.id == *target_id) {
-                                    target_paragraph.texts.iter().any(|t| t.lang == state().current_language)
-                                } else {
-                                    false
-                                }
-                            });
-                            
-                            if has_valid_target {
-                                // 使用第一個有效目標作為enabled的標識
-                                if let Some(first_valid_target) = choice.to.iter().find(|target_id| {
-                                    if let Some(target_paragraph) = _paragraph_data_read.iter().find(|p| p.id == **target_id) {
-                                        target_paragraph.texts.iter().any(|t| t.lang == state().current_language)
-                                    } else {
-                                        false
+                                    if target_paragraph.texts.iter().any(|t| t.lang == state().current_language) {
+                                        enabled.push(target_id.clone());
                                     }
-                                }) {
-                                    enabled.push(first_valid_target.clone());
                                 }
                             }
                         }
