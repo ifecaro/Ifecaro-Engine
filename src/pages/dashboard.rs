@@ -593,6 +593,15 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
                         choice_chapters_open.set(vec![false; choices_len]);
                         choice_paragraphs_open.set(vec![false; choices_len]);
                         choice_paragraphs_search.set(vec![String::new(); choices_len]);
+                    } else {
+                        // 如果沒有找到當前語言的翻譯，清空所有內容
+                        paragraphs.set(String::new());
+                        choices.set(Vec::new());
+                        action_type_open.set(Vec::new());
+                        choice_chapters_open.set(Vec::new());
+                        choice_paragraphs_open.set(Vec::new());
+                        choice_paragraphs_search.set(Vec::new());
+                        choice_paragraphs.set(Vec::new());
                     }
                 }
             }
