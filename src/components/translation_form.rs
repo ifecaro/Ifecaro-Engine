@@ -131,7 +131,7 @@ pub fn TranslationForm(props: TranslationFormProps) -> Element {
     let _available_paragraphs = props.available_paragraphs.clone();
     let selected_paragraph = props.selected_paragraph.clone();
 
-    let mut choices = use_signal(|| Vec::<(String, String, String, Option<String>, Option<serde_json::Value>, String, Option<u32>)>::new());
+    let mut choices = use_signal(|| Vec::<(String, Vec<String>, String, Option<String>, Option<serde_json::Value>, String, Option<u32>)>::new());
     let mut action_type_open = use_signal(|| vec![false]);
 
     let is_form_valid = {
@@ -192,7 +192,7 @@ pub fn TranslationForm(props: TranslationFormProps) -> Element {
                         let mut choices_write = choices.write();
                         match field.as_str() {
                             "caption" => choices_write[index].0 = value,
-                            "goto" => choices_write[index].1 = value,
+                            "goto" => choices_write[index].1 = value.split(',').map(|s| s.trim().to_string()).collect(),
                             "action_type" => choices_write[index].2 = value,
                             "action_key" => choices_write[index].3 = Some(value),
                             "action_value" => choices_write[index].4 = Some(serde_json::Value::String(value)),
@@ -201,10 +201,24 @@ pub fn TranslationForm(props: TranslationFormProps) -> Element {
                             _ => {}
                         }
                     },
+                    on_choice_add_paragraph: move |(index, paragraph_id): (usize, String)| {
+                        let mut choices_write = choices.write();
+                        if let Some(choice) = choices_write.get_mut(index) {
+                            if !choice.1.contains(&paragraph_id) {
+                                choice.1.push(paragraph_id);
+                            }
+                        }
+                    },
+                    on_choice_remove_paragraph: move |(index, paragraph_id): (usize, String)| {
+                        let mut choices_write = choices.write();
+                        if let Some(choice) = choices_write.get_mut(index) {
+                            choice.1.retain(|id| id != &paragraph_id);
+                        }
+                    },
                     on_add_choice: move |_| {
                         choices.write().push((
                             String::new(),
-                            String::new(),
+                            Vec::<String>::new(),
                             String::new(),
                             None,
                             None,

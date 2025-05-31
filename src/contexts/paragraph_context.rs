@@ -1,7 +1,6 @@
 use dioxus::prelude::*;
 use serde::{Deserialize, Serialize};
 use wasm_bindgen_futures::spawn_local;
-use std::env;
 use crate::constants::config::{BASE_API_URL, PARAGRAPHS};
 
 // 複用translation_form中的段落和文本結構
@@ -9,6 +8,19 @@ use crate::constants::config::{BASE_API_URL, PARAGRAPHS};
 #[serde(untagged)]
 pub enum ParagraphChoice {
     Complex {
+        to: Vec<String>,
+        #[serde(rename = "type")]
+        type_: String,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        key: Option<String>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        value: Option<serde_json::Value>,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        same_page: Option<bool>,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        time_limit: Option<u32>,
+    },
+    ComplexOld {
         to: String,
         #[serde(rename = "type")]
         type_: String,
@@ -21,50 +33,63 @@ pub enum ParagraphChoice {
         #[serde(default, skip_serializing_if = "Option::is_none")]
         time_limit: Option<u32>,
     },
-    Simple(String),
+    Simple(Vec<String>),
+    SimpleOld(String),
 }
 
 #[allow(dead_code)]
 impl ParagraphChoice {
-    pub fn get_to(&self) -> String {
+    pub fn get_to(&self) -> Vec<String> {
         match self {
             ParagraphChoice::Complex { to, .. } => to.clone(),
-            ParagraphChoice::Simple(text) => text.clone(),
+            ParagraphChoice::ComplexOld { to, .. } => vec![to.clone()],
+            ParagraphChoice::Simple(texts) => texts.clone(),
+            ParagraphChoice::SimpleOld(text) => vec![text.clone()],
         }
     }
 
     pub fn get_type(&self) -> String {
         match self {
             ParagraphChoice::Complex { type_, .. } => type_.clone(),
+            ParagraphChoice::ComplexOld { type_, .. } => type_.clone(),
             ParagraphChoice::Simple(_) => "goto".to_string(),
+            ParagraphChoice::SimpleOld(_) => "goto".to_string(),
         }
     }
 
     pub fn get_key(&self) -> Option<String> {
         match self {
             ParagraphChoice::Complex { key, .. } => key.clone(),
+            ParagraphChoice::ComplexOld { key, .. } => key.clone(),
             ParagraphChoice::Simple(_) => None,
+            ParagraphChoice::SimpleOld(_) => None,
         }
     }
 
     pub fn get_value(&self) -> Option<serde_json::Value> {
         match self {
             ParagraphChoice::Complex { value, .. } => value.clone(),
+            ParagraphChoice::ComplexOld { value, .. } => value.clone(),
             ParagraphChoice::Simple(_) => None,
+            ParagraphChoice::SimpleOld(_) => None,
         }
     }
 
     pub fn get_same_page(&self) -> Option<bool> {
         match self {
             ParagraphChoice::Complex { same_page, .. } => *same_page,
+            ParagraphChoice::ComplexOld { same_page, .. } => *same_page,
             ParagraphChoice::Simple(_) => None,
+            ParagraphChoice::SimpleOld(_) => None,
         }
     }
 
     pub fn get_time_limit(&self) -> Option<u32> {
         match self {
             ParagraphChoice::Complex { time_limit, .. } => *time_limit,
+            ParagraphChoice::ComplexOld { time_limit, .. } => *time_limit,
             ParagraphChoice::Simple(_) => None,
+            ParagraphChoice::SimpleOld(_) => None,
         }
     }
 }
@@ -140,13 +165,7 @@ pub fn ParagraphProvider(props: ParagraphProviderProps) -> Element {
                 let paragraphs_url = format!("{}{}", BASE_API_URL, PARAGRAPHS);
                 let client = reqwest::Client::new();
                 
-                let auth_token = match env::var("AUTH_TOKEN") {
-                    Ok(token) => token,
-                    Err(_) => "YOUR_AUTH_TOKEN".to_string(),
-                };
-                
                 match client.get(&paragraphs_url)
-                    .header("Authorization", format!("Bearer {}", auth_token))
                     .send()
                     .await 
                 {
