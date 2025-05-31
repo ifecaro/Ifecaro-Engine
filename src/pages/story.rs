@@ -15,9 +15,11 @@ use wasm_bindgen::JsValue;
 use crate::services::indexeddb::set_choice_to_indexeddb;
 use crate::services::indexeddb::get_choice_from_indexeddb;
 use rand::prelude::SliceRandom;
+use rand::prelude::IteratorRandom;
 use std::rc::Rc;
 use std::cell::RefCell;
 use crate::contexts::story_merged_context::{use_story_merged_context, provide_story_merged_context};
+use js_sys;
 
 #[derive(Deserialize, Clone, Debug)]
 #[allow(dead_code)]
@@ -57,20 +59,65 @@ pub struct Text {
     pub choices: Vec<String>,
 }
 
-#[derive(Deserialize, Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct ComplexChoice {
-    #[serde(default)]
-    pub to: String,
-    #[serde(rename = "type", default)]
+    pub to: Vec<String>,
     pub type_: String,
-    #[serde(default)]
     pub key: Option<String>,
-    #[serde(default)]
     pub value: Option<serde_json::Value>,
-    #[serde(default)]
     pub same_page: Option<bool>,
-    #[serde(default)]
     pub time_limit: Option<u32>,
+}
+
+impl<'de> serde::Deserialize<'de> for ComplexChoice {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        #[derive(Deserialize)]
+        #[serde(untagged)]
+        enum ToField {
+            Multiple(Vec<String>),
+            Single(String),
+        }
+        
+        impl Default for ToField {
+            fn default() -> Self {
+                ToField::Multiple(Vec::new())
+            }
+        }
+        
+        #[derive(Deserialize)]
+        struct Helper {
+            #[serde(default)]
+            to: ToField,
+            #[serde(rename = "type", default)]
+            type_: String,
+            #[serde(default)]
+            key: Option<String>,
+            #[serde(default)]
+            value: Option<serde_json::Value>,
+            #[serde(default)]
+            same_page: Option<bool>,
+            #[serde(default)]
+            time_limit: Option<u32>,
+        }
+        
+        let helper = Helper::deserialize(deserializer)?;
+        let to = match helper.to {
+            ToField::Multiple(vec) => vec,
+            ToField::Single(s) => if s.is_empty() { Vec::new() } else { vec![s] },
+        };
+        
+        Ok(ComplexChoice {
+            to,
+            type_: helper.type_,
+            key: helper.key,
+            value: helper.value,
+            same_page: helper.same_page,
+            time_limit: helper.time_limit,
+        })
+    }
 }
 
 #[derive(Deserialize, Clone, Debug, PartialEq)]
@@ -89,7 +136,7 @@ impl From<StoryChoice> for Choice {
                     type_: complex.type_,
                     key: complex.key,
                     value: complex.value,
-                    to: complex.to,
+                    to: complex.to.first().cloned().unwrap_or_default(),
                 },
             },
             StoryChoice::Simple(text) => Self {
@@ -346,7 +393,13 @@ pub fn Story(props: StoryProps) -> Element {
                                     choice_obj.caption = caption.clone();
                                 }
                             }
-                            choice_obj.action.to = c.to.clone();
+                            // 從多目標段落中隨機選擇一個作為實際目標
+                            if !c.to.is_empty() {
+                                choice_obj.action.to = c.to.iter()
+                                    .choose(&mut rand::thread_rng())
+                                    .cloned()
+                                    .unwrap_or_default();
+                            }
                             choice_obj
                         }).collect();
                         current_choices.set(choices.clone());
@@ -354,10 +407,25 @@ pub fn Story(props: StoryProps) -> Element {
                         let mut enabled = Vec::new();
                         let _paragraph_data_read = paragraph_data.read();
                         for choice in &paragraph.choices {
-                            let target_paragraph = _paragraph_data_read.iter().find(|p| p.id == choice.to);
-                            if let Some(target_paragraph) = target_paragraph {
-                                if target_paragraph.texts.iter().any(|t| t.lang == state().current_language) {
-                                    enabled.push(choice.to.clone());
+                            // 檢查多目標段落中是否至少有一個目標有當前語言的翻譯
+                            let has_valid_target = choice.to.iter().any(|target_id| {
+                                if let Some(target_paragraph) = _paragraph_data_read.iter().find(|p| p.id == *target_id) {
+                                    target_paragraph.texts.iter().any(|t| t.lang == state().current_language)
+                                } else {
+                                    false
+                                }
+                            });
+                            
+                            if has_valid_target {
+                                // 使用第一個有效目標作為enabled的標識
+                                if let Some(first_valid_target) = choice.to.iter().find(|target_id| {
+                                    if let Some(target_paragraph) = _paragraph_data_read.iter().find(|p| p.id == **target_id) {
+                                        target_paragraph.texts.iter().any(|t| t.lang == state().current_language)
+                                    } else {
+                                        false
+                                    }
+                                }) {
+                                    enabled.push(first_valid_target.clone());
                                 }
                             }
                         }
@@ -393,7 +461,14 @@ pub fn Story(props: StoryProps) -> Element {
                                     let mut choice_ids: Vec<String> = Vec::new();
                                     for (i, c) in text.choices.iter().enumerate() {
                                         if let Some(complex_choice) = current.choices.get(i) {
-                                            choice_ids.push(complex_choice.to.clone());
+                                            // 從多目標段落中隨機選擇一個
+                                            if !complex_choice.to.is_empty() {
+                                                let chosen_target = complex_choice.to.iter()
+                                                    .choose(&mut rand::thread_rng())
+                                                    .cloned()
+                                                    .unwrap_or_default();
+                                                choice_ids.push(chosen_target);
+                                            }
                                         } else {
                                             choice_ids.push(c.clone());
                                         }
@@ -638,10 +713,9 @@ pub fn Story(props: StoryProps) -> Element {
                 }
                 let mut same_page = false;
                 if let Some(ref last) = last_paragraph {
-                    if let Some(idx) = last.choices.iter().position(|choice| choice.to == goto) {
-                        if let Some(choice) = last.choices.get(idx) {
-                            same_page = choice.same_page.unwrap_or(false);
-                        }
+                    // 在多目標段落中查找匹配的目標
+                    if let Some(choice) = last.choices.iter().find(|choice| choice.to.contains(&goto)) {
+                        same_page = choice.same_page.unwrap_or(false);
                     }
                 }
                 if same_page {
