@@ -14,6 +14,7 @@ use wasm_bindgen::closure::Closure;
 use wasm_bindgen::JsValue;
 use wasm_bindgen_futures::spawn_local;
 use crate::contexts::settings_context::use_settings_context;
+use js_sys;
 
 #[derive(Props, Clone, PartialEq)]
 pub struct StoryContentProps {
@@ -303,45 +304,40 @@ pub fn StoryContent(props: StoryContentProps) -> Element {
                 is_countdown_paused.set(true);
                 return;
             }
-            if let Some((_, document)) = get_window_document() {
-                // 先檢查當前滾動狀態
-                if let Ok(Some(article)) = document.query_selector("article") {
-                    let rect = article.get_bounding_client_rect();
-                    let window = web_sys::window().unwrap();
-                    let inner_height = window.inner_height().unwrap().as_f64().unwrap_or(0.0);
-                    let at_bottom = rect.bottom() <= inner_height + 2.0;
-                    if at_bottom {
-                        show_choices.set(true);
-                        is_countdown_paused.set(false);
-                    } else {
-                        show_choices.set(false);
-                        is_countdown_paused.set(true);
-                    }
-                }
-                
-                // 監聽 window
-                let mut show_choices_w = show_choices.clone();
-                let mut is_countdown_paused_w = is_countdown_paused.clone();
-                let closure_window = wasm_bindgen::closure::Closure::wrap(Box::new(move |_event: web_sys::Event| {
-                    if let Some((window, document)) = get_window_document() {
-                        if let Ok(Some(article)) = document.query_selector("article") {
-                            let rect = article.get_bounding_client_rect();
-                            let inner_height = window.inner_height().unwrap().as_f64().unwrap_or(0.0);
-                            let at_bottom = rect.bottom() <= inner_height + 2.0;
-                            if at_bottom {
-                                // 只要到過底就永遠顯示
-                                show_choices_w.set(true);
-                                is_countdown_paused_w.set(false);
-                            } else {
-                                // 不再自動隱藏選項，只暫停倒數
-                                is_countdown_paused_w.set(true);
-                            }
+            
+            // 初始時檢查捲軸位置（透過JS）
+            if let Some((window, _)) = get_window_document() {
+                let _ = js_sys::Reflect::get(&window, &JsValue::from_str("checkScrollPosition"))
+                    .and_then(|func| {
+                        if func.is_function() {
+                            let func: js_sys::Function = func.unchecked_into();
+                            func.call0(&window)
+                        } else {
+                            Ok(JsValue::UNDEFINED)
                         }
-                    }
-                }) as Box<dyn FnMut(_)>);
-                let window = web_sys::window().unwrap();
-                let _ = window.add_event_listener_with_callback("scroll", closure_window.as_ref().unchecked_ref());
-                closure_window.forget();
+                    });
+            }
+            
+            // 監聽JS端發送的捲軸事件
+            if let Some((_, document)) = get_window_document() {
+                let mut show_choices_scroll = show_choices.clone();
+                let mut is_countdown_paused_scroll = is_countdown_paused.clone();
+                
+                // 監聽到達底部事件
+                let reached_bottom_handler = wasm_bindgen::closure::Closure::wrap(Box::new(move |_event: web_sys::CustomEvent| {
+                    show_choices_scroll.set(true);
+                    is_countdown_paused_scroll.set(false);
+                }) as Box<dyn FnMut(web_sys::CustomEvent)>);
+                document.add_event_listener_with_callback("scroll_reached_bottom", reached_bottom_handler.as_ref().unchecked_ref()).unwrap();
+                reached_bottom_handler.forget();
+                
+                // 監聽離開底部事件
+                let mut is_countdown_paused_left = is_countdown_paused.clone();
+                let left_bottom_handler = wasm_bindgen::closure::Closure::wrap(Box::new(move |_event: web_sys::CustomEvent| {
+                    is_countdown_paused_left.set(true);
+                }) as Box<dyn FnMut(web_sys::CustomEvent)>);
+                document.add_event_listener_with_callback("scroll_left_bottom", left_bottom_handler.as_ref().unchecked_ref()).unwrap();
+                left_bottom_handler.forget();
             }
         });
     }

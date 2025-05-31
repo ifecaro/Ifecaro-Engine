@@ -13,6 +13,93 @@
     <link rel="manifest" href="/manifest.json">
     <link href="/assets/tailwind.css" rel="stylesheet">
     <script type="text/javascript" src="/assets/sw.js" async></script>
+    <script type="text/javascript">
+        class ScrollMonitor {
+            constructor() {
+                this.isAtBottom = false;
+                this.isInitialized = false;
+                this.throttleTimer = null;
+                this.init();
+            }
+
+            init() {
+                // 監聽滾動事件，使用節流來提升性能
+                window.addEventListener('scroll', this.throttleScroll.bind(this), { passive: true });
+
+                // 初始檢查
+                this.checkScrollPosition();
+                this.isInitialized = true;
+            }
+
+            throttleScroll() {
+                if (this.throttleTimer) {
+                    return;
+                }
+
+                this.throttleTimer = setTimeout(() => {
+                    this.checkScrollPosition();
+                    this.throttleTimer = null;
+                }, 16); // 約60fps
+            }
+
+            checkScrollPosition() {
+                const article = document.querySelector('article');
+                if (!article) {
+                    return;
+                }
+
+                const rect = article.getBoundingClientRect();
+                const windowHeight = window.innerHeight;
+                const atBottom = rect.bottom <= windowHeight + 2;
+
+                // 只在狀態改變時發送事件
+                if (atBottom !== this.isAtBottom) {
+                    this.isAtBottom = atBottom;
+
+                    if (atBottom) {
+                        // 到達底部 - 顯示選項並開始倒數
+                        this.dispatchEvent('scroll_reached_bottom');
+                    } else {
+                        // 離開底部 - 暫停倒數但不隱藏選項
+                        this.dispatchEvent('scroll_left_bottom');
+                    }
+                }
+            }
+
+            dispatchEvent(eventType) {
+                const event = new CustomEvent(eventType, {
+                    detail: {
+                        timestamp: Date.now(),
+                        isAtBottom: this.isAtBottom
+                    }
+                });
+                document.dispatchEvent(event);
+            }
+
+            // 手動檢查位置的方法，供外部調用
+            forceCheck() {
+                this.checkScrollPosition();
+            }
+
+            // 清理方法
+            destroy() {
+                window.removeEventListener('scroll', this.throttleScroll.bind(this));
+                if (this.throttleTimer) {
+                    clearTimeout(this.throttleTimer);
+                }
+            }
+        }
+
+        // 創建全局實例
+        window.scrollMonitor = new ScrollMonitor();
+
+        // 暴露給 Rust 端調用的方法
+        window.checkScrollPosition = function () {
+            if (window.scrollMonitor) {
+                window.scrollMonitor.forceCheck();
+            }
+        };
+    </script>
     <meta name="theme-color" content="#000000">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black">
@@ -35,7 +122,6 @@
                     return registration;
                 })
                 .then(registration => {
-                    console.log('Service Worker 註冊成功:', registration);
                     // 在 Service Worker 註冊成功後開始載入 WASM
                 })
                 .catch(error => {

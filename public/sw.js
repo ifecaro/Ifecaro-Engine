@@ -53,11 +53,11 @@ self.addEventListener('install', event => {
     event.waitUntil(
         caches.open(CACHE_NAME)
             .then(cache => {
-                console.log('正在快取靜態資源...');
+                // console.log('正在快取靜態資源...');
                 return cache.addAll(STATIC_RESOURCES);
             })
             .then(() => {
-                console.log('Service Worker 安裝完成');
+                // console.log('Service Worker 安裝完成');
                 return self.skipWaiting();
             })
             .catch(error => {
@@ -75,13 +75,13 @@ self.addEventListener('activate', event => {
                     cacheNames
                         .filter(cacheName => cacheName.startsWith('ifecaro-cache-') && cacheName !== CACHE_NAME)
                         .map(cacheName => {
-                            console.log('刪除舊的快取:', cacheName);
+                            // console.log('刪除舊的快取:', cacheName);
                             return caches.delete(cacheName);
                         })
                 );
             })
             .then(() => {
-                console.log('Service Worker 已啟用');
+                // console.log('Service Worker 已啟用');
                 return self.clients.claim();
             })
             .catch(error => {
@@ -116,7 +116,7 @@ self.addEventListener('fetch', event => {
                     // 如果網路請求失敗，嘗試從快取中獲取
                     const cachedResponse = await caches.match(event.request);
                     if (cachedResponse) {
-                        console.log('使用快取的 API 回應');
+                        // console.log('使用快取的 API 回應');
                         return cachedResponse;
                     }
                     throw new Error('無法獲取資源');
