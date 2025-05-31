@@ -383,18 +383,50 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
                 };
                 let has_option_changes = if let (Ok(sel_para), Ok(lang), Ok(new_choices)) = (selected_paragraph.try_read(), paragraph_language.try_read(), choices.try_read()) {
                     if let Some(paragraph) = sel_para.as_ref() {
-                        let current_choices = &paragraph.texts.iter().find(|t| t.lang == *lang)
+                        let current_text_choices = &paragraph.texts.iter().find(|t| t.lang == *lang)
                             .map(|t| t.choices.clone())
                             .unwrap_or_default();
-                        current_choices.len() != new_choices.len() ||
-                            current_choices.iter().zip(new_choices.iter()).any(|(old_choice, (choice_text, to, type_, _key, _value, _target_chapter, _same_page, _time_limit))| {
-                                let has_content = !choice_text.trim().is_empty() || !to.is_empty() || !type_.trim().is_empty();
-                                if has_content {
-                                    old_choice != choice_text || !to.is_empty() || !type_.is_empty()
-                                } else {
-                                    false
+                        let current_paragraph_choices = &paragraph.choices;
+                        
+                        // 檢查選項數量是否改變
+                        if current_text_choices.len() != new_choices.len() || current_paragraph_choices.len() != new_choices.len() {
+                            return true;
+                        }
+                        
+                        // 檢查每個選項的詳細變化
+                        for (i, (new_choice_text, new_to, new_type, new_key, new_value, _new_target_chapter, new_same_page, new_time_limit)) in new_choices.iter().enumerate() {
+                            // 檢查選項文字是否改變
+                            if let Some(old_choice_text) = current_text_choices.get(i) {
+                                if old_choice_text != new_choice_text {
+                                    return true;
                                 }
-                            })
+                            }
+                            
+                            // 檢查選項數據是否改變
+                            if let Some(old_choice) = current_paragraph_choices.get(i) {
+                                let (old_to, old_type, old_key, old_value, old_same_page, old_time_limit) = match old_choice {
+                                    ContextParagraphChoice::Simple(texts) => (texts.clone(), "goto".to_string(), None, None, false, None),
+                                    ContextParagraphChoice::SimpleOld(text) => (vec![text.clone()], "goto".to_string(), None, None, false, None),
+                                    ContextParagraphChoice::Complex { to, type_, key, value, same_page, time_limit, .. } => {
+                                        (to.clone(), type_.clone(), key.clone(), value.clone(), same_page.unwrap_or(false), *time_limit)
+                                    },
+                                    ContextParagraphChoice::ComplexOld { to, type_, key, value, same_page, time_limit, .. } => {
+                                        (vec![to.clone()], type_.clone(), key.clone(), value.clone(), same_page.unwrap_or(false), *time_limit)
+                                    },
+                                };
+                                
+                                // 比較所有屬性
+                                if old_to != *new_to || 
+                                   old_type != *new_type || 
+                                   old_key != *new_key || 
+                                   old_value != *new_value || 
+                                   old_same_page != *new_same_page || 
+                                   old_time_limit != *new_time_limit {
+                                    return true;
+                                }
+                            }
+                        }
+                        false
                     } else {
                         false
                     }
