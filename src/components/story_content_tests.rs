@@ -25,7 +25,7 @@ fn test_story_content_ui_enabled_choices_by_id() {
     let mut mutations = NoOpMutations;
     vdom.rebuild(&mut mutations);
     let html = render(&vdom);
-    println!("{html}");
+    // println!("{html}");
     // 驗證啟用/禁用狀態
     // id1, id3 應啟用，id2 應禁用
     assert!(html.contains("選項一"));
@@ -59,7 +59,7 @@ fn test_story_content_ui_display_caption() {
     let mut mutations = NoOpMutations;
     vdom.rebuild(&mut mutations);
     let html = render(&vdom);
-    println!("{html}");
+    // println!("{html}");
     // 驗證每個選項都正確顯示 caption（標題），而不是 id
     assert!(html.contains("標題一"), "應顯示標題一");
     assert!(html.contains("標題二"), "應顯示標題二");
@@ -88,7 +88,7 @@ fn test_chapter_title_renders_at_top() {
     let mut mutations = dioxus_core::NoOpMutations;
     vdom.rebuild(&mut mutations);
     let html = dioxus_ssr::render(&vdom);
-    println!("{html}");
+    // println!("{html}");
     assert!(html.contains("章節標題測試"), "HTML 應包含章節標題");
     assert!(html.contains("min-h-[calc(100vh-56px)]"), "HTML 應包含正確的高度 class");
     assert!(html.contains("text-3xl"), "HTML 應包含標題字體 class");
@@ -112,7 +112,7 @@ fn test_chapter_title_with_ui() {
     let mut mutations = NoOpMutations;
     vdom.rebuild(&mut mutations);
     let html = render(&vdom);
-    println!("{html}");
+    // println!("{html}");
     assert!(html.contains("章節標題測試UI"), "HTML 應包含章節標題");
     assert!(html.contains("min-h-[calc(100vh-56px)]"), "HTML 應包含正確的高度 class");
     assert!(html.contains("text-3xl"), "HTML 應包含標題字體 class");
