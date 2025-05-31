@@ -9,6 +9,7 @@ use dioxus_i18n::t;
 
 thread_local! {
     static SELECTED_LANGUAGE: RefCell<String> = RefCell::new(String::new());
+    static INTERFACE_LANGUAGE: RefCell<String> = RefCell::new(String::new());
 }
 
 #[derive(Props, Clone, PartialEq)]
@@ -40,10 +41,17 @@ pub fn ChapterSelector(props: ChapterSelectorProps) -> Element {
         props.selected_language.clone()
     };
     
+    // 獲取界面語言作為回退選項
+    let interface_lang = language_state.read().current_language.clone();
     
     // 更新 thread_local 變量
     SELECTED_LANGUAGE.with(|lang| {
         *lang.borrow_mut() = selected_lang.clone();
+    });
+    
+    // 更新界面語言到 thread_local
+    INTERFACE_LANGUAGE.with(|lang| {
+        *lang.borrow_mut() = interface_lang.clone();
     });
     
     // 過濾章節
@@ -56,6 +64,7 @@ pub fn ChapterSelector(props: ChapterSelectorProps) -> Element {
             
             let title = chapter.titles.iter()
                 .find(|t| t.lang == selected_lang)
+                .or_else(|| chapter.titles.iter().find(|t| t.lang == interface_lang))
                 .or_else(|| chapter.titles.iter().find(|t| t.lang == "en-US" || t.lang == "en-GB"))
                 .or_else(|| chapter.titles.first());
             
@@ -79,9 +88,10 @@ pub fn ChapterSelector(props: ChapterSelectorProps) -> Element {
                 if let Some(title) = c.titles.iter().find(|t| t.lang == selected_lang) {
                     title.title.clone()
                 } else {
-                    // 如果找不到當前語言的翻譯，使用英文或第一個可用的翻譯，並加上未翻譯標示
+                    // 如果找不到當前語言的翻譯，優先使用界面語言，然後是英文或第一個可用的翻譯，並加上未翻譯標示
                     let fallback_title = c.titles.iter()
-                        .find(|t| t.lang == "en-US" || t.lang == "en-GB")
+                        .find(|t| t.lang == interface_lang)
+                        .or_else(|| c.titles.iter().find(|t| t.lang == "en-US" || t.lang == "en-GB"))
                         .or_else(|| c.titles.first())
                         .map(|t| t.title.clone())
                         .unwrap_or_default();
@@ -94,13 +104,16 @@ pub fn ChapterSelector(props: ChapterSelectorProps) -> Element {
     // 定義顯示函數，使用 thread_local 變量獲取當前選擇的語言
     fn display_chapter_title(chapter: &Chapter) -> String {
         let selected_lang = SELECTED_LANGUAGE.with(|lang| lang.borrow().clone());
+        let interface_lang = INTERFACE_LANGUAGE.with(|lang| lang.borrow().clone());
+        
         // 先尋找當前語言的翻譯
         if let Some(title) = chapter.titles.iter().find(|t| t.lang == selected_lang) {
             title.title.clone()
         } else {
-            // 如果找不到當前語言的翻譯，使用英文或第一個可用的翻譯，並加上未翻譯標示
+            // 如果找不到當前語言的翻譯，優先使用界面語言，然後是英文或第一個可用的翻譯，並加上未翻譯標示
             let fallback_title = chapter.titles.iter()
-                .find(|t| t.lang == "en-US" || t.lang == "en-GB")
+                .find(|t| t.lang == interface_lang)
+                .or_else(|| chapter.titles.iter().find(|t| t.lang == "en-US" || t.lang == "en-GB"))
                 .or_else(|| chapter.titles.first())
                 .map(|t| t.title.clone())
                 .unwrap_or_default();
