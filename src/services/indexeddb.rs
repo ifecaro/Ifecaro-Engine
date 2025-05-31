@@ -22,4 +22,10 @@ extern "C" {
 
     #[wasm_bindgen(js_name = clearDisabledChoicesForParagraph)]
     pub fn clear_disabled_choices_for_paragraph(paragraph_id: &str);
+
+    #[wasm_bindgen(js_name = setRandomChoiceToIndexedDB)]
+    pub fn set_random_choice_to_indexeddb(paragraph_id: &str, choice_index: u32, original_choices: &js_sys::Array, selected_choice: &str);
+
+    #[wasm_bindgen(js_name = getRandomChoiceFromIndexedDB)]
+    pub fn get_random_choice_from_indexeddb(paragraph_id: &str, choice_index: u32, callback: &js_sys::Function);
 } 
