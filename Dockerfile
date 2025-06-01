@@ -2,7 +2,7 @@ FROM rustlang/rust:nightly-slim
 
 # 安裝必要工具
 RUN apt-get update && \
-    apt-get install -y curl git pkg-config libssl-dev openssh-client && \
+    apt-get install -y curl git pkg-config libssl-dev openssh-client inotify-tools && \
     cargo install dioxus-cli
 
 # 下載 Tailwind CSS Standalone CLI
