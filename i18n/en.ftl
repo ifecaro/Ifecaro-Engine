@@ -44,4 +44,6 @@ time_limit_seconds = Option time limit (seconds)
 submit_failed = Submit failed!
 selected_paragraphs = Selected Paragraphs
 no_available_paragraphs = No available paragraphs
-required_field = This field is required 
+required_field = This field is required
+edit_mode = Edit Mode
+new_paragraph = New Paragraph 

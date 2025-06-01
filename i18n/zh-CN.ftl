@@ -44,4 +44,6 @@ time_limit_seconds = 选项时间限制（秒）
 submit_failed = 提交失敗！
 selected_paragraphs = 已选段落
 no_available_paragraphs = 没有可选的段落
-required_field = 此字段为必填项 
+required_field = 此字段为必填项目
+edit_mode = 编辑模式
+new_paragraph = 新增段落 

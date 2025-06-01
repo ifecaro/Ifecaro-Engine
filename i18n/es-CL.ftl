@@ -45,3 +45,5 @@ submit_failed = ¡Error al enviar!
 selected_paragraphs = Párrafos Seleccionados
 no_available_paragraphs = No hay párrafos disponibles
 required_field = Este campo es obligatorio 
+edit_mode = Modo de Edición
+new_paragraph = Nuevo Párrafo 

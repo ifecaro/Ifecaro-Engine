@@ -30,6 +30,34 @@ pub struct ChoiceOptionsProps {
 #[component]
 pub fn ChoiceOptions(props: ChoiceOptionsProps) -> Element {
     rsx! {
+        // 段落選項標題區域
+        div {
+            class: "flex items-center justify-between mb-6",
+            h3 {
+                class: "text-lg font-semibold text-gray-900 dark:text-gray-100",
+                {t!("options")}
+            }
+            // 新增選項按鈕（桌面版：在標題右側，行動版：隱藏）
+            button {
+                class: "hidden lg:inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors duration-200",
+                onclick: move |_| props.on_add_choice.call(()),
+                svg {
+                    xmlns: "http://www.w3.org/2000/svg",
+                    class: "w-4 h-4 mr-2",
+                    fill: "none",
+                    view_box: "0 0 24 24",
+                    stroke: "currentColor",
+                    stroke_width: "2",
+                    path {
+                        stroke_linecap: "round",
+                        stroke_linejoin: "round",
+                        d: "M12 4v16m8-8H4"
+                    }
+                }
+                {t!("add_option")}
+            }
+        }
+        
         // 渲染所有選項
         {props.choices.iter().enumerate().map(|(index, (caption, goto_list, action_type, action_key, action_value, target_chapter, same_page, time_limit))| {
             // 檢查動作類型是否為空（None）
@@ -39,72 +67,86 @@ pub fn ChoiceOptions(props: ChoiceOptionsProps) -> Element {
                 div {
                     key: "{index}",
                     div {
-                        class: "text-sm font-medium text-gray-700 dark:text-gray-300 mb-4 pl-4",
-                        span {
-                            {format!("{} {}", t!("option"), index + 1)}
-                        }
-                    }
-                    div {
                         class: "relative border-2 border-gray-200 dark:border-gray-600 rounded-lg mb-8",
                         div {
                             class: "p-4 space-y-4",
-                            // 標題輸入框
-                            InputField {
-                                label: t!("caption"),
-                                value: caption.clone(),
-                                on_input: move |value| {
-                                    props.on_choice_change.call((index, "caption".to_string(), value));
-                                },
-                                placeholder: t!("caption"),
-                                has_error: false,
-                                required: true,
-                                on_blur: move |_| {},
+                            // 選項標題行和刪除按鈕
+                            div {
+                                class: "flex items-center justify-between mb-4",
+                                div {
+                                    class: "text-sm font-medium text-gray-700 dark:text-gray-300",
+                                    {format!("{} {}", t!("option"), index + 1)}
+                                }
+                                // 刪除按鈕（桌面版：置右顯示，行動版：隱藏）
+                                button {
+                                    class: "hidden lg:block px-3 py-1 text-sm text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors duration-200",
+                                    onclick: move |_| props.on_remove_choice.call(index),
+                                    {t!("delete_option")}
+                                }
                             }
-                            // 目標章節選擇器
-                            crate::components::chapter_selector::ChapterSelector {
-                                label: t!("target_chapter"),
-                                value: target_chapter.clone(),
-                                chapters: props.available_chapters.clone(),
-                                is_open: props.choice_chapters_open.get(index).copied().unwrap_or(false),
-                                search_query: props.choice_chapters_search.get(index).cloned().unwrap_or_default(),
-                                on_toggle: {
-                                    let on_chapter_toggle = props.on_chapter_toggle.clone();
-                                    move |_| on_chapter_toggle.call(index)
-                                },
-                                on_search: {
-                                    let on_chapter_search = props.on_chapter_search.clone();
-                                    move |query| on_chapter_search.call((index, query))
-                                },
-                                on_select: move |chapter: Chapter| {
-                                    props.on_choice_change.call((index, "target_chapter".to_string(), chapter.id.clone()));
-                                },
-                                has_error: false,
-                                selected_language: props.selected_language.clone(),
+                            
+                            // 第一列：標題、目標章節、目標段落（桌面版並排，行動版垂直）
+                            div {
+                                class: "grid grid-cols-1 lg:grid-cols-3 gap-4",
+                                // 選項標題輸入框
+                                InputField {
+                                    label: t!("caption"),
+                                    value: caption.clone(),
+                                    on_input: move |value| {
+                                        props.on_choice_change.call((index, "caption".to_string(), value));
+                                    },
+                                    placeholder: t!("caption"),
+                                    has_error: false,
+                                    required: true,
+                                    on_blur: move |_| {},
+                                }
+                                // 目標章節選擇器
+                                crate::components::chapter_selector::ChapterSelector {
+                                    label: t!("target_chapter"),
+                                    value: target_chapter.clone(),
+                                    chapters: props.available_chapters.clone(),
+                                    is_open: props.choice_chapters_open.get(index).copied().unwrap_or(false),
+                                    search_query: props.choice_chapters_search.get(index).cloned().unwrap_or_default(),
+                                    on_toggle: {
+                                        let on_chapter_toggle = props.on_chapter_toggle.clone();
+                                        move |_| on_chapter_toggle.call(index)
+                                    },
+                                    on_search: {
+                                        let on_chapter_search = props.on_chapter_search.clone();
+                                        move |query| on_chapter_search.call((index, query))
+                                    },
+                                    on_select: move |chapter: Chapter| {
+                                        props.on_choice_change.call((index, "target_chapter".to_string(), chapter.id.clone()));
+                                    },
+                                    has_error: false,
+                                    selected_language: props.selected_language.clone(),
+                                }
+                                // 多選目標段落選擇器
+                                MultiSelectParagraphList {
+                                    label: t!("goto_target"),
+                                    selected_ids: goto_list.clone(),
+                                    paragraphs: props.choice_paragraphs.get(index).cloned().unwrap_or_default(),
+                                    is_open: props.choice_paragraphs_open.get(index).copied().unwrap_or(false),
+                                    search_query: props.choice_paragraphs_search.get(index).cloned().unwrap_or_default(),
+                                    on_toggle: {
+                                        let on_paragraph_toggle = props.on_paragraph_toggle.clone();
+                                        move |_| on_paragraph_toggle.call(index)
+                                    },
+                                    on_search: {
+                                        let on_paragraph_search = props.on_paragraph_search.clone();
+                                        move |query| on_paragraph_search.call((index, query))
+                                    },
+                                    on_select: move |id| {
+                                        props.on_choice_add_paragraph.call((index, id));
+                                    },
+                                    on_remove: move |id| {
+                                        props.on_choice_remove_paragraph.call((index, id));
+                                    },
+                                    has_error: false,
+                                    selected_language: props.selected_language.clone(),
+                                }
                             }
-                            // 多選目標段落選擇器
-                            MultiSelectParagraphList {
-                                label: t!("goto_target"),
-                                selected_ids: goto_list.clone(),
-                                paragraphs: props.choice_paragraphs.get(index).cloned().unwrap_or_default(),
-                                is_open: props.choice_paragraphs_open.get(index).copied().unwrap_or(false),
-                                search_query: props.choice_paragraphs_search.get(index).cloned().unwrap_or_default(),
-                                on_toggle: {
-                                    let on_paragraph_toggle = props.on_paragraph_toggle.clone();
-                                    move |_| on_paragraph_toggle.call(index)
-                                },
-                                on_search: {
-                                    let on_paragraph_search = props.on_paragraph_search.clone();
-                                    move |query| on_paragraph_search.call((index, query))
-                                },
-                                on_select: move |id| {
-                                    props.on_choice_add_paragraph.call((index, id));
-                                },
-                                on_remove: move |id| {
-                                    props.on_choice_remove_paragraph.call((index, id));
-                                },
-                                has_error: false,
-                                selected_language: props.selected_language.clone(),
-                            }
+                            
                             // Action 相關欄位
                             div {
                                 class: "border-t border-gray-200 dark:border-gray-700 mt-4 pt-4",
@@ -205,9 +247,9 @@ pub fn ChoiceOptions(props: ChoiceOptionsProps) -> Element {
                                 on_blur: move |_| {},
                             }
                             
-                            // 刪除按鈕
+                            // 刪除按鈕（行動版：顯示在最後，桌面版：隱藏）
                             button {
-                                class: "w-full mt-2 px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 transition-transform transition-opacity duration-200 will-change-transform will-change-opacity",
+                                class: "lg:hidden w-full mt-2 px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 transition-colors duration-200",
                                 onclick: move |_| props.on_remove_choice.call(index),
                                 {t!("delete_option")}
                             }
@@ -217,9 +259,9 @@ pub fn ChoiceOptions(props: ChoiceOptionsProps) -> Element {
             }
         })}
 
-        // 新增選項按鈕
+        // 新增選項按鈕（行動版：顯示在底部，桌面版：隱藏）
         button {
-            class: "w-full px-4 py-3 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg text-gray-600 dark:text-gray-400 hover:border-gray-400 dark:hover:border-gray-500 hover:text-gray-700 dark:hover:text-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors duration-200",
+            class: "lg:hidden w-full px-4 py-3 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg text-gray-600 dark:text-gray-400 hover:border-gray-400 dark:hover:border-gray-500 hover:text-gray-700 dark:hover:text-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors duration-200",
             onclick: move |_| props.on_add_choice.call(()),
             {t!("add_option")}
         }
