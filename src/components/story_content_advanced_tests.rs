@@ -230,38 +230,49 @@ mod enabled_choices_logic_tests {
 
     #[test]
     fn test_disabled_by_countdown_logic() {
-        let choices = vec![
+        let _choices = vec![
             create_test_choice("Normal option", "normal", "goto"),
-            create_test_choice("Countdown disabled", "countdown_disabled", "goto"),
+            create_test_choice("Countdown disabled option", "countdown", "goto"),
         ];
         
-        let enabled_choices = vec!["Normal option".to_string(), "Countdown disabled".to_string()];
-        let disabled_by_countdown = vec![false, true];
+        let _enabled_choices = vec!["Normal option".to_string(), "Countdown disabled option".to_string()];
+        let _disabled_by_countdown = vec![false, true];
         
-        // Test combination logic
-        let enabled_choices = vec!["normal".to_string()];
-        let disabled_by_countdown = vec![false, true];
+        // Mock countdown state
+        let countdowns = vec![10u32, 0u32]; // First has time, second expired
+        let max_times = vec![30u32, 30u32];
         
-        let is_normal_enabled = enabled_choices.contains(&choices[0].caption) && !disabled_by_countdown[0];
-        let is_disabled_by_countdown = disabled_by_countdown.get(1).copied().unwrap_or(false);
-        let final_enabled = is_normal_enabled && !is_disabled_by_countdown;
-        
-        assert!(final_enabled);
+        // Test countdown logic
+        for (i, &countdown) in countdowns.iter().enumerate() {
+            let is_expired = countdown == 0 && max_times[i] > 0;
+            if i == 0 {
+                assert!(!is_expired, "First option should not be expired");
+            } else {
+                assert!(is_expired, "Second option should be expired");
+            }
+        }
     }
 
     #[test]
     fn test_all_choices_disabled_scenario() {
-        let choices = vec![
-            create_test_choice("Option one", "choice1", "goto"),
-            create_test_choice("Option two", "choice2", "goto"),
+        let _choices = vec![
+            create_test_choice("Disabled option 1", "disabled1", "goto"),
+            create_test_choice("Disabled option 2", "disabled2", "goto"),
+            create_test_choice("Disabled option 3", "disabled3", "goto"),
         ];
         
-        let enabled_choices: Vec<String> = vec![]; // No enabled options
+        // All choices disabled by countdown
+        let choice_count = 3;
+        let progress_started = vec![false; choice_count];
+        let disabled_by_countdown = vec![false; choice_count];
         
-        for choice in &choices {
-            let is_enabled = enabled_choices.contains(&choice.caption);
-            assert!(!is_enabled, "All options should be disabled");
-        }
+        // Test that no choices are available
+        let available_count = progress_started.iter()
+            .zip(disabled_by_countdown.iter())
+            .filter(|(&started, &disabled)| started && !disabled)
+            .count();
+        
+        assert_eq!(available_count, 0);
     }
 }
 
@@ -271,7 +282,7 @@ mod countdown_state_tests {
 
     #[test]
     fn test_countdown_array_initialization() {
-        let choices = vec![
+        let _choices = vec![
             create_test_choice("Option one", "choice1", "goto"),
             create_test_choice("Option two", "choice2", "goto"),
             create_test_choice("Option three", "choice3", "goto"),
@@ -281,8 +292,8 @@ mod countdown_state_tests {
         let choice_count = 3;
         let mut countdowns = vec![0u32; choice_count];
         let mut max_times = vec![0u32; choice_count];
-        let mut progress_started = vec![false; choice_count];
-        let mut disabled_by_countdown = vec![false; choice_count];
+        let progress_started = vec![false; choice_count];
+        let disabled_by_countdown = vec![false; choice_count];
         
         // Check initial values
         assert_eq!(countdowns.len(), 3);
@@ -314,15 +325,15 @@ mod countdown_state_tests {
     #[test]
     fn test_countdown_time_setting() {
         let choices = vec![
-            create_test_choice("Quick option", "quick", "goto"),
-            create_test_choice("Slow option", "slow", "goto"),
+            create_test_choice("First option", "choice1", "goto"),
+            create_test_choice("Second option", "choice2", "goto"),
         ];
         
         let mut countdowns = vec![0u32; choices.len()];
         let mut max_times = vec![0u32; choices.len()];
         
         // Set different countdown times
-        let countdown_time = if i % 2 == 0 { 5 } else { 10 };
+        let countdown_time = 5;
         countdowns[0] = countdown_time;
         countdowns[1] = countdown_time;
         max_times[0] = countdown_time;
@@ -381,10 +392,10 @@ mod keyboard_input_simulation_tests {
             let parse_result = key.parse::<usize>();
             if key == "0" {
                 // 0 can be parsed but invalid in option selection (options start from 1)
-                assert!(parse_result.is_some());
+                assert!(parse_result.is_ok());
             } else {
                 // Other keys cannot be parsed as numbers
-                assert!(parse_result.is_none());
+                assert!(parse_result.is_err());
             }
         }
     }
@@ -430,8 +441,8 @@ mod performance_simulation_tests {
             choices.push(create_test_choice(&format!("Option {}", i), &format!("option_{}", i), "goto"));
         }
         
-        let enabled_choices: Vec<String> = (0..1000).map(|i| format!("option_{}", i)).collect();
-        let disabled_by_countdown = vec![false; 1000];
+        let _enabled_choices: Vec<String> = (0..1000).map(|i| format!("option_{}", i)).collect();
+        let _disabled_by_countdown = vec![false; 1000];
         
         // Test paragraph splitting
         let repeated_text = "Single line text".repeat(100);

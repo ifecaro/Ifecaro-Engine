@@ -1,4 +1,4 @@
-use crate::pages::story::{Paragraph, Text, merge_paragraphs_for_lang};
+use crate::pages::story::{Paragraph, Text, merge_paragraphs_for_lang, ComplexChoice};
 
 fn make_paragraph(id: &str, chapter_id: &str, lang: &str, text: &str) -> Paragraph {
     Paragraph {

@@ -474,19 +474,4 @@ fn main() -> Result<()> {
     }
 
     Ok(())
-}
-
-fn print_help() {
-    println!("{}", "🧪 Ifecaro Engine Test Runner".blue().bold());
-    println!("Usage:");
-    println!("  {} full        - Run complete test suite", "cargo run --bin test-runner".cyan());
-    println!("  {} quick       - Quick tests (compile check + basic tests)", "cargo run --bin test-runner".cyan());
-    println!("  {} category <type> - Run specific test category", "cargo run --bin test-runner".cyan());
-    println!("  {} internal    - Optimized container tests", "cargo run --bin test-runner".cyan());
-    println!("  {} check       - Only run compile check", "cargo run --bin test-runner".cyan());
-    println!("  {} benchmark   - Run performance benchmark tests", "cargo run --bin test-runner".cyan());
-    println!("  {} report      - Generate test report", "cargo run --bin test-runner".cyan());
-    
-    println!("\nTest categories:");
-    println!("  compile, basic-ui, advanced, api-mock, integration, unit, external");
 } 
