@@ -72,7 +72,7 @@ fn test_countdowns_from_time_limit() {
     let mut p = make_paragraph("p1", "c1", "zh", "段落");
     p.choices = vec![
         ComplexChoice {
-            to: "p2".to_string(),
+            to: vec!["p2".to_string()],
             type_: "goto".to_string(),
             key: None,
             value: None,
@@ -80,7 +80,7 @@ fn test_countdowns_from_time_limit() {
             time_limit: Some(10),
         },
         ComplexChoice {
-            to: "p3".to_string(),
+            to: vec!["p3".to_string()],
             type_: "goto".to_string(),
             key: None,
             value: None,
@@ -88,7 +88,7 @@ fn test_countdowns_from_time_limit() {
             time_limit: Some(0),
         },
         ComplexChoice {
-            to: "p4".to_string(),
+            to: vec!["p4".to_string()],
             type_: "goto".to_string(),
             key: None,
             value: None,
