@@ -25,9 +25,9 @@ mod story_integration_tests {
 
     #[test]
     fn test_story_complete_flow() {
-        let p1 = make_test_paragraph("p1", "c1", "zh", "開始故事");
-        let p2 = make_test_paragraph("p2", "c1", "zh", "中間劇情");
-        let p3 = make_test_paragraph("p3", "c1", "zh", "結束故事");
+        let p1 = make_test_paragraph("p1", "c1", "zh", "故事開始");
+        let p2 = make_test_paragraph("p2", "c1", "zh", "劇情發展");
+        let p3 = make_test_paragraph("p3", "c1", "zh", "故事結束");
         
         let expanded = vec![p1.clone(), p2.clone(), p3.clone()];
         let choice_ids = vec!["p2".to_string(), "p3".to_string()];
@@ -40,7 +40,7 @@ mod story_integration_tests {
             &choice_ids,
         );
         
-        assert_eq!(result, "開始故事\n\n中間劇情\n\n結束故事");
+        assert_eq!(result, "故事開始\n\n劇情發展\n\n故事結束");
     }
 
     #[test]
@@ -62,7 +62,7 @@ mod story_integration_tests {
         let props = StoryContentUIProps {
             paragraph: "這是一個完整的故事段落測試".to_string(),
             choices: choices.clone(),
-            enabled_choices: vec!["next_paragraph".to_string()],
+            enabled_choices: vec!["繼續故事".to_string()],
             disabled_by_countdown: vec![false],
             chapter_title: "整合測試章節".to_string(),
         };
@@ -90,7 +90,7 @@ mod ui_integration_tests {
         
         let choices = vec![
             Choice {
-                caption: "選項1".to_string(),
+                caption: "選項一".to_string(),
                 action: Action {
                     type_: "goto".to_string(),
                     key: None,
@@ -99,7 +99,7 @@ mod ui_integration_tests {
                 },
             },
             Choice {
-                caption: "選項2".to_string(),
+                caption: "選項二".to_string(),
                 action: Action {
                     type_: "goto".to_string(),
                     key: None,

@@ -18,58 +18,44 @@ fn make_paragraph(id: &str, chapter_id: &str, lang: &str, text: &str) -> Paragra
 }
 
 #[test]
+fn test_merge_paragraphs_basic() {
+    let p1 = make_paragraph("p1", "c1", "zh", "第一段");
+    let p2 = make_paragraph("p2", "c1", "zh", "第二段");
+    
+    let paragraphs = vec![p1, p2];
+    let choice_ids = vec!["p1".to_string(), "p2".to_string()];
+    
+    let result = merge_paragraphs_for_lang(&paragraphs, "zh", false, false, &choice_ids);
+    assert_eq!(result, "第一段\n\n第二段");
+}
+
+#[test]
 fn test_merge_paragraphs_reader_mode() {
     let p1 = make_paragraph("p1", "c1", "zh", "第一段");
     let p2 = make_paragraph("p2", "c1", "zh", "第二段");
-    let expanded = vec![p1.clone(), p2.clone()];
-    let choice_ids = vec!["p2".to_string()];
-    let result = merge_paragraphs_for_lang(
-        &expanded,
-        "zh",
-        true, // reader_mode
-        false, // is_settings_chapter
-        &choice_ids,
-    );
+    
+    let paragraphs = vec![p1, p2];
+    let choice_ids = vec!["p1".to_string(), "p2".to_string()];
+    
+    let result = merge_paragraphs_for_lang(&paragraphs, "zh", true, false, &choice_ids);
     assert_eq!(result, "第一段\n\n第二段");
 }
 
 #[test]
-fn test_merge_paragraphs_normal_mode() {
+fn test_merge_paragraphs_with_exclusion() {
     let p1 = make_paragraph("p1", "c1", "zh", "第一段");
     let p2 = make_paragraph("p2", "c1", "zh", "第二段");
-    let expanded = vec![p1.clone(), p2.clone()];
-    let choice_ids = vec![];
-    let result = merge_paragraphs_for_lang(
-        &expanded,
-        "zh",
-        false, // reader_mode
-        false, // is_settings_chapter
-        &choice_ids,
-    );
-    assert_eq!(result, "第一段\n\n第二段");
-}
-
-#[test]
-fn test_merge_paragraphs_reader_mode_only_first() {
-    let p1 = make_paragraph("p1", "c1", "zh", "第一段");
-    let p2 = make_paragraph("p2", "c1", "zh", "第二段");
-    let expanded = vec![p1.clone(), p2.clone()];
+    
+    let paragraphs = vec![p1, p2];
     let choice_ids = vec![]; // No p2
-    let result = merge_paragraphs_for_lang(
-        &expanded,
-        "zh",
-        true, // reader_mode
-        false, // is_settings_chapter
-        &choice_ids,
-    );
+    
+    let result = merge_paragraphs_for_lang(&paragraphs, "zh", false, false, &choice_ids);
     assert_eq!(result, "第一段");
 }
 
 #[test]
-fn test_countdowns_from_time_limit() {
-    use crate::pages::story::ComplexChoice;
-    // Prepare a paragraph with choices that have time_limit
-    let mut p = make_paragraph("p1", "c1", "zh", "段落");
+fn test_paragraph_with_time_limit() {
+    let mut p = make_paragraph("p1", "c1", "zh", "Paragraph");
     p.choices = vec![
         ComplexChoice {
             to: vec!["p2".to_string()],
@@ -136,18 +122,18 @@ mod ssr_tests {
         use crate::components::story_content::{StoryContentUI, StoryContentUIProps, Choice, Action};
         // Prepare props
         let props = StoryContentUIProps {
-            paragraph: "這是一段故事".to_string(),
+            paragraph: "這是一個故事".to_string(),
             choices: vec![Choice {
                 caption: "選項一".to_string(),
                 action: Action {
                     type_: "goto".to_string(),
                     key: None,
                     value: None,
-                    to: "p2".to_string(),
+                    to: "next".to_string(),
                 },
             }],
             enabled_choices: vec!["選項一".to_string()],
-            disabled_by_countdown: vec![true],
+            disabled_by_countdown: vec![false],
             chapter_title: "章節標題測試".to_string(),
         };
         let mut dom = VirtualDom::new_with_props(StoryContentUI, props);

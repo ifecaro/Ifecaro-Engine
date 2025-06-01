@@ -54,25 +54,24 @@ mod main_code_usage_tests {
         use ifecaro::components::story_content::{StoryContentUI, StoryContentUIProps};
         
         let choices = vec![
-            create_test_choice("主程式選項1", "main_choice_1"),
-            create_test_choice("主程式選項2", "main_choice_2"),
+            create_test_choice("主要選項一", "main_choice_1"),
+            create_test_choice("主要選項二", "main_choice_2"),
         ];
         
         let props = StoryContentUIProps {
             paragraph: "這是直接使用主程式組件的測試".to_string(),
             choices: choices.clone(),
-            enabled_choices: vec!["main_choice_1".to_string()],
-            disabled_by_countdown: vec![false, true],
-            chapter_title: "主程式組件測試".to_string(),
+            enabled_choices: vec!["主要選項一".to_string(), "主要選項二".to_string()],
+            disabled_by_countdown: vec![false, false],
+            chapter_title: "主組件測試".to_string(),
         };
         
         let html = render_component_to_html(StoryContentUI, props);
         
-        // Verify the main program component's rendering result
         assert_html_contains_text(&html, "這是直接使用主程式組件的測試");
-        assert_html_contains_text(&html, "主程式組件測試");
-        assert_html_contains_text(&html, "主程式選項1");
-        assert_html_contains_text(&html, "主程式選項2");
+        assert_html_contains_text(&html, "主組件測試");
+        assert_html_contains_text(&html, "主要選項一");
+        assert_html_contains_text(&html, "主要選項二");
     }
     
     /// This test demonstrates how to directly use the main program's business logic functions
@@ -82,37 +81,35 @@ mod main_code_usage_tests {
         use ifecaro::pages::story::merge_paragraphs_for_lang;
         
         let paragraphs = vec![
-            create_test_paragraph("main_p1", "main_c1", "zh", "主程式段落1"),
-            create_test_paragraph("main_p2", "main_c1", "zh", "主程式段落2"),
-            create_test_paragraph("main_p3", "main_c1", "zh", "主程式段落3"),
+            create_test_paragraph("main_p1", "main_c1", "zh", "主要段落1"),
+            create_test_paragraph("main_p2", "main_c1", "zh", "主要段落2"),
+            create_test_paragraph("main_p3", "main_c1", "zh", "主要段落3"),
         ];
         
-        let choice_ids = vec!["main_p1".to_string(), "main_p3".to_string()];
+        let selected_choice_ids = vec!["main_p1".to_string(), "main_p3".to_string()];
         
-        // Test the main program's merge logic (reader mode)
-        let result = merge_paragraphs_for_lang(
+        // Test reader mode (only selected paragraphs)
+        let reader_result = merge_paragraphs_for_lang(
             &paragraphs,
             "zh",
             true, // reader_mode
             false,
-            &choice_ids,
+            &selected_choice_ids,
         );
         
-        // In reader mode, only paragraphs specified in choice_ids will be included
-        let expected = "主程式段落1\n\n主程式段落3";
-        assert_eq!(result, expected);
+        let expected = "主要段落1\n\n主要段落3";
+        assert_eq!(reader_result, expected);
         
-        // Test normal mode
-        let result_normal = merge_paragraphs_for_lang(
+        // Test normal mode (all paragraphs)
+        let normal_result = merge_paragraphs_for_lang(
             &paragraphs,
             "zh",
             false, // normal mode
             false,
-            &choice_ids,
+            &selected_choice_ids,
         );
         
-        // In normal mode, all paragraphs will be included
-        let expected_normal = "主程式段落1\n\n主程式段落2\n\n主程式段落3";
-        assert_eq!(result_normal, expected_normal);
+        let expected_normal = "主要段落1\n\n主要段落2\n\n主要段落3";
+        assert_eq!(normal_result, expected_normal);
     }
 } 

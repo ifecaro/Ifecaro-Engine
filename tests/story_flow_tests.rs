@@ -11,10 +11,10 @@ mod story_flow_tests {
     #[test]
     fn test_multi_chapter_story_flow() {
         // Use helper function to create multiple paragraphs
-        let p1 = create_test_paragraph("opening", "chapter1", "zh", "故事的開始");
+        let p1 = create_test_paragraph("opening", "chapter1", "zh", "故事開場");
         let p2 = create_test_paragraph("middle", "chapter1", "zh", "劇情發展");
         let p3 = create_test_paragraph("climax", "chapter2", "zh", "高潮部分");
-        let p4 = create_test_paragraph("ending", "chapter2", "zh", "故事結尾");
+        let p4 = create_test_paragraph("ending", "chapter2", "zh", "故事結局");
         
         let all_paragraphs = vec![p1, p2, p3, p4];
         let selected_paragraphs = vec!["opening".to_string(), "middle".to_string(), "climax".to_string()];
@@ -27,7 +27,7 @@ mod story_flow_tests {
             &selected_paragraphs,
         );
         
-        let expected = "故事的開始\n\n劇情發展\n\n高潮部分";
+        let expected = "故事開場\n\n劇情發展\n\n高潮部分";
         assert_eq!(result, expected);
     }
 
@@ -64,9 +64,9 @@ mod story_flow_tests {
     #[test]
     fn test_reader_mode_vs_normal_mode() {
         let paragraphs = vec![
-            create_test_paragraph("p1", "c1", "zh", "段落一"),
-            create_test_paragraph("p2", "c1", "zh", "段落二"),
-            create_test_paragraph("p3", "c1", "zh", "段落三"),
+            create_test_paragraph("p1", "c1", "zh", "第一段"),
+            create_test_paragraph("p2", "c1", "zh", "第二段"),
+            create_test_paragraph("p3", "c1", "zh", "第三段"),
         ];
         
         let choice_ids = vec!["p2".to_string()];
@@ -90,7 +90,30 @@ mod story_flow_tests {
         );
         
         // In this example, both modes should have the same result
-        assert_eq!(normal_result, "段落一\n\n段落二\n\n段落三");
-        assert_eq!(reader_result, "段落一\n\n段落二");
+        assert_eq!(normal_result, "第一段\n\n第二段\n\n第三段");
+        assert_eq!(reader_result, "第一段\n\n第二段");
+    }
+
+    #[test]
+    fn test_story_flow_across_chapters() {
+        let p1 = create_test_paragraph("opening", "chapter1", "zh", "故事開場");
+        let p2 = create_test_paragraph("middle", "chapter1", "zh", "劇情發展");
+        let p3 = create_test_paragraph("climax", "chapter2", "zh", "高潮部分");
+        let p4 = create_test_paragraph("ending", "chapter2", "zh", "故事結局");
+        
+        let paragraphs = vec![p1.clone(), p2.clone(), p3.clone(), p4.clone()];
+        
+        // Test chapter1 flow
+        let chapter1_ids = vec!["opening".to_string(), "middle".to_string(), "climax".to_string()];
+        let result = merge_paragraphs_for_lang(
+            &paragraphs,
+            "zh",
+            true, // reader_mode
+            false, // is_settings_chapter  
+            &chapter1_ids,
+        );
+        
+        let expected = "故事開場\n\n劇情發展\n\n高潮部分";
+        assert_eq!(result, expected);
     }
 } 

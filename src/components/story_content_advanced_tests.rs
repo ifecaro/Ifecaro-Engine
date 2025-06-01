@@ -32,9 +32,9 @@ mod choice_data_structure_tests {
 
     #[test]
     fn test_choice_creation_and_serialization() {
-        let choice = create_test_choice("測試選項", "test_target", "goto");
+        let choice = create_test_choice("Test option", "test_target", "goto");
         
-        assert_eq!(choice.caption, "測試選項");
+        assert_eq!(choice.caption, "Test option");
         assert_eq!(choice.action.to, "test_target");
         assert_eq!(choice.action.type_, "goto");
         assert!(choice.action.key.is_none());
@@ -44,14 +44,14 @@ mod choice_data_structure_tests {
     #[test]
     fn test_choice_with_complex_action_data() {
         let choice = create_test_choice_with_value(
-            "設定選項",
+            "Settings option",
             "settings_page",
             "set",
             Some("difficulty".to_string()),
             Some(serde_json::Value::String("hard".to_string())),
         );
         
-        assert_eq!(choice.caption, "設定選項");
+        assert_eq!(choice.caption, "Settings option");
         assert_eq!(choice.action.type_, "set");
         assert_eq!(choice.action.key, Some("difficulty".to_string()));
         assert!(choice.action.value.is_some());
@@ -66,7 +66,7 @@ mod choice_data_structure_tests {
     #[test]
     fn test_choice_serialization_deserialization() {
         let original_choice = create_test_choice_with_value(
-            "JSON 測試",
+            "JSON test",
             "json_target",
             "add",
             Some("item".to_string()),
@@ -74,15 +74,15 @@ mod choice_data_structure_tests {
         );
         
         // Test serialization
-        let serialized = serde_json::to_string(&original_choice).expect("序列化失敗");
-        assert!(serialized.contains("JSON 測試"));
+        let serialized = serde_json::to_string(&original_choice).expect("Serialization failed");
+        assert!(serialized.contains("JSON test"));
         assert!(serialized.contains("json_target"));
         assert!(serialized.contains("add"));
         assert!(serialized.contains("item"));
         assert!(serialized.contains("sword"));
         
         // Test deserialization
-        let deserialized: Choice = serde_json::from_str(&serialized).expect("反序列化失敗");
+        let deserialized: Choice = serde_json::from_str(&serialized).expect("Deserialization failed");
         assert_eq!(deserialized.caption, original_choice.caption);
         assert_eq!(deserialized.action.type_, original_choice.action.type_);
         assert_eq!(deserialized.action.to, original_choice.action.to);
@@ -96,7 +96,7 @@ mod action_type_validation_tests {
 
     #[test]
     fn test_goto_action_type() {
-        let choice = create_test_choice("跳轉", "scene_1", "goto");
+        let choice = create_test_choice("Jump to", "scene_1", "goto");
         assert_eq!(choice.action.type_, "goto");
         assert_eq!(choice.action.to, "scene_1");
     }
@@ -104,7 +104,7 @@ mod action_type_validation_tests {
     #[test]
     fn test_set_action_type() {
         let choice = create_test_choice_with_value(
-            "設定",
+            "Settings",
             "config",
             "set",
             Some("language".to_string()),
@@ -118,7 +118,7 @@ mod action_type_validation_tests {
     #[test]
     fn test_add_action_type() {
         let choice = create_test_choice_with_value(
-            "添加物品",
+            "Add item",
             "inventory",
             "add",
             Some("item_id".to_string()),
@@ -136,7 +136,7 @@ mod action_type_validation_tests {
 
     #[test]
     fn test_custom_action_type() {
-        let choice = create_test_choice("自訂動作", "custom_target", "custom_action");
+        let choice = create_test_choice("Custom action", "custom_target", "custom_action");
         assert_eq!(choice.action.type_, "custom_action");
         assert_eq!(choice.action.to, "custom_target");
     }
@@ -155,22 +155,22 @@ mod choice_array_operations_tests {
 
     #[test]
     fn test_single_choice_array() {
-        let choices = vec![create_test_choice("單一選項", "single", "goto")];
+        let choices = vec![create_test_choice("Single option", "single", "goto")];
         assert_eq!(choices.len(), 1);
-        assert_eq!(choices[0].caption, "單一選項");
+        assert_eq!(choices[0].caption, "Single option");
     }
 
     #[test]
     fn test_multiple_choices_array() {
         let choices = vec![
-            create_test_choice("選項一", "choice1", "goto"),
-            create_test_choice("選項二", "choice2", "goto"),
-            create_test_choice("選項三", "choice3", "goto"),
+            create_test_choice("Option one", "choice1", "goto"),
+            create_test_choice("Option two", "choice2", "goto"),
+            create_test_choice("Option three", "choice3", "goto"),
         ];
         
         assert_eq!(choices.len(), 3);
         for (i, choice) in choices.iter().enumerate() {
-            assert_eq!(choice.caption, format!("選項{}", ["一", "二", "三"][i]));
+            assert_eq!(choice.caption, format!("Option {}", ["one", "two", "three"][i]));
             assert_eq!(choice.action.to, format!("choice{}", i + 1));
             assert_eq!(choice.action.type_, "goto");
         }
@@ -179,10 +179,10 @@ mod choice_array_operations_tests {
     #[test]
     fn test_choice_filtering_by_type() {
         let choices = vec![
-            create_test_choice("跳轉選項", "scene1", "goto"),
-            create_test_choice_with_value("設定選項", "config", "set", Some("key".to_string()), None),
-            create_test_choice("另一個跳轉", "scene2", "goto"),
-            create_test_choice_with_value("添加選項", "inventory", "add", Some("item".to_string()), None),
+            create_test_choice("Jump option", "scene1", "goto"),
+            create_test_choice_with_value("Settings option", "config", "set", Some("key".to_string()), None),
+            create_test_choice("Another jump", "scene2", "goto"),
+            create_test_choice_with_value("Add option", "inventory", "add", Some("item".to_string()), None),
         ];
         
         let goto_choices: Vec<&Choice> = choices.iter()
@@ -209,21 +209,21 @@ mod enabled_choices_logic_tests {
     #[test]
     fn test_enabled_choices_matching() {
         let choices = vec![
-            create_test_choice("啟用選項", "enabled", "goto"),
-            create_test_choice("禁用選項", "disabled", "goto"),
-            create_test_choice("另一個啟用", "enabled2", "goto"),
+            create_test_choice("Enabled option", "enabled", "goto"),
+            create_test_choice("Disabled option", "disabled", "goto"),
+            create_test_choice("Another enabled", "enabled2", "goto"),
         ];
         
-        let enabled_choices = vec!["啟用選項".to_string(), "另一個啟用".to_string()];
+        let enabled_choices = vec!["Enabled option".to_string(), "Another enabled".to_string()];
         
         // Test enabled logic
         for (i, choice) in choices.iter().enumerate() {
             let is_enabled = enabled_choices.contains(&choice.caption);
             match i {
-                0 => assert!(is_enabled, "第一個選項應該被啟用"),
-                1 => assert!(!is_enabled, "第二個選項應該被禁用"),
-                2 => assert!(is_enabled, "第三個選項應該被啟用"),
-                _ => panic!("意外的選項索引"),
+                0 => assert!(is_enabled, "First option should be enabled"),
+                1 => assert!(!is_enabled, "Second option should be disabled"),
+                2 => assert!(is_enabled, "Third option should be enabled"),
+                _ => panic!("Unexpected option index"),
             }
         }
     }
@@ -231,11 +231,11 @@ mod enabled_choices_logic_tests {
     #[test]
     fn test_disabled_by_countdown_logic() {
         let choices = vec![
-            create_test_choice("正常選項", "normal", "goto"),
-            create_test_choice("倒數禁用", "countdown_disabled", "goto"),
+            create_test_choice("Normal option", "normal", "goto"),
+            create_test_choice("Countdown disabled", "countdown_disabled", "goto"),
         ];
         
-        let enabled_choices = vec!["正常選項".to_string(), "倒數禁用".to_string()];
+        let enabled_choices = vec!["Normal option".to_string(), "Countdown disabled".to_string()];
         let disabled_by_countdown = vec![false, true];
         
         // Test combination logic
@@ -252,15 +252,15 @@ mod enabled_choices_logic_tests {
     #[test]
     fn test_all_choices_disabled_scenario() {
         let choices = vec![
-            create_test_choice("選項一", "choice1", "goto"),
-            create_test_choice("選項二", "choice2", "goto"),
+            create_test_choice("Option one", "choice1", "goto"),
+            create_test_choice("Option two", "choice2", "goto"),
         ];
         
         let enabled_choices: Vec<String> = vec![]; // No enabled options
         
         for choice in &choices {
             let is_enabled = enabled_choices.contains(&choice.caption);
-            assert!(!is_enabled, "所有選項都應該被禁用");
+            assert!(!is_enabled, "All options should be disabled");
         }
     }
 }
@@ -272,9 +272,9 @@ mod countdown_state_tests {
     #[test]
     fn test_countdown_array_initialization() {
         let choices = vec![
-            create_test_choice("選項一", "choice1", "goto"),
-            create_test_choice("選項二", "choice2", "goto"),
-            create_test_choice("選項三", "choice3", "goto"),
+            create_test_choice("Option one", "choice1", "goto"),
+            create_test_choice("Option two", "choice2", "goto"),
+            create_test_choice("Option three", "choice3", "goto"),
         ];
         
         // Simulate countdown array initialization
@@ -314,8 +314,8 @@ mod countdown_state_tests {
     #[test]
     fn test_countdown_time_setting() {
         let choices = vec![
-            create_test_choice("快速選項", "quick", "goto"),
-            create_test_choice("慢速選項", "slow", "goto"),
+            create_test_choice("Quick option", "quick", "goto"),
+            create_test_choice("Slow option", "slow", "goto"),
         ];
         
         let mut countdowns = vec![0u32; choices.len()];
@@ -337,8 +337,8 @@ mod countdown_state_tests {
     #[test]
     fn test_countdown_expiration_logic() {
         let _choices = vec![
-            create_test_choice("選項一", "choice1", "goto"),
-            create_test_choice("選項二", "choice2", "goto"),
+            create_test_choice("Option one", "choice1", "goto"),
+            create_test_choice("Option two", "choice2", "goto"),
         ];
         
         let countdowns = vec![5u32, 0u32]; // First still has time, second expired
@@ -368,7 +368,7 @@ mod keyboard_input_simulation_tests {
                 assert!(num > 0);
                 assert!(num <= 5);
             } else {
-                panic!("無法解析按鍵: {}", key);
+                panic!("Unable to parse key: {}", key);
             }
         }
     }
@@ -392,9 +392,9 @@ mod keyboard_input_simulation_tests {
     #[test]
     fn test_keyboard_choice_index_calculation() {
         let choices = vec![
-            create_test_choice("第一選項", "choice1", "goto"),
-            create_test_choice("第二選項", "choice2", "goto"),
-            create_test_choice("第三選項", "choice3", "goto"),
+            create_test_choice("First option", "choice1", "goto"),
+            create_test_choice("Second option", "choice2", "goto"),
+            create_test_choice("Third option", "choice3", "goto"),
         ];
         
         // Test keyboard input simulation
@@ -538,13 +538,13 @@ mod edge_case_handling_tests {
     #[test]
     fn test_unicode_content() {
         let choice = create_test_choice(
-            "🎮 遊戲選項 🎯",
-            "unicode_target_測試",
+            "🎮 Game option 🎯",
+            "unicode_target_test",
             "goto"
         );
         
-        assert_eq!(choice.caption, "🎮 遊戲選項 🎯");
-        assert_eq!(choice.action.to, "unicode_target_測試");
+        assert_eq!(choice.caption, "🎮 Game option 🎯");
+        assert_eq!(choice.action.to, "unicode_target_test");
         assert!(choice.caption.contains("🎮"));
         assert!(choice.caption.contains("🎯"));
     }
@@ -552,7 +552,7 @@ mod edge_case_handling_tests {
     #[test]
     fn test_special_characters() {
         let choice = create_test_choice(
-            "特殊字符: !@#$%^&*()_+-=[]{}|;':\",./<>?",
+            "Special chars: !@#$%^&*()_+-=[]{}|;':\",./<>?",
             "special_chars",
             "goto"
         );
@@ -564,21 +564,21 @@ mod edge_case_handling_tests {
 
     #[test]
     fn test_very_long_strings() {
-        let long_caption = "很長的選項標題".repeat(100);
+        let long_caption = "Very long option title".repeat(100);
         let long_target = "very_long_target_".repeat(50);
         
         let choice = create_test_choice(&long_caption, &long_target, "goto");
         
         assert!(choice.caption.len() > 1000);
         assert!(choice.action.to.len() > 500);
-        assert!(choice.caption.starts_with("很長的選項標題"));
+        assert!(choice.caption.starts_with("Very long option title"));
         assert!(choice.action.to.starts_with("very_long_target_"));
     }
 
     #[test]
     fn test_null_and_none_values() {
         let choice = Choice {
-            caption: "測試 None 值".to_string(),
+            caption: "Test None values".to_string(),
             action: Action {
                 type_: "test".to_string(),
                 key: None,

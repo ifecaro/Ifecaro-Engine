@@ -205,8 +205,8 @@ mod tests {
                 },
                 Text {
                     lang: "zh-CN".to_string(),
-                    paragraphs: "这是简体中文内容".to_string(),
-                    choices: vec!["选项一".to_string(), "选项二".to_string()],
+                    paragraphs: "This is simplified Chinese content".to_string(),
+                    choices: vec!["Option one".to_string(), "Option two".to_string()],
                 },
                 Text {
                     lang: "en".to_string(),
