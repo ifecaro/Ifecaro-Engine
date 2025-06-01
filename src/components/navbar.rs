@@ -31,7 +31,7 @@ pub fn Navbar(closure_signal: Signal<Option<Closure<dyn FnMut(Event)>>>) -> Elem
         AVAILABLE_LANGUAGES.iter()
             .find(|l| l.code == lang_code)
             .map(|l| l.name)
-            .unwrap_or("繁體中文")
+            .unwrap_or("English")
             .to_string()
     };
 

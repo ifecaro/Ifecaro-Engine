@@ -1,4 +1,5 @@
 use dioxus::prelude::*;
+use dioxus_i18n::t;
 use crate::{
     enums::route::Route,
     contexts::language_context::LanguageState,
@@ -19,6 +20,6 @@ pub fn Home() -> Element {
     });
     
     rsx! {
-        div { "Redirecting..." }
+        div { "{t!(\"redirecting\")}" }
     }
 } 
