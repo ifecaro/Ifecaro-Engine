@@ -10,4 +10,4 @@ services:
       - .env
     environment:
       - RUST_LOG=debug
-    command: bash -c "mkdir -p /root/.ssh && ssh-keyscan 38.242.233.231 >> /root/.ssh/known_hosts; tailwindcss -i ./src/input.css -o ./public/tailwind.css -w & dx serve --port 9999"
+    command: bash -c "mkdir -p /root/.ssh && ssh-keyscan 38.242.233.231 >> /root/.ssh/known_hosts; tailwindcss -i ./src/input.css -o ./public/tailwind.css -w & while true; do sleep 30; done"
