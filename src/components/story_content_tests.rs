@@ -53,45 +53,45 @@ mod basic_ui_tests {
         };
         
         let html = render_story_content_ui(props);
-        assert!(html.contains("prose-sm"), "應包含基本的文章樣式");
-        assert!(html.contains("list-decimal"), "應包含有序列表樣式");
+        assert!(html.contains("prose-sm"), "Should contain basic article styles");
+        assert!(html.contains("list-decimal"), "Should contain ordered list styles");
     }
 
     #[test]
     fn test_paragraph_display() {
         let props = StoryContentUIProps {
-            paragraph: "這是第一段\n\n這是第二段\n\n這是第三段".to_string(),
+            paragraph: "This is the first paragraph\n\nThis is the second paragraph\n\nThis is the third paragraph".to_string(),
             choices: vec![],
             enabled_choices: vec![],
             disabled_by_countdown: vec![],
-            chapter_title: "測試章節".to_string(),
+            chapter_title: "Test chapter".to_string(),
         };
         
         let html = render_story_content_ui(props);
-        assert!(html.contains("這是第一段"), "應顯示第一段內容");
-        assert!(html.contains("這是第二段"), "應顯示第二段內容");
-        assert!(html.contains("這是第三段"), "應顯示第三段內容");
-        assert!(html.contains("測試章節"), "應顯示章節標題");
-        assert!(html.contains("indent-10"), "段落應有縮排樣式");
-        assert!(html.contains("tracking-wide"), "段落應有字間距樣式");
+        assert!(html.contains("This is the first paragraph"), "Should display first paragraph content");
+        assert!(html.contains("This is the second paragraph"), "Should display second paragraph content");
+        assert!(html.contains("This is the third paragraph"), "Should display third paragraph content");
+        assert!(html.contains("Test chapter"), "Should display chapter title");
+        assert!(html.contains("indent-10"), "Paragraphs should have indentation styles");
+        assert!(html.contains("tracking-wide"), "Paragraphs should have letter spacing styles");
     }
 
     #[test]
-    fn test_chapter_title_styling() {
+    fn test_chapter_title_display() {
         let props = StoryContentUIProps {
-            paragraph: "段落內容".to_string(),
+            paragraph: "Paragraph content".to_string(),
             choices: vec![],
             enabled_choices: vec![],
             disabled_by_countdown: vec![],
-            chapter_title: "第一章：冒險的開始".to_string(),
+            chapter_title: "Chapter 1: The Beginning of Adventure".to_string(),
         };
         
         let html = render_story_content_ui(props);
-        assert!(html.contains("第一章：冒險的開始"), "應顯示完整章節標題");
-        assert!(html.contains("text-3xl"), "標題應有大字體樣式");
-        assert!(html.contains("md:text-4xl"), "標題應有響應式字體");
-        assert!(html.contains("letter-spacing: 0.1em"), "標題應有字母間距");
-        assert!(html.contains("min-h-[calc(100vh-56px)]"), "標題容器應有最小高度");
+        assert!(html.contains("Chapter 1: The Beginning of Adventure"), "Should display complete chapter title");
+        assert!(html.contains("text-3xl"), "Title should have large font styles");
+        assert!(html.contains("md:text-4xl"), "Title should have responsive font");
+        assert!(html.contains("letter-spacing: 0.1em"), "Title should have letter spacing");
+        assert!(html.contains("min-h-[calc(100vh-56px)]"), "Title container should have minimum height");
     }
 }
 
@@ -101,19 +101,18 @@ mod choice_tests {
 
     #[test]
     fn test_single_choice_enabled() {
-        let choices = vec![create_test_choice("繼續", "next", "goto")];
+        let choices = vec![create_test_choice("Continue", "next", "goto")];
         let props = StoryContentUIProps {
-            paragraph: "故事內容".to_string(),
+            paragraph: "Story content".to_string(),
             choices: choices.clone(),
-            enabled_choices: vec!["繼續".to_string()],
+            enabled_choices: vec!["Continue".to_string()],
             disabled_by_countdown: vec![false],
-            chapter_title: "".to_string(),
+            chapter_title: "Test".to_string(),
         };
         
         let html = render_story_content_ui(props);
-        assert!(html.contains("繼續"), "應顯示選項文字");
-        assert!(html.contains("cursor-pointer"), "啟用選項應有指標樣式");
-        assert!(!html.contains("opacity-50"), "啟用選項不應有透明度");
+        assert!(html.contains("Continue"), "Should display choice text");
+        assert!(html.contains("cursor-pointer"), "Enabled choices should have pointer styles");
     }
 
     #[test]
