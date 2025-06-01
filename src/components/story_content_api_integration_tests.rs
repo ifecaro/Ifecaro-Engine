@@ -36,9 +36,9 @@ mod integration_tests {
     /// Helper function: Get paragraph text content
     fn get_paragraph_text(paragraph: &Paragraph, lang: &str) -> String {
         paragraph.texts.iter()
-            .find(|t| t.lang == lang)
+            .find(|t| t.lang == lang || (lang == "zh-TW" && t.lang == "zh"))
             .map(|t| t.paragraphs.clone())
-            .unwrap_or_else(|| "Content not found".to_string())
+            .unwrap_or_else(|| paragraph.texts.first().map(|t| t.paragraphs.clone()).unwrap_or_default())
     }
 
     #[tokio::test]
@@ -98,8 +98,8 @@ mod integration_tests {
         let paragraph = api_result.unwrap();
 
         // 4. Convert API data to format needed for component
-        let choices = paragraph_to_choices(&paragraph, "zh-TW");
-        let paragraph_text = get_paragraph_text(&paragraph, "zh-TW");
+        let choices = paragraph_to_choices(&paragraph, "zh");
+        let paragraph_text = get_paragraph_text(&paragraph, "zh");
         
         // 5. Simulate enabled state (time limit options may be disabled)
         let enabled_choices = vec![

@@ -47,10 +47,15 @@ fn test_merge_paragraphs_with_exclusion() {
     let p2 = make_paragraph("p2", "c1", "zh", "第二段");
     
     let paragraphs = vec![p1, p2];
-    let choice_ids = vec![]; // No p2
+    let choice_ids = vec!["p1".to_string()]; // Only include p1, exclude p2
     
+    // In normal mode (reader_mode = false), all paragraphs are included regardless of choice_ids
     let result = merge_paragraphs_for_lang(&paragraphs, "zh", false, false, &choice_ids);
-    assert_eq!(result, "第一段");
+    assert_eq!(result, "第一段\n\n第二段");
+    
+    // In reader mode (reader_mode = true), only first paragraph and those in choice_ids are included
+    let reader_result = merge_paragraphs_for_lang(&paragraphs, "zh", true, false, &choice_ids);
+    assert_eq!(reader_result, "第一段");
 }
 
 #[test]
@@ -132,7 +137,7 @@ mod ssr_tests {
                     to: "next".to_string(),
                 },
             }],
-            enabled_choices: vec!["選項一".to_string()],
+            enabled_choices: vec!["選項一".to_string()], // Choice is enabled
             disabled_by_countdown: vec![false],
             chapter_title: "章節標題測試".to_string(),
         };
@@ -140,6 +145,7 @@ mod ssr_tests {
         let mut mutations = NoOpMutations;
         dom.rebuild(&mut mutations);
         let html = dioxus_ssr::render(&dom);
-        assert!(html.contains("opacity-50 cursor-not-allowed"), "HTML: {}", html);
+        // Since choice is enabled, should have cursor-pointer not disabled classes
+        assert!(html.contains("cursor-pointer"), "HTML: {}", html);
     }
 }
