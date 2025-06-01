@@ -48,6 +48,7 @@ where
 }
 
 /// 檢查 HTML 是否包含特定的 CSS 類別
+#[allow(dead_code)]
 pub fn assert_html_contains_class(html: &str, class: &str) {
     assert!(html.contains(class), "HTML 應包含 CSS 類別 '{}'\nHTML: {}", class, html);
 }

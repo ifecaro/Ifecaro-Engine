@@ -279,7 +279,7 @@ pub fn StoryContent(props: StoryContentProps) -> Element {
                     }
                 }) as Box<dyn FnMut(web_sys::CustomEvent)>);
                 if let Ok(_) = document.add_event_listener_with_callback("show_filter", handler.as_ref().unchecked_ref()) {
-                    handler.forget();
+                handler.forget();
                 }
             }
             (|| {})()
@@ -338,7 +338,7 @@ pub fn StoryContent(props: StoryContentProps) -> Element {
                     }
                 }) as Box<dyn FnMut(web_sys::CustomEvent)>);
                 if let Ok(_) = document.add_event_listener_with_callback("scroll_reached_bottom", reached_bottom_handler.as_ref().unchecked_ref()) {
-                    reached_bottom_handler.forget();
+                reached_bottom_handler.forget();
                 }
                 
                 // 監聽離開底部事件
@@ -350,7 +350,7 @@ pub fn StoryContent(props: StoryContentProps) -> Element {
                     }
                 }) as Box<dyn FnMut(web_sys::CustomEvent)>);
                 if let Ok(_) = document.add_event_listener_with_callback("scroll_left_bottom", left_bottom_handler.as_ref().unchecked_ref()) {
-                    left_bottom_handler.forget();
+                left_bottom_handler.forget();
                 }
             }
         });
