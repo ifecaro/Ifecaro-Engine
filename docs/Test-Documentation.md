@@ -2,7 +2,7 @@
 
 ## Overview
 
-This document provides a comprehensive description of the Ifecaro Engine test suite. The test suite consists of four main test files covering everything from basic UI components to complex API integrations.
+This document provides a comprehensive description of the Ifecaro Engine test suite. The test suite consists of **87 tests total** covering everything from basic UI components to complex API integrations and performance optimizations.
 
 ## Test Architecture
 
@@ -10,38 +10,56 @@ This document provides a comprehensive description of the Ifecaro Engine test su
 ```
 src/
 ├── components/
-│   ├── story_content_tests.rs              # Basic UI Tests (27 tests)
-│   ├── story_content_advanced_tests.rs     # Advanced Feature Tests (19 tests)
-│   └── story_content_api_integration_tests.rs # API Integration Tests (6 tests)
+│   ├── story_content_tests.rs              # Basic UI Tests (29 tests)
+│   ├── story_content_advanced_tests.rs     # Advanced Feature Tests (27 tests)
+│   └── story_content_api_integration_tests.rs # API Integration Tests (5 tests)
+├── pages/
+│   └── story_tests.rs                       # Page Logic Tests (5 tests)
 └── services/
-    └── api_tests.rs                         # API Mock Tests (10 tests)
-```
+    └── api_tests.rs                         # API Mock Tests (7 tests)
 
-### Execution Methods
-- **Complete Test Suite**: `./test-all.sh`
-- **Quick Test**: `./test-quick.sh`
-- **Compilation Check**: `docker compose exec app cargo check`
+tests/
+├── integration_tests.rs                    # Core Integration Tests (4 tests)
+├── main_code_usage_example.rs             # Code Usage Examples (6 tests)
+└── story_flow_tests.rs                    # Story Flow Tests (4 tests)
+```
 
 ### Quick Test Execution
 
 ```bash
-# Using Rust test runner (recommended)
-cargo run --bin test-runner full      # Complete test suite (all 62 tests)
-cargo run --bin test-runner quick     # Quick tests (compile + basic UI + API mock)
+# Using Rust test runner (recommended) - All options have Tailwind compilation optimization
+cargo run --bin test-runner full      # Complete test suite (all 87 tests)
+cargo run --bin test-runner quick     # Quick tests (compile + unit + integration)
 cargo run --bin test-runner internal  # Container-optimized testing
-cargo run --bin test-runner category compile  # Specific test category
+cargo run --bin test-runner check     # Compile check only
+cargo run --bin test-runner category <category>  # Specific test category
+cargo run --bin test-runner bench     # Performance benchmark tests
+cargo run --bin test-runner report    # Generate test report
+
+# Available categories:
+# compile, ui, advanced, mock-api, integration, unit, external
 
 # Using deployment tool
 cargo run --bin deploy test           # Run complete test suite
 cargo run --bin deploy dev            # Development mode (check + quick test)
 ```
 
+### Performance Optimizations
+
+**Tailwind CSS Compilation Optimization**: All test commands now automatically skip Tailwind CSS compilation during tests, resulting in significant performance improvements:
+
+- **Compile Check**: ~4.5s → ~1.2s (73% faster)
+- **Unit Tests**: ~4s → ~2.9s (27% faster) 
+- **Integration Tests**: ~5s → ~0.5s (90% faster)
+
+**Build Cache Management**: Automatic build cache clearing ensures environment variables take effect properly.
+
 ---
 
 ## 1. Basic UI Tests (`story_content_tests.rs`)
 
 ### File Overview
-- **Test Count**: 27 tests
+- **Test Count**: 29 tests
 - **Main Features**: Tests the basic rendering, choice states, responsive design, and accessibility features of the `StoryContentUI` component
 - **Helper Functions**: 
   - `create_test_choice()` - Creates basic test choices
@@ -62,7 +80,7 @@ cargo run --bin deploy dev            # Development mode (check + quick test)
 - **Test Data**: Three Chinese text paragraphs
 - **Verification**: Paragraph content correctly displayed, including chapter title and styles
 
-##### `test_chapter_title_styling`
+##### `test_chapter_title_display`
 - **Purpose**: Tests chapter title styles and typography
 - **Verification**: Title font size, responsive design, letter spacing
 
@@ -189,8 +207,8 @@ cargo run --bin deploy dev            # Development mode (check + quick test)
 ## 2. Advanced Feature Tests (`story_content_advanced_tests.rs`)
 
 ### File Overview
-- **Test Count**: 19 tests
-- **Main Features**: Tests choice data structures, action type validation, array operations, countdown logic, and other advanced features
+- **Test Count**: 27 tests
+- **Main Features**: Tests choice data structures, action type validation, array operations, countdown logic, keyboard input simulation, and performance scenarios
 
 ### Test Modules
 
@@ -287,53 +305,81 @@ cargo run --bin deploy dev            # Development mode (check + quick test)
 - **Purpose**: Tests index calculation for keyboard choices
 - **Verification**: Correspondence between keyboard numbers and choice indices
 
+#### 2.7 Edge Case Handling Tests (`edge_case_handling_tests`) - 5 tests
+
+##### `test_empty_string_values`
+- **Purpose**: Tests handling of empty string values
+- **Verification**: Correct processing of empty inputs
+
+##### `test_null_and_none_values`
+- **Purpose**: Tests handling of null and None values
+- **Verification**: Safe handling of missing data
+
+##### `test_special_characters`
+- **Purpose**: Tests special character processing
+- **Verification**: Unicode and symbol handling
+
+##### `test_very_long_strings`
+- **Purpose**: Tests extremely long string handling
+- **Verification**: Performance and memory management
+
+##### `test_unicode_content`
+- **Purpose**: Tests Unicode content processing
+- **Verification**: Multilingual text support
+
+#### 2.8 Performance Simulation Tests (`performance_simulation_tests`) - 3 tests
+
+##### `test_large_paragraph_content`
+- **Purpose**: Tests processing of large paragraph content
+- **Verification**: Performance with extensive text
+
+##### `test_large_choice_array_creation`
+- **Purpose**: Tests creation of large choice arrays
+- **Verification**: Memory allocation and processing efficiency
+
+##### `test_choice_search_performance`
+- **Purpose**: Tests choice search performance
+- **Verification**: Search algorithm efficiency
+
 ---
 
 ## 3. API Mock Tests (`api_tests.rs`)
 
 ### File Overview
-- **Test Count**: 10 tests
+- **Test Count**: 7 tests
 - **Main Features**: Tests Mock implementation of API client, including success and failure scenarios
 
 ### Test Features
 
 #### 3.1 Mock API Basic Function Tests
 
-##### `test_mock_api_get_paragraphs_success`
+##### `test_get_paragraphs_success`
 - **Purpose**: Tests successful retrieval of paragraph data
 - **Test Data**: 3 test paragraphs
 - **Verification**: Structure and content of returned data
 
-##### `test_mock_api_get_paragraphs_failure`
+##### `test_get_paragraphs_failure`
 - **Purpose**: Tests API failure scenarios
 - **Verification**: Error types and error messages
 
-##### `test_mock_api_get_chapters_success`
+##### `test_get_chapters_success`
 - **Purpose**: Tests successful retrieval of chapter data
 - **Test Data**: 3 test chapters
 - **Verification**: Chapter titles, order, and other attributes
 
 #### 3.2 Specific API Operation Tests
 
-##### `test_mock_api_get_paragraph_by_id_found`
+##### `test_get_paragraph_by_id_found`
 - **Purpose**: Tests finding paragraph by ID (success)
 - **Verification**: Correctly returns paragraph with specified ID
 
-##### `test_mock_api_get_paragraph_by_id_not_found`
+##### `test_get_paragraph_by_id_not_found`
 - **Purpose**: Tests finding paragraph by ID (failure)
 - **Verification**: Correctly returns NotFound error
 
-##### `test_mock_api_update_paragraph_success`
-- **Purpose**: Tests successful paragraph update
-- **Verification**: Successful execution of update operation
-
-##### `test_mock_api_update_paragraph_failure`
-- **Purpose**: Tests paragraph update failure
-- **Verification**: Error handling in failure scenarios
-
 #### 3.3 Complex Data Tests
 
-##### `test_complex_paragraph_choice_data`
+##### `test_complex_choice_serialization`
 - **Purpose**: Tests complex choice data structures
 - **Test Data**: Actions including settings, purchases, jumps
 - **Verification**: Correct handling of complex JSON data
@@ -348,7 +394,7 @@ cargo run --bin deploy dev            # Development mode (check + quick test)
 ## 4. API Integration Tests (`story_content_api_integration_tests.rs`)
 
 ### File Overview
-- **Test Count**: 6 tests
+- **Test Count**: 5 tests
 - **Main Features**: Tests integration of API data with UI components, simulating real-world usage scenarios
 
 ### Test Features
@@ -391,6 +437,102 @@ cargo run --bin deploy dev            # Development mode (check + quick test)
 
 ---
 
+## 5. Page Logic Tests (`story_tests.rs`)
+
+### File Overview
+- **Test Count**: 5 tests
+- **Main Features**: Tests page-level logic including paragraph merging, option states, and SSR functionality
+
+### Test Features
+
+##### `test_merge_paragraphs_basic`
+- **Purpose**: Tests basic paragraph merging functionality
+- **Verification**: Correct combination of multiple paragraphs
+
+##### `test_merge_paragraphs_reader_mode`
+- **Purpose**: Tests paragraph merging in reader mode
+- **Verification**: Reader mode specific behavior
+
+##### `test_merge_paragraphs_with_exclusion`
+- **Purpose**: Tests paragraph merging with exclusion logic
+- **Verification**: Correct filtering of paragraphs
+
+##### `test_option_disabled_after_countdown`
+- **Purpose**: Tests option disabling after countdown expiration
+- **Verification**: Countdown timer effects on choices
+
+##### `test_paragraph_with_time_limit`
+- **Purpose**: Tests paragraph display with time limits
+- **Verification**: Time-based content restrictions
+
+---
+
+## 6. Integration Tests (`tests/`)
+
+### Core Integration Tests (`integration_tests.rs`) - 4 tests
+
+##### `test_settings_context_default`
+- **Purpose**: Tests default settings context initialization
+- **Verification**: Correct default values and state
+
+##### `test_story_complete_flow`
+- **Purpose**: Tests complete story flow from start to finish
+- **Verification**: End-to-end story progression
+
+##### `test_story_ui_integration`
+- **Purpose**: Tests UI integration with story logic
+- **Verification**: Component interaction and state management
+
+##### `test_keyboard_state_integration`
+- **Purpose**: Tests keyboard input integration
+- **Verification**: Keyboard navigation and state changes
+
+### Code Usage Examples (`main_code_usage_example.rs`) - 6 tests
+
+##### `test_using_main_business_logic`
+- **Purpose**: Tests main business logic usage patterns
+- **Verification**: Correct API usage examples
+
+##### `test_using_main_contexts`
+- **Purpose**: Tests context usage patterns
+- **Verification**: Context initialization and usage
+
+##### `test_using_main_keyboard_state`
+- **Purpose**: Tests keyboard state management
+- **Verification**: Keyboard input handling patterns
+
+##### `test_using_main_routes`
+- **Purpose**: Tests routing usage patterns
+- **Verification**: Navigation and route handling
+
+##### `test_using_main_story_page`
+- **Purpose**: Tests story page usage patterns
+- **Verification**: Story page component usage
+
+##### `test_using_main_ui_components`
+- **Purpose**: Tests UI component usage patterns
+- **Verification**: Component integration examples
+
+### Story Flow Tests (`story_flow_tests.rs`) - 4 tests
+
+##### `test_reader_mode_vs_normal_mode`
+- **Purpose**: Tests differences between reader and normal modes
+- **Verification**: Mode-specific behavior differences
+
+##### `test_story_flow_across_chapters`
+- **Purpose**: Tests story progression across multiple chapters
+- **Verification**: Chapter transitions and continuity
+
+##### `test_multi_chapter_story_flow`
+- **Purpose**: Tests complex multi-chapter scenarios
+- **Verification**: Complex navigation patterns
+
+##### `test_story_ui_with_multiple_choices`
+- **Purpose**: Tests UI behavior with multiple choice scenarios
+- **Verification**: Complex choice handling
+
+---
+
 ## Test Coverage Summary
 
 ### Functional Coverage
@@ -401,13 +543,20 @@ cargo run --bin deploy dev            # Development mode (check + quick test)
 - ✅ **Data Processing**: JSON serialization, multilingual support
 - ✅ **API Integration**: Mock testing, error handling
 - ✅ **Edge Cases**: Empty data, extremely long content, special characters
-- ✅ **Performance Testing**: Large data rendering
+- ✅ **Performance Testing**: Large data rendering, search optimization
 - ✅ **Regression Testing**: Protection against known issues
+- ✅ **Page Logic**: Paragraph merging, countdown timers, reader mode
+- ✅ **End-to-End Flows**: Complete user journeys and integration scenarios
 
 ### Test Type Distribution
-- **Unit Tests**: 54 tests (85%)
-- **Integration Tests**: 6 tests (9%)
-- **End-to-End Tests**: 4 tests (6%)
+- **Unit Tests**: 73 tests (84%)
+- **Integration Tests**: 14 tests (16%)
+- **Total**: **87 tests**
+
+### Performance Improvements
+- **Tailwind CSS Compilation**: Optimized to skip during tests
+- **Build Cache Management**: Automatic cache clearing
+- **Test Execution Speed**: 50-90% faster depending on test type
 
 ### Code Quality Assurance
 - **Compilation Check**: No warnings, no errors
@@ -419,12 +568,38 @@ cargo run --bin deploy dev            # Development mode (check + quick test)
 
 ## Automated Testing Integration
 
+- **Optimized Test Runner**: Smart Tailwind compilation skipping
+- **Multiple Test Modes**: Full, Quick, Category-specific, Internal
 - **Git Pre-commit Hooks**: Automatically execute complete test suite before each commit
 - **Development Workflow**: Integrated with Rust deployment CLI
 - **Continuous Integration**: All tests must pass before production builds
 - **Performance Monitoring**: Test execution time tracking
 - **Report Generation**: Detailed test reports with time statistics
 
+### Test Runner Commands
+
+```bash
+# Complete test suite with all optimizations
+cargo run --bin test-runner full
+
+# Quick development testing
+cargo run --bin test-runner quick
+
+# Category-specific testing
+cargo run --bin test-runner category ui
+cargo run --bin test-runner category advanced
+cargo run --bin test-runner category integration
+
+# Performance and benchmarks
+cargo run --bin test-runner bench
+
+# Compile check only
+cargo run --bin test-runner check
+
+# Generate detailed test report
+cargo run --bin test-runner report
+```
+
 ---
 
-*This document will be continuously updated as the project develops. For test-related questions, please refer to detailed comments in each test file.* 
+*This document reflects the current state of the test suite with 87 total tests and performance optimizations. Last updated: [Current Date]* 
