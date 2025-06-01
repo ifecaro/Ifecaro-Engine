@@ -273,10 +273,14 @@ pub fn StoryContent(props: StoryContentProps) -> Element {
             if let Some((_, document)) = get_window_document() {
                 let mut show_filter = show_filter.clone();
                 let handler = wasm_bindgen::closure::Closure::wrap(Box::new(move |_event: web_sys::CustomEvent| {
-                    show_filter.set(true);
+                    // 安全地設置 signal，避免 ValueDroppedError
+                    if let Ok(mut guard) = show_filter.try_write() {
+                        *guard = true;
+                    }
                 }) as Box<dyn FnMut(web_sys::CustomEvent)>);
-                document.add_event_listener_with_callback("show_filter", handler.as_ref().unchecked_ref()).unwrap();
-                handler.forget();
+                if let Ok(_) = document.add_event_listener_with_callback("show_filter", handler.as_ref().unchecked_ref()) {
+                    handler.forget();
+                }
             }
             (|| {})()
         });
@@ -325,19 +329,29 @@ pub fn StoryContent(props: StoryContentProps) -> Element {
                 
                 // 監聽到達底部事件
                 let reached_bottom_handler = wasm_bindgen::closure::Closure::wrap(Box::new(move |_event: web_sys::CustomEvent| {
-                    show_choices_scroll.set(true);
-                    is_countdown_paused_scroll.set(false);
+                    // 安全地設置 signal，避免 ValueDroppedError
+                    if let Ok(mut guard) = show_choices_scroll.try_write() {
+                        *guard = true;
+                    }
+                    if let Ok(mut guard) = is_countdown_paused_scroll.try_write() {
+                        *guard = false;
+                    }
                 }) as Box<dyn FnMut(web_sys::CustomEvent)>);
-                document.add_event_listener_with_callback("scroll_reached_bottom", reached_bottom_handler.as_ref().unchecked_ref()).unwrap();
-                reached_bottom_handler.forget();
+                if let Ok(_) = document.add_event_listener_with_callback("scroll_reached_bottom", reached_bottom_handler.as_ref().unchecked_ref()) {
+                    reached_bottom_handler.forget();
+                }
                 
                 // 監聽離開底部事件
                 let mut is_countdown_paused_left = is_countdown_paused.clone();
                 let left_bottom_handler = wasm_bindgen::closure::Closure::wrap(Box::new(move |_event: web_sys::CustomEvent| {
-                    is_countdown_paused_left.set(true);
+                    // 安全地設置 signal，避免 ValueDroppedError
+                    if let Ok(mut guard) = is_countdown_paused_left.try_write() {
+                        *guard = true;
+                    }
                 }) as Box<dyn FnMut(web_sys::CustomEvent)>);
-                document.add_event_listener_with_callback("scroll_left_bottom", left_bottom_handler.as_ref().unchecked_ref()).unwrap();
-                left_bottom_handler.forget();
+                if let Ok(_) = document.add_event_listener_with_callback("scroll_left_bottom", left_bottom_handler.as_ref().unchecked_ref()) {
+                    left_bottom_handler.forget();
+                }
             }
         });
     }
@@ -355,6 +369,9 @@ pub fn StoryContent(props: StoryContentProps) -> Element {
     } else {
         "opacity-0 pointer-events-none"
     };
+    
+    // 將 is_countdown_paused 的讀取移到渲染循環外部，避免作用域問題
+    let countdown_paused = *is_countdown_paused.read();
     
     // 檢查 time_left 設定
     let time_left_enabled = use_memo(move || {
@@ -387,7 +404,10 @@ pub fn StoryContent(props: StoryContentProps) -> Element {
                 }
             },
             onblur: move |_| {
-                show_filter.set(true);
+                // 安全地設置 signal，避免 ValueDroppedError
+                if let Ok(mut guard) = show_filter.try_write() {
+                    *guard = true;
+                }
             },
             div {
                 class: {
@@ -397,7 +417,10 @@ pub fn StoryContent(props: StoryContentProps) -> Element {
                 },
                 onclick: move |_| {
                     if !*is_mobile.read() {
-                        show_filter.set(false);
+                        // 安全地設置 signal，避免 ValueDroppedError
+                        if let Ok(mut guard) = show_filter.try_write() {
+                            *guard = false;
+                        }
                         if let Some((_, document)) = get_window_document() {
                             if let Ok(Some(container)) = document.query_selector(".story-content-container") {
                                 let _ = container.unchecked_into::<web_sys::HtmlElement>().focus();
@@ -407,7 +430,10 @@ pub fn StoryContent(props: StoryContentProps) -> Element {
                 },
                 ontransitionend: move |_| {
                     if !*show_filter.read() {
-                        is_focused.set(true);
+                        // 安全地設置 signal，避免 ValueDroppedError
+                        if let Ok(mut guard) = is_focused.try_write() {
+                            *guard = true;
+                        }
                     }
                 },
                 div {
@@ -479,7 +505,8 @@ pub fn StoryContent(props: StoryContentProps) -> Element {
                                 animation_name
                             );
                             let duration = format!("{}s", max_time);
-                            let animation_play_state = if *is_countdown_paused.read() { "paused" } else { "running" };
+                            // 使用預先讀取的值，避免作用域問題
+                            let animation_play_state = if countdown_paused { "paused" } else { "running" };
                             let current_paragraph_id_clone = current_paragraph_id_signal.read().clone();
                             let story_ctx_clone = story_ctx.clone();
                             rsx! {

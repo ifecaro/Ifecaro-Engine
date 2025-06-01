@@ -16,14 +16,14 @@ fn main() {
         panic!("Tailwind CSS compilation failed");
     }
 
-    // Run cargo test before build
-    println!("Running cargo test...");
-    let test_status = Command::new("cargo")
-        .arg("test")
+    // Run complete test suite before build
+    println!("Running complete test suite...");
+    let test_status = Command::new("bash")
+        .arg("test-all.sh")
         .status()
-        .expect("Failed to execute cargo test");
+        .expect("Failed to execute test-all.sh");
     if !test_status.success() {
-        panic!("cargo test failed");
+        panic!("Complete test suite failed");
     }
 
     // Execute dx build
