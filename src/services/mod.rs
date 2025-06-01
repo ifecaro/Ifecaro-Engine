@@ -1,4 +1,4 @@
-pub mod indexeddb;
+pub mod indexeddb; 
 pub mod api;
 
 #[cfg(test)]

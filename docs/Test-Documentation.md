@@ -22,6 +22,20 @@ src/
 - **Quick Test**: `./test-quick.sh`
 - **Compilation Check**: `docker compose exec app cargo check`
 
+### Quick Test Execution
+
+```bash
+# Using Rust test runner (recommended)
+cargo run --bin test-runner full      # Complete test suite (all 62 tests)
+cargo run --bin test-runner quick     # Quick tests (compile + basic UI + API mock)
+cargo run --bin test-runner internal  # Container-optimized testing
+cargo run --bin test-runner category compile  # Specific test category
+
+# Using deployment tool
+cargo run --bin deploy test           # Run complete test suite
+cargo run --bin deploy dev            # Development mode (check + quick test)
+```
+
 ---
 
 ## 1. Basic UI Tests (`story_content_tests.rs`)
@@ -403,22 +417,13 @@ src/
 
 ---
 
-## Execution and Maintenance
+## Automated Testing Integration
 
-### Continuous Integration
-- Automatically execute `test-all.sh` before each `git commit`
-- Execute complete test suite before production version compilation
-- Docker environment ensures test environment consistency
-
-### Test Maintenance
-- Corresponding tests required when developing new features
-- Update related tests when modifying existing features
-- Regularly check test coverage and quality
-
-### Performance Monitoring
-- Track test execution time
-- Performance benchmarks for large test data
-- Memory usage monitoring
+- **Git Pre-commit Hooks**: Automatically execute complete test suite before each commit
+- **Development Workflow**: Integrated with Rust deployment CLI
+- **Continuous Integration**: All tests must pass before production builds
+- **Performance Monitoring**: Test execution time tracking
+- **Report Generation**: Detailed test reports with time statistics
 
 ---
 

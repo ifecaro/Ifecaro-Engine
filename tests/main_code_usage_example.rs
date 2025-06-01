@@ -1,6 +1,5 @@
 mod common;
 
-use ifecaro::*;
 use common::*;
 
 #[cfg(test)]

@@ -2,7 +2,7 @@
 name = "ifecaro"
 version = "0.14.0"
 edition = "2021"
-build = false      # 禁用構建腳本
+# build = false      # 已註釋掉，現在會啟用 build.rs
 
 [lib]
 name = "ifecaro"
@@ -70,6 +70,12 @@ dioxus-core = "0.6.3"
 gloo-timers = { version = "0.3", features = ["futures"] }
 dotenv = "0.15"
 
+# 部署工具依賴
+clap = { version = "4.0", features = ["derive"] }
+anyhow = "1.0"
+colored = "2.0"
+chrono = { version = "0.4", features = ["serde"] }
+
 [profile]
 
 [profile.wasm-dev]
@@ -100,3 +106,14 @@ codegen-units = 1
 dioxus-ssr = "0.6.2"
 pretty_assertions = "1.4.1"
 tokio = { version = "1.0", features = ["macros", "rt-multi-thread"] }
+
+[build-dependencies]
+dotenv = "0.15"
+
+[[bin]]
+name = "deploy"
+path = "src/bin/deploy.rs"
+
+[[bin]]
+name = "test-runner"
+path = "src/bin/test_runner.rs"

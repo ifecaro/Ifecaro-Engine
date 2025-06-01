@@ -126,8 +126,6 @@ mod ui_integration_tests {
 
 #[cfg(test)]
 mod context_integration_tests {
-    use super::*;
-    
     #[test]
     fn test_settings_context_default() {
         use ifecaro::contexts::settings_context::SettingsContext;
