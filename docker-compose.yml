@@ -3,7 +3,7 @@ services:
     build: .
     volumes:
       - ./:/app
-      - ~/.ssh:/root/.ssh:ro
+      - ~/.ssh:/root/.ssh
     ports:
       - "9999:9999"
     env_file:
