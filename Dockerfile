@@ -1,18 +1,18 @@
 FROM rustlang/rust:nightly-slim
 
-# 安裝必要工具
+# Install necessary tools
 RUN apt-get update && \
     apt-get install -y curl git pkg-config libssl-dev openssh-client inotify-tools && \
     cargo install dioxus-cli
 
-# 下載 Tailwind CSS Standalone CLI
+# Download Tailwind CSS Standalone CLI
 RUN curl -LO https://github.com/tailwindlabs/tailwindcss/releases/latest/download/tailwindcss-linux-x64 && \
     chmod +x tailwindcss-linux-x64 && \
     mv tailwindcss-linux-x64 /usr/local/bin/tailwindcss
 
 WORKDIR /app
 
-# 複製設定檔（可用 volume 掛載覆蓋）
+# Copy configuration files (can be overridden with volume mount)
 COPY Cargo.toml Cargo.lock ./
 COPY tailwind.config.js ./
 COPY src ./src

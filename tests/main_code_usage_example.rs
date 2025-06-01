@@ -6,26 +6,26 @@ use common::*;
 mod main_code_usage_tests {
     use super::*;
     
-    /// 這個測試展示如何直接使用主程式的 Story 頁面組件
+    /// This test demonstrates how to directly use the main program's Story page component
     #[test]
     fn test_using_main_story_page() {
-        // 這裡可以測試 Story 組件的邏輯
-        // 注意：由於 Story 組件需要 context，這裡只是展示如何引用
+        // Here you can test the Story component logic
+        // Note: Since Story component requires context, this just shows how to reference it
     }
     
-    /// 這個測試展示如何直接使用主程式的 Context
+    /// This test demonstrates how to directly use the main program's Context
     #[test]
     fn test_using_main_contexts() {
-        // 直接使用主程式的 Context
+        // Directly use the main program's Context
         use ifecaro::contexts::settings_context::SettingsContext;
         
         let _settings = SettingsContext::default();
     }
     
-    /// 這個測試展示如何直接使用主程式的 KeyboardState
+    /// This test demonstrates how to directly use the main program's KeyboardState
     #[test]
     fn test_using_main_keyboard_state() {
-        // 直接使用主程式的 KeyboardState
+        // Directly use the main program's KeyboardState
         use ifecaro::layout::KeyboardState;
         
         let keyboard_state = KeyboardState::default();
@@ -35,22 +35,22 @@ mod main_code_usage_tests {
         assert_eq!(keyboard_state.enabled_choices.len(), 0);
     }
     
-    /// 這個測試展示如何直接使用主程式的路由系統（僅測試結構體建立）
+    /// This test demonstrates how to directly use the main program's routing system (testing struct creation only)
     #[test]
     fn test_using_main_routes() {
-        // 直接使用主程式的路由
+        // Directly use the main program's routes
         use ifecaro::enums::route::Route;
         
-        // 建立路由實例（不呼叫需要 WASM 環境的函數）
+        // Create route instances (without calling functions that require WASM environment)
         let _home_route = Route::Home {};
         let _story_route = Route::Story { lang: "zh-TW".to_string() };
         let _dashboard_route = Route::Dashboard { lang: "en-US".to_string() };
     }
     
-    /// 這個測試展示如何直接使用主程式的組件並進行 UI 測試
+    /// This test demonstrates how to directly use the main program's components and perform UI testing
     #[test]
     fn test_using_main_ui_components() {
-        // 直接使用主程式的 UI 組件
+        // Directly use the main program's UI components
         use ifecaro::components::story_content::{StoryContentUI, StoryContentUIProps};
         
         let choices = vec![
@@ -68,17 +68,17 @@ mod main_code_usage_tests {
         
         let html = render_component_to_html(StoryContentUI, props);
         
-        // 驗證主程式組件的渲染結果
+        // Verify the main program component's rendering result
         assert_html_contains_text(&html, "這是直接使用主程式組件的測試");
         assert_html_contains_text(&html, "主程式組件測試");
         assert_html_contains_text(&html, "主程式選項1");
         assert_html_contains_text(&html, "主程式選項2");
     }
     
-    /// 這個測試展示如何直接使用主程式的業務邏輯函數
+    /// This test demonstrates how to directly use the main program's business logic functions
     #[test]
     fn test_using_main_business_logic() {
-        // 直接使用主程式的業務邏輯
+        // Directly use the main program's business logic
         use ifecaro::pages::story::merge_paragraphs_for_lang;
         
         let paragraphs = vec![
@@ -89,7 +89,7 @@ mod main_code_usage_tests {
         
         let choice_ids = vec!["main_p1".to_string(), "main_p3".to_string()];
         
-        // 測試主程式的合併邏輯（閱讀模式）
+        // Test the main program's merge logic (reader mode)
         let result = merge_paragraphs_for_lang(
             &paragraphs,
             "zh",
@@ -98,11 +98,11 @@ mod main_code_usage_tests {
             &choice_ids,
         );
         
-        // 在閱讀模式下，只會包含 choice_ids 中指定的段落
+        // In reader mode, only paragraphs specified in choice_ids will be included
         let expected = "主程式段落1\n\n主程式段落3";
         assert_eq!(result, expected);
         
-        // 測試一般模式
+        // Test normal mode
         let result_normal = merge_paragraphs_for_lang(
             &paragraphs,
             "zh",
@@ -111,7 +111,7 @@ mod main_code_usage_tests {
             &choice_ids,
         );
         
-        // 在一般模式下，會包含所有段落
+        // In normal mode, all paragraphs will be included
         let expected_normal = "主程式段落1\n\n主程式段落2\n\n主程式段落3";
         assert_eq!(result_normal, expected_normal);
     }

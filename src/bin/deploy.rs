@@ -6,7 +6,7 @@ use std::process::{Command, Stdio};
 
 #[derive(Parser)]
 #[command(name = "deploy")]
-#[command(about = "Ifecaro 引擎部署工具", long_about = None)]
+#[command(about = "Ifecaro Engine Deployment Tool", long_about = None)]
 struct Cli {
     #[command(subcommand)]
     command: Option<Commands>,
@@ -14,33 +14,33 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Commands {
-    /// 快速檢查 (cargo check)
+    /// Quick check (cargo check)
     Check,
-    /// 執行測試套件 (使用 Rust 測試運行器)
+    /// Run test suite (using Rust test runner)
     Test {
-        /// 測試模式
+        /// Test mode
         #[arg(value_enum)]
         mode: Option<TestMode>,
     },
-    /// 構建專案
+    /// Build project
     Build,
-    /// 完整部署流程 (測試 + 構建 + 部署)
+    /// Full deployment process (test + build + deploy)
     Deploy,
-    /// 清理構建檔案
+    /// Clean build files
     Clean,
-    /// 開發模式 (檢查 + 快速測試)
+    /// Development mode (check + quick test)
     Dev,
-    /// 生產模式 (優化的完整部署流程)
+    /// Production mode (optimized full deployment process)
     Prod,
 }
 
 #[derive(clap::ValueEnum, Clone, Debug)]
 enum TestMode {
-    /// 完整測試套件
+    /// Full test suite
     Full,
-    /// 快速測試
+    /// Quick test
     Quick,
-    /// 容器內優化測試
+    /// Optimized container test
     Internal,
 }
 
@@ -56,11 +56,11 @@ fn main() -> Result<()> {
         Some(Commands::Dev) => {
             check()?;
             test(Some(TestMode::Quick))?;
-            println!("{}", "✅ 開發檢查完成".green().bold());
+            println!("{}", "✅ Development check completed".green().bold());
         }
         Some(Commands::Prod) => {
             deploy()?;
-            println!("{}", "🎉 生產部署完成".green().bold());
+            println!("{}", "🎉 Production deployment completed".green().bold());
         }
         None => {
             show_interactive_menu()?;
@@ -72,38 +72,38 @@ fn main() -> Result<()> {
 
 fn show_interactive_menu() -> Result<()> {
     loop {
-        // 簡單清屏效果
+        // Simple screen clear effect
         for _ in 0..50 {
             println!();
         }
         
-        println!("{}", "🚀 Ifecaro 引擎部署工具".blue().bold());
+        println!("{}", "🚀 Ifecaro Engine Deployment Tool".blue().bold());
         println!("{}", "================================================".blue());
         println!();
         
-        println!("請選擇要執行的操作:");
+        println!("Please select an operation:");
         println!();
-        println!("  {}  📋 快速檢查 (cargo check)", "1.".cyan().bold());
-        println!("  {}  🧪 執行測試套件", "2.".cyan().bold());
-        println!("  {}  🏗  構建專案", "3.".cyan().bold());
-        println!("  {}  🧹 清理構建檔案", "4.".cyan().bold());
-        println!("  {}  ⚡ 開發模式 (檢查 + 快速測試)", "5.".cyan().bold());
-        println!("  {}  🎯 生產模式 (完整一鍵部署)", "6.".cyan().bold());
-        println!("  {}  ❌ 退出", "0.".red().bold());
+        println!("  {}  📋 Quick check (cargo check)", "1.".cyan().bold());
+        println!("  {}  🧪 Run test suite", "2.".cyan().bold());
+        println!("  {}  🏗  Build project", "3.".cyan().bold());
+        println!("  {}  🧹 Clean build files", "4.".cyan().bold());
+        println!("  {}  ⚡ Development mode (check + quick test)", "5.".cyan().bold());
+        println!("  {}  🎯 Production mode (full one-click deployment)", "6.".cyan().bold());
+        println!("  {}  ❌ Exit", "0.".red().bold());
         println!();
         
-        print!("{}", "請輸入選項 (0-6): ".green().bold());
+        print!("{}", "Please enter option (0-6): ".green().bold());
         io::stdout().flush()?;
         
         let mut input = String::new();
         io::stdin().read_line(&mut input)?;
         let choice = input.trim();
         
-        println!(); // 空行
+        println!(); // Empty line
         
         match choice {
             "1" => {
-                println!("{}", "執行快速檢查...".yellow());
+                println!("{}", "Running quick check...".yellow());
                 check()?;
                 wait_for_enter();
             },
@@ -111,34 +111,34 @@ fn show_interactive_menu() -> Result<()> {
                 show_test_submenu()?;
             },
             "3" => {
-                println!("{}", "開始構建專案...".yellow());
+                println!("{}", "Starting project build...".yellow());
                 build()?;
                 wait_for_enter();
             },
             "4" => {
-                println!("{}", "清理構建檔案...".yellow());
+                println!("{}", "Cleaning build files...".yellow());
                 clean()?;
                 wait_for_enter();
             },
             "5" => {
-                println!("{}", "開始開發模式...".yellow());
+                println!("{}", "Starting development mode...".yellow());
                 check()?;
                 test(Some(TestMode::Quick))?;
-                println!("{}", "✅ 開發檢查完成".green().bold());
+                println!("{}", "✅ Development check completed".green().bold());
                 wait_for_enter();
             },
             "6" => {
-                println!("{}", "開始生產模式...".yellow());
+                println!("{}", "Starting production mode...".yellow());
                 deploy()?;
-                println!("{}", "🎉 生產部署完成".green().bold());
+                println!("{}", "🎉 Production deployment completed".green().bold());
                 wait_for_enter();
             },
             "0" => {
-                println!("{}", "感謝使用 Ifecaro 引擎部署工具！".green().bold());
+                println!("{}", "Thanks for using Ifecaro Engine Deployment Tool!".green().bold());
                 break;
             },
             _ => {
-                println!("{}", "無效選項，請重新輸入 (0-6)".red().bold());
+                println!("{}", "Invalid option, please enter again (0-6)".red().bold());
                 wait_for_enter();
             }
         }
@@ -149,56 +149,56 @@ fn show_interactive_menu() -> Result<()> {
 
 fn show_test_submenu() -> Result<()> {
     loop {
-        // 簡單清屏效果
+        // Simple screen clear effect
         for _ in 0..50 {
             println!();
         }
         
-        println!("{}", "🧪 測試套件選單".blue().bold());
+        println!("{}", "🧪 Test Suite Menu".blue().bold());
         println!("{}", "================================================".blue());
         println!();
         
-        println!("請選擇測試模式:");
+        println!("Please select test mode:");
         println!();
-        println!("  {}  🎯 完整測試套件 (所有測試)", "1.".cyan().bold());
-        println!("  {}  ⚡ 快速測試 (編譯 + 基礎測試)", "2.".cyan().bold());
-        println!("  {}  🐳 容器內優化測試", "3.".cyan().bold());
-        println!("  {}  ↩️ 返回主選單", "0.".yellow().bold());
+        println!("  {}  🎯 Full test suite (all tests)", "1.".cyan().bold());
+        println!("  {}  ⚡ Quick test (compile + basic tests)", "2.".cyan().bold());
+        println!("  {}  🐳 Optimized container test", "3.".cyan().bold());
+        println!("  {}  ↩️ Return to main menu", "0.".yellow().bold());
         println!();
         
-        print!("{}", "請輸入選項 (0-3): ".green().bold());
+        print!("{}", "Please enter option (0-3): ".green().bold());
         io::stdout().flush()?;
         
         let mut input = String::new();
         io::stdin().read_line(&mut input)?;
         let choice = input.trim();
         
-        println!(); // 空行
+        println!(); // Empty line
         
         match choice {
             "1" => {
-                println!("{}", "執行完整測試套件...".yellow());
+                println!("{}", "Running full test suite...".yellow());
                 test(Some(TestMode::Full))?;
                 wait_for_enter();
                 break;
             },
             "2" => {
-                println!("{}", "執行快速測試...".yellow());
+                println!("{}", "Running quick test...".yellow());
                 test(Some(TestMode::Quick))?;
                 wait_for_enter();
                 break;
             },
             "3" => {
-                println!("{}", "執行容器內測試...".yellow());
+                println!("{}", "Running container test...".yellow());
                 test(Some(TestMode::Internal))?;
                 wait_for_enter();
                 break;
             },
             "0" => {
-                break; // 返回主選單
+                break; // Return to main menu
             },
             _ => {
-                println!("{}", "無效選項，請重新輸入 (0-3)".red().bold());
+                println!("{}", "Invalid option, please enter again (0-3)".red().bold());
                 wait_for_enter();
             }
         }
@@ -209,26 +209,26 @@ fn show_test_submenu() -> Result<()> {
 
 fn wait_for_enter() {
     println!();
-    print!("{}", "按 Enter 鍵繼續...".dimmed());
+    print!("{}", "Press Enter to continue...".dimmed());
     io::stdout().flush().unwrap();
     let mut input = String::new();
     io::stdin().read_line(&mut input).unwrap();
 }
 
 fn check() -> Result<()> {
-    println!("{}", "🔍 執行 Cargo 檢查...".yellow().bold());
+    println!("{}", "🔍 Running Cargo check...".yellow().bold());
     
     let output = Command::new("cargo")
         .args(&["check"])
         .stdout(Stdio::inherit())
         .stderr(Stdio::inherit())
         .status()
-        .context("執行 cargo check 失敗")?;
+        .context("Failed to run cargo check")?;
 
     if output.success() {
-        println!("{}", "✅ Cargo 檢查通過".green().bold());
+        println!("{}", "✅ Cargo check passed".green().bold());
     } else {
-        anyhow::bail!("❌ Cargo 檢查失敗");
+        anyhow::bail!("❌ Cargo check failed");
     }
 
     Ok(())
@@ -237,7 +237,7 @@ fn check() -> Result<()> {
 fn test(mode: Option<TestMode>) -> Result<()> {
     let test_mode = mode.unwrap_or(TestMode::Full);
     
-    println!("{}", format!("📋 執行測試套件 ({:?} 模式)...", test_mode).yellow().bold());
+    println!("{}", format!("📋 Running test suite ({:?} mode)...", test_mode).yellow().bold());
     
     let test_command = match test_mode {
         TestMode::Full => "full",
@@ -250,151 +250,151 @@ fn test(mode: Option<TestMode>) -> Result<()> {
         .stdout(Stdio::inherit())
         .stderr(Stdio::inherit())
         .status()
-        .context("執行 Rust 測試運行器失敗")?;
+        .context("Failed to run Rust test runner")?;
 
     if output.success() {
-        println!("{}", "✅ 測試套件通過".green().bold());
+        println!("{}", "✅ Test suite passed".green().bold());
     } else {
-        anyhow::bail!("❌ 測試套件失敗");
+        anyhow::bail!("❌ Test suite failed");
     }
 
     Ok(())
 }
 
 fn build() -> Result<()> {
-    println!("{}", "🏗 構建 Rust 專案...".yellow().bold());
+    println!("{}", "🏗 Building Rust project...".yellow().bold());
     
     let rust_build = Command::new("cargo")
         .args(&["build", "--release"])
         .stdout(Stdio::inherit())
         .stderr(Stdio::inherit())
         .status()
-        .context("Rust 構建失敗")?;
+        .context("Failed to build Rust project")?;
 
     if !rust_build.success() {
-        anyhow::bail!("❌ Rust 構建失敗");
+        anyhow::bail!("❌ Rust build failed");
     }
 
-    println!("{}", "🎯 構建 Dioxus 專案...".yellow().bold());
+    println!("{}", "🎯 Building Dioxus project...".yellow().bold());
     
     let dioxus_build = Command::new("dx")
         .args(&["build", "--release"])
         .stdout(Stdio::inherit())
         .stderr(Stdio::inherit())
         .status()
-        .context("Dioxus 構建失敗")?;
+        .context("Failed to build Dioxus project")?;
 
     if dioxus_build.success() {
-        println!("{}", "✅ 構建完成".green().bold());
+        println!("{}", "✅ Build completed".green().bold());
     } else {
-        anyhow::bail!("❌ Dioxus 構建失敗");
+        anyhow::bail!("❌ Dioxus build failed");
     }
 
     Ok(())
 }
 
 fn deploy() -> Result<()> {
-    println!("{}", "🚀 開始 Ifecaro 引擎部署流程".blue().bold());
+    println!("{}", "🚀 Starting Ifecaro Engine deployment process".blue().bold());
     println!("{}", "================================================".blue());
 
-    // 1. 執行完整測試套件
-    println!("\n{}", "📋 執行完整測試套件...".yellow().bold());
+    // 1. Run full test suite
+    println!("\n{}", "📋 Running full test suite...".yellow().bold());
     let test_result = Command::new("cargo")
         .args(&["run", "--bin", "test-runner", "full"])
         .stdout(Stdio::inherit())
         .stderr(Stdio::inherit())
         .status()
-        .context("執行測試套件失敗")?;
+        .context("Failed to run test suite")?;
 
     if !test_result.success() {
-        anyhow::bail!("❌ 測試套件失敗，中止部署");
+        anyhow::bail!("❌ Test suite failed, aborting deployment");
     }
-    println!("{}", "✅ 測試套件通過".green().bold());
+    println!("{}", "✅ Test suite passed".green().bold());
 
-    // 2. 執行 Rust 構建
-    println!("\n{}", "🏗️ 執行 Rust 構建...".yellow().bold());
+    // 2. Run Rust build
+    println!("\n{}", "🏗️ Running Rust build...".yellow().bold());
     let rust_build = Command::new("cargo")
         .args(&["build", "--release"])
         .stdout(Stdio::inherit())
         .stderr(Stdio::inherit())
         .status()
-        .context("Rust 構建失敗")?;
+        .context("Failed to run Rust build")?;
 
     if !rust_build.success() {
-        anyhow::bail!("❌ Rust 構建失敗");
+        anyhow::bail!("❌ Rust build failed");
     }
-    println!("{}", "✅ Rust 構建完成".green().bold());
+    println!("{}", "✅ Rust build completed".green().bold());
 
-    // 3. 執行 Dioxus 構建
-    println!("\n{}", "🎯 執行 Dioxus 構建...".yellow().bold());
+    // 3. Run Dioxus build
+    println!("\n{}", "🎯 Running Dioxus build...".yellow().bold());
     let dioxus_build = Command::new("dx")
         .args(&["build", "--release"])
         .stdout(Stdio::inherit())
         .stderr(Stdio::inherit())
         .status()
-        .context("Dioxus 構建失敗")?;
+        .context("Failed to run Dioxus build")?;
 
     if !dioxus_build.success() {
-        anyhow::bail!("❌ Dioxus 構建失敗");
+        anyhow::bail!("❌ Dioxus build failed");
     }
-    println!("{}", "✅ Dioxus 構建完成".green().bold());
+    println!("{}", "✅ Dioxus build completed".green().bold());
 
-    // 4. 複製 PWA 資源
+    // 4. Copy PWA resources
     copy_pwa_resources()?;
 
-    // 5. 創建部署包
+    // 5. Create deployment package
     create_deployment_package()?;
 
-    // 6. 恢復 tailwind.css
+    // 6. Restore tailwind.css
     restore_tailwind_css()?;
 
-    // 7. 上傳到遠端伺服器
+    // 7. Upload to remote server
     upload_to_remote()?;
 
-    println!("\n{}", "🎉 部署流程完成！".green().bold());
-    println!("部署文件位置: target/dx/ifecaro/release/web/public.tar.gz");
+    println!("\n{}", "🎉 Deployment process completed!".green().bold());
+    println!("Deployment file location: target/dx/ifecaro/release/web/public.tar.gz");
     
-    // 讀取環境變數用於最終輸出
+    // Read environment variables for final output
     if let Ok(user) = std::env::var("DEPLOY_USER") {
         if let Ok(host) = std::env::var("DEPLOY_HOST") {
             if let Ok(path) = std::env::var("DEPLOY_PATH") {
-                println!("已上傳至: {}@{}:{}/frontend/", user, host, path);
+                println!("Uploaded to: {}@{}:{}/frontend/", user, host, path);
                 return Ok(());
             }
         }
     }
-    println!("已上傳至遠端伺服器");
+    println!("Uploaded to remote server");
 
     Ok(())
 }
 
 fn copy_pwa_resources() -> Result<()> {
-    println!("\n{}", "📦 複製 PWA 資源...".yellow().bold());
+    println!("\n{}", "📦 Copying PWA resources...".yellow().bold());
     
     let build_dir = "target/dx/ifecaro/release/web";
     let public_dir = format!("{}/public", build_dir);
     
-    // 創建目錄
+    // Create directory
     std::fs::create_dir_all(format!("{}/img/icons", public_dir))
-        .context("創建目錄失敗")?;
+        .context("Failed to create directory")?;
     
-    // 複製文件的函數
+    // Copy file function
     let copy_if_exists = |src: &str, dst: &str| {
         if std::path::Path::new(src).exists() {
             if let Err(e) = std::fs::copy(src, dst) {
-                println!("警告: 複製 {} 失敗: {}", src, e);
+                println!("Warning: Failed to copy {} from {} to {}: {}", src, src, dst, e);
             }
         } else {
-            println!("警告: {} 不存在", src);
+            println!("Warning: {} does not exist", src);
         }
     };
     
-    // 複製根目錄文件
+    // Copy root directory files
     copy_if_exists("public/manifest.json", &format!("{}/manifest.json", public_dir));
     copy_if_exists("public/sw.js", &format!("{}/sw.js", public_dir));
     copy_if_exists("public/img/icons/favicon.ico", &format!("{}/favicon.ico", public_dir));
     
-    // 複製圖標文件
+    // Copy icon files
     if let Ok(entries) = std::fs::read_dir("public/img/icons") {
         for entry in entries.flatten() {
             let path = entry.path();
@@ -409,12 +409,12 @@ fn copy_pwa_resources() -> Result<()> {
         }
     }
     
-    println!("{}", "✅ PWA 資源複製完成".green().bold());
+    println!("{}", "✅ PWA resources copied".green().bold());
     Ok(())
 }
 
 fn create_deployment_package() -> Result<()> {
-    println!("\n{}", "📚 創建部署包...".yellow().bold());
+    println!("\n{}", "📚 Creating deployment package...".yellow().bold());
     
     let web_dir = "target/dx/ifecaro/release/web";
     
@@ -424,97 +424,97 @@ fn create_deployment_package() -> Result<()> {
         .stdout(Stdio::inherit())
         .stderr(Stdio::inherit())
         .status()
-        .context("創建 tar 包失敗")?;
+        .context("Failed to create tar package")?;
     
     if !tar_result.success() {
-        anyhow::bail!("❌ 創建部署包失敗");
+        anyhow::bail!("❌ Failed to create deployment package");
     }
     
-    println!("{}", "✅ 部署包創建完成".green().bold());
+    println!("{}", "✅ Deployment package created".green().bold());
     Ok(())
 }
 
 fn restore_tailwind_css() -> Result<()> {
-    println!("\n{}", "🔄 恢復 tailwind.css...".yellow().bold());
+    println!("\n{}", "🔄 Restoring tailwind.css...".yellow().bold());
     
-    // 確保 git 安全目錄設定（Docker 環境需要）
+    // Ensure git safe directory setting (Docker environment needs)
     let _safe_dir_result = Command::new("git")
         .args(&["config", "--global", "--add", "safe.directory", "/app"])
         .output();
     
-    // 首先檢查檔案是否被修改
+    // First check if file has been modified
     let status_output = Command::new("git")
         .args(&["status", "--porcelain", "public/tailwind.css"])
         .output()
-        .context("檢查 git 狀態失敗")?;
+        .context("Failed to check git status")?;
     
     let status_str = String::from_utf8_lossy(&status_output.stdout);
     
     if status_str.trim().is_empty() {
-        println!("{}", "📋 tailwind.css 未被修改，無需恢復".green());
+        println!("{}", "📋 tailwind.css has not been modified, no need to restore".green());
         return Ok(());
     }
     
-    println!("📝 檢測到 tailwind.css 已被修改，正在恢復...");
+    println!("📝 Detected tailwind.css has been modified, restoring...");
     
     let git_result = Command::new("git")
         .args(&["checkout", "--", "public/tailwind.css"])
         .stdout(Stdio::inherit())
         .stderr(Stdio::inherit())
         .status()
-        .context("執行 git checkout 失敗")?;
+        .context("Failed to run git checkout")?;
     
     if git_result.success() {
-        println!("{}", "✅ tailwind.css 恢復完成".green().bold());
+        println!("{}", "✅ tailwind.css restored".green().bold());
         
-        // 再次確認狀態
+        // Confirm status again
         let confirm_output = Command::new("git")
             .args(&["status", "--porcelain", "public/tailwind.css"])
             .output()
-            .context("確認 git 狀態失敗")?;
+            .context("Failed to confirm git status")?;
         
         let confirm_str = String::from_utf8_lossy(&confirm_output.stdout);
         if confirm_str.trim().is_empty() {
-            println!("{}", "✅ 恢復確認成功".green());
+            println!("{}", "✅ Restore confirmation succeeded".green());
         } else {
-            println!("{}", "⚠️  恢復後仍有未提交變更".yellow());
+            println!("{}", "⚠️  Restore after still has uncommitted changes".yellow());
         }
     } else {
-        anyhow::bail!("❌ tailwind.css 恢復失敗");
+        anyhow::bail!("❌ Failed to restore tailwind.css");
     }
     
     Ok(())
 }
 
 fn upload_to_remote() -> Result<()> {
-    println!("\n{}", "🚀 上傳到遠端伺服器...".yellow().bold());
+    println!("\n{}", "🚀 Uploading to remote server...".yellow().bold());
     
-    // 載入 .env 環境變數
+    // Load .env environment variables
     if std::path::Path::new(".env").exists() {
         dotenv::dotenv().ok();
     } else {
-        anyhow::bail!("❌ 找不到 .env 文件，請先創建並配置部署參數");
+        anyhow::bail!("❌ Unable to find .env file, please create and configure deployment parameters first");
     }
     
-    // 檢查必要的環境變數
+    // Check necessary environment variables
     let deploy_user = std::env::var("DEPLOY_USER")
-        .context("❌ 缺少 DEPLOY_USER 環境變數")?;
+        .context("❌ Missing DEPLOY_USER environment variable")?;
     let deploy_host = std::env::var("DEPLOY_HOST")
-        .context("❌ 缺少 DEPLOY_HOST 環境變數")?;
+        .context("❌ Missing DEPLOY_HOST environment variable")?;
     let deploy_path = std::env::var("DEPLOY_PATH")
-        .context("❌ 缺少 DEPLOY_PATH 環境變數")?;
+        .context("❌ Missing DEPLOY_PATH environment variable")?;
     let ssh_key_path = std::env::var("SSH_KEY_PATH")
         .unwrap_or_else(|_| "/root/.ssh".to_string());
     
     let deploy_target = format!("{}@{}:{}", deploy_user, deploy_host, deploy_path);
-    println!("正在上傳到: {}", deploy_target);
+    println!("Uploading to: {}", deploy_target);
     
     let tar_file = "target/dx/ifecaro/release/web/public.tar.gz";
     if !std::path::Path::new(tar_file).exists() {
-        anyhow::bail!("❌ 找不到部署包 public.tar.gz");
+        anyhow::bail!("❌ Unable to find deployment package public.tar.gz");
     }
     
-    // 確保遠端目錄存在
+    // Ensure remote directory exists
     let ssh_args = &[
         "-i", &format!("{}/id_rsa", ssh_key_path),
         "-o", "UserKnownHostsFile=/root/.ssh/known_hosts",
@@ -531,13 +531,13 @@ fn upload_to_remote() -> Result<()> {
         .stdout(Stdio::inherit())
         .stderr(Stdio::inherit())
         .status()
-        .context("SSH 連接失敗")?;
+        .context("SSH connection failed")?;
     
     if !mkdir_result.success() {
-        println!("⚠️  遠端目錄創建失敗，繼續嘗試上傳");
+        println!("⚠️  Remote directory creation failed, continuing to try upload");
     }
     
-    // 上傳部署包
+    // Upload deployment package
     let scp_args = &[
         "-i", &format!("{}/id_rsa", ssh_key_path),
         "-o", "UserKnownHostsFile=/root/.ssh/known_hosts",
@@ -554,26 +554,26 @@ fn upload_to_remote() -> Result<()> {
         .stdout(Stdio::inherit())
         .stderr(Stdio::inherit())
         .status()
-        .context("SCP 上傳失敗")?;
+        .context("SCP upload failed")?;
     
     if !upload_result.success() {
-        anyhow::bail!("❌ 部署包上傳失敗");
+        anyhow::bail!("❌ Deployment package upload failed");
     }
     
-    println!("{}", "✅ 部署包上傳成功".green().bold());
+    println!("{}", "✅ Deployment package uploaded".green().bold());
     
-    // 遠端解壓縮
+    // Remote decompression
     extract_on_remote(&deploy_user, &deploy_host, &deploy_path, &ssh_key_path)?;
     
-    // 重啟遠端 Docker 服務
+    // Restart remote Docker service
     restart_remote_docker(&deploy_user, &deploy_host, &deploy_path, &ssh_key_path)?;
     
-    println!("{}", "✅ 遠端部署完成".green().bold());
+    println!("{}", "✅ Remote deployment completed".green().bold());
     Ok(())
 }
 
 fn extract_on_remote(user: &str, host: &str, path: &str, ssh_key_path: &str) -> Result<()> {
-    println!("正在遠端解壓縮...");
+    println!("Running remote decompression...");
     
     let extract_command = format!(
         "cd {} && mkdir -p frontend_new && cd frontend_new && tar -xzf ../public.tar.gz --strip-components=1 && cd .. && rm -rf frontend_old && mv frontend frontend_old 2>/dev/null || true && mv frontend_new frontend",
@@ -596,19 +596,19 @@ fn extract_on_remote(user: &str, host: &str, path: &str, ssh_key_path: &str) -> 
         .stdout(Stdio::inherit())
         .stderr(Stdio::inherit())
         .status()
-        .context("遠端解壓縮失敗")?;
+        .context("Failed to run remote decompression")?;
     
     if extract_result.success() {
-        println!("{}", "✅ 遠端解壓縮完成".green().bold());
+        println!("{}", "✅ Remote decompression completed".green().bold());
     } else {
-        println!("⚠️  遠端解壓縮失敗，但上傳成功");
+        println!("⚠️  Remote decompression failed, but upload succeeded");
     }
     
     Ok(())
 }
 
 fn restart_remote_docker(user: &str, host: &str, path: &str, ssh_key_path: &str) -> Result<()> {
-    println!("正在重啟遠端 Docker 服務...");
+    println!("Restarting remote Docker service...");
     
     let restart_command = format!("cd {} && docker compose restart", path);
     
@@ -628,38 +628,38 @@ fn restart_remote_docker(user: &str, host: &str, path: &str, ssh_key_path: &str)
         .stdout(Stdio::inherit())
         .stderr(Stdio::inherit())
         .status()
-        .context("遠端 Docker 重啟失敗")?;
+        .context("Failed to restart remote Docker service")?;
     
     if restart_result.success() {
-        println!("{}", "✅ 遠端 Docker 服務重啟完成".green().bold());
+        println!("{}", "✅ Remote Docker service restarted".green().bold());
     } else {
-        println!("⚠️  遠端 Docker 服務重啟失敗，但部署成功");
+        println!("⚠️  Remote Docker service restart failed, but deployment succeeded");
     }
     
     Ok(())
 }
 
 fn clean() -> Result<()> {
-    println!("{}", "🧹 清理構建檔案...".yellow().bold());
+    println!("{}", "🧹 Cleaning build files...".yellow().bold());
     
     let cargo_clean = Command::new("cargo")
         .args(&["clean"])
         .stdout(Stdio::inherit())
         .stderr(Stdio::inherit())
         .status()
-        .context("清理 Cargo 檔案失敗")?;
+        .context("Failed to clean Cargo files")?;
 
     let dx_clean = Command::new("rm")
         .args(&["-rf", "target/dx"])
         .stdout(Stdio::inherit())
         .stderr(Stdio::inherit())
         .status()
-        .context("清理 Dioxus 檔案失敗")?;
+        .context("Failed to clean Dioxus files")?;
 
     if cargo_clean.success() && dx_clean.success() {
-        println!("{}", "✅ 清理完成".green().bold());
+        println!("{}", "✅ Clean completed".green().bold());
     } else {
-        anyhow::bail!("❌ 清理失敗");
+        anyhow::bail!("❌ Clean failed");
     }
 
     Ok(())

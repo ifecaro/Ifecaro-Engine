@@ -112,12 +112,12 @@ mod ui_integration_tests {
         keyboard_state.choices = std::sync::Arc::new(choices);
         keyboard_state.enabled_choices = std::sync::Arc::new(vec!["p1".to_string(), "p2".to_string()]);
         
-        // 測試預設狀態
+        // Test default state
         assert_eq!(keyboard_state.selected_index, 0);
         assert_eq!(keyboard_state.choices.len(), 2);
         assert_eq!(keyboard_state.enabled_choices.len(), 2);
         
-        // 模擬鍵盤導航
+        // Simulate keyboard navigation
         keyboard_state.selected_index = 1;
         assert_eq!(keyboard_state.selected_index, 1);
         assert!(keyboard_state.selected_index < keyboard_state.choices.len() as i32);
@@ -131,6 +131,6 @@ mod context_integration_tests {
         use ifecaro::contexts::settings_context::SettingsContext;
         
         let _settings = SettingsContext::default();
-        // 測試成功建立 SettingsContext
+        // Test successful creation of SettingsContext
     }
 } 

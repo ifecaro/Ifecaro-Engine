@@ -23,21 +23,21 @@ pub enum Route {
 
 impl Route {
     pub fn default_language() -> String {
-        // 嘗試獲取瀏覽器語言
+        // Try to get browser language
         if let Some(window) = window() {
             let navigator = window.navigator();
             
-            // 使用 navigator.language 屬性獲取瀏覽器語言
+            // Use navigator.language property to get browser language
             if let Some(language) = navigator.language() {
-                // 檢查是否在支持的語言列表中
+                // Check if it's in the list of supported languages
                 let supported_languages = ["zh-TW", "zh-CN", "en-US", "en-GB", "es-ES", "es-CL"];
                 
-                // 檢查完整語言代碼
+                // Check complete language code
                 if supported_languages.contains(&language.as_str()) {
                     return language;
                 }
                 
-                // 檢查語言代碼前綴
+                // Check language code prefix
                 for lang in supported_languages.iter() {
                     if language.starts_with(&lang[..2]) {
                         return lang.to_string();
@@ -46,7 +46,7 @@ impl Route {
             }
         }
         
-        // 如果無法獲取瀏覽器語言或不在支持列表中，默認為英語
+        // If unable to get browser language or not in supported list, default to English
         "en-US".to_string()
     }
 }

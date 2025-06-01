@@ -10,7 +10,7 @@ mod story_flow_tests {
 
     #[test]
     fn test_multi_chapter_story_flow() {
-        // 使用輔助函數建立多個段落
+        // Use helper function to create multiple paragraphs
         let p1 = create_test_paragraph("opening", "chapter1", "zh", "故事的開始");
         let p2 = create_test_paragraph("middle", "chapter1", "zh", "劇情發展");
         let p3 = create_test_paragraph("climax", "chapter2", "zh", "高潮部分");
@@ -33,7 +33,7 @@ mod story_flow_tests {
 
     #[test]
     fn test_story_ui_with_multiple_choices() {
-        // 使用輔助函數建立選擇
+        // Use helper function to create choices
         let choices = vec![
             create_test_choice("選擇路線A", "route_a"),
             create_test_choice("選擇路線B", "route_b"),
@@ -44,20 +44,20 @@ mod story_flow_tests {
             paragraph: "你來到了三岔路口...".to_string(),
             choices: choices.clone(),
             enabled_choices: vec!["route_a".to_string(), "route_c".to_string()],
-            disabled_by_countdown: vec![false, true, false], // route_b 被倒數禁用
+            disabled_by_countdown: vec![false, true, false], // route_b is disabled by countdown
             chapter_title: "命運的抉擇".to_string(),
         };
         
         let html = render_component_to_html(StoryContentUI, props);
         
-        // 使用輔助函數檢查結果
+        // Use helper function to check results
         assert_html_contains_text(&html, "你來到了三岔路口...");
         assert_html_contains_text(&html, "命運的抉擇");
         assert_html_contains_text(&html, "選擇路線A");
         assert_html_contains_text(&html, "選擇路線B");
         assert_html_contains_text(&html, "選擇路線C");
         
-        // 檢查禁用狀態
+        // Check disabled state
         assert_html_contains_class(&html, "opacity-50");
     }
 
@@ -71,7 +71,7 @@ mod story_flow_tests {
         
         let choice_ids = vec!["p2".to_string()];
         
-        // 測試一般模式
+        // Test normal mode
         let normal_result = merge_paragraphs_for_lang(
             &paragraphs,
             "zh",
@@ -80,7 +80,7 @@ mod story_flow_tests {
             &choice_ids,
         );
         
-        // 測試閱讀模式
+        // Test reader mode
         let reader_result = merge_paragraphs_for_lang(
             &paragraphs,
             "zh",
@@ -89,7 +89,7 @@ mod story_flow_tests {
             &choice_ids,
         );
         
-        // 在這個例子中，兩種模式的結果應該相同
+        // In this example, both modes should have the same result
         assert_eq!(normal_result, "段落一\n\n段落二\n\n段落三");
         assert_eq!(reader_result, "段落一\n\n段落二");
     }

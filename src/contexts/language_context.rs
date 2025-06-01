@@ -19,7 +19,7 @@ impl LanguageState {
     pub fn set_language(&mut self, lang: &str) {
         self.current_language = lang.to_string();
         
-        // 根據語言代碼設置 i18n
+        // Set i18n based on language code
         match lang {
             "zh-TW" => self.i18n.set_language(langid!("zh-TW")),
             "zh-CN" => self.i18n.set_language(langid!("zh-CN")),
@@ -32,7 +32,7 @@ impl LanguageState {
             "it" => self.i18n.set_language(langid!("it")),
             "pt" => self.i18n.set_language(langid!("pt")),
             "ru" => self.i18n.set_language(langid!("ru")),
-            // 如果找不到匹配的語言，默認為英語
+            // If no matching language is found, default to English
             _ => self.i18n.set_language(langid!("en-US")),
         }
     }

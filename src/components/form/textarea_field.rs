@@ -15,9 +15,9 @@ pub fn TextareaField(
 ) -> Element {
     let auto_resize = auto_resize.unwrap_or(false);
     let line_count = if auto_resize {
-        // 計算行數，考慮換行和額外的緩衝空間
+        // Calculate line count, considering line breaks and extra buffer space
         let lines = value.lines().count().max(1);
-        // 添加一行緩衝來避免內容被切掉
+        // Add one buffer line to avoid content being cut off
         (lines + 1).max(rows as usize) as u32
     } else {
         rows
@@ -40,7 +40,7 @@ pub fn TextareaField(
                     let mut base_classes = "shadow appearance-none border rounded-lg w-full py-2.5 px-4 text-sm text-gray-700 dark:text-gray-300 dark:bg-gray-700 dark:border-gray-600 leading-tight focus:outline-none focus:shadow-outline dark:focus:border-gray-500".to_string();
                     
                     if auto_resize {
-                        // 移除 overflow-hidden，只保留 resize-none
+                        // Remove overflow-hidden, only keep resize-none
                         base_classes.push_str(" resize-none");
                     }
                     
@@ -60,7 +60,7 @@ pub fn TextareaField(
             {has_error.then(|| rsx!(
                 div { 
                     class: "text-red-500 text-sm mt-1",
-                    "請填寫此欄位"
+                    "Please fill in this field"
                 }
             ))}
         }

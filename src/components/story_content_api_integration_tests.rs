@@ -7,7 +7,7 @@ mod integration_tests {
     use crate::contexts::paragraph_context::{Paragraph, Text, ParagraphChoice};
     use crate::components::story_content::{StoryContentUI, StoryContentUIProps, Choice, Action};
 
-    /// 輔助函數：將 API 段落轉換為組件選項
+    /// Helper function: Convert API paragraph to component choices
     fn paragraph_to_choices(paragraph: &Paragraph, lang: &str) -> Vec<Choice> {
         let text = paragraph.texts.iter()
             .find(|t| t.lang == lang)
@@ -18,7 +18,7 @@ mod integration_tests {
             .map(|(i, choice)| {
                 let caption = text.choices.get(i)
                     .cloned()
-                    .unwrap_or_else(|| format!("選項 {}", i + 1));
+                    .unwrap_or_else(|| format!("Option {}", i + 1));
 
                 Choice {
                     caption,
@@ -33,17 +33,17 @@ mod integration_tests {
             .collect()
     }
 
-    /// 輔助函數：獲取段落文字內容
+    /// Helper function: Get paragraph text content
     fn get_paragraph_text(paragraph: &Paragraph, lang: &str) -> String {
         paragraph.texts.iter()
             .find(|t| t.lang == lang)
             .map(|t| t.paragraphs.clone())
-            .unwrap_or_else(|| "未找到內容".to_string())
+            .unwrap_or_else(|| "Content not found".to_string())
     }
 
     #[tokio::test]
     async fn test_story_content_with_mock_api_data() {
-        // 1. 準備 Mock API 資料
+        // 1. Prepare Mock API data
         let test_paragraph = Paragraph {
             id: "story_p1".to_string(),
             chapter_id: "ch1".to_string(),
@@ -74,7 +74,7 @@ mod integration_tests {
                     key: None,
                     value: None,
                     same_page: Some(false),
-                    time_limit: Some(45), // 45秒時限
+                    time_limit: Some(45), // 45 second time limit
                 },
                 ParagraphChoice::Simple(vec!["corridor_ahead".to_string()]),
                 ParagraphChoice::Complex {
@@ -88,30 +88,30 @@ mod integration_tests {
             ],
         };
 
-        // 2. 創建 Mock API 客戶端
+        // 2. Create Mock API client
         let mock_client = MockApiClient::new()
             .with_paragraphs(vec![test_paragraph.clone()]);
 
-        // 3. 模擬 API 呼叫
+        // 3. Simulate API call
         let api_result = mock_client.get_paragraph_by_id("story_p1").await;
         assert!(api_result.is_ok());
         let paragraph = api_result.unwrap();
 
-        // 4. 將 API 資料轉換為組件需要的格式
+        // 4. Convert API data to format needed for component
         let choices = paragraph_to_choices(&paragraph, "zh-TW");
         let paragraph_text = get_paragraph_text(&paragraph, "zh-TW");
         
-        // 5. 模擬啟用狀態（時限選項可能被禁用）
+        // 5. Simulate enabled state (time limit options may be disabled)
         let enabled_choices = vec![
             "調查聲音來源".to_string(),
             "繼續前進".to_string(),
             "返回出口".to_string(),
         ];
         
-        // 6. 模擬倒數禁用狀態（第一個選項有時限）
+        // 6. Simulate disabled countdown state (first option has time limit)
         let disabled_by_countdown = vec![false, false, false];
 
-        // 7. 創建組件 Props
+        // 7. Create component Props
         let props = StoryContentUIProps {
             paragraph: paragraph_text,
             choices,
@@ -120,20 +120,20 @@ mod integration_tests {
             chapter_title: "第一章：古堡探險".to_string(),
         };
 
-        // 8. 渲染組件
+        // 8. Render component
         let mut vdom = VirtualDom::new_with_props(StoryContentUI, props);
         let mut mutations = NoOpMutations;
         vdom.rebuild(&mut mutations);
         let html = render(&vdom);
 
-        // 9. 驗證渲染結果
+        // 9. Verify render result
         assert!(html.contains("你走進了一座古老的城堡"), "應包含故事內容");
         assert!(html.contains("調查聲音來源"), "應包含第一個選項");
         assert!(html.contains("繼續前進"), "應包含第二個選項");
         assert!(html.contains("返回出口"), "應包含第三個選項");
         assert!(html.contains("第一章：古堡探險"), "應包含章節標題");
         
-        // 驗證 HTML 結構
+        // Verify HTML structure
         assert!(html.contains("<ol"), "選項應使用有序列表");
         assert!(html.contains("list-decimal"), "應有列表樣式");
         assert!(html.contains("cursor-pointer"), "應有可點擊選項");
@@ -141,13 +141,13 @@ mod integration_tests {
 
     #[tokio::test]
     async fn test_error_handling_with_mock_api() {
-        // 測試 API 錯誤情況的處理
+        // Test API error handling
         let mock_client = MockApiClient::new().with_failure();
 
         let result = mock_client.get_paragraph_by_id("nonexistent").await;
         assert!(result.is_err());
 
-        // 在 API 失敗時，組件應該顯示預設內容
+        // When API fails, component should display default content
         let fallback_props = StoryContentUIProps {
             paragraph: "載入失敗，請稍後再試".to_string(),
             choices: vec![],
@@ -167,7 +167,7 @@ mod integration_tests {
 
     #[tokio::test]
     async fn test_multilingual_content_with_mock_api() {
-        // 測試多語言內容
+        // Test multilingual content
         let multilingual_paragraph = Paragraph {
             id: "multi_story".to_string(),
             chapter_id: "ch2".to_string(),
@@ -206,7 +206,7 @@ mod integration_tests {
 
         let paragraph = mock_client.get_paragraph_by_id("multi_story").await.unwrap();
 
-        // 測試不同語言
+        // Test different languages
         for (lang, expected_text, expected_choice) in [
             ("zh-TW", "魔法森林", "使用魔法"),
             ("en", "magical forest", "Use magic"),
@@ -235,7 +235,7 @@ mod integration_tests {
 
     #[tokio::test]
     async fn test_complex_choice_data_with_time_limits() {
-        // 測試複雜選項資料（包含時限）
+        // Test complex choice data (with time limits)
         let timed_paragraph = Paragraph {
             id: "timed_story".to_string(),
             chapter_id: "ch3".to_string(),
@@ -274,7 +274,7 @@ mod integration_tests {
                     key: Some("spell_cast".to_string()),
                     value: Some(serde_json::Value::String("fireball".to_string())),
                     same_page: Some(false),
-                    time_limit: None, // 無時限
+                    time_limit: None, // No time limit
                 },
                 ParagraphChoice::Simple(vec!["escape_scene".to_string()]),
             ],
@@ -286,7 +286,7 @@ mod integration_tests {
         let paragraph = mock_client.get_paragraph_by_id("timed_story").await.unwrap();
         let choices = paragraph_to_choices(&paragraph, "zh-TW");
 
-        // 模擬部分選項因時限過期而被禁用
+        // Simulate partially disabled options due to time limit expiration
         let enabled_choices = vec![
             "施展法術".to_string(),
             "逃跑".to_string(),
@@ -306,20 +306,20 @@ mod integration_tests {
         vdom.rebuild(&mut mutations);
         let html = render(&vdom);
 
-        // 驗證時限選項被正確禁用
+        // Verify time limit options are correctly disabled
         assert!(html.contains("敵人正在逼近"), "應包含緊急情況文字");
         assert!(html.contains("立即攻擊"), "應顯示攻擊選項");
         assert!(html.contains("opacity-50"), "應有禁用選項的樣式");
         assert!(html.contains("cursor-not-allowed"), "禁用選項應不可點擊");
         
-        // 檢查啟用的選項
+        // Check enabled options
         assert!(html.contains("施展法術"), "法術選項應可用");
         assert!(html.contains("逃跑"), "逃跑選項應可用");
     }
 
     #[test]
     fn test_choice_conversion_edge_cases() {
-        // 測試選項轉換的邊界情況
+        // Test choice conversion edge cases
         let edge_case_paragraph = Paragraph {
             id: "edge_case".to_string(),
             chapter_id: "test".to_string(),
@@ -327,13 +327,13 @@ mod integration_tests {
                 Text {
                     lang: "zh-TW".to_string(),
                     paragraphs: "邊界測試".to_string(),
-                    choices: vec![], // 空選項文字
+                    choices: vec![], // Empty choice text
                 },
             ],
             choices: vec![
-                ParagraphChoice::Simple(vec![]), // 空目標
+                ParagraphChoice::Simple(vec![]), // Empty target
                 ParagraphChoice::Complex {
-                    to: vec!["target1".to_string(), "target2".to_string()], // 多目標
+                    to: vec!["target1".to_string(), "target2".to_string()], // Multiple targets
                     type_: "multi_goto".to_string(),
                     key: None,
                     value: None,
@@ -345,12 +345,12 @@ mod integration_tests {
 
         let choices = paragraph_to_choices(&edge_case_paragraph, "zh-TW");
         
-        // 驗證邊界情況的處理
+        // Verify edge case handling
         assert_eq!(choices.len(), 2);
-        assert_eq!(choices[0].caption, "選項 1"); // 自動生成的標題
-        assert_eq!(choices[1].caption, "選項 2");
-        assert_eq!(choices[0].action.to, ""); // 空目標處理
-        assert_eq!(choices[1].action.to, "target1"); // 取第一個目標
+        assert_eq!(choices[0].caption, "Option 1"); // Auto-generated title
+        assert_eq!(choices[1].caption, "Option 2");
+        assert_eq!(choices[0].action.to, ""); // Empty target handling
+        assert_eq!(choices[1].action.to, "target1"); // Take first target
         assert_eq!(choices[1].action.type_, "multi_goto");
     }
 } 

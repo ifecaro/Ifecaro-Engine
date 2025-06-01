@@ -3,7 +3,8 @@ use serde::{Deserialize, Serialize};
 use wasm_bindgen_futures::spawn_local;
 use crate::constants::config::{BASE_API_URL, PARAGRAPHS};
 
-// 複用translation_form中的段落和文本結構
+// Reuse paragraph and text structures from translation_form
+pub use crate::components::translation_form::{Paragraph as ContextParagraph, Text as ContextText, ParagraphChoice as ContextParagraphChoice};
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 #[serde(untagged)]
 pub enum ParagraphChoice {
@@ -146,6 +147,31 @@ impl ParagraphState {
             .find(|p| p.id == id)
             .cloned()
     }
+
+    pub fn load_paragraphs(&mut self) {
+        // Load paragraph list
+        let paragraphs_url = format!("{}{}", BASE_API_URL, PARAGRAPHS);
+        spawn_local({
+            let mut state = self.clone();
+            async move {
+                match reqwest::get(&paragraphs_url).await {
+                    Ok(response) => {
+                        match response.json::<ParagraphData>().await {
+                            Ok(data) => {
+                                state.set_paragraphs(data.items);
+                            },
+                            Err(_) => {
+                                // Ignore errors
+                            },
+                        }
+                    },
+                    Err(_) => {
+                        // Ignore errors
+                    },
+                }
+            }
+        });
+    }
 }
 
 #[derive(Props, Clone, PartialEq)]
@@ -157,7 +183,7 @@ pub struct ParagraphProviderProps {
 pub fn ParagraphProvider(props: ParagraphProviderProps) -> Element {
     let state = use_signal(|| ParagraphState::new());
     
-    // 載入段落列表
+    // Load paragraph list
     use_effect(move || {
         let mut state = state.clone();
         spawn_local(async move {
@@ -176,13 +202,13 @@ pub fn ParagraphProvider(props: ParagraphProviderProps) -> Element {
                                     state.write().set_paragraphs(data.items);
                                 }
                                 Err(_) => {
-                                    // 忽略錯誤
+                                    // Ignore errors
                                 }
                             }
                         }
                     }
                     Err(_) => {
-                        // 忽略錯誤
+                        // Ignore errors
                     }
                 }
             }

@@ -14,7 +14,7 @@ pub struct Chapter {
     pub order: i32,
 }
 
-// API 錯誤類型
+// API error types
 #[allow(dead_code)]
 #[derive(Debug, Clone)]
 pub enum ApiError {
@@ -24,11 +24,11 @@ pub enum ApiError {
     ServerError(u16),
 }
 
-// API 結果類型
+// API result type
 #[allow(dead_code)]
 pub type ApiResult<T> = Result<T, ApiError>;
 
-// API 客戶端 trait，方便測試時 mock
+// API client trait for easy mocking during tests
 #[allow(dead_code)]
 #[async_trait::async_trait(?Send)]
 pub trait ApiClient {
@@ -38,7 +38,7 @@ pub trait ApiClient {
     async fn update_paragraph(&self, paragraph: &Paragraph) -> ApiResult<()>;
 }
 
-// 真實的 HTTP 客戶端實現
+// Real HTTP client implementation
 #[allow(dead_code)]
 pub struct HttpApiClient {
     client: reqwest::Client,
@@ -120,7 +120,7 @@ impl ApiClient for HttpApiClient {
     }
 }
 
-// Mock 客戶端用於測試
+// Mock client for testing
 #[cfg(test)]
 pub struct MockApiClient {
     pub paragraphs: Vec<Paragraph>,

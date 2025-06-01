@@ -171,7 +171,7 @@ pub struct Chapter {
     order: i32,
 }
 
-/// 合併多個段落的 paragraphs 欄位，根據語言與 reader_mode 規則
+/// Merge multiple paragraphs' paragraphs field according to language and reader_mode rules
 #[allow(dead_code)]
 pub fn merge_paragraphs_for_lang(
     expanded: &[Paragraph],
@@ -236,7 +236,7 @@ pub fn Story(props: StoryProps) -> Element {
     let disabled_by_countdown = use_signal(|| vec![]);
     let show_chapter_title = use_signal(|| true);
     
-    // 只負責背景抓資料，抓到後再更新 context
+    // Only responsible for background data fetching, update context after fetching
     {
         let mut paragraph_data = paragraph_data.clone();
         let mut _expanded_paragraphs = _expanded_paragraphs.clone();
@@ -244,11 +244,11 @@ pub fn Story(props: StoryProps) -> Element {
         let mut settings_context = settings_context.clone();
         use_effect(move || {
             spawn_local(async move {
-                // 1. 先讀取 settings（indexedDB）
+                // 1. First read settings (indexedDB)
                 let settings = wasm_bindgen_futures::JsFuture::from(js_sys::Promise::new(&mut |resolve, _reject| {
                     let cb = Closure::wrap(Box::new(move |js_value: wasm_bindgen::JsValue| {
                         resolve.call1(&JsValue::NULL, &js_value).unwrap_or_else(|e| {
-                            // 日誌已清空
+                            // Logs cleared
                             e
                         });
                     }) as Box<dyn FnMut(wasm_bindgen::JsValue)>);
@@ -258,7 +258,7 @@ pub fn Story(props: StoryProps) -> Element {
                 let js_value = match settings.await {
                     Ok(val) => val,
                     Err(_e) => {
-                        // 日誌已清空
+                        // Logs cleared
                         return;
                     }
                 };
@@ -276,7 +276,7 @@ pub fn Story(props: StoryProps) -> Element {
                     ctx.settings = map;
                     ctx.loaded = true;
                 }
-                // 2. 再載入段落資料
+                // 2. Then load paragraph data
                 let paragraphs_url = format!("{}{}", BASE_API_URL, PARAGRAPHS);
                 let client = reqwest::Client::new();
                 match client.get(&paragraphs_url).send().await {
@@ -301,7 +301,7 @@ pub fn Story(props: StoryProps) -> Element {
                                                 }
                                                 _expanded_paragraphs.set(vec![first_paragraph.clone()]);
                                             }
-                                            // 這裡先 set 到 paragraph_data（signal），再 set 到 context
+                                            // Here first set to paragraph_data (signal), then set to context
                                             paragraph_data.set(data.items.clone());
                                             story_context.write().paragraphs.set(data.items.clone());
                                         },
@@ -319,7 +319,7 @@ pub fn Story(props: StoryProps) -> Element {
         });
     }
     
-    // 載入章節列表
+    // Load chapter list
     {
         let mut story_context = story_context.clone();
         use_effect(move || {
@@ -359,7 +359,7 @@ pub fn Story(props: StoryProps) -> Element {
         });
     }
     
-    // 當目標段落ID改變時，更新當前段落
+    // When target paragraph ID changes, update current paragraph
     {
         let mut current_paragraph = current_paragraph.clone();
         let mut current_text = current_text.clone();
@@ -394,16 +394,16 @@ pub fn Story(props: StoryProps) -> Element {
                                     choice_obj.caption = caption.clone();
                                 }
                             }
-                            // 檢查是否有多個目標，如果有則進行隨機選擇
+                            // Check if there are multiple targets, if so perform random selection
                             if c.to.len() > 1 {
-                                // 進行隨機選擇
+                                // Randomly select one target from multi-target paragraph
                                 let selected_target = c.to.iter()
                                     .choose(&mut rand::thread_rng())
                                     .cloned()
                                     .unwrap_or_default();
                                 choice_obj.action.to = selected_target.clone();
                                 
-                                // 異步記錄選擇到 IndexedDB
+                                // Asynchronously record choice to IndexedDB
                                 let paragraph_id = paragraph.id.clone();
                                 let choice_index = index as u32;
                                 let original_choices = c.to.clone();
@@ -421,10 +421,10 @@ pub fn Story(props: StoryProps) -> Element {
                             choice_obj
                         }).collect();
                         current_choices.set(choices.clone());
-                        // 檢查每個選項的目標段落是否有當前語言的翻譯
+                        // Check if each option's target paragraph has translation in current language
                         let mut enabled = Vec::new();
                         let _paragraph_data_read = paragraph_data.read();
-                        // 使用已經隨機選擇後的 choices 來檢查
+                        // Use already randomly selected choices for checking
                         for choice in &choices {
                             let target_id = &choice.action.to;
                             if !target_id.is_empty() {
@@ -436,8 +436,8 @@ pub fn Story(props: StoryProps) -> Element {
                             }
                         }
                         enabled_choices.set(enabled);
-                        // ====== 新版 reader_mode 單線劇情自動展開邏輯（async） ======
-                        // 先檢查 settings_context 是否 loaded
+                        // ====== New reader_mode single-thread story auto-expand logic (async) ======
+                        // First check if settings_context is loaded
                         if !settings_context.read().loaded {
                             return;
                         }
@@ -459,7 +459,7 @@ pub fn Story(props: StoryProps) -> Element {
                                     let text = match current.texts.iter().find(|t| t.lang == state().current_language) {
                                         Some(t) => t,
                                         None => {
-                                            // 日誌已清空
+                                            // Logs cleared
                                             break;
                                         }
                                     };
@@ -467,7 +467,7 @@ pub fn Story(props: StoryProps) -> Element {
                                     let mut choice_ids: Vec<String> = Vec::new();
                                     for (i, c) in text.choices.iter().enumerate() {
                                         if let Some(complex_choice) = current.choices.get(i) {
-                                            // 從多目標段落中隨機選擇一個
+                                            // Randomly select one target from multi-target paragraph
                                             if !complex_choice.to.is_empty() {
                                                 let chosen_target = complex_choice.to.iter()
                                                     .choose(&mut rand::thread_rng())
@@ -502,7 +502,7 @@ pub fn Story(props: StoryProps) -> Element {
                                             match valid_choice_ids.choose(&mut rand::thread_rng()).cloned() {
                                                 Some(val) => val,
                                                 None => {
-                                                    // 日誌已清空
+                                                    // Logs cleared
                                                     break;
                                                 }
                                             }
@@ -517,7 +517,7 @@ pub fn Story(props: StoryProps) -> Element {
                                                 chosen
                                             },
                                             None => {
-                                                // 日誌已清空
+                                                // Logs cleared
                                                 break;
                                             }
                                         }
@@ -545,7 +545,7 @@ pub fn Story(props: StoryProps) -> Element {
         });
     }
     
-    // 設置初始語言
+    // Set initial language
     {
         let state = state.clone();
         use_effect(move || {
@@ -554,7 +554,7 @@ pub fn Story(props: StoryProps) -> Element {
         });
     }
     
-    // 初始化時同步所有章節的 choice_ids
+    // Initialize all chapters' choice_ids at the start
     {
         use_effect(move || {
             let chapters = use_context::<Signal<crate::contexts::story_context::StoryContext>>().read().chapters.read().clone();
@@ -587,7 +587,7 @@ pub fn Story(props: StoryProps) -> Element {
         });
     }
     
-    // 自動跳轉到已選段落（只讀，寫入分離 async block，資料 clone）
+    // Automatically jump to selected paragraph (read-only, separate async block for data cloning)
     {
         let paragraph_data = paragraph_data.clone();
         let _expanded_paragraphs = _expanded_paragraphs.clone();
@@ -654,7 +654,7 @@ pub fn Story(props: StoryProps) -> Element {
                 }
             }
             if is_setting_action {
-                // async: 設定寫入後馬上 get_settings 並更新 context，再跳轉
+                // async: Set after writing, immediately get_settings, and update context, then jump
                 let mut settings_context = settings_context.clone();
                 let mut _expanded_paragraphs = _expanded_paragraphs.clone();
                 let paragraphs = _paragraph_data_read.clone();
@@ -664,11 +664,11 @@ pub fn Story(props: StoryProps) -> Element {
                 wasm_bindgen_futures::spawn_local(async move {
                     if let (Some(key), Some(value)) = (setting_key, setting_value) {
                         set_setting_to_indexeddb(&key, &value);
-                        // 取得最新 settings
+                        // Get latest settings
                         let settings = wasm_bindgen_futures::JsFuture::from(js_sys::Promise::new(&mut |resolve, _reject| {
                             let cb = Closure::wrap(Box::new(move |js_value: wasm_bindgen::JsValue| {
                                 resolve.call1(&JsValue::NULL, &js_value).unwrap_or_else(|e| {
-                                    // 日誌已清空
+                                    // Logs cleared
                                     e
                                 });
                             }) as Box<dyn FnMut(wasm_bindgen::JsValue)>);
@@ -678,7 +678,7 @@ pub fn Story(props: StoryProps) -> Element {
                         let js_value = match settings.await {
                             Ok(val) => val,
                             Err(_e) => {
-                                // 日誌已清空
+                                // Logs cleared
                                 return;
                             }
                         };
@@ -697,7 +697,7 @@ pub fn Story(props: StoryProps) -> Element {
                             ctx.loaded = true;
                         }
                     }
-                    // 跳轉到第一章
+                    // Jump to first chapter
                     if let Some(target_paragraph) = paragraphs.iter().find(|p| p.id == goto) {
                         _expanded_paragraphs.set(vec![target_paragraph.clone()]);
                         story_context.write().target_paragraph_id = Some(goto.clone());
@@ -719,7 +719,7 @@ pub fn Story(props: StoryProps) -> Element {
                 }
                 let mut same_page = false;
                 if let Some(ref last) = last_paragraph {
-                    // 在多目標段落中查找匹配的目標
+                    // Find matching target in multiple target paragraph
                     if let Some(choice) = last.choices.iter().find(|choice| choice.to.contains(&goto)) {
                         same_page = choice.same_page.unwrap_or(false);
                     }
@@ -732,7 +732,7 @@ pub fn Story(props: StoryProps) -> Element {
                     _expanded_paragraphs.set(expanded);
                     show_chapter_title.set(true);
                 } else {
-                    // 切換新頁時自動捲動到頁首
+                    // Auto scroll to top when switching new page
                     if let Some(window) = web_sys::window() {
                         window.scroll_to_with_x_and_y(0.0, 0.0);
                     }
@@ -740,7 +740,7 @@ pub fn Story(props: StoryProps) -> Element {
                     _expanded_paragraphs = _expanded_paragraphs.clone();
                     _expanded_paragraphs.set(vec![(*target_paragraph).clone()]);
                     show_chapter_title.set(false);
-                    // 加回 target_paragraph_id 設定
+                    // Add back target_paragraph_id setting
                     let mut story_context = story_context.clone();
                     story_context.write().target_paragraph_id = Some(goto);
                 }
@@ -748,7 +748,7 @@ pub fn Story(props: StoryProps) -> Element {
         }
     };
     
-    // 合併段落內容寫入 merged context
+    // Merge paragraph content into merged context
     {
         let expanded = _expanded_paragraphs.clone();
         let paragraph_data = paragraph_data.clone();
@@ -776,7 +776,7 @@ pub fn Story(props: StoryProps) -> Element {
         });
     }
     
-    // 主要效果：設置settings、更新paragraph_id、初始化倒數計時
+    // Main effect: Set settings, update paragraph_id, initialize countdown
     use_effect(move || {
         let mut story_context = story_context.clone();
         let expanded = _expanded_paragraphs.clone();
@@ -788,10 +788,10 @@ pub fn Story(props: StoryProps) -> Element {
             story_context.write().is_settings_chapter.set(is_settings_chapter);
             if *last_paragraph_id.borrow() != paragraph.id {
                 *last_paragraph_id.borrow_mut() = paragraph.id.clone();
-                // 只在段落ID變動時初始化倒數計時
+                // Initialize countdown only when paragraph ID changes
                 if let Some(_text) = paragraph.texts.iter().find(|t| t.lang == state().current_language) {
                     let countdowns_vec = paragraph.choices.iter().map(|c| c.time_limit.unwrap_or(0)).collect::<Vec<u32>>();
-                    // 日誌已清空
+                    // Logs cleared
                     story_context.write().countdowns.set(countdowns_vec);
                 }
             }
@@ -799,7 +799,7 @@ pub fn Story(props: StoryProps) -> Element {
         ()
     });
     
-    // 監聽頁面可見性變化，失去焦點時顯示遮罩
+    // Listen for page visibility change, hide overlay when losing focus
     {
         use_effect(move || {
             use wasm_bindgen::JsCast;
@@ -823,7 +823,7 @@ pub fn Story(props: StoryProps) -> Element {
     }
     
     let reader_mode = settings_context.read().settings.get("reader_mode").map(|v| v == "true").unwrap_or(false);
-    // 取得目前章節標題
+    // Get current chapter title
     let chapter_title = {
         if !*show_chapter_title.read() {
             String::new()
@@ -852,7 +852,7 @@ pub fn Story(props: StoryProps) -> Element {
     };
     let current_paragraph_id = use_signal(|| String::new());
     
-    // 監聽 _expanded_paragraphs 變化並更新 current_paragraph_id
+    // Listen for _expanded_paragraphs changes and update current_paragraph_id
     {
         let mut current_paragraph_id = current_paragraph_id.clone();
         let _expanded_paragraphs = _expanded_paragraphs.clone();
