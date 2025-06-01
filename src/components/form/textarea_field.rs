@@ -1,5 +1,6 @@
 use dioxus::prelude::*;
 use dioxus::events::{FormEvent, FocusEvent};
+use dioxus_i18n::t;
 
 #[component]
 pub fn TextareaField(
@@ -60,7 +61,7 @@ pub fn TextareaField(
             {has_error.then(|| rsx!(
                 div { 
                     class: "text-red-500 text-sm mt-1",
-                    "Please fill in this field"
+                    "{t!(\"please_fill_in_this_field\")}"
                 }
             ))}
         }

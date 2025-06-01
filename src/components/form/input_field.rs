@@ -1,4 +1,5 @@
 use dioxus::prelude::*;
+use dioxus_i18n::t;
 
 #[derive(Props, Clone, PartialEq)]
 pub struct InputFieldProps {
@@ -61,7 +62,7 @@ pub fn InputField(props: InputFieldProps) -> Element {
         }
         {props.has_error.then(|| {
             rsx! {
-                p { class: "mt-1 text-sm text-red-500", "This field is required" }
+                p { class: "mt-1 text-sm text-red-500", "{t!(\"this_field_is_required\")}" }
             }
         })}
     }

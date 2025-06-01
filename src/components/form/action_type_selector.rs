@@ -32,15 +32,15 @@ pub struct ActionTypeSelectorProps {
 pub fn ActionTypeSelector(props: ActionTypeSelectorProps) -> Element {
     // Define available action types
     let action_types = vec![
-        ActionType { value: "".to_string(), label: "None".to_string() },
-        ActionType { value: "setting".to_string(), label: "Setting".to_string() },
+        ActionType { value: "".to_string(), label: t!("none") },
+        ActionType { value: "setting".to_string(), label: t!("setting") },
     ];
     
     // Find currently selected action type
     let selected_label = action_types.iter()
         .find(|t| t.value == props.value)
         .map(|t| t.label.clone())
-        .unwrap_or_else(|| "None".to_string());
+        .unwrap_or_else(|| t!("none"));
 
     rsx! {
         Dropdown {
