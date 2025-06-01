@@ -45,7 +45,7 @@ pub struct ChapterProviderProps {
 pub fn ChapterProvider(props: ChapterProviderProps) -> Element {
     let state = use_signal(|| ChapterState::new());
     
-    // 載入章節列表
+    // Load chapter list
     use_effect(move || {
         let mut state = state.clone();
         spawn_local(async move {
@@ -78,7 +78,7 @@ pub fn ChapterProvider(props: ChapterProviderProps) -> Element {
                                             })
                                             .collect();
                                         
-                                        // 按 order 排序
+                                        // Sort by order
                                         let mut sorted_chapters = chapters;
                                         sorted_chapters.sort_by(|a, b| a.order.cmp(&b.order));
                                         
@@ -86,13 +86,13 @@ pub fn ChapterProvider(props: ChapterProviderProps) -> Element {
                                     }
                                 }
                                 Err(_) => {
-                                    // 忽略錯誤
+                                    // Ignore errors
                                 }
                             }
                         }
                     }
                     Err(_) => {
-                        // 忽略錯誤
+                        // Ignore errors
                     }
                 }
             }

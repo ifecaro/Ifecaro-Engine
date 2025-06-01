@@ -61,7 +61,7 @@ pub fn InputField(props: InputFieldProps) -> Element {
         }
         {props.has_error.then(|| {
             rsx! {
-                p { class: "mt-1 text-sm text-red-500", "此欄位為必填" }
+                p { class: "mt-1 text-sm text-red-500", "This field is required" }
             }
         })}
     }

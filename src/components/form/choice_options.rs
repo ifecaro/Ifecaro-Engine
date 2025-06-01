@@ -30,14 +30,14 @@ pub struct ChoiceOptionsProps {
 #[component]
 pub fn ChoiceOptions(props: ChoiceOptionsProps) -> Element {
     rsx! {
-        // 段落選項標題區域
+        // Paragraph options title area
         div {
             class: "flex items-center justify-between mb-6",
             h3 {
                 class: "text-lg font-semibold text-gray-900 dark:text-gray-100",
                 {t!("options")}
             }
-            // 新增選項按鈕（桌面版：在標題右側，行動版：隱藏）
+            // Add option button (desktop: on the right side of title, mobile: hidden)
             button {
                 class: "hidden lg:inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors duration-200",
                 onclick: move |_| props.on_add_choice.call(()),
@@ -58,9 +58,9 @@ pub fn ChoiceOptions(props: ChoiceOptionsProps) -> Element {
             }
         }
         
-        // 渲染所有選項
+        // Render all options
         {props.choices.iter().enumerate().map(|(index, (caption, goto_list, action_type, action_key, action_value, target_chapter, same_page, time_limit))| {
-            // 檢查動作類型是否為空（None）
+            // Check if action type is empty (None)
             let is_action_disabled = action_type.is_empty();
             
             rsx! {
@@ -70,14 +70,14 @@ pub fn ChoiceOptions(props: ChoiceOptionsProps) -> Element {
                         class: "relative border-2 border-gray-200 dark:border-gray-600 rounded-lg mb-8",
                         div {
                             class: "p-4 space-y-4",
-                            // 選項標題行和刪除按鈕
+                            // Option title row and delete button
                             div {
                                 class: "flex items-center justify-between mb-4",
                                 div {
                                     class: "text-sm font-medium text-gray-700 dark:text-gray-300",
                                     {format!("{} {}", t!("option"), index + 1)}
                                 }
-                                // 刪除按鈕（桌面版：置右顯示，行動版：隱藏）
+                                // Delete button (desktop: right-aligned, mobile: hidden)
                                 button {
                                     class: "hidden lg:block px-3 py-1 text-sm text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors duration-200",
                                     onclick: move |_| props.on_remove_choice.call(index),
@@ -85,10 +85,10 @@ pub fn ChoiceOptions(props: ChoiceOptionsProps) -> Element {
                                 }
                             }
                             
-                            // 第一列：標題、目標章節、目標段落（桌面版並排，行動版垂直）
+                            // First row: title, target chapter, target paragraph (desktop: side by side, mobile: vertical)
                             div {
                                 class: "grid grid-cols-1 lg:grid-cols-3 gap-4",
-                                // 選項標題輸入框
+                                // Option title input field
                                 InputField {
                                     label: t!("caption"),
                                     value: caption.clone(),
@@ -100,7 +100,7 @@ pub fn ChoiceOptions(props: ChoiceOptionsProps) -> Element {
                                     required: true,
                                     on_blur: move |_| {},
                                 }
-                                // 目標章節選擇器
+                                // Target chapter selector
                                 crate::components::chapter_selector::ChapterSelector {
                                     label: t!("target_chapter"),
                                     value: target_chapter.clone(),
@@ -121,7 +121,7 @@ pub fn ChoiceOptions(props: ChoiceOptionsProps) -> Element {
                                     has_error: false,
                                     selected_language: props.selected_language.clone(),
                                 }
-                                // 多選目標段落選擇器
+                                // Multi-select target paragraph selector
                                 MultiSelectParagraphList {
                                     label: t!("goto_target"),
                                     selected_ids: goto_list.clone(),
@@ -147,7 +147,7 @@ pub fn ChoiceOptions(props: ChoiceOptionsProps) -> Element {
                                 }
                             }
                             
-                            // Action 相關欄位
+                            // Action related fields
                             div {
                                 class: "border-t border-gray-200 dark:border-gray-700 mt-4 pt-4",
                                 div {
@@ -234,7 +234,7 @@ pub fn ChoiceOptions(props: ChoiceOptionsProps) -> Element {
                                     {t!("same_page")}
                                 }
                             }
-                            // 秒數輸入框
+                            // Time limit input field
                             InputField {
                                 label: t!("time_limit_seconds"),
                                 value: time_limit.map(|v| v.to_string()).unwrap_or_default(),
@@ -247,7 +247,7 @@ pub fn ChoiceOptions(props: ChoiceOptionsProps) -> Element {
                                 on_blur: move |_| {},
                             }
                             
-                            // 刪除按鈕（行動版：顯示在最後，桌面版：隱藏）
+                            // Delete button (mobile: shown at the end, desktop: hidden)
                             button {
                                 class: "lg:hidden w-full mt-2 px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 transition-colors duration-200",
                                 onclick: move |_| props.on_remove_choice.call(index),
@@ -259,7 +259,7 @@ pub fn ChoiceOptions(props: ChoiceOptionsProps) -> Element {
             }
         })}
 
-        // 新增選項按鈕（行動版：顯示在底部，桌面版：隱藏）
+        // Add option button (mobile: shown at the bottom, desktop: hidden)
         button {
             class: "lg:hidden w-full px-4 py-3 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg text-gray-600 dark:text-gray-400 hover:border-gray-400 dark:hover:border-gray-500 hover:text-gray-700 dark:hover:text-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors duration-200",
             onclick: move |_| props.on_add_choice.call(()),

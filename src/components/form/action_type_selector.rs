@@ -30,13 +30,13 @@ pub struct ActionTypeSelectorProps {
 
 #[component]
 pub fn ActionTypeSelector(props: ActionTypeSelectorProps) -> Element {
-    // 定義可用的動作類型
+    // Define available action types
     let action_types = vec![
         ActionType { value: "".to_string(), label: "None".to_string() },
         ActionType { value: "setting".to_string(), label: "Setting".to_string() },
     ];
     
-    // 找到當前選中的動作類型
+    // Find currently selected action type
     let selected_label = action_types.iter()
         .find(|t| t.value == props.value)
         .map(|t| t.label.clone())

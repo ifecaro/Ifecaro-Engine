@@ -34,27 +34,27 @@ pub struct ChapterSelectorProps {
 pub fn ChapterSelector(props: ChapterSelectorProps) -> Element {
     let language_state = use_context::<Signal<LanguageState>>();
     
-    // 使用傳入的語言參數或從 context 中獲取
+    // Use passed language parameter or get from context
     let selected_lang = if props.selected_language.is_empty() {
         language_state.read().current_language.clone()
     } else {
         props.selected_language.clone()
     };
     
-    // 獲取界面語言作為回退選項
+    // Get interface language as fallback option
     let interface_lang = language_state.read().current_language.clone();
     
-    // 更新 thread_local 變量
+    // Update thread_local variable
     SELECTED_LANGUAGE.with(|lang| {
         *lang.borrow_mut() = selected_lang.clone();
     });
     
-    // 更新界面語言到 thread_local
+    // Update interface language to thread_local
     INTERFACE_LANGUAGE.with(|lang| {
         *lang.borrow_mut() = interface_lang.clone();
     });
     
-    // 過濾章節
+    // Filter chapters
     let filtered_chapters = props.chapters.iter()
         .filter(|chapter| {
             let query = props.search_query.to_lowercase();
@@ -77,18 +77,18 @@ pub fn ChapterSelector(props: ChapterSelectorProps) -> Element {
         .cloned()
         .collect::<Vec<_>>();
     
-    // 找到當前選中的章節
+    // Find currently selected chapter
     let selected_chapter_title = if props.value.is_empty() {
         props.label.clone()
     } else {
         props.chapters.iter()
             .find(|c| c.id == props.value)
             .map(|c| {
-                // 先尋找當前語言的翻譯
+                // First look for translation in current language
                 if let Some(title) = c.titles.iter().find(|t| t.lang == selected_lang) {
                     title.title.clone()
                 } else {
-                    // 如果找不到當前語言的翻譯，優先使用界面語言，然後是英文或第一個可用的翻譯，並加上未翻譯標示
+                    // If current language translation not found, prioritize interface language, then English or first available translation, and add untranslated marker
                     let fallback_title = c.titles.iter()
                         .find(|t| t.lang == interface_lang)
                         .or_else(|| c.titles.iter().find(|t| t.lang == "en-US" || t.lang == "en-GB"))
@@ -101,16 +101,16 @@ pub fn ChapterSelector(props: ChapterSelectorProps) -> Element {
             .unwrap_or_else(|| props.label.clone())
     };
 
-    // 定義顯示函數，使用 thread_local 變量獲取當前選擇的語言
+    // Define display function, use thread_local variable to get current selected language
     fn display_chapter_title(chapter: &Chapter) -> String {
         let selected_lang = SELECTED_LANGUAGE.with(|lang| lang.borrow().clone());
         let interface_lang = INTERFACE_LANGUAGE.with(|lang| lang.borrow().clone());
         
-        // 先尋找當前語言的翻譯
+        // First look for translation in current language
         if let Some(title) = chapter.titles.iter().find(|t| t.lang == selected_lang) {
             title.title.clone()
         } else {
-            // 如果找不到當前語言的翻譯，優先使用界面語言，然後是英文或第一個可用的翻譯，並加上未翻譯標示
+            // If current language translation not found, prioritize interface language, then English or first available translation, and add untranslated marker
             let fallback_title = chapter.titles.iter()
                 .find(|t| t.lang == interface_lang)
                 .or_else(|| chapter.titles.iter().find(|t| t.lang == "en-US" || t.lang == "en-GB"))

@@ -64,7 +64,7 @@ struct DisplayParagraph {
 pub fn ParagraphList(props: ParagraphListProps) -> Element {
     let untranslated_text = t!("untranslated");
 
-    // 將 Paragraph 轉換為 DisplayParagraph
+    // Convert Paragraph to DisplayParagraph
     let convert_to_display = |p: &Paragraph| {
         let display_text = if !p.has_translation {
             format!("（{}）{}", untranslated_text, p.preview)
@@ -77,14 +77,14 @@ pub fn ParagraphList(props: ParagraphListProps) -> Element {
         }
     };
 
-    // 找到當前選中的段落
+    // Find the currently selected paragraph
     let selected_preview = props.paragraphs.iter()
         .find(|p| p.id == props.value)
         .map(convert_to_display)
         .map(|p| p.display_text)
         .unwrap_or_else(|| props.value.clone());
 
-    // 過濾並轉換段落
+    // Filter and convert paragraphs
     let display_paragraphs: Vec<DisplayParagraph> = props.paragraphs.iter()
         .map(convert_to_display)
         .filter(|p| p.display_text.to_lowercase().contains(&props.search_query.to_lowercase()))
@@ -122,7 +122,7 @@ pub fn ParagraphList(props: ParagraphListProps) -> Element {
 pub fn MultiSelectParagraphList(props: MultiSelectParagraphListProps) -> Element {
     let untranslated_text = t!("untranslated");
 
-    // 將 Paragraph 轉換為 DisplayParagraph
+    // Convert Paragraph to DisplayParagraph
     let convert_to_display = |p: &Paragraph| {
         let display_text = if !p.has_translation {
             format!("（{}）{}", untranslated_text, p.preview)
@@ -135,24 +135,24 @@ pub fn MultiSelectParagraphList(props: MultiSelectParagraphListProps) -> Element
         }
     };
 
-    // 過濾出可選的段落（排除已選的）
+    // Filter out selectable paragraphs (excluding already selected ones)
     let available_paragraphs: Vec<DisplayParagraph> = props.paragraphs.iter()
         .filter(|p| !props.selected_ids.contains(&p.id))
         .map(convert_to_display)
         .filter(|p| p.display_text.to_lowercase().contains(&props.search_query.to_lowercase()))
         .collect();
 
-    // 顯示值：始終顯示「目標段落」
+    // Display value: always show "Target Paragraph"
     let display_value = t!("select_paragraph").to_string();
     
-    // 檢查是否有可用段落，如果沒有就停用選單
+    // Check if there are available paragraphs, disable menu if none
     let is_disabled = props.disabled || props.paragraphs.is_empty();
 
     rsx! {
         div {
             class: format!("space-y-2 {}", props.class),
             
-            // 手動顯示標籤
+            // Manually display label
             if !props.label.is_empty() {
                 label {
                     class: format!("block text-sm font-medium mb-2 {}",
@@ -169,7 +169,7 @@ pub fn MultiSelectParagraphList(props: MultiSelectParagraphListProps) -> Element
                 }
             }
             
-            // 已選段落的標籤顯示（僅在有選中項目時顯示）
+            // Selected paragraphs label display (only show when there are selected items)
             if !props.selected_ids.is_empty() {
                 div {
                     class: "mb-2",
@@ -214,9 +214,9 @@ pub fn MultiSelectParagraphList(props: MultiSelectParagraphListProps) -> Element
                 }
             }
 
-            // 主要的下拉選單 - 不顯示標籤，因為我們已經手動顯示了
+            // Main dropdown menu - don't show label since we already manually displayed it
             Dropdown {
-                label: String::new(), // 空字符串，不顯示標籤
+                label: String::new(), // Empty string, don't show label
                 value: display_value,
                 options: available_paragraphs,
                 is_open: props.is_open,

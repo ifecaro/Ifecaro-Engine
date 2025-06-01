@@ -8,8 +8,8 @@ pub mod constants;
 pub mod models;
 pub mod services;
 
-// 重新匯出 dioxus 相關內容供測試使用
+// Re-export dioxus related content for testing use
 pub use dioxus::prelude::*;
 
-// 匯出主程式的核心類型
+// Export main program's core types
 pub use layout::KeyboardState; 

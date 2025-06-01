@@ -23,10 +23,10 @@
             }
 
             init() {
-                // 監聽滾動事件，使用節流來提升性能
+                // Listen to scroll events with throttling for performance
                 window.addEventListener('scroll', this.throttleScroll.bind(this), { passive: true });
 
-                // 初始檢查
+                // Initial check
                 this.checkScrollPosition();
                 this.isInitialized = true;
             }
@@ -39,7 +39,7 @@
                 this.throttleTimer = setTimeout(() => {
                     this.checkScrollPosition();
                     this.throttleTimer = null;
-                }, 16); // 約60fps
+                }, 16); // Approximately 60fps
             }
 
             checkScrollPosition() {
@@ -52,15 +52,15 @@
                 const windowHeight = window.innerHeight;
                 const atBottom = rect.bottom <= windowHeight + 2;
 
-                // 只在狀態改變時發送事件
+                // Only dispatch event when state changes
                 if (atBottom !== this.isAtBottom) {
                     this.isAtBottom = atBottom;
 
                     if (atBottom) {
-                        // 到達底部 - 顯示選項並開始倒數
+                        // Reached bottom - show options and start countdown
                         this.dispatchEvent('scroll_reached_bottom');
                     } else {
-                        // 離開底部 - 暫停倒數但不隱藏選項
+                        // Left bottom - pause countdown but don't hide options
                         this.dispatchEvent('scroll_left_bottom');
                     }
                 }
@@ -76,12 +76,12 @@
                 document.dispatchEvent(event);
             }
 
-            // 手動檢查位置的方法，供外部調用
+            // Method for manual position checking, exposed for external calls
             forceCheck() {
                 this.checkScrollPosition();
             }
 
-            // 清理方法
+            // Cleanup method
             destroy() {
                 window.removeEventListener('scroll', this.throttleScroll.bind(this));
                 if (this.throttleTimer) {
@@ -90,10 +90,10 @@
             }
         }
 
-        // 創建全局實例
+        // Create global instance
         window.scrollMonitor = new ScrollMonitor();
 
-        // 暴露給 Rust 端調用的方法
+        // Expose methods for Rust-side calls
         window.checkScrollPosition = function () {
             if (window.scrollMonitor) {
                 window.scrollMonitor.forceCheck();
@@ -110,7 +110,7 @@
     <div id="main"></div>
 
     <script>
-        // 開始載入
+        // Start loading
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.getRegistration('/')
                 .then(registration => {
@@ -122,11 +122,11 @@
                     return registration;
                 })
                 .then(registration => {
-                    // 在 Service Worker 註冊成功後開始載入 WASM
+                    // Start loading WASM after Service Worker registration succeeds
                 })
                 .catch(error => {
-                    console.error('Service Worker 註冊失敗:', error);
-                    // 即使 Service Worker 註冊失敗，也嘗試載入 WASM
+                    console.error('Service Worker registration failed:', error);
+                    // Attempt to load WASM even if Service Worker registration fails
                 });
         }
     </script>

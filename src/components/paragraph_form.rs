@@ -73,7 +73,7 @@ pub fn ParagraphForm(props: ParagraphFormProps) -> Element {
 
     rsx! {
         div { class: "space-y-8",
-            // 段落內容欄位
+            // Paragraph content field
             TextareaField {
                 label: Box::leak(t!("paragraph_content").into_boxed_str()),
                 placeholder: Box::leak(t!("paragraph_content").into_boxed_str()),
@@ -88,7 +88,7 @@ pub fn ParagraphForm(props: ParagraphFormProps) -> Element {
                 on_blur: move |_| {}
             }
 
-            // 選項設定
+            // Option settings
             ChoiceOptions {
                 choices: choices.read().clone().into_iter().map(|(a,b,c,d,e,f,g)| (a,b,c,d,e,f,false,g)).collect(),
                 on_choice_change: move |(index, field, value): (usize, String, String)| {
@@ -153,7 +153,7 @@ pub fn ParagraphForm(props: ParagraphFormProps) -> Element {
                 },
             }
 
-            // 提交按鈕
+            // Submit button
             button {
                 class: "w-full px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed",
                 disabled: !*is_form_valid.read(),

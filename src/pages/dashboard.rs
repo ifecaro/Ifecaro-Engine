@@ -110,15 +110,15 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
     let paragraph_state = use_context::<Signal<ParagraphState>>();
     let current_lang = language_state.read().current_language.clone();
     
-    // 更新 thread_local 變量
+    // Update thread_local variable
     CURRENT_LANGUAGE.with(|lang| {
         *lang.borrow_mut() = current_lang.clone();
     });
 
-    // 初始化 paragraph_language 為當前界面語言
+    // Initialize paragraph_language to current interface language
     let mut paragraph_language = use_signal(|| current_lang.clone());
 
-    // 在語言變更時更新 thread_local 變量和 paragraph_language
+    // Update thread_local variable and paragraph_language when language changes
     use_effect(move || {
         let current_lang = language_state.read().current_language.clone();
         CURRENT_LANGUAGE.with(|lang| {
@@ -160,7 +160,7 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
     let _target_chapter = use_signal(|| String::new());
     let _extra_target_chapters = use_signal(|| Vec::<String>::new());
 
-    // 新增三個獨立的章節選單狀態
+    // Add three independent chapter selector states
     let _header_chapter = use_signal(|| String::new());
     let _header_chapter_open = use_signal(|| false);
     let _header_chapter_search = use_signal(|| String::new());
@@ -198,10 +198,10 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
             return;
         }
 
-        // 從context中獲取段落數據
+        // Get paragraph data from context
         let chapter_paragraphs = paragraph_state.read().get_by_chapter(&selected_chapter_id);
         
-        // 將段落分成兩組
+        // Divide paragraphs into two groups
         let (translated_paragraphs, untranslated_paragraphs): (Vec<_>, Vec<_>) = chapter_paragraphs
             .iter()
             .map(|p| {
@@ -226,7 +226,7 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
                 }, has_translation)
             })
             .partition(|(_, has_translation)| *has_translation);
-        // 合併段落，先放有翻譯的，再放沒有翻譯的
+        // Merge paragraphs, put translated ones first, then untranslated ones
         let mut all_paragraphs = translated_paragraphs.into_iter().map(|(p, _)| p).collect::<Vec<_>>();
         all_paragraphs.extend(untranslated_paragraphs.into_iter().map(|(p, _)| p));
         if let Ok(mut ap) = available_paragraphs.try_write() {
@@ -234,7 +234,7 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
         }
     }));
 
-    // 處理 toast 顯示
+    // Handle toast display
     use_effect(move || {
         if *show_toast.read() {
             toast_visible.set(true);
@@ -242,11 +242,11 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
             let mut toast_visible = toast_visible.clone();
             let mut toast_animating_out = toast_animating_out.clone();
             let mut show_toast = show_toast.clone();
-            // 3 秒後自動隱藏
+            // Auto hide after 3 seconds
             Timeout::new(3000, move || {
-                // 先設置為正在退場
+                // First set to exiting
                 toast_animating_out.set(true);
-                // 等待退場動畫完成（400ms）後再隱藏
+                // Wait for exit animation to complete (400ms) before hiding
                 Timeout::new(500, move || {
                     toast_visible.set(false);
                     toast_animating_out.set(false);
@@ -256,7 +256,7 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
         }
     });
 
-    // 處理錯誤 toast 顯示
+    // Handle error toast display
     use_effect(move || {
         if *show_error_toast.read() {
             error_toast_visible.set(true);
@@ -264,11 +264,11 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
             let mut error_toast_visible = error_toast_visible.clone();
             let mut error_toast_animating_out = error_toast_animating_out.clone();
             let mut show_error_toast = show_error_toast.clone();
-            // 3 秒後自動隱藏
+            // Auto hide after 3 seconds
             Timeout::new(3000, move || {
-                // 先設置為正在退場
+                // First set to exiting
                 error_toast_animating_out.set(true);
-                // 等待退場動畫完成（400ms）後再隱藏
+                // Wait for exit animation to complete (400ms) before hiding
                 Timeout::new(500, move || {
                     error_toast_visible.set(false);
                     error_toast_animating_out.set(false);
@@ -278,7 +278,7 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
         }
     });
 
-    // 在章節選擇變更後更新可用段落列表
+    // Update available paragraph list when chapter changes
     {
         let update_paragraph_previews = update_paragraph_previews.clone();
         use_effect(move || {
@@ -291,7 +291,7 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
         });
     }
 
-    // 在語言變更時更新段落預覽
+    // Update paragraph previews when language changes
     {
         let update_paragraph_previews = update_paragraph_previews.clone();
         use_effect(move || {
@@ -304,21 +304,21 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
         });
     }
 
-    // 新增：監聽界面語言變化，在編輯模式下重新加載段落內容
+    // Add: Listen for interface language change, reload paragraph content in edit mode
     use_effect(move || {
         let _interface_lang = language_state.read().current_language.clone();
         let is_edit = *is_edit_mode.read();
         
-        // 只在編輯模式下且有選中段落時執行
+        // Only execute when in edit mode and there is selected paragraph
         if is_edit {
             if let Some(paragraph) = selected_paragraph.read().as_ref() {
                 let current_lang = paragraph_language.read().clone();
                 
-                // 填充段落內容
+                // Fill paragraph content
                 if let Some(text) = paragraph.texts.iter().find(|text| text.lang == current_lang) {
                     paragraphs.set(text.paragraphs.clone());
                     
-                    // 填充選項
+                    // Fill options
                     let interface_lang = language_state.read().current_language.clone();
                     let (new_choices, new_paragraphs) = process_paragraph_select(text, paragraph, &paragraph_state, &paragraph_language, &interface_lang);
                     let choices_len = new_choices.len();
@@ -330,17 +330,17 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
                     choice_paragraphs_open.set(vec![false; choices_len]);
                     choice_paragraphs_search.set(vec![String::new(); choices_len]);
                 } else {
-                    // 如果找不到當前語言的翻譯，清空段落內容
+                    // If no translation found for current language, clear paragraph content
                     paragraphs.set(String::new());
                     
-                    // 保留目標章節和段落的選擇，只清空選項標題，但重新生成目標段落預覽
+                    // Keep target chapter and paragraph selection, clear option titles, but regenerate target paragraph previews
                     let current_choices = choices.read().clone();
                     let new_choices = current_choices.iter().map(|(_, to, type_, key, value, target_chapter, same_page, time_limit)| {
                         (String::new(), to.clone(), type_.clone(), key.clone(), value.clone(), target_chapter.clone(), *same_page, *time_limit)
                     }).collect();
                     choices.set(new_choices);
                     
-                    // 重新生成所有目標段落的預覽，使用當前語言
+                    // Regenerate all target paragraph previews, using current language
                     let mut current_paragraphs = choice_paragraphs.read().clone();
                     for (index, (_, _, _, _, _, target_chapter, _, _)) in current_choices.iter().enumerate() {
                         if !target_chapter.is_empty() {
@@ -455,21 +455,21 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
                             .unwrap_or_default();
                         let current_paragraph_choices = &paragraph.choices;
                         
-                        // 檢查選項數量是否改變
+                        // Check if option quantity changes
                         if current_text_choices.len() != new_choices.len() || current_paragraph_choices.len() != new_choices.len() {
                             return true;
                         }
                         
-                        // 檢查每個選項的詳細變化
+                        // Check each option's detailed changes
                         for (i, (new_choice_text, new_to, new_type, new_key, new_value, _new_target_chapter, new_same_page, new_time_limit)) in new_choices.iter().enumerate() {
-                            // 檢查選項文字是否改變
+                            // Check if option text changes
                             if let Some(old_choice_text) = current_text_choices.get(i) {
                                 if old_choice_text != new_choice_text {
                                     return true;
                                 }
                             }
                             
-                            // 檢查選項數據是否改變
+                            // Check if option data changes
                             if let Some(old_choice) = current_paragraph_choices.get(i) {
                                 let (old_to, old_type, old_key, old_value, old_same_page, old_time_limit) = match old_choice {
                                     ContextParagraphChoice::Simple(texts) => (texts.clone(), "goto".to_string(), None, None, false, None),
@@ -482,7 +482,7 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
                                     },
                                 };
                                 
-                                // 比較所有屬性
+                                // Compare all attributes
                                 if old_to != *new_to || 
                                    old_type != *new_type || 
                                    old_key != *new_key || 
@@ -547,7 +547,7 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
                 },
                 "action_type" => {
                     choice.2 = value.clone();
-                    // 當動作類型設為空（None）時，清空動作鍵值和動作值
+                    // When action type set to empty (None), clear action key and action value
                     if value.is_empty() {
                         choice.3 = None;
                         choice.4 = None;
@@ -575,7 +575,7 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
                     if !value.is_empty() {
                         let selected_lang = paragraph_language.read().clone();
                         let interface_language = language_state.read().current_language.clone();
-                        // 從 context 中獲取段落
+                        // Get paragraph from context
                         let chapter_paragraphs = paragraph_state.read().get_by_chapter(&value);
                         let filtered_paragraphs = chapter_paragraphs.iter()
                             .map(|item| {
@@ -652,15 +652,15 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
         move |index: usize| {
             let available_paragraphs = available_paragraphs.read();
             if let Some(paragraph) = available_paragraphs.get(index) {
-                // 從 context 中獲取完整的段落數據
+                // Get full paragraph data from context
                 if let Some(full_paragraph) = paragraph_state.read().get_by_id(&paragraph.id) {
                     selected_paragraph.set(Some(full_paragraph.clone()));
                     
-                    // 填充段落內容
+                    // Fill paragraph content
                     if let Some(text) = full_paragraph.texts.iter().find(|t| t.lang == *paragraph_language.read()) {
                         paragraphs.set(text.paragraphs.clone());
                         
-                        // 填充選項
+                        // Fill options
                         let (new_choices, new_paragraphs) = process_paragraph_select(text, &full_paragraph, &paragraph_state, &paragraph_language, &language_state.read().current_language.clone());
                         let choices_len = new_choices.len();
 
@@ -671,7 +671,7 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
                         choice_paragraphs_open.set(vec![false; choices_len]);
                         choice_paragraphs_search.set(vec![String::new(); choices_len]);
                     } else {
-                        // 如果找不到當前語言的翻譯，完全清空所有內容
+                        // If no translation found for current language, clear all content
                         paragraphs.set(String::new());
                         choices.set(Vec::new());
                         action_type_open.set(Vec::new());
@@ -709,7 +709,7 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
                 }).collect(),
             };
 
-            // 構建選項數據
+            // Build option data
             let paragraph_choices: Vec<ContextParagraphChoice> = choices.iter().map(|(_choice_text, to_list, type_, key, value, _target_chapter, same_page, time_limit)| {
                 let mut complex = ContextParagraphChoice::Complex {
                     to: to_list.clone(),
@@ -741,18 +741,18 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
                 async move {
                     let client = reqwest::Client::new();
                     
-                    // 建立新的段落資料
+                    // Build new paragraph data
                     let chapter_id = selected_chapter.read().clone();
                     
-                    // 建立新的段落資料
+                    // Build new paragraph data
                     let new_paragraph = if chapter_id.is_empty() {
                         serde_json::json!({
                             "texts": if is_edit_mode {
-                                // 在編輯模式下，保留所有現有的翻譯，只更新當前語言的翻譯
+                                // In edit mode, keep all existing translations, only update translations for current language
                                 let mut existing_texts = selected_paragraph.read().as_ref().map(|p| p.texts.clone()).unwrap_or_default();
-                                // 移除當前語言的舊翻譯（如果存在）
+                                // Remove old translations for current language (if exists)
                                 existing_texts.retain(|t| t.lang != *paragraph_language.read());
-                                // 添加新的翻譯
+                                // Add new translations
                                 existing_texts.push(text);
                                 existing_texts
                             } else {
@@ -764,11 +764,11 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
                         serde_json::json!({
                             "chapter_id": chapter_id,
                             "texts": if is_edit_mode {
-                                // 在編輯模式下，保留所有現有的翻譯，只更新當前語言的翻譯
+                                // In edit mode, keep all existing translations, only update translations for current language
                                 let mut existing_texts = selected_paragraph.read().as_ref().map(|p| p.texts.clone()).unwrap_or_default();
-                                // 移除當前語言的舊翻譯（如果存在）
+                                // Remove old translations for current language (if exists)
                                 existing_texts.retain(|t| t.lang != *paragraph_language.read());
-                                // 添加新的翻譯
+                                // Add new translations
                                 existing_texts.push(text);
                                 existing_texts
                             } else {
@@ -778,11 +778,11 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
                         })
                     };
                     
-                    // 發布到段落集合
+                    // Publish to paragraph collection
                     let paragraphs_url = format!("{}{}", BASE_API_URL, PARAGRAPHS);
                     
                     let response = if is_edit_mode {
-                        // 編輯模式：使用 PATCH 方法更新現有段落
+                        // Edit mode: Use PATCH method to update existing paragraph
                         if let Some(paragraph) = selected_paragraph.read().as_ref() {
                             let update_url = format!("{}{}/{}", BASE_API_URL, PARAGRAPHS, paragraph.id);
                             client.patch(&update_url)
@@ -793,7 +793,7 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
                             return;
                         }
                     } else {
-                        // 新增模式：使用 POST 方法創建新段落
+                        // New mode: Use POST method to create new paragraph
                         client.post(&paragraphs_url)
                             .json(&new_paragraph)
                             .send()
@@ -804,7 +804,7 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
                         Ok(response) => {
                             let status = response.status();
                             if status.is_success() {
-                                // 重新載入段落資料
+                                // Reload paragraph data
                                 let paragraphs_url = format!("{}{}", BASE_API_URL, PARAGRAPHS);
                                 match client.get(&paragraphs_url)
                                     .send()
@@ -813,7 +813,7 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
                                         if response.status().is_success() {
                                             match response.json::<Data>().await {
                                                 Ok(data) => {
-                                                    // 更新 context 中的段落數據
+                                                    // Update paragraph data in context
                                                     paragraph_state.write().set_paragraphs(data.items.clone());
                                                     if let Ok(mut cb) = update_paragraph_previews.try_borrow_mut() {
                                                         (*cb)();
@@ -823,31 +823,31 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
                                                 },
                                                 Err(e) => {
                                                     if let Ok(mut s) = show_error_toast.try_write() { *s = true; }
-                                                    if let Ok(mut s) = error_message.try_write() { *s = format!("解析段落數據失敗：{}", e); }
+                                                    if let Ok(mut s) = error_message.try_write() { *s = format!("Parse paragraph data failed: {}", e); }
                                                     is_submitting.set(false);
                                                 }
                                             }
                                         } else {
                                             if let Ok(mut s) = show_error_toast.try_write() { *s = true; }
-                                            if let Ok(mut s) = error_message.try_write() { *s = format!("載入段落失敗，狀態碼：{}", response.status()); }
+                                            if let Ok(mut s) = error_message.try_write() { *s = format!("Load paragraph failed, status code: {}", response.status()); }
                                             is_submitting.set(false);
                                         }
                                     },
                                     Err(e) => {
                                         if let Ok(mut s) = show_error_toast.try_write() { *s = true; }
-                                        if let Ok(mut s) = error_message.try_write() { *s = format!("載入段落請求失敗：{}", e); }
+                                        if let Ok(mut s) = error_message.try_write() { *s = format!("Load paragraph request failed: {}", e); }
                                         is_submitting.set(false);
                                     }
                                 }
                             } else {
                                 if let Ok(mut s) = show_error_toast.try_write() { *s = true; }
-                                if let Ok(mut s) = error_message.try_write() { *s = format!("保存段落失敗，狀態碼：{}", status); }
+                                if let Ok(mut s) = error_message.try_write() { *s = format!("Save paragraph failed, status code: {}", status); }
                                 is_submitting.set(false);
                             }
                         },
                         Err(e) => {
                             if let Ok(mut s) = show_error_toast.try_write() { *s = true; }
-                            if let Ok(mut s) = error_message.try_write() { *s = format!("保存段落請求失敗：{}", e); }
+                            if let Ok(mut s) = error_message.try_write() { *s = format!("Save paragraph request failed: {}", e); }
                             is_submitting.set(false);
                         }
                     }
@@ -933,7 +933,7 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
         choice_paragraphs.set(current_paragraphs);
     };
 
-    // 處理章節選擇器開關
+    // Handle chapter selector toggle
     let handle_chapter_toggle = move |index: usize| {
         let mut current = choice_chapters_open.read().clone();
         if let Some(is_open) = current.get_mut(index) {
@@ -942,7 +942,7 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
         choice_chapters_open.set(current);
     };
 
-    // 處理章節搜索
+    // Handle chapter search
     let handle_chapter_search = move |(index, query): (usize, String)| {
         let mut current = choice_chapters_search.read().clone();
         if let Some(search) = current.get_mut(index) {
@@ -951,7 +951,7 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
         choice_chapters_search.set(current);
     };
 
-    // 處理段落選擇器開關
+    // Handle paragraph selector toggle
     let handle_paragraph_toggle = move |index: usize| {
         let mut current = choice_paragraphs_open.read().clone();
         if let Some(is_open) = current.get_mut(index) {
@@ -960,7 +960,7 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
         choice_paragraphs_open.set(current);
     };
 
-    // 處理段落搜索
+    // Handle paragraph search
     let handle_paragraph_search = move |(index, query): (usize, String)| {
         let mut current = choice_paragraphs_search.read().clone();
         if let Some(search) = current.get_mut(index) {
@@ -973,7 +973,7 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
         let mut choices_write = choices.write();
         choices_write.clear();
         
-        // 重置相關的選項狀態
+        // Reset related option states
         action_type_open.write().clear();
         
         choice_chapters_open.write().clear();
@@ -992,10 +992,10 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
             title: Some("Dashboard"),
             div { 
                 class: "min-h-screen bg-gray-50 dark:bg-gray-900",
-                // Toast 區域
+                // Toast area
                 div {
                     class: "fixed bottom-4 right-4 z-50",
-                    // 成功 Toast
+                    // Success Toast
                     if *toast_visible.read() {
                         div {
                             class: format!("bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg {} {}",
@@ -1009,7 +1009,7 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
                             {t!("submit_success")}
                         }
                     }
-                    // 錯誤 Toast
+                    // Error Toast
                     if *error_toast_visible.read() {
                         div {
                             class: format!("bg-red-500 text-white px-6 py-3 rounded-lg shadow-lg {} {}",
@@ -1030,23 +1030,23 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
                 }
                 div {
                     class: "w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 lg:py-8",
-                    // 主要內容區域
+                    // Main content area
                     div { 
                         class: "bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700",
-                        // 表單區域
+                        // Form area
                         div {
                             class: "p-4 sm:p-6 lg:p-8",
-                            // 語言和章節選擇區域
+                            // Language and chapter selector area
                             div {
                                 class: "flex flex-col lg:flex-row lg:items-end gap-4 lg:gap-6 mb-6",
-                                // 選擇器網格區域
+                                // Selector grid area
                                 div {
                                     class: if *is_edit_mode.read() {
                                         "grid grid-cols-1 lg:grid-cols-3 gap-4 lg:gap-6 flex-1"
                                     } else {
                                         "grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6 flex-1"
                                     },
-                                    // 語言選擇
+                                    // Language selector
                                     div {
                                         class: "w-full",
                                         Dropdown {
@@ -1071,13 +1071,13 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
                                                     is_open.set(false);
                                                     search_query.set(String::new());
                                                     
-                                                    // 檢查是否有已存在的翻譯，使用精確匹配
+                                                    // Check if there is already existing translation, use exact match
                                                     if let Some(paragraph) = selected_paragraph.read().as_ref() {
-                                                        // 填充段落內容
+                                                        // Fill paragraph content
                                                         if let Some(text) = paragraph.texts.iter().find(|text| text.lang == current_lang) {
                                                             paragraphs.set(text.paragraphs.clone());
                                                             
-                                                            // 填充選項
+                                                            // Fill options
                                                             let (new_choices, new_paragraphs) = process_paragraph_select(text, paragraph, &paragraph_state, &paragraph_language, &language_state.read().current_language.clone());
                                                             let choices_len = new_choices.len();
 
@@ -1088,7 +1088,7 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
                                                             choice_paragraphs_open.set(vec![false; choices_len]);
                                                             choice_paragraphs_search.set(vec![String::new(); choices_len]);
                                                         } else {
-                                                            // 如果找不到當前語言的翻譯，完全清空所有內容
+                                                            // If no translation found for current language, clear all content
                                                             paragraphs.set(String::new());
                                                             choices.set(Vec::new());
                                                             action_type_open.set(Vec::new());
@@ -1108,7 +1108,7 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
                                         }
                                     }
 
-                                    // 章節選擇器
+                                    // Chapter selector
                                     div {
                                         class: "w-full",
                                         ChapterSelector {
@@ -1140,7 +1140,7 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
                                         }
                                     }
 
-                                    // 段落選擇器（僅在編輯模式顯示）
+                                    // Paragraph selector (only show in edit mode)
                                     if *is_edit_mode.read() {
                                         div { 
                                             class: "w-full",
@@ -1163,7 +1163,7 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
                                                 },
                                                 on_select: EventHandler::new(move |id: String| {
                                                     if *is_edit_mode.read() {
-                                                        // 找到選中段落的索引
+                                                        // Find selected paragraph index
                                                         let available_paragraphs = available_paragraphs.read();
                                                         if let Some(index) = available_paragraphs.iter().position(|p| p.id == id) {
                                                             handle_paragraph_select(index);
@@ -1179,7 +1179,7 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
                                     }
                                 }
 
-                                // 編輯模式控制按鈕（置右）
+                                // Edit mode control button (right)
                                 if !selected_chapter.read().is_empty() {
                                     div {
                                         class: "flex-shrink-0",
@@ -1189,7 +1189,7 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
                                                 let current_mode = *is_edit_mode.read();
                                                 is_edit_mode.set(!current_mode);
                                                 if current_mode {
-                                                    // 退出編輯模式時清空所有欄位
+                                                    // Exit edit mode and clear all fields
                                                     paragraphs.set(String::new());
                                                     reset_choices();
                                                     selected_paragraph.set(None);
@@ -1223,20 +1223,20 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
                                 }
                             }
 
-                            // 段落選擇和內容編輯區域
+                            // Paragraph selection and content editing area
                             if !selected_chapter.read().is_empty() {
                                 div {
                                     class: "space-y-6",
-                                    // 段落內容區域（添加標題）
+                                    // Paragraph content area (add title)
                                     div {
                                         class: "w-full",
-                                        // 段落內容標題
+                                        // Paragraph content title
                                         h3 {
                                             class: "text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4",
                                             {t!("paragraph_content")}
                                         }
                                         TextareaField {
-                                            label: Box::leak("".to_string().into_boxed_str()), // 移除 label，因為已有標題
+                                            label: Box::leak("".to_string().into_boxed_str()), // Remove label, because title already exists
                                             placeholder: Box::leak(t!("paragraph_content").into_boxed_str()),
                                             value: paragraphs.read().to_string(),
                                             required: true,
@@ -1252,7 +1252,7 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
                                         }
                                     }
 
-                                    // 選項區域（保持現有的標題）
+                                    // Option area (keep existing title)
                                     div {
                                         class: "w-full mt-6 pt-6 border-t border-gray-200 dark:border-gray-700",
                                         ChoiceOptions {
@@ -1264,7 +1264,7 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
                                             on_remove_choice: handle_remove_choice,
                                             available_chapters: {
                                                 let mut chapters = chapter_state.read().chapters.clone();
-                                                // 在開頭添加 N/A 選項
+                                                // Add N/A option at the beginning
                                                 chapters.insert(0, Chapter {
                                                     id: String::new(),
                                                     titles: vec![crate::contexts::chapter_context::ChapterTitle {
@@ -1293,7 +1293,7 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
                             }
                         }
 
-                        // 提交按鈕區域
+                        // Submit button area
                         if !selected_chapter.read().is_empty() {
                             div {
                                 class: "px-4 sm:px-6 lg:px-8 py-4 bg-gray-50 dark:bg-gray-700/50 border-t border-gray-200 dark:border-gray-700",
@@ -1354,7 +1354,7 @@ fn process_paragraph_select(
             (Vec::new(), String::new(), None, None, false, None)
         };
         
-        // 獲取所有目標段落的章節ID（應該都在同一個章節）
+        // Get all target paragraph chapter IDs (should be in the same chapter)
         let target_chapter_id = if !target_ids.is_empty() {
             if let Some(first_paragraph) = paragraph_state.read().get_by_id(&target_ids[0]) {
                 first_paragraph.chapter_id

@@ -9,7 +9,7 @@ pub fn create_i18n_store() -> I18nConfig {
         .with_locale(Locale::new_static(langid!("zh-CN"), include_str!("../i18n/zh-CN.ftl")))
         .with_locale(Locale::new_static(langid!("es-ES"), include_str!("../i18n/es-ES.ftl")))
         .with_locale(Locale::new_static(langid!("es-CL"), include_str!("../i18n/es-CL.ftl")))
-        // 添加更多語言支持
+        // Add more language support
         .with_locale(Locale::new_static(langid!("ja"), include_str!("../i18n/en.ftl")))
         .with_locale(Locale::new_static(langid!("ko"), include_str!("../i18n/en.ftl")))
         .with_locale(Locale::new_static(langid!("fr"), include_str!("../i18n/en.ftl")))
@@ -19,7 +19,7 @@ pub fn create_i18n_store() -> I18nConfig {
         .with_locale(Locale::new_static(langid!("ru"), include_str!("../i18n/en.ftl")))
 }
 
-// 獲取所有可用的語言列表
+// Get list of all available languages
 #[allow(dead_code)]
 pub fn get_available_languages() -> Vec<&'static str> {
     LANGUAGES.iter().map(|lang| lang.code).collect()

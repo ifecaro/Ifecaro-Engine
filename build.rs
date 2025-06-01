@@ -1,7 +1,7 @@
 use std::process::Command;
 
 fn main() {
-    // 告訴 Cargo 當這些文件變更時重新執行 build script
+    // Tell Cargo to re-run build script when these files change
     println!("cargo:rerun-if-changed=src/input.css");
     println!("cargo:rerun-if-changed=tailwind.config.js");
     println!("cargo:rerun-if-changed=src/");
@@ -9,7 +9,7 @@ fn main() {
     dotenv::dotenv().ok();
 
     // Compile Tailwind CSS
-    println!("cargo:warning=開始編譯 Tailwind CSS...");
+    println!("cargo:warning=Starting Tailwind CSS compilation...");
     let tailwind_status = Command::new("tailwindcss")
         .args(["-m", "-i", "./src/input.css", "-o", "./public/tailwind.css"])
         .status()
@@ -19,5 +19,5 @@ fn main() {
         panic!("Tailwind CSS compilation failed");
     }
 
-    println!("cargo:warning=Tailwind CSS 編譯完成！");
+    println!("cargo:warning=Tailwind CSS compilation complete!");
 }

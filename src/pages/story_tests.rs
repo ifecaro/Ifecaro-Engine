@@ -54,7 +54,7 @@ fn test_merge_paragraphs_reader_mode_only_first() {
     let p1 = make_paragraph("p1", "c1", "zh", "第一段");
     let p2 = make_paragraph("p2", "c1", "zh", "第二段");
     let expanded = vec![p1.clone(), p2.clone()];
-    let choice_ids = vec![]; // 沒有 p2
+    let choice_ids = vec![]; // No p2
     let result = merge_paragraphs_for_lang(
         &expanded,
         "zh",
@@ -68,7 +68,7 @@ fn test_merge_paragraphs_reader_mode_only_first() {
 #[test]
 fn test_countdowns_from_time_limit() {
     use crate::pages::story::ComplexChoice;
-    // 準備一個段落，choices 有 time_limit
+    // Prepare a paragraph with choices that have time_limit
     let mut p = make_paragraph("p1", "c1", "zh", "段落");
     p.choices = vec![
         ComplexChoice {
@@ -96,18 +96,18 @@ fn test_countdowns_from_time_limit() {
             time_limit: Some(5),
         },
     ];
-    // countdowns 產生邏輯
+    // Countdown generation logic
     let countdowns: Vec<u32> = p.choices.iter().map(|c| c.time_limit.unwrap_or(0)).collect();
     assert_eq!(countdowns, vec![10, 0, 5]);
 }
 
 #[test]
 fn test_option_disabled_after_countdown() {
-    // 假設有一個選項 countdown 為 5
+    // Assume one option has countdown of 5
     let mut countdowns = vec![5];
     let mut disabled_by_countdown = vec![false];
 
-    // 模擬 5 秒倒數
+    // Simulate 5-second countdown
     for _ in 0..5 {
         for c in countdowns.iter_mut() {
             if *c > 0 {
@@ -116,7 +116,7 @@ fn test_option_disabled_after_countdown() {
         }
     }
 
-    // 倒數結束時，應該觸發禁用
+    // When countdown ends, should trigger disable
     for (i, &c) in countdowns.iter().enumerate() {
         if c == 0 {
             disabled_by_countdown[i] = true;
@@ -134,7 +134,7 @@ mod ssr_tests {
     #[test]
     fn test_story_contentui_disabled_class() {
         use crate::components::story_content::{StoryContentUI, StoryContentUIProps, Choice, Action};
-        // 準備 props
+        // Prepare props
         let props = StoryContentUIProps {
             paragraph: "這是一段故事".to_string(),
             choices: vec![Choice {

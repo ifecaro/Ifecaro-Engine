@@ -137,7 +137,7 @@ pub fn TranslationForm(props: TranslationFormProps) -> Element {
         div { 
             class: "max-w-3xl mx-auto p-8 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-100 dark:border-gray-700",
             div { class: "space-y-4",
-                // 段落選擇器
+                // Paragraph selector
                 ParagraphList {
                     label: t!("select_paragraph"),
                     value: props.selected_paragraph.as_ref().map(|p| p.id.clone()).unwrap_or_else(|| t!("select_paragraph")),
@@ -156,7 +156,7 @@ pub fn TranslationForm(props: TranslationFormProps) -> Element {
                     has_error: false,
                 }
 
-                // 段落內容欄位
+                // Paragraph content field
                 TextareaField {
                     label: Box::leak(t!("paragraph_content").into_boxed_str()),
                     placeholder: Box::leak(t!("paragraph_content").into_boxed_str()),
@@ -171,7 +171,7 @@ pub fn TranslationForm(props: TranslationFormProps) -> Element {
                     on_blur: move |_| {}
                 }
 
-                // 選項設定
+                // Choice options
                 ChoiceOptions {
                     choices: choices.read().clone().into_iter().map(|(a,b,c,d,e,f,g)| (a,b,c,d,e,f,false,g)).collect(),
                     on_choice_change: move |(index, field, value): (usize, String, String)| {
@@ -236,7 +236,7 @@ pub fn TranslationForm(props: TranslationFormProps) -> Element {
                     },
                 }
 
-                // 提交按鈕
+                // Submit button
                 button {
                     class: "w-full px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:opacity-50 disabled:cursor-not-allowed",
                     disabled: !*is_form_valid.read(),

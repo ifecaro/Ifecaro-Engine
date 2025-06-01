@@ -34,14 +34,14 @@ pub fn ChoiceOptions(props: ChoiceOptionsProps) -> Element {
             for (index, choice) in props.choices.iter().enumerate() {
                 div {
                     class: "p-4 bg-gray-50 dark:bg-gray-800 rounded-lg space-y-4",
-                    // 選項標題
+                    // Option title
                     div {
                         class: "flex items-center space-x-4",
                         div {
                             class: "flex-1",
                             label {
                                 class: "block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1",
-                                "{t!("choice_caption")}"
+                                "{t!("caption")}"
                             }
                             input {
                                 class: "w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white",
@@ -71,7 +71,7 @@ pub fn ChoiceOptions(props: ChoiceOptionsProps) -> Element {
                         }
                     }
 
-                    // 目標章節選擇器
+                    // Target chapter selector
                     div {
                         class: "w-full",
                         ChapterSelector {
@@ -92,7 +92,7 @@ pub fn ChoiceOptions(props: ChoiceOptionsProps) -> Element {
                         }
                     }
 
-                    // 目標段落選擇器
+                    // Target paragraph selector
                     div {
                         class: "w-full",
                         ParagraphList {
@@ -113,50 +113,56 @@ pub fn ChoiceOptions(props: ChoiceOptionsProps) -> Element {
                         }
                     }
 
-                    // 動作類型選擇器
+                    // Action related fields
                     div {
-                        class: "w-full",
-                        label {
-                            class: "block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1",
-                            "{t!("action_type")}"
+                        class: "border-t border-gray-200 dark:border-gray-700 mt-4 pt-4",
+                        div {
+                            class: "text-sm font-medium text-gray-700 dark:text-gray-300 mb-4",
+                            {t!("action_settings")}
                         }
                         div {
-                            class: "relative",
-                            button {
-                                class: "w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-left",
-                                onclick: move |_| props.on_action_type_toggle.call(index),
-                                "{choice.2}"
-                            }
-                            if props.action_type_open[index] {
+                            class: "grid grid-cols-1 lg:grid-cols-3 gap-4",
+                            div {
+                                class: "relative",
+                                // Action type selector
+                                label {
+                                    class: "block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1",
+                                    "{t!("action_type")}"
+                                }
                                 div {
-                                    class: "absolute z-10 mt-1 w-full bg-white dark:bg-gray-700 shadow-lg rounded-md py-1",
-                                    div {
-                                        class: "cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600 px-4 py-2",
-                                        onclick: move |_| {
-                                            props.on_choice_change.call((index, "action_type".to_string(), "goto".to_string()));
-                                            props.on_action_type_toggle.call(index);
-                                        },
-                                        "goto"
+                                    class: "relative",
+                                    button {
+                                        class: "w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-left",
+                                        onclick: move |_| props.on_action_type_toggle.call(index),
+                                        "{choice.2}"
                                     }
-                                    div {
-                                        class: "cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600 px-4 py-2",
-                                        onclick: move |_| {
-                                            props.on_choice_change.call((index, "action_type".to_string(), "set".to_string()));
-                                            props.on_action_type_toggle.call(index);
-                                        },
-                                        "set"
+                                    if props.action_type_open[index] {
+                                        div {
+                                            class: "absolute z-10 mt-1 w-full bg-white dark:bg-gray-700 shadow-lg rounded-md py-1",
+                                            div {
+                                                class: "cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600 px-4 py-2",
+                                                onclick: move |_| {
+                                                    props.on_choice_change.call((index, "action_type".to_string(), "goto".to_string()));
+                                                    props.on_action_type_toggle.call(index);
+                                                },
+                                                "goto"
+                                            }
+                                            div {
+                                                class: "cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600 px-4 py-2",
+                                                onclick: move |_| {
+                                                    props.on_choice_change.call((index, "action_type".to_string(), "set".to_string()));
+                                                    props.on_action_type_toggle.call(index);
+                                                },
+                                                "set"
+                                            }
+                                        }
                                     }
                                 }
                             }
-                        }
-                    }
 
-                    // 動作鍵值
-                    if choice.2 == "set" {
-                        div {
-                            class: "grid grid-cols-2 gap-4",
                             div {
-                                class: "w-full",
+                                class: "relative",
+                                // Action key value
                                 label {
                                     class: "block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1",
                                     "{t!("action_key")}"
@@ -170,8 +176,10 @@ pub fn ChoiceOptions(props: ChoiceOptionsProps) -> Element {
                                     }
                                 }
                             }
+
                             div {
-                                class: "w-full",
+                                class: "relative",
+                                // Action value
                                 label {
                                     class: "block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1",
                                     "{t!("action_value")}"
@@ -190,7 +198,7 @@ pub fn ChoiceOptions(props: ChoiceOptionsProps) -> Element {
                 }
             }
 
-            // 添加選項按鈕
+            // Add option button
             button {
                 class: "w-full mt-4 px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500",
                 onclick: move |_| props.on_add_choice.call(()),

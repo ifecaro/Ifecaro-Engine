@@ -1,7 +1,7 @@
 const CACHE_VERSION = 'v3';
 const CACHE_NAME = `ifecaro-cache-${CACHE_VERSION}`;
 
-// 靜態資源清單
+// Static resource list
 const STATIC_RESOURCES = [
     '/',
     '/assets/ifecaro.js',
@@ -15,12 +15,12 @@ const STATIC_RESOURCES = [
     '/assets/manifest.json'
 ];
 
-// 需要 Network First 策略的 API 路徑
+// API paths that need Network First strategy
 const API_PATHS = [
     '/api/'
 ];
 
-// 檢查資源是否需要更新
+// Check if resource needs update
 async function checkResourceUpdate(request) {
     try {
         const cachedResponse = await caches.match(request);
@@ -29,7 +29,7 @@ async function checkResourceUpdate(request) {
         const networkResponse = await fetch(request);
         if (!networkResponse.ok) return false;
 
-        // 檢查 ETag 或 Last-Modified
+        // Check ETag or Last-Modified
         const cachedETag = cachedResponse.headers.get('ETag');
         const networkETag = networkResponse.headers.get('ETag');
 
@@ -37,36 +37,36 @@ async function checkResourceUpdate(request) {
             return true;
         }
 
-        // 如果沒有 ETag，則比較內容
+        // If no ETag, compare content
         const networkContent = await networkResponse.text();
         const cachedContent = await cachedResponse.text();
 
         return networkContent !== cachedContent;
     } catch (error) {
-        console.error('檢查資源更新失敗:', error);
+        console.error('Resource update check failed:', error);
         return false;
     }
 }
 
-// 安裝新的 service worker
+// Install new service worker
 self.addEventListener('install', event => {
     event.waitUntil(
         caches.open(CACHE_NAME)
             .then(cache => {
-                // console.log('正在快取靜態資源...');
+                // console.log('Caching static resources...');
                 return cache.addAll(STATIC_RESOURCES);
             })
             .then(() => {
-                // console.log('Service Worker 安裝完成');
+                // console.log('Service Worker installation complete');
                 return self.skipWaiting();
             })
             .catch(error => {
-                console.error('Service Worker 安裝失敗:', error);
+                console.error('Service Worker installation failed:', error);
             })
     );
 });
 
-// 啟用新的 service worker
+// Activate new service worker
 self.addEventListener('activate', event => {
     event.waitUntil(
         caches.keys()
@@ -75,92 +75,92 @@ self.addEventListener('activate', event => {
                     cacheNames
                         .filter(cacheName => cacheName.startsWith('ifecaro-cache-') && cacheName !== CACHE_NAME)
                         .map(cacheName => {
-                            // console.log('刪除舊的快取:', cacheName);
+                            // console.log('Deleting old cache:', cacheName);
                             return caches.delete(cacheName);
                         })
                 );
             })
             .then(() => {
-                // console.log('Service Worker 已啟用');
+                // console.log('Service Worker activated');
                 return self.clients.claim();
             })
             .catch(error => {
-                console.error('Service Worker 啟用失敗:', error);
+                console.error('Service Worker activation failed:', error);
             })
     );
 });
 
-// 處理請求
+// Handle requests
 self.addEventListener('fetch', event => {
     const url = new URL(event.request.url);
 
-    // 檢查是否為 API 請求
+    // Check if it's an API request
     const isApiRequest = API_PATHS.some(path => url.pathname.startsWith(path));
 
     if (isApiRequest) {
-        // API 請求使用 Network First 策略
+        // API requests use Network First strategy
         event.respondWith(
             fetch(event.request)
                 .then(response => {
-                    if (!response.ok) throw new Error('網路請求失敗');
+                    if (!response.ok) throw new Error('Network request failed');
 
-                    // 如果網路請求成功，更新快取
+                    // If network request succeeds, update cache
                     const responseToCache = response.clone();
                     caches.open(CACHE_NAME)
                         .then(cache => cache.put(event.request, responseToCache))
-                        .catch(error => console.error('快取更新失敗:', error));
+                        .catch(error => console.error('Cache update failed:', error));
 
                     return response;
                 })
                 .catch(async () => {
-                    // 如果網路請求失敗，嘗試從快取中獲取
+                    // If network request fails, try to get from cache
                     const cachedResponse = await caches.match(event.request);
                     if (cachedResponse) {
-                        // console.log('使用快取的 API 回應');
+                        // console.log('Using cached API response');
                         return cachedResponse;
                     }
-                    throw new Error('無法獲取資源');
+                    throw new Error('Unable to fetch resource');
                 })
         );
     } else {
-        // 靜態資源使用 Cache First 策略，但會檢查更新
+        // Static resources use Cache First strategy, but check for updates
         event.respondWith(
             caches.match(event.request)
                 .then(async cachedResponse => {
                     if (cachedResponse) {
-                        // 檢查是否需要更新
+                        // Check if update is needed
                         const needsUpdate = await checkResourceUpdate(event.request);
                         if (needsUpdate) {
-                            // 在背景更新快取
+                            // Update cache in background
                             fetch(event.request)
                                 .then(networkResponse => {
                                     if (networkResponse.ok) {
                                         const responseToCache = networkResponse.clone();
                                         caches.open(CACHE_NAME)
                                             .then(cache => cache.put(event.request, responseToCache))
-                                            .catch(error => console.error('背景更新快取失敗:', error));
+                                            .catch(error => console.error('Background cache update failed:', error));
                                     }
                                 })
-                                .catch(error => console.error('背景更新失敗:', error));
+                                .catch(error => console.error('Background update failed:', error));
                         }
                         return cachedResponse;
                     }
 
-                    // 如果快取中沒有，從網路獲取
+                    // If not in cache, fetch from network
                     return fetch(event.request)
                         .then(response => {
-                            if (!response.ok) throw new Error('網路請求失敗');
+                            if (!response.ok) throw new Error('Network request failed');
 
                             const responseToCache = response.clone();
                             caches.open(CACHE_NAME)
                                 .then(cache => cache.put(event.request, responseToCache))
-                                .catch(error => console.error('快取更新失敗:', error));
+                                .catch(error => console.error('Cache update failed:', error));
 
                             return response;
                         })
                         .catch(error => {
-                            console.error('獲取資源失敗:', error);
-                            return new Response('無法獲取資源', { status: 503 });
+                            console.error('Resource fetch failed:', error);
+                            return new Response('Unable to fetch resource', { status: 503 });
                         });
                 })
         );

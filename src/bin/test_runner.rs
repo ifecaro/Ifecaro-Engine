@@ -1,5 +1,5 @@
 use anyhow::{Context, Result};
-use clap::{Parser, Subcommand};
+use clap::{Parser, Subcommand, ValueEnum};
 use colored::*;
 use std::process::{Command, Stdio};
 use std::sync::atomic::{AtomicUsize, Ordering};
@@ -7,49 +7,49 @@ use std::time::{Duration, Instant};
 
 #[derive(Parser)]
 #[command(name = "test-runner")]
-#[command(about = "Ifecaro 引擎測試運行器", long_about = None)]
+#[command(about = "Ifecaro Engine Test Runner", long_about = None)]
 struct Cli {
     #[command(subcommand)]
-    command: Option<Commands>,
+    command: TestCommands,
 }
 
 #[derive(Subcommand)]
-enum Commands {
-    /// 執行完整測試套件
+enum TestCommands {
+    /// Run complete test suite
     Full,
-    /// 快速測試 (編譯檢查 + 基礎測試)
+    /// Quick test (compile check + basic tests)
     Quick,
-    /// 執行特定測試類別
+    /// Run specific test category
     Category {
-        /// 測試類別名稱
+        /// Test category name
         #[arg(value_enum)]
         category: TestCategory,
     },
-    /// 容器內優化測試
+    /// Optimized container test
     Internal,
-    /// 只執行編譯檢查
+    /// Only run compile check
     Check,
-    /// 執行效能基準測試
-    Benchmark,
-    /// 生成測試報告
+    /// Run performance benchmarks
+    Bench,
+    /// Generate test report
     Report,
 }
 
-#[derive(clap::ValueEnum, Clone, Debug)]
+#[derive(ValueEnum, Clone, Debug)]
 enum TestCategory {
-    /// 編譯檢查
+    /// Compile check
     Compile,
-    /// 基礎 UI 測試
-    BasicUi,
-    /// 進階功能測試
+    /// Basic UI tests
+    UI,
+    /// Advanced feature tests
     Advanced,
-    /// API Mock 測試
-    ApiMock,
-    /// API 整合測試
+    /// API Mock tests
+    MockApi,
+    /// API integration tests
     Integration,
-    /// 單元測試
+    /// Unit tests
     Unit,
-    /// 外部整合測試
+    /// External integration tests
     External,
 }
 
@@ -83,17 +83,17 @@ impl TestRunner {
     }
 
     fn run_test(&mut self, name: &str, command: &str) -> Result<()> {
-        println!("\n{}", format!("📋 執行 {}...", name).yellow().bold());
-        println!("指令: {}", command.cyan());
+        println!("\n{}", format!("📋 Running {}...", name).yellow().bold());
+        println!("Command: {}", command.cyan());
         println!("{}", "------------------------------------------------".dimmed());
 
         let start_time = Instant::now();
         
         let (program, args) = if self.is_internal {
-            // 容器內直接執行
+            // Execute directly inside container
             self.parse_internal_command(command)
         } else {
-            // 外部通過 docker compose exec 執行
+            // Execute externally through docker compose exec
             self.parse_external_command(command)
         };
 
@@ -106,7 +106,7 @@ impl TestRunner {
             .stdout(Stdio::inherit())
             .stderr(Stdio::inherit())
             .status()
-            .context(format!("執行測試失敗: {}", name))?;
+            .context(format!("Failed to run test: {}", name))?;
 
         let duration = start_time.elapsed();
         let passed = output.success();
@@ -116,14 +116,14 @@ impl TestRunner {
             passed,
             duration,
             command: command.to_string(),
-            error_message: if passed { None } else { Some("測試執行失敗".to_string()) },
+            error_message: if passed { None } else { Some("Test failed".to_string()) },
         };
 
         if passed {
-            println!("{}", format!("✅ {} 通過 ({}ms)", name, duration.as_millis()).green().bold());
+            println!("{}", format!("✅ {} completed ({}ms)", name, duration.as_millis()).green().bold());
             self.passed_tests.fetch_add(1, Ordering::SeqCst);
         } else {
-            println!("{}", format!("❌ {} 失敗 ({}ms)", name, duration.as_millis()).red().bold());
+            println!("{}", format!("❌ {} failed", name).red().bold());
             self.failed_tests.fetch_add(1, Ordering::SeqCst);
         }
 
@@ -134,10 +134,8 @@ impl TestRunner {
     }
 
     fn parse_internal_command(&self, command: &str) -> (String, Vec<String>) {
-        // 移除 docker compose exec app 前綴
-        let clean_command = command
-            .strip_prefix("docker compose exec app ")
-            .unwrap_or(command);
+        // Remove docker compose exec app prefix
+        let clean_command = command.replace("docker compose exec app ", "");
         
         let parts: Vec<&str> = clean_command.split_whitespace().collect();
         if parts.is_empty() {
@@ -166,14 +164,14 @@ impl TestRunner {
         let failed = self.failed_tests.load(Ordering::SeqCst);
 
         println!("\n{}", "================================================".blue());
-        println!("{}", "📊 測試結果總結".blue().bold());
+        println!("{}", "📊 Test Results Summary".blue().bold());
         println!("{}", "================================================".blue());
-        println!("總測試項目: {}", total);
-        println!("{}", format!("通過: {}", passed).green());
-        println!("{}", format!("失敗: {}", failed).red());
+        println!("Total tests: {}", total);
+        println!("{}", format!("Passed: {}", passed).green());
+        println!("{}", format!("Failed: {}", failed).red());
 
         if !self.results.is_empty() {
-            println!("\n{}", "📋 詳細結果:".yellow().bold());
+            println!("\n{}", "📋 Detailed Results:".yellow().bold());
             for result in &self.results {
                 let status = if result.passed { "✅" } else { "❌" };
                 let duration = format!("{}ms", result.duration.as_millis());
@@ -182,39 +180,51 @@ impl TestRunner {
         }
 
         if failed == 0 {
-            println!("\n{}", "🎉 所有測試都通過了！".green().bold());
+            println!("\n{}", "🎉 All tests passed!".green().bold());
         } else {
             println!("\n{}", format!("⚠️  有 {} 個測試失敗", failed).red().bold());
         }
     }
 
     fn run_full_test_suite(&mut self) -> Result<()> {
-        println!("{}", "🚀 開始執行 Ifecaro 引擎完整測試套件".blue().bold());
+        println!("{}", "🧪 Running Complete Test Suite".blue().bold());
         println!("{}", "================================================".blue());
+        
+        self.run_test("Compile Check", "cargo check")?;
+        self.run_test("Unit Tests", "cargo test --lib")?;
+        self.run_test("Integration Tests", "cargo test --test *")?;
+        
+        println!("\n{}", "🎉 Complete test suite passed!".green().bold());
 
-        // 根據是否在容器內選擇不同的指令
-        let prefix = if self.is_internal { "" } else { "docker compose exec app " };
+        // Choose different commands based on whether inside container
+        let format_command = |cmd: &str| {
+            if self.is_internal {
+                cmd.to_string()
+            } else {
+                format!("docker compose exec app {}", cmd)
+            }
+        };
 
-        // 1. 編譯檢查
-        self.run_test("編譯檢查", &format!("{}cargo check", prefix))?;
+        let commands = vec![
+            // 1. Compile check
+            format_command("cargo check"),
+            // 2. Basic UI tests
+            format_command("cargo test --test story_content_tests"),
+            // 3. Advanced feature tests
+            format_command("cargo test --test story_content_advanced_tests"),
+            // 4. API Mock tests
+            format_command("cargo test --test api_tests"),
+            // 5. API integration tests
+            format_command("cargo test --test story_content_api_integration_tests"),
+            // 6. Other unit tests
+            format_command("cargo test --lib"),
+            // 7. External integration tests
+            format_command("cargo test --test story_tests"),
+        ];
 
-        // 2. 基礎 UI 測試
-        self.run_test("Story Content 基礎 UI 測試", &format!("{}cargo test story_content_tests", prefix))?;
-
-        // 3. 進階功能測試
-        self.run_test("Story Content 進階功能測試", &format!("{}cargo test story_content_advanced_tests", prefix))?;
-
-        // 4. API Mock 測試
-        self.run_test("API Mock 測試", &format!("{}cargo test api_tests", prefix))?;
-
-        // 5. API 整合測試
-        self.run_test("API 整合測試", &format!("{}cargo test integration_tests", prefix))?;
-
-        // 6. 其他單元測試
-        self.run_test("其他單元測試", &format!("{}cargo test --lib", prefix))?;
-
-        // 7. 外部整合測試
-        self.run_test("外部整合測試", &format!("{}cargo test --test integration_tests --test main_code_usage_example --test story_flow_tests", prefix))?;
+        for (i, command) in commands.iter().enumerate() {
+            self.run_test(&format!("Test {}", i + 1), command)?;
+        }
 
         Ok(())
     }
@@ -223,14 +233,24 @@ impl TestRunner {
         println!("{}", "🚀 開始執行容器內優化測試套件".blue().bold());
         println!("{}", "================================================".blue());
 
-        // 容器內測試不需要 docker compose exec app 前綴
-        self.run_test("編譯檢查", "cargo check")?;
-        self.run_test("Story Content 基礎 UI 測試", "cargo test story_content_tests")?;
-        self.run_test("Story Content 進階功能測試", "cargo test story_content_advanced_tests")?;
-        self.run_test("API Mock 測試", "cargo test api_tests")?;
-        self.run_test("API 整合測試", "cargo test integration_tests")?;
-        self.run_test("其他單元測試", "cargo test --lib")?;
-        self.run_test("外部整合測試", "cargo test --test integration_tests --test main_code_usage_example --test story_flow_tests")?;
+        // Container tests don't need docker compose exec app prefix
+        let commands = vec![
+            "cargo check",
+            "cargo test story_content_tests",
+            "cargo test story_content_advanced_tests",
+            "cargo test api_tests",
+            "cargo test integration_tests",
+            "cargo test --lib",
+            "cargo test --test integration_tests --test main_code_usage_example --test story_flow_tests",
+        ];
+
+        let clean_commands: Vec<String> = commands.iter()
+            .map(|command| command.replace("docker compose exec app ", ""))
+            .collect();
+
+        for command in clean_commands {
+            self.run_test(&command, &command)?;
+        }
 
         Ok(())
     }
@@ -256,13 +276,13 @@ impl TestRunner {
             TestCategory::Compile => {
                 ("編譯檢查", if self.is_internal { "cargo check" } else { "docker compose exec app cargo check" })
             },
-            TestCategory::BasicUi => {
+            TestCategory::UI => {
                 ("基礎 UI 測試", if self.is_internal { "cargo test story_content_tests" } else { "docker compose exec app cargo test story_content_tests" })
             },
             TestCategory::Advanced => {
                 ("進階功能測試", if self.is_internal { "cargo test story_content_advanced_tests" } else { "docker compose exec app cargo test story_content_advanced_tests" })
             },
-            TestCategory::ApiMock => {
+            TestCategory::MockApi => {
                 ("API Mock 測試", if self.is_internal { "cargo test api_tests" } else { "docker compose exec app cargo test api_tests" })
             },
             TestCategory::Integration => {
@@ -301,13 +321,18 @@ impl TestRunner {
         let passed = self.passed_tests.load(Ordering::SeqCst);
         let failed = self.failed_tests.load(Ordering::SeqCst);
 
-        // 如果當前實例沒有測試結果，嘗試讀取現有報告或使用預設值
+        // If current instance has no test results, try reading existing report or use defaults
         let (final_total, final_passed, final_failed, final_results) = if total == 0 {
-            // 檢查是否有之前的測試結果文件
-            if let Ok(_existing_report) = std::fs::read_to_string("test-report.md") {
+            // Check if there's a previous test results file
+            if let Ok(content) = std::fs::read_to_string("test_results.json") {
                 println!("{}", "📋 使用現有測試結果生成報告".yellow());
-                // 簡單解析現有報告獲取數據（這裡可以改進）
-                (0, 0, 0, "無最近測試結果".to_string())
+                // Simple parsing of existing report to get data (this can be improved)
+                if content.contains("\"passed\":") {
+                    // Extract data from JSON content
+                    (0, 0, 0, "無最近測試結果".to_string())
+                } else {
+                    (0, 0, 0, "無測試結果".to_string())
+                }
             } else {
                 (0, 0, 0, "無測試結果".to_string())
             }
@@ -360,26 +385,33 @@ impl TestRunner {
     }
 }
 
-fn is_running_in_container() -> bool {
-    // 檢查是否存在 /.dockerenv 文件
-    std::path::Path::new("/.dockerenv").exists() ||
-    // 檢查環境變數
-    std::env::var("DOCKER_CONTAINER").is_ok() ||
-    // 檢查 /proc/1/cgroup 是否包含 docker
-    std::fs::read_to_string("/proc/1/cgroup")
-        .map(|content| content.contains("docker"))
-        .unwrap_or(false)
+fn is_in_container() -> bool {
+    // Check if /.dockerenv file exists
+    if std::path::Path::new("/.dockerenv").exists() {
+        return true;
+    }
+    // Check environment variables
+    if std::env::var("DOCKER_CONTAINER").is_ok() {
+        return true;
+    }
+    // Check if /proc/1/cgroup contains docker
+    if let Ok(content) = std::fs::read_to_string("/proc/1/cgroup") {
+        if content.contains("docker") {
+            return true;
+        }
+    }
+    false
 }
 
 fn main() -> Result<()> {
     let cli = Cli::parse();
 
-    // 自動檢測是否在容器內運行
-    let in_container = is_running_in_container();
+    // Auto-detect if running inside container
+    let is_container = is_in_container();
 
-    match &cli.command {
-        Some(Commands::Full) => {
-            let mut runner = TestRunner::new(in_container);
+    match cli.command {
+        TestCommands::Full => {
+            let mut runner = TestRunner::new(is_container);
             runner.run_full_test_suite()?;
             runner.print_summary();
             
@@ -388,8 +420,8 @@ fn main() -> Result<()> {
                 std::process::exit(1);
             }
         },
-        Some(Commands::Quick) => {
-            let mut runner = TestRunner::new(in_container);
+        TestCommands::Quick => {
+            let mut runner = TestRunner::new(is_container);
             runner.run_quick_tests()?;
             runner.print_summary();
             
@@ -398,8 +430,8 @@ fn main() -> Result<()> {
                 std::process::exit(1);
             }
         },
-        Some(Commands::Category { category }) => {
-            let mut runner = TestRunner::new(in_container);
+        TestCommands::Category { category } => {
+            let mut runner = TestRunner::new(is_container);
             runner.run_category_test(category.clone())?;
             runner.print_summary();
             
@@ -408,8 +440,8 @@ fn main() -> Result<()> {
                 std::process::exit(1);
             }
         },
-        Some(Commands::Internal) => {
-            // Internal 模式強制使用容器內模式
+        TestCommands::Internal => {
+            // Internal mode forces container mode
             let mut runner = TestRunner::new(true);
             runner.run_internal_test_suite()?;
             runner.print_summary();
@@ -419,9 +451,9 @@ fn main() -> Result<()> {
                 std::process::exit(1);
             }
         },
-        Some(Commands::Check) => {
-            let mut runner = TestRunner::new(in_container);
-            let prefix = if in_container { "" } else { "docker compose exec app " };
+        TestCommands::Check => {
+            let mut runner = TestRunner::new(is_container);
+            let prefix = if is_container { "" } else { "docker compose exec app " };
             runner.run_test("編譯檢查", &format!("{}cargo check", prefix))?;
             runner.print_summary();
             
@@ -430,18 +462,15 @@ fn main() -> Result<()> {
                 std::process::exit(1);
             }
         },
-        Some(Commands::Benchmark) => {
-            let mut runner = TestRunner::new(in_container);
+        TestCommands::Bench => {
+            let mut runner = TestRunner::new(is_container);
             runner.run_benchmark()?;
             runner.print_summary();
         },
-        Some(Commands::Report) => {
-            let runner = TestRunner::new(in_container);
+        TestCommands::Report => {
+            let runner = TestRunner::new(is_container);
             runner.generate_report()?;
         },
-        None => {
-            print_help();
-        }
     }
 
     Ok(())

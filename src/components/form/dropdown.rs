@@ -3,59 +3,59 @@ use dioxus_i18n::prelude::*;
 
 #[derive(Props, Clone, PartialEq)]
 pub struct DropdownProps<T: Clone + PartialEq + 'static> {
-    /// 下拉選單的標籤
+    /// Dropdown label
     pub label: String,
-    /// 下拉選單的 label 樣式（選填）
+    /// Dropdown label style (optional)
     pub label_class: Option<String>,
-    /// 當前選中的值
+    /// Currently selected value
     pub value: String,
-    /// 可選項列表
+    /// Options list
     pub options: Vec<T>,
-    /// 是否打開下拉選單
+    /// Whether the dropdown is open
     pub is_open: bool,
-    /// 搜尋查詢
+    /// Search query
     pub search_query: String,
-    /// 切換下拉選單的事件處理器
+    /// Toggle dropdown event handler
     pub on_toggle: EventHandler<()>,
-    /// 搜尋事件處理器
+    /// Search event handler
     pub on_search: EventHandler<String>,
-    /// 選擇事件處理器
+    /// Selection event handler
     pub on_select: EventHandler<T>,
-    /// 顯示函數，用於將選項轉換為顯示字符串
+    /// Display function to convert options to display strings
     pub display_fn: fn(&T) -> String,
-    /// 可選的錯誤狀態
+    /// Optional error state
     #[props(default = false)]
     pub has_error: bool,
-    /// 可選的自定義類名
+    /// Optional custom class name
     #[props(default = String::new())]
     pub class: String,
-    /// 可選的佔位符文本
-    #[props(default = "搜尋...".to_string())]
+    /// Optional placeholder text
+    #[props(default = "Search...".to_string())]
     pub search_placeholder: String,
-    /// 可選的按鈕類名（選填）
+    /// Optional button class name (optional)
     pub button_class: Option<String>,
-    /// 可選的下拉選單類名
+    /// Optional dropdown class name
     #[props(default = String::new())]
     pub dropdown_class: String,
-    /// 可選的搜尋輸入框類名
+    /// Optional search input class name
     #[props(default = String::new())]
     pub search_input_class: String,
-    /// 可選的選項類名
+    /// Optional option class name
     #[props(default = String::new())]
     pub option_class: String,
-    /// 是否禁用下拉選單
+    /// Whether to disable the dropdown
     #[props(default = false)]
     pub disabled: bool,
-    /// 是否為必填
+    /// Whether it's required
     #[props(default = false)]
     pub required: bool,
-    /// 是否顯示下拉箭頭
+    /// Whether to show dropdown arrow
     #[props(default = true)]
     pub show_arrow: bool,
-    /// 下拉選單寬度 class（選填）
+    /// Dropdown width class (optional)
     #[props(default = None)]
     pub dropdown_width: Option<String>,
-    /// 下拉選單位置 class（選填）
+    /// Dropdown position class (optional)
     #[props(default = None)]
     pub dropdown_position: Option<String>,
 }
@@ -91,7 +91,7 @@ pub fn Dropdown<T: Clone + PartialEq + 'static>(props: DropdownProps<T>) -> Elem
     rsx! {
         div { 
             class: format!("relative {}", props.class),
-            // 遮罩層
+            // Overlay
             {if props.is_open && !props.disabled {
                 rsx! {
                     div {
@@ -206,7 +206,7 @@ mod tests {
             display_fn: |s: &String| s.clone(),
             has_error: false,
             class: String::new(),
-            search_placeholder: "搜尋...".to_string(),
+            search_placeholder: "Search...".to_string(),
             button_class: None,
             dropdown_class: String::new(),
             search_input_class: String::new(),

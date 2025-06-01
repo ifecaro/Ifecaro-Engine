@@ -25,7 +25,7 @@ android_chrome_192 = "/img/icons/android-chrome-192x192.png"
 android_chrome_512 = "/img/icons/android-chrome-512x512.png"
 manifest = "manifest.json"
 
-# HTML head 設定
+# HTML head configuration
 head = """
     <link rel="modulepreload" href="/assets/dioxus/Ifecaro-Engine.js">
     <link rel="preload" href="/assets/dioxus/Ifecaro-Engine_bg.wasm" as="fetch" crossorigin>

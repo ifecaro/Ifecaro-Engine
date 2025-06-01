@@ -1,7 +1,7 @@
 @import "tailwindcss";
 @plugin "@tailwindcss/typography";
 
-/* 添加段落間距樣式 */
+/* Add paragraph spacing styles */
 .whitespace-pre-line {
     white-space: pre-line;
 }
