@@ -54,20 +54,6 @@ impl ParagraphChoice {
             ParagraphChoice::Simple(_) => None,
         }
     }
-
-    pub fn get_same_page(&self) -> Option<bool> {
-        match self {
-            ParagraphChoice::Complex { same_page, .. } => *same_page,
-            ParagraphChoice::Simple(_) => None,
-        }
-    }
-
-    pub fn get_time_limit(&self) -> Option<u32> {
-        match self {
-            ParagraphChoice::Complex { time_limit, .. } => *time_limit,
-            ParagraphChoice::Simple(_) => None,
-        }
-    }
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
