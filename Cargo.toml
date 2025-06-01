@@ -4,6 +4,14 @@ version = "0.14.0"
 edition = "2021"
 build = false      # 禁用構建腳本
 
+[lib]
+name = "ifecaro"
+path = "src/lib.rs"
+
+[[bin]]
+name = "ifecaro"
+path = "src/main.rs"
+
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
@@ -86,10 +94,6 @@ inherits = "release"
 opt-level = 'z'
 lto = true
 codegen-units = 1
-
-[[bin]]
-name = "build-script"
-path = "build.rs"
 
 [dev-dependencies]
 dioxus-ssr = "0.6.2"

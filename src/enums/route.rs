@@ -1,8 +1,7 @@
 use dioxus::prelude::*;
 use crate::{
-    pages::{dashboard::Dashboard, page_not_found::PageNotFound, story::Story},
-    Layout,
-    Home,
+    pages::{dashboard::Dashboard, page_not_found::PageNotFound, story::Story, home::Home},
+    layout::Layout,
 };
 use web_sys::window;
 
