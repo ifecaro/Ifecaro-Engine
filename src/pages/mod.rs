@@ -1,3 +1,4 @@
+pub mod home;
 pub mod story;
 #[cfg(test)]
 pub mod story_tests;
