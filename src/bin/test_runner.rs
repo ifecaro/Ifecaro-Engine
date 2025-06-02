@@ -51,6 +51,8 @@ enum TestCategory {
     External,
     /// Story module tests
     Story,
+    /// Dashboard page tests
+    Dashboard,
 }
 
 struct TestResult {
@@ -236,6 +238,9 @@ impl TestRunner {
             ("Core Integration Tests", if self.is_internal { "cargo test --test integration_tests" } else { "docker compose exec app cargo test --test integration_tests" }),
             ("Code Usage Examples", if self.is_internal { "cargo test --test main_code_usage_example" } else { "docker compose exec app cargo test --test main_code_usage_example" }),
             ("Story Flow Tests", if self.is_internal { "cargo test --test story_flow_tests" } else { "docker compose exec app cargo test --test story_flow_tests" }),
+            ("Dashboard Core Tests", if self.is_internal { "cargo test --test dashboard_tests" } else { "docker compose exec app cargo test --test dashboard_tests" }),
+            ("Dashboard Interaction Tests", if self.is_internal { "cargo test --test dashboard_interaction_tests" } else { "docker compose exec app cargo test --test dashboard_interaction_tests" }),
+            ("Dashboard Benchmark Tests", if self.is_internal { "cargo test --test dashboard_benchmark_tests" } else { "docker compose exec app cargo test --test dashboard_benchmark_tests" }),
         ];
 
         for (name, command) in tests {
@@ -270,6 +275,9 @@ impl TestRunner {
             "cargo test --test integration_tests",
             "cargo test --test main_code_usage_example", 
             "cargo test --test story_flow_tests",
+            "cargo test --test dashboard_tests",
+            "cargo test --test dashboard_interaction_tests",
+            "cargo test --test dashboard_benchmark_tests",
         ];
 
         let clean_commands: Vec<String> = commands.iter()
@@ -304,6 +312,7 @@ impl TestRunner {
         self.run_test("Unit tests", &format!("{}cargo test --lib", prefix))?;
         self.run_test("Story tests", &format!("{}cargo test story_tests", prefix))?;
         self.run_test("Integration tests", &format!("{}cargo test --test integration_tests", prefix))?;
+        self.run_test("Dashboard core tests", &format!("{}cargo test --test dashboard_tests", prefix))?;
 
         Ok(())
     }
@@ -347,6 +356,9 @@ impl TestRunner {
             },
             TestCategory::Story => {
                 ("Story module tests", if self.is_internal { "cargo test story_tests" } else { "docker compose exec app cargo test story_tests" })
+            },
+            TestCategory::Dashboard => {
+                ("Dashboard tests", if self.is_internal { "cargo test --test dashboard_tests --test dashboard_interaction_tests --test dashboard_benchmark_tests" } else { "docker compose exec app cargo test --test dashboard_tests --test dashboard_interaction_tests --test dashboard_benchmark_tests" })
             },
         };
 

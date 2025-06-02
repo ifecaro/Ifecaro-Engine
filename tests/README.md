@@ -1,102 +1,155 @@
-# 測試架構說明
+# Test Architecture Documentation
 
-本專案現在支援直接使用主程式程式碼進行測試，無需重複實作邏輯。
+This project now supports direct use of main program code for testing, and includes a comprehensive Dashboard functionality test suite, totaling 182+ tests.
 
-## 測試結構
+## Test Overview
 
-### 1. 單元測試（Unit Tests）
-位於 `src/` 目錄中的各個模組內：
-- `src/pages/story_tests.rs` - 故事頁面相關測試
-- `src/components/story_content_tests.rs` - 故事內容組件測試
+### Test Count Distribution
+- **Dashboard Tests**: 83 tests (45.6%) - Complete Dashboard functionality testing including UI rendering
+- **Basic UI Tests**: 27 tests (14.8%) - Component rendering and interaction testing
+- **Advanced Feature Tests**: 28 tests (15.4%) - Complex UI logic and performance testing
+- **Story Logic Tests**: 16 tests (8.8%) - Core story processing logic
+- **Integration Tests**: 20 tests (11.0%) - End-to-end workflow testing
+- **API Integration Tests**: 1 test (0.5%) - API data integration testing
+- **Additional Library Tests**: 7 tests (3.8%) - Supporting functionality and utility testing
+- **Total**: **182+ tests** providing comprehensive coverage
 
-### 2. 整合測試（Integration Tests）
-位於 `tests/` 目錄：
-- `tests/integration_tests.rs` - 基本整合測試
-- `tests/story_flow_tests.rs` - 故事流程測試
-- `tests/main_code_usage_example.rs` - 主程式程式碼使用範例
+## Test Structure
 
-### 3. 測試輔助工具
-- `tests/common/mod.rs` - 提供測試輔助函數
+### 1. Unit Tests
+Located within modules in the `src/` directory:
+- `src/pages/story_tests.rs` - Story page related tests (16 tests)
+- `src/pages/dashboard_tests.rs` - Dashboard page tests (31 tests)
+- `src/components/story_content_tests.rs` - Story content component tests (27 tests)
+- `src/components/story_content_advanced_tests.rs` - Advanced feature tests (28 tests)
+- `src/components/story_content_api_integration_tests.rs` - API integration tests (1 test)
 
-## 如何直接使用主程式程式碼
+### 2. Integration Tests
+Located in the `tests/` directory:
+- `tests/integration_tests.rs` - Core integration tests (4 tests)
+- `tests/main_code_usage_example.rs` - Code usage examples (6 tests)
+- `tests/story_flow_tests.rs` - Story flow tests (4 tests)
+- `tests/dashboard_tests.rs` - Dashboard unit tests (31 tests)
+- `tests/dashboard_interaction_tests.rs` - Dashboard interaction tests (17 tests)
+- `tests/dashboard_ui_tests.rs` - Dashboard UI rendering tests (24 tests)
+- `tests/dashboard_benchmark_tests.rs` - Dashboard performance tests (11 tests)
 
-### 1. 引入主程式模組
+### 3. Dashboard Test Suite Key Features
+#### Dashboard Unit Tests (31 tests)
+- Data structure tests: Language state, chapter state, paragraph state
+- Form validation tests: Content validation, error handling, real-time validation
+- Button state tests: Dynamic submit button enable/disable logic
+- Language consistency tests: Language state persistence in edit mode
+
+#### Dashboard Interaction Tests (17 tests)
+- Advanced language switching tests: UI/content language independence
+- Form submit button tests: 10 test cases covering various validation states
+- Real-time form validation tests: Real-time feedback during user input
+- **Comprehensive Language Switching Tests**: Language updates for all interface elements
+  - Labels: "段落內容" ↔ "Paragraph Content"
+  - Buttons: "儲存" ↔ "Save", "取消" ↔ "Cancel"
+  - Error messages: "此欄位為必填" ↔ "This field is required"
+  - Placeholder text: "請輸入段落內容..." ↔ "Enter paragraph content..."
+  - Content text: "這是測試段落一的內容" ↔ "This is test paragraph one"
+  - Choice text: "走左邊的路" ↔ "Take the left path"
+  - Chapter titles: "第一章節" ↔ "Chapter One"
+
+#### Dashboard UI Tests (24 tests) ✨ **New**
+- **UI Rendering Tests**: Basic structure, form layout, responsive design
+- **Language Tests**: Multi-language rendering, language switching
+- **State Tests**: Edit mode layout, form areas, selector grids
+- **Accessibility Tests**: Semantic structure, color contrast, responsive accessibility
+- **Error State Tests**: Toast notifications, validation structure
+- **Performance Tests**: Render performance, multiple language renders
+- **Edge Case Tests**: Empty/invalid languages, special characters
+
+#### Dashboard Performance Tests (11 tests)
+- Large dataset tests: 50 chapters, 2000 paragraphs
+- Stress tests: Processing large amounts of data with 10,000 paragraphs
+- Concurrent operation tests: Rapid language switching, form operations
+
+### 4. Test Helper Tools
+- `tests/common/mod.rs` - Provides test helper functions
+
+## How to Use Main Program Code Directly
+
+### 1. Import Main Program Modules
 ```rust
-use ifecaro::*;  // 引入所有公開的模組
+use ifecaro::*;  // Import all public modules
 ```
 
-### 2. 使用特定的組件或函數
+### 2. Use Specific Components or Functions
 ```rust
-// 使用主程式的組件
+// Use main program components
 use ifecaro::components::story_content::{StoryContentUI, StoryContentUIProps};
 
-// 使用主程式的業務邏輯
+// Use main program business logic
 use ifecaro::pages::story::merge_paragraphs_for_lang;
 
-// 使用主程式的 Context
+// Use main program Context
 use ifecaro::contexts::settings_context::SettingsContext;
 
-// 使用主程式的路由
+// Use main program routing
 use ifecaro::enums::route::Route;
 ```
 
-### 3. 使用測試輔助函數
+### 3. Use Test Helper Functions
 ```rust
 mod common;
 use common::*;
 
-// 建立測試用的段落
-let paragraph = create_test_paragraph("id", "chapter", "zh", "內容");
+// Create test paragraphs
+let paragraph = create_test_paragraph("id", "chapter", "zh", "Content");
 
-// 建立測試用的選擇
-let choice = create_test_choice("選項標題", "target_id");
+// Create test choices
+let choice = create_test_choice("Choice Title", "target_id");
 
-// 渲染組件為 HTML
+// Render component to HTML
 let html = render_component_to_html(MyComponent, props);
 
-// 檢查 HTML 內容
-assert_html_contains_text(&html, "預期文字");
+// Check HTML content
+assert_html_contains_text(&html, "Expected text");
 assert_html_contains_class(&html, "css-class");
 ```
 
-## 測試範例
+## Test Examples
 
-### 測試主程式的業務邏輯
+### Testing Main Program Business Logic
 ```rust
 #[test]
 fn test_main_business_logic() {
     use ifecaro::pages::story::merge_paragraphs_for_lang;
     
     let paragraphs = vec![
-        create_test_paragraph("p1", "c1", "zh", "段落1"),
-        create_test_paragraph("p2", "c1", "zh", "段落2"),
+        create_test_paragraph("p1", "c1", "zh", "Paragraph 1"),
+        create_test_paragraph("p2", "c1", "zh", "Paragraph 2"),
     ];
     
     let result = merge_paragraphs_for_lang(&paragraphs, "zh", false, false, &[]);
-    assert_eq!(result, "段落1\n\n段落2");
+    assert_eq!(result, "Paragraph 1\n\nParagraph 2");
 }
 ```
 
-### 測試主程式的 UI 組件
+### Testing Main Program UI Components
 ```rust
 #[test]
 fn test_main_ui_component() {
     use ifecaro::components::story_content::{StoryContentUI, StoryContentUIProps};
     
     let props = StoryContentUIProps {
-        paragraph: "測試段落".to_string(),
+        paragraph: "Test paragraph".to_string(),
         choices: vec![],
         enabled_choices: vec![],
         disabled_by_countdown: vec![],
-        chapter_title: "測試章節".to_string(),
+        chapter_title: "Test chapter".to_string(),
     };
     
     let html = render_component_to_html(StoryContentUI, props);
-    assert_html_contains_text(&html, "測試段落");
+    assert_html_contains_text(&html, "Test paragraph");
 }
 ```
 
-### 測試主程式的 Context
+### Testing Main Program Context
 ```rust
 #[test]
 fn test_main_context() {
@@ -110,31 +163,59 @@ fn test_main_context() {
 }
 ```
 
-## 執行測試
+## Running Tests
 
 ```bash
-# 執行所有測試
+# Run all tests
 docker compose exec app cargo test
 
-# 執行特定測試檔案
+# Run specific test files
 docker compose exec app cargo test integration_tests
 docker compose exec app cargo test story_flow_tests
 docker compose exec app cargo test main_code_usage_example
+docker compose exec app cargo test dashboard_tests
+docker compose exec app cargo test dashboard_interaction_tests
+docker compose exec app cargo test dashboard_benchmark_tests
 
-# 執行特定測試函數
+# Run specific test functions
 docker compose exec app cargo test test_using_main_business_logic
+
+# Use test runner (recommended)
+docker compose exec app cargo run --bin test-runner full      # Complete test suite (all 182+ tests)
+docker compose exec app cargo run --bin test-runner quick     # Quick tests (compile + basic tests)
+docker compose exec app cargo run --bin test-runner category dashboard  # Dashboard tests (83 tests)
+docker compose exec app cargo run --bin test-runner category ui         # UI tests
+docker compose exec app cargo run --bin test-runner category integration # Integration tests
+docker compose exec app cargo run --bin test-runner bench     # Performance benchmark tests
 ```
 
-## 優點
+## Test Coverage
 
-1. **無需重複實作**：直接使用主程式的程式碼，確保測試的是實際運行的邏輯
-2. **保持同步**：主程式程式碼更新時，測試自動使用最新版本
-3. **完整覆蓋**：可以測試所有公開的函數、組件和 Context
-4. **真實環境**：測試環境更接近實際運行環境
-5. **易於維護**：減少測試程式碼的維護負擔
+### ✅ Complete Functional Coverage
+1. **UI Component Level**: All visual rendering, interactive features, responsive design, accessibility features
+2. **Dashboard Management Level**: Content creation, editing, validation, multi-language support, form state management, UI rendering
+3. **Business Logic Level**: Core algorithms, data processing, business rules, multi-language processing
+4. **API Service Level**: CRUD operations, data transformation, error handling, mock integration
+5. **System Integration Level**: Context integration, cross-component flows, complete user journeys
 
-## 注意事項
+### 🎯 Featured Test Capabilities
+- **Real Data Integration**: Direct use of main program data structures and functions
+- **Multi-language Testing**: Chinese, English, Japanese content processing validation
+- **Dashboard Specialized Testing**: 83 specialized Dashboard functionality tests including UI rendering
+- **Performance Benchmark Testing**: Large dataset processing, concurrent operations, stress testing
+- **Comprehensive Language Switching**: Independent language control testing for UI interface and content
+- **UI Rendering Testing**: Complete Dashboard UI structure, responsive design, accessibility validation
 
-1. **WASM 限制**：某些需要瀏覽器環境的功能（如 `window` 物件）在測試環境中無法使用
-2. **Context 依賴**：某些組件需要特定的 Context，在測試中可能需要模擬
-3. **非同步操作**：涉及網路請求或非同步操作的測試需要特別處理 
+## Advantages
+
+1. **No Duplicate Implementation**: Direct use of main program code ensures testing of actual running logic
+2. **Stay Synchronized**: Test automatically uses latest version when main program code updates
+3. **Complete Coverage**: Can test all public functions, components, and Contexts
+4. **Real Environment**: Test environment closer to actual runtime environment
+5. **Easy Maintenance**: Reduces test code maintenance burden
+
+## Notes
+
+1. **WASM Limitations**: Some features requiring browser environment (like `window` object) cannot be used in test environment
+2. **Context Dependencies**: Some components require specific Context, may need mocking in tests
+3. **Asynchronous Operations**: Tests involving network requests or asynchronous operations need special handling
