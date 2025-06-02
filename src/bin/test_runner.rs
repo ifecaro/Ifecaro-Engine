@@ -31,8 +31,6 @@ enum TestCommands {
     Check,
     /// Run performance benchmarks
     Bench,
-    /// Generate test report
-    Report,
 }
 
 #[derive(ValueEnum, Clone, Debug)]
@@ -219,7 +217,7 @@ impl TestRunner {
     fn run_full_test_suite(&mut self) -> Result<()> {
         println!("{}", "🧪 Running Complete Test Suite".blue().bold());
         println!("{}", "================================================".blue());
-        
+
         // Clear build cache to ensure environment variables take effect
         if !self.is_internal {
             let _ = Command::new("docker")
@@ -230,31 +228,22 @@ impl TestRunner {
                 .args(["-rf", "target/debug/build/ifecaro-*"])
                 .status();
         }
-        
-        // Choose different commands based on whether inside container
-        let format_command = |cmd: &str| {
-            if self.is_internal {
-                cmd.to_string()
-            } else {
-                format!("docker compose exec app {}", cmd)
-            }
-        };
 
-        // Run comprehensive test suite with clear names
-        let test_cases = vec![
-            ("Compile Check", format_command("cargo check")),
-            ("Unit Tests (All Modules)", format_command("cargo test --lib")),
-            ("Story Module Tests", format_command("cargo test story_tests")),
-            ("Core Integration Tests", format_command("cargo test --test integration_tests")),
-            ("Code Usage Examples", format_command("cargo test --test main_code_usage_example")),
-            ("Story Flow Tests", format_command("cargo test --test story_flow_tests")),
+        let tests = [
+            ("Compile Check", if self.is_internal { "cargo check" } else { "docker compose exec app cargo check" }),
+            ("Unit Tests (All Modules)", if self.is_internal { "cargo test --lib" } else { "docker compose exec app cargo test --lib" }),
+            ("Story Module Tests", if self.is_internal { "cargo test story_tests" } else { "docker compose exec app cargo test story_tests" }),
+            ("Core Integration Tests", if self.is_internal { "cargo test --test integration_tests" } else { "docker compose exec app cargo test --test integration_tests" }),
+            ("Code Usage Examples", if self.is_internal { "cargo test --test main_code_usage_example" } else { "docker compose exec app cargo test --test main_code_usage_example" }),
+            ("Story Flow Tests", if self.is_internal { "cargo test --test story_flow_tests" } else { "docker compose exec app cargo test --test story_flow_tests" }),
         ];
 
-        for (test_name, command) in test_cases {
-            self.run_test(test_name, &command)?;
+        for (name, command) in tests {
+            self.run_test(name, command)?;
         }
 
         println!("\n{}", "🎉 Complete test suite passed!".green().bold());
+
         Ok(())
     }
 
@@ -388,77 +377,6 @@ impl TestRunner {
 
         Ok(())
     }
-
-    fn generate_report(&self) -> Result<()> {
-        println!("{}", "📊 Generating test report".green().bold());
-        println!("{}", "================================================".green());
-
-        let total = self.total_tests.load(Ordering::SeqCst);
-        let passed = self.passed_tests.load(Ordering::SeqCst);
-        let failed = self.failed_tests.load(Ordering::SeqCst);
-
-        // If current instance has no test results, try reading existing report or use defaults
-        let (final_total, final_passed, final_failed, final_results) = if total == 0 {
-            // Check if there's a previous test results file
-            if let Ok(content) = std::fs::read_to_string("test_results.json") {
-                println!("{}", "📋 Using existing test results to generate report".yellow());
-                // Simple parsing of existing report to get data (this can be improved)
-                if content.contains("\"passed\":") {
-                    // Extract data from JSON content
-                    (0, 0, 0, "No recent test results".to_string())
-                } else {
-                    (0, 0, 0, "No test results".to_string())
-                }
-            } else {
-                (0, 0, 0, "No test results".to_string())
-            }
-        } else {
-            let results_text = self.results.iter()
-                .map(|r| format!("- {} {} ({}ms)", 
-                    if r.passed { "✅" } else { "❌" }, 
-                    r.name, 
-                    r.duration.as_millis()))
-                .collect::<Vec<_>>()
-                .join("\n");
-            (total, passed, failed, results_text)
-        };
-
-        let report = format!(
-            r#"# Ifecaro Engine Test Report
-
-## Execution Summary
-- Total tests: {}
-- Passed: {}
-- Failed: {}
-- Pass rate: {:.1}%
-
-## Detailed Results
-{}
-
-## Test Tool Information
-- Runtime environment: {}
-- Tool version: Rust Test Runner v1.0
-- Supported features: Complete test suite, quick tests, category tests, performance tests
-
-## Generation Time
-{}
-"#,
-            final_total,
-            final_passed,
-            final_failed,
-            if final_total > 0 { (final_passed as f64 / final_total as f64) * 100.0 } else { 0.0 },
-            final_results,
-            if self.is_internal { "Inside Docker container" } else { "External environment" },
-            chrono::Utc::now().format("%Y-%m-%d %H:%M:%S UTC")
-        );
-
-        std::fs::write("test-report.md", report)
-            .context("Unable to write test report")?;
-
-        println!("{}", "✅ Test report generated: test-report.md".green());
-
-        Ok(())
-    }
 }
 
 fn is_in_container() -> bool {
@@ -542,10 +460,6 @@ fn main() -> Result<()> {
             let mut runner = TestRunner::new(is_container);
             runner.run_benchmark()?;
             runner.print_summary();
-        },
-        TestCommands::Report => {
-            let runner = TestRunner::new(is_container);
-            runner.generate_report()?;
         },
     }
 
