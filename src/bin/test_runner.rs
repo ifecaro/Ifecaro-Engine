@@ -51,6 +51,8 @@ enum TestCategory {
     Unit,
     /// External integration tests
     External,
+    /// Story module tests
+    Story,
 }
 
 struct TestResult {
@@ -242,6 +244,7 @@ impl TestRunner {
         let test_cases = vec![
             ("Compile Check", format_command("cargo check")),
             ("Unit Tests (All Modules)", format_command("cargo test --lib")),
+            ("Story Module Tests", format_command("cargo test story_tests")),
             ("Core Integration Tests", format_command("cargo test --test integration_tests")),
             ("Code Usage Examples", format_command("cargo test --test main_code_usage_example")),
             ("Story Flow Tests", format_command("cargo test --test story_flow_tests")),
@@ -274,6 +277,7 @@ impl TestRunner {
         let commands = vec![
             "cargo check",
             "cargo test --lib",
+            "cargo test story_tests",
             "cargo test --test integration_tests",
             "cargo test --test main_code_usage_example", 
             "cargo test --test story_flow_tests",
@@ -309,6 +313,7 @@ impl TestRunner {
 
         self.run_test("Compile check", &format!("{}cargo check", prefix))?;
         self.run_test("Unit tests", &format!("{}cargo test --lib", prefix))?;
+        self.run_test("Story tests", &format!("{}cargo test story_tests", prefix))?;
         self.run_test("Integration tests", &format!("{}cargo test --test integration_tests", prefix))?;
 
         Ok(())
@@ -350,6 +355,9 @@ impl TestRunner {
             },
             TestCategory::External => {
                 ("External integration tests", if self.is_internal { "cargo test --test integration_tests --test main_code_usage_example --test story_flow_tests" } else { "docker compose exec app cargo test --test integration_tests --test main_code_usage_example --test story_flow_tests" })
+            },
+            TestCategory::Story => {
+                ("Story module tests", if self.is_internal { "cargo test story_tests" } else { "docker compose exec app cargo test story_tests" })
             },
         };
 
