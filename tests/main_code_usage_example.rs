@@ -88,7 +88,7 @@ mod main_code_usage_tests {
         
         let selected_choice_ids = vec!["main_p1".to_string(), "main_p3".to_string()];
         
-        // Test reader mode (only selected paragraphs)
+        // Test reader mode (NEW behavior: all paragraphs in expanded path are displayed)
         let reader_result = merge_paragraphs_for_lang(
             &paragraphs,
             "zh",
@@ -97,7 +97,7 @@ mod main_code_usage_tests {
             &selected_choice_ids,
         );
         
-        let expected = "主要段落1\n\n主要段落3";
+        let expected = "主要段落1\n\n主要段落2\n\n主要段落3";
         assert_eq!(reader_result, expected);
         
         // Test normal mode (all paragraphs)

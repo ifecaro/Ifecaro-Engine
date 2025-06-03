@@ -27,7 +27,8 @@ mod story_flow_tests {
             &selected_paragraphs,
         );
         
-        let expected = "故事開場\n\n劇情發展\n\n高潮部分";
+        // NEW Reader Mode behavior: all paragraphs in expanded path are displayed
+        let expected = "故事開場\n\n劇情發展\n\n高潮部分\n\n故事結局";
         assert_eq!(result, expected);
     }
 
@@ -80,7 +81,7 @@ mod story_flow_tests {
             &choice_ids,
         );
         
-        // Test reader mode
+        // Test reader mode - NEW behavior: all paragraphs in expanded path are displayed
         let reader_result = merge_paragraphs_for_lang(
             &paragraphs,
             "zh",
@@ -89,9 +90,9 @@ mod story_flow_tests {
             &choice_ids,
         );
         
-        // In this example, both modes should have the same result
+        // In NEW reader mode, all paragraphs should be displayed
         assert_eq!(normal_result, "第一段\n\n第二段\n\n第三段");
-        assert_eq!(reader_result, "第一段\n\n第二段");
+        assert_eq!(reader_result, "第一段\n\n第二段\n\n第三段"); // Same as normal mode
     }
 
     #[test]
@@ -113,7 +114,8 @@ mod story_flow_tests {
             &chapter1_ids,
         );
         
-        let expected = "故事開場\n\n劇情發展\n\n高潮部分";
+        // NEW Reader Mode behavior: all paragraphs in expanded path are displayed
+        let expected = "故事開場\n\n劇情發展\n\n高潮部分\n\n故事結局";
         assert_eq!(result, expected);
     }
 } 

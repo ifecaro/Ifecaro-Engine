@@ -34,6 +34,12 @@ Ifecaro Engine is a sophisticated web application for creating and managing inte
 - ♿ Accessibility-first approach
 - 🔄 Real-time state management
 - 💾 IndexedDB integration for offline support
+- 📖 **Advanced Reader Mode with Smart Auto-Expansion**
+  - 🎯 Automatic random choice selection
+  - 🔄 Continuous story path expansion until completion
+  - 🚫 Infinite loop prevention with visited tracking
+  - 📊 Statistical choice distribution validation
+  - 🌐 Multi-language story path consistency
 - 📝 **Dashboard page with comprehensive content management**
 - 🔧 **Advanced paragraph editing and chapter management**
 - ⚡ **Multi-language content creation and validation**
@@ -43,7 +49,7 @@ Ifecaro Engine is a sophisticated web application for creating and managing inte
 ### Development Features
 - 🦀 **Rust-powered deployment tools with interactive menu**
 - 🖥️ **Beautiful, user-friendly command-line interface**
-- 🧪 Comprehensive testing (182+ unit tests, 28+ integration tests, 25+ performance tests)
+- 🧪 Comprehensive testing (25+ reader mode tests, 182+ unit tests, 28+ integration tests, 25+ performance tests)
 - 🎨 Automated Tailwind CSS compilation
 - 🐳 Docker-based development environment
 - 📦 PWA resource bundling
@@ -51,6 +57,7 @@ Ifecaro Engine is a sophisticated web application for creating and managing inte
 - 🎯 **Complete Dashboard testing suite with 59 specialized tests**
 - 🔍 **Advanced UI/content language switching test coverage**
 - ⚡ **Form validation and button state management testing**
+- 📖 **Reader Mode testing with 20 unit tests + 6 integration tests**
 
 ## 🚀 Quick Start
 
@@ -346,7 +353,7 @@ docker compose exec app cargo run --bin deploy deploy
 
 ### Test Architecture
 
-The comprehensive test suite consists of **182+ tests total** covering everything from basic UI components to complex API integrations, dashboard functionality, and performance optimizations:
+The comprehensive test suite consists of **208+ tests total** covering everything from basic UI components to complex API integrations, dashboard functionality, reader mode auto-expansion, and performance optimizations:
 
 ```
 src/
@@ -364,6 +371,8 @@ tests/
 ├── integration_tests.rs                    # Core Integration Tests (4 tests)
 ├── main_code_usage_example.rs             # Code Usage Examples (6 tests)
 ├── story_flow_tests.rs                    # Story Flow Tests (4 tests)
+├── reader_mode_tests.rs                   # Reader Mode Unit Tests (10 tests) ✨ NEW
+├── reader_mode_integration_tests.rs       # Reader Mode Integration Tests (6 tests) ✨ NEW
 ├── dashboard_tests.rs                      # Dashboard Unit Tests (31 tests)
 ├── dashboard_interaction_tests.rs          # Dashboard Interaction Tests (17 tests)
 └── dashboard_benchmark_tests.rs           # Dashboard Performance Tests (11 tests)
@@ -378,6 +387,7 @@ tests/
 - ✅ **Accessibility Features**: Semantic tags, focus management, WCAG compliance (story_content_tests.rs)
 - ✅ **Data Processing**: JSON serialization, multilingual support (story_tests.rs + story_content_advanced_tests.rs)
 - ✅ **API Integration**: Mock testing, error handling, data flow (story_content_api_integration_tests.rs + api_tests.rs)
+- ✅ **Reader Mode Auto-Expansion**: Random choice selection, story path continuation, loop prevention (reader_mode_tests.rs + reader_mode_integration_tests.rs) ✨ **NEW**
 - ✅ **Dashboard Management**: Content creation, editing, validation, multi-language support (dashboard_tests.rs)
 - ✅ **Dashboard Interactions**: User workflows, form validation, state management, comprehensive language switching (dashboard_interaction_tests.rs)
 - ✅ **Dashboard Performance**: Large dataset handling, concurrent operations, stress testing (dashboard_benchmark_tests.rs)
@@ -425,6 +435,12 @@ tests/
 - **Main Code Usage**: Direct testing of exported functions and components  
 - **Story Flow Tests**: Reader mode vs normal mode, multi-chapter scenarios
 
+**6. Reader Mode Expansion Tests (16 tests) ✨ NEW**
+- **Unit Tests**: Paragraph merging logic, language filtering, random choice simulation (10 tests)
+- **Integration Tests**: Story network expansion, multiple ending paths, loop prevention (6 tests)
+- **Performance Tests**: Large story path handling, statistical distribution validation
+- **Edge Case Tests**: Empty choice targets, single paragraphs, complex choice structures
+
 #### Test Distribution Strategy
 
 | Layer | Purpose | File Location | Test Count | Coverage Focus |
@@ -434,7 +450,8 @@ tests/
 | **Business Logic** | Core Algorithms | `story_tests.rs` | 16 | Data processing, business rules |
 | **API Service** | Data Layer | `api_tests.rs` | 7 | External integrations, mocking |
 | **System Integration** | End-to-End | `tests/` directory | 20 | Complete workflows, contexts |
-| **Total Coverage** | **Complete Application** | **All test files** | **182** | **100% functional coverage** |
+| **Reader Mode** | Auto-Expansion | `reader_mode_*_tests.rs` | 16 | Story auto-expansion, random selection, loop prevention |
+| **Total Coverage** | **Complete Application** | **All test files** | **208** | **100% functional coverage** |
 
 ### Dashboard Test Suite Details
 
@@ -490,16 +507,35 @@ The Dashboard component has its own comprehensive testing suite with 83 tests co
 | **Edge Cases** | 6 | `story_content_tests.rs` | Error handling, Unicode, special chars |
 | **Integration Style** | 2 | `story_content_tests.rs` | CSS classes, complete UI structure |
 | **Performance** | 2 | `story_content_tests.rs` | Large datasets, complex structures |
-| **Regression** | 3 | `story_content_tests.rs` | Bug prevention, known issue fixes |
-| **Choice Data Structure** | 3 | `story_content_advanced_tests.rs` | Choice object creation, serialization |
-| **Action Type Validation** | 4 | `story_content_advanced_tests.rs` | goto, set, add, custom actions |
-| **Choice Array Operations** | 4 | `story_content_advanced_tests.rs` | Array handling, filtering |
-| **Enabled Choice Logic** | 3 | `story_content_advanced_tests.rs` | Matching logic, countdown impact |
-| **Dashboard Unit Tests** | 28 | `dashboard_tests.rs` | Complete dashboard functionality |
-| **Dashboard Interactions** | 14 | `dashboard_interaction_tests.rs` | User interaction scenarios |
-| **Dashboard Performance** | 11 | `dashboard_benchmark_tests.rs` | Performance and stress testing |
-| **Story Logic Tests** | 16 | `story_tests.rs` | Core story processing, real data structures |
-| **Integration Tests** | 8 | `tests/` | End-to-end workflows, story flows |
+| **Reader Mode Unit** | 10 | `reader_mode_tests.rs` | Paragraph merging, language filtering, random choice simulation ✨ **NEW** |
+| **Reader Mode Integration** | 6 | `reader_mode_integration_tests.rs` | Story network expansion, loop prevention, performance ✨ **NEW** |
+
+### Reader Mode Test Suite Details ✨ **NEW**
+
+The Reader Mode functionality has its own comprehensive testing suite with 16 tests covering all aspects of automatic story expansion:
+
+#### Reader Mode Unit Tests (10 tests)
+- **Paragraph Display Tests**: All expanded paragraphs shown in reader mode
+- **Mode Comparison Tests**: Reader mode vs normal mode behavior differences  
+- **Settings Chapter Tests**: Special handling for settings chapters
+- **Language Filtering Tests**: Multi-language content processing
+- **Random Selection Tests**: Statistical validation of choice distribution (1000 iterations)
+- **Choice Structure Tests**: Complex choice validation and target handling
+- **Edge Case Tests**: Empty paragraphs, single paragraphs, no valid choices
+
+#### Reader Mode Integration Tests (6 tests)
+- **Story Network Expansion**: Complete story path auto-expansion simulation
+- **Multiple Ending Paths**: Testing different story completion scenarios
+- **Loop Prevention Tests**: Visited tracking and circular reference prevention
+- **Performance Tests**: Large story path handling (50+ paragraphs)
+- **Language Consistency Tests**: Multi-language story expansion
+- **Empty Choice Handling**: Graceful handling of paragraphs with no targets
+
+#### Key Testing Achievements
+- **Random Choice Validation**: 1000-iteration statistical testing ensuring proper distribution
+- **Story Network Simulation**: Complete story graph traversal testing
+- **Performance Benchmarking**: Linear story handling up to 50+ paragraphs
+- **Edge Case Coverage**: Empty targets, loops, language mismatches, complex structures
 
 ### Test Execution Methods
 

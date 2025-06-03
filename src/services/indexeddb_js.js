@@ -122,8 +122,12 @@ export function setChoiceToIndexedDB(chapterId, paragraphId) {
         getReq.onsuccess = function () {
             let arr = getReq.result;
             if (!Array.isArray(arr)) arr = [];
-            // 單選只保留一個，若要多選可改 push
-            arr = [paragraphId];
+            // append 且不重複
+            if (!arr.includes(paragraphId)) {
+                arr.push(paragraphId);
+            }
+            // 直接用 console.debug 輸出
+            console.debug(`setChoiceToIndexedDB: chapterId=${chapterId}, arr=${JSON.stringify(arr)}`);
             const putReq = store.put(arr, chapterId);
             putReq.onsuccess = function () { };
             putReq.onerror = function (e) { };
