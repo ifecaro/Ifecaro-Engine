@@ -178,18 +178,18 @@ pub fn merge_paragraphs_for_lang(
     current_language: &str,
     reader_mode: bool,
     is_settings_chapter: bool,
-    choice_ids: &[String],
+    _choice_ids: &[String],
 ) -> String {
     let mut merged_paragraph_str = String::new();
+    
     if reader_mode && !is_settings_chapter {
-        for (idx, paragraph) in expanded.iter().enumerate() {
-            if idx == 0 || (choice_ids.contains(&paragraph.id) && paragraph.chapter_id != "settingschapter") {
-                if let Some(text) = paragraph.texts.iter().find(|t| t.lang == current_language) {
-                    if !merged_paragraph_str.is_empty() {
-                        merged_paragraph_str.push_str("\n\n");
-                    }
-                    merged_paragraph_str.push_str(&text.paragraphs);
+        // In reader mode, show all paragraphs in the expanded path
+        for paragraph in expanded.iter() {
+            if let Some(text) = paragraph.texts.iter().find(|t| t.lang == current_language) {
+                if !merged_paragraph_str.is_empty() {
+                    merged_paragraph_str.push_str("\n\n");
                 }
+                merged_paragraph_str.push_str(&text.paragraphs);
             }
         }
     } else {
@@ -202,6 +202,7 @@ pub fn merge_paragraphs_for_lang(
             }
         }
     }
+    
     merged_paragraph_str
 }
 
@@ -438,110 +439,158 @@ pub fn Story(props: StoryProps) -> Element {
                                 }
                             }
                             enabled_choices.set(enabled);
-                            // ====== New reader_mode single-thread story auto-expand logic (async) ======
-                            // First check if settings_context is loaded
-                            if !settings_context.read().loaded {
-                                return;
-                            }
-                            let settings = settings_context.read().settings.clone();
-                            let settings_done = settings.get("settings_done").map(|v| v == "true").unwrap_or(false);
-                            let reader_mode = settings.get("reader_mode").map(|v| v == "true").unwrap_or(false);
-                            let _chapter_id = paragraph.chapter_id.clone();
-                            let choices = choices.clone();
-                            if settings_done && reader_mode && paragraph.chapter_id != "settingschapter" && !choices.is_empty() {
-                                if let Ok(paragraph_data_clone) = paragraph_data.try_read() {
-                                    let paragraph_data = paragraph_data_clone.clone();
-                                    let state = state.clone();
-                                    let paragraph = paragraph.clone();
-                                    let mut story_context = story_context.clone();
-                                    spawn_local(async move {
-                                        let mut visited = vec![paragraph.id.clone()];
-                                        let mut path = vec![paragraph.clone()];
-                                        let mut current = paragraph.clone();
-                                        loop {
-                                            let text = match current.texts.iter().find(|t| t.lang == state().current_language) {
-                                                Some(t) => t,
-                                                None => {
-                                                    // Logs cleared
+                        }
+                    }
+                }
+            }
+            ()
+        });
+    }
+    
+    // Separate effect for reader mode auto-expansion
+    {
+        let paragraph_data = paragraph_data.clone();
+        let mut _expanded_paragraphs = _expanded_paragraphs.clone();
+        let story_context = story_context.clone();
+        let settings_context = settings_context.clone();
+        let state = state.clone();
+        let last_expansion_id = Rc::new(RefCell::new(String::new()));
+        
+        use_effect(move || {
+            let target_id = story_context.read().target_paragraph_id.clone();
+            if target_id.is_none() {
+                return;
+            }
+            
+            let target_id_str = target_id.clone().unwrap_or_default();
+            
+            // Prevent duplicate expansions for the same paragraph
+            if *last_expansion_id.borrow() == target_id_str {
+                return;
+            }
+            
+            if !settings_context.read().loaded {
+                return;
+            }
+            
+            let settings = settings_context.read().settings.clone();
+            let settings_done = settings.get("settings_done").map(|v| v == "true").unwrap_or(false);
+            let reader_mode = settings.get("reader_mode").map(|v| v == "true").unwrap_or(false);
+            
+            if let Some(target_id) = target_id {
+                if let Ok(paragraph_data_guard) = paragraph_data.try_read() {
+                    if let Some(paragraph) = paragraph_data_guard.iter().find(|p| &p.id == &target_id) {
+                        if settings_done && reader_mode && paragraph.chapter_id != "settingschapter" {
+                            if let Some(text) = paragraph.texts.iter().find(|t| t.lang == state().current_language) {
+                                if !text.choices.is_empty() {
+                                    // Mark this paragraph as processed
+                                    *last_expansion_id.borrow_mut() = target_id_str;
+                                    
+                                    if let Ok(paragraph_data_clone) = paragraph_data.try_read() {
+                                        let paragraph_data = paragraph_data_clone.clone();
+                                        let state = state.clone();
+                                        let paragraph = paragraph.clone();
+                                        let mut story_context = story_context.clone();
+                                        spawn_local(async move {
+                                            let mut visited = vec![paragraph.id.clone()];
+                                            let mut path = vec![paragraph.clone()];
+                                            let mut current = paragraph.clone();
+                                            
+                                            loop {
+                                                let text = match current.texts.iter().find(|t| t.lang == state().current_language) {
+                                                    Some(t) => t,
+                                                    None => {
+                                                        break;
+                                                    }
+                                                };
+                                                
+                                                if text.choices.is_empty() { 
+                                                    break; 
+                                                }
+                                                
+                                                let mut choice_ids: Vec<String> = Vec::new();
+                                                for (i, c) in text.choices.iter().enumerate() {
+                                                    if let Some(complex_choice) = current.choices.get(i) {
+                                                        // Randomly select one target from multi-target paragraph
+                                                        if !complex_choice.to.is_empty() {
+                                                            let chosen_target = complex_choice.to.iter()
+                                                                .choose(&mut rand::thread_rng())
+                                                                .cloned()
+                                                                .unwrap_or_default();
+                                                            choice_ids.push(chosen_target);
+                                                        }
+                                                    } else {
+                                                        choice_ids.push(c.clone());
+                                                    }
+                                                }
+                                                
+                                                let valid_choice_ids: Vec<String> = choice_ids.iter().filter(|id| !id.is_empty()).cloned().collect();
+                                                
+                                                if valid_choice_ids.is_empty() {
+                                                    let mut story_context = story_context.clone();
+                                                    story_context.write().target_paragraph_id = None;
+                                                    _expanded_paragraphs.set(path.clone());
                                                     break;
                                                 }
-                                            };
-                                            if text.choices.is_empty() { break; }
-                                            let mut choice_ids: Vec<String> = Vec::new();
-                                            for (i, c) in text.choices.iter().enumerate() {
-                                                if let Some(complex_choice) = current.choices.get(i) {
-                                                    // Randomly select one target from multi-target paragraph
-                                                    if !complex_choice.to.is_empty() {
-                                                        let chosen_target = complex_choice.to.iter()
-                                                            .choose(&mut rand::thread_rng())
-                                                            .cloned()
-                                                            .unwrap_or_default();
-                                                        choice_ids.push(chosen_target);
+                                                
+                                                let context_choice_id: Option<String> = {
+                                                    let ctx = story_context.read();
+                                                    let ids = ctx.choice_ids.read();
+                                                    if !ids.is_empty() {
+                                                        ids.first().cloned()
+                                                    } else {
+                                                        None
+                                                    }
+                                                };
+                                                
+                                                let next_id = if let Some(id) = context_choice_id {
+                                                    if !id.is_empty() {
+                                                        id
+                                                    } else {
+                                                        match valid_choice_ids.choose(&mut rand::thread_rng()).cloned() {
+                                                            Some(val) => val,
+                                                            None => {
+                                                                break;
+                                                            }
+                                                        }
                                                     }
                                                 } else {
-                                                    choice_ids.push(c.clone());
-                                                }
-                                            }
-                                            let valid_choice_ids: Vec<String> = choice_ids.iter().filter(|id| !id.is_empty()).cloned().collect();
-                                            if valid_choice_ids.is_empty() {
-                                                let mut story_context = story_context.clone();
-                                                story_context.write().target_paragraph_id = None;
-                                                _expanded_paragraphs.set(path.clone());
-                                                break;
-                                            }
-                                            let context_choice_id: Option<String> = {
-                                                let ctx = story_context.read();
-                                                let ids = ctx.choice_ids.read();
-                                                if !ids.is_empty() {
-                                                    ids.first().cloned()
-                                                } else {
-                                                    None
-                                                }
-                                            };
-                                            let next_id = if let Some(id) = context_choice_id {
-                                                if !id.is_empty() {
-                                                    id
-                                                } else {
                                                     match valid_choice_ids.choose(&mut rand::thread_rng()).cloned() {
-                                                        Some(val) => val,
+                                                        Some(chosen) => {
+                                                            if !current.chapter_id.is_empty() {
+                                                                set_choice_to_indexeddb(&current.chapter_id, &chosen);
+                                                                story_context.write().choice_ids.set(vec![chosen.clone()]);
+                                                            }
+                                                            chosen
+                                                        },
                                                         None => {
-                                                            // Logs cleared
                                                             break;
                                                         }
                                                     }
-                                                }
-                                            } else {
-                                                match valid_choice_ids.choose(&mut rand::thread_rng()).cloned() {
-                                                    Some(chosen) => {
-                                                        if !current.chapter_id.is_empty() {
-                                                            set_choice_to_indexeddb(&current.chapter_id, &chosen);
-                                                            story_context.write().choice_ids.set(vec![chosen.clone()]);
-                                                        }
-                                                        chosen
-                                                    },
-                                                    None => {
-                                                        // Logs cleared
-                                                        break;
+                                                };
+                                                
+                                                if let Some(next) = paragraph_data.iter().find(|p| p.id == next_id) {
+                                                    if visited.contains(&next.id) { 
+                                                        break; 
                                                     }
+                                                    path.push(next.clone());
+                                                    visited.push(next.id.clone());
+                                                    current = next.clone();
+                                                    
+                                                    // Clear context choice_ids to allow fresh random selection for next iteration
+                                                    story_context.write().choice_ids.set(vec![]);
+                                                } else {
+                                                    break;
                                                 }
-                                            };
-                                            if let Some(next) = paragraph_data.iter().find(|p| p.id == next_id) {
-                                                if visited.contains(&next.id) { break; }
-                                                path.push(next.clone());
-                                                visited.push(next.id.clone());
-                                                current = next.clone();
-                                            } else {
-                                                break;
                                             }
-                                        }
-                                        _expanded_paragraphs.set(path.clone());
-                                        let mut story_context = story_context.clone();
-                                        story_context.write().target_paragraph_id = None;
-                                    });
-                                    return;
+                                            
+                                            _expanded_paragraphs.set(path.clone());
+                                            let mut story_context = story_context.clone();
+                                            story_context.write().target_paragraph_id = None;
+                                        });
+                                    }
                                 }
                             }
-                            // ====== end reader_mode ======
                         }
                     }
                 }
