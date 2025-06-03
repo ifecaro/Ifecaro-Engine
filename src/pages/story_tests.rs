@@ -92,9 +92,9 @@ fn test_merge_paragraphs_reader_mode_integration() {
     let normal_result = merge_paragraphs_for_lang(&paragraphs, "zh", false, false, &choice_ids);
     assert_eq!(normal_result, "第一段\n\n第二段\n\n第三段");
     
-    // In reader mode, only first paragraph and those in choice_ids are included
+    // In NEW reader mode, all paragraphs in the expanded path are included
     let reader_result = merge_paragraphs_for_lang(&paragraphs, "zh", true, false, &choice_ids);
-    assert_eq!(reader_result, "第一段\n\n第三段"); // p2 is excluded
+    assert_eq!(reader_result, "第一段\n\n第二段\n\n第三段"); // All paragraphs included in reader mode
 }
 
 #[test]
@@ -196,11 +196,11 @@ fn test_merge_paragraphs_complex_filtering() {
     let paragraphs = vec![p1, p2, p3, p4];
     let choice_ids = vec!["p1".to_string(), "p4".to_string()];
     
-    // In reader mode, settings chapter paragraphs should be excluded
+    // In NEW reader mode, all paragraphs in the expanded path are included
     let reader_result = merge_paragraphs_for_lang(&paragraphs, "zh", true, false, &choice_ids);
-    assert_eq!(reader_result, "第一段\n\n第四段"); // p2 and p3 excluded
+    assert_eq!(reader_result, "第一段\n\n第二段\n\n設定段落\n\n第四段"); // All paragraphs included
     
-    // Test with settings chapter flag enabled
+    // Test with settings chapter flag enabled - should behave the same in new reader mode
     let settings_result = merge_paragraphs_for_lang(&paragraphs, "zh", true, true, &choice_ids);
     assert_eq!(settings_result, "第一段\n\n第二段\n\n設定段落\n\n第四段"); // All included
 }
@@ -386,13 +386,13 @@ fn test_reader_mode_edge_cases() {
     let paragraphs = vec![p1, p2, p3];
     let choice_ids = vec!["second".to_string()]; // Only include second paragraph
     
-    // In reader mode, first paragraph should always be included
+    // In NEW reader mode, all paragraphs in the expanded path are included
     let result = merge_paragraphs_for_lang(&paragraphs, "zh", true, false, &choice_ids);
-    assert_eq!(result, "第一段\n\n第二段"); // First + second, third excluded
+    assert_eq!(result, "第一段\n\n第二段\n\n第三段"); // All paragraphs included
     
-    // Test with empty choice_ids
+    // Test with empty choice_ids - still includes all paragraphs
     let empty_choice_result = merge_paragraphs_for_lang(&paragraphs, "zh", true, false, &[]);
-    assert_eq!(empty_choice_result, "第一段"); // Only first paragraph
+    assert_eq!(empty_choice_result, "第一段\n\n第二段\n\n第三段"); // All paragraphs included
 }
 
 #[test]
@@ -405,9 +405,9 @@ fn test_chapter_filtering_in_reader_mode() {
     let paragraphs = vec![p1, p2, p3, p4];
     let choice_ids = vec!["p1".to_string(), "p2".to_string(), "p3".to_string(), "p4".to_string()];
     
-    // In reader mode, settings chapter paragraphs should be filtered out by chapter_id check
+    // In NEW reader mode, all paragraphs in the expanded path are included
     let result = merge_paragraphs_for_lang(&paragraphs, "zh", true, false, &choice_ids);
-    assert_eq!(result, "章節1段落1\n\n章節2段落1\n\n章節1段落2"); // p3 excluded due to settingschapter
+    assert_eq!(result, "章節1段落1\n\n章節2段落1\n\n設定段落\n\n章節1段落2"); // All paragraphs included
 }
 
 #[cfg(test)]

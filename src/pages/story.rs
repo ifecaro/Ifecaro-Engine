@@ -21,6 +21,7 @@ use std::rc::Rc;
 use std::cell::RefCell;
 use crate::contexts::story_merged_context::{use_story_merged_context, provide_story_merged_context};
 use js_sys;
+use futures_util::future::join_all;
 
 #[derive(Deserialize, Clone, Debug)]
 #[allow(dead_code)]
@@ -35,7 +36,7 @@ struct Data {
     total_pages: i32,
 }
 
-#[derive(Deserialize, Clone, Debug)]
+#[derive(Deserialize, Clone, Debug, PartialEq)]
 #[allow(dead_code)]
 pub struct Paragraph {
     pub id: String,
@@ -53,7 +54,7 @@ pub struct Paragraph {
     pub updated: String,
 }
 
-#[derive(Deserialize, Clone, Debug)]
+#[derive(Deserialize, Clone, Debug, PartialEq)]
 pub struct Text {
     pub lang: String,
     pub paragraphs: String,
@@ -455,37 +456,28 @@ pub fn Story(props: StoryProps) -> Element {
         let settings_context = settings_context.clone();
         let state = state.clone();
         let last_expansion_id = Rc::new(RefCell::new(String::new()));
-        
         use_effect(move || {
             let target_id = story_context.read().target_paragraph_id.clone();
             if target_id.is_none() {
                 return;
             }
-            
             let target_id_str = target_id.clone().unwrap_or_default();
-            
-            // Prevent duplicate expansions for the same paragraph
             if *last_expansion_id.borrow() == target_id_str {
                 return;
             }
-            
             if !settings_context.read().loaded {
                 return;
             }
-            
             let settings = settings_context.read().settings.clone();
             let settings_done = settings.get("settings_done").map(|v| v == "true").unwrap_or(false);
             let reader_mode = settings.get("reader_mode").map(|v| v == "true").unwrap_or(false);
-            
             if let Some(target_id) = target_id {
                 if let Ok(paragraph_data_guard) = paragraph_data.try_read() {
                     if let Some(paragraph) = paragraph_data_guard.iter().find(|p| &p.id == &target_id) {
                         if settings_done && reader_mode && paragraph.chapter_id != "settingschapter" {
                             if let Some(text) = paragraph.texts.iter().find(|t| t.lang == state().current_language) {
                                 if !text.choices.is_empty() {
-                                    // Mark this paragraph as processed
                                     *last_expansion_id.borrow_mut() = target_id_str;
-                                    
                                     if let Ok(paragraph_data_clone) = paragraph_data.try_read() {
                                         let paragraph_data = paragraph_data_clone.clone();
                                         let state = state.clone();
@@ -495,95 +487,110 @@ pub fn Story(props: StoryProps) -> Element {
                                             let mut visited = vec![paragraph.id.clone()];
                                             let mut path = vec![paragraph.clone()];
                                             let mut current = paragraph.clone();
-                                            
+                                            let mut random_choice_futures = Vec::new();
+                                            let mut random_choice_indices = Vec::new();
+                                            let mut random_choice_paragraph_ids = Vec::new();
+                                            let mut random_choice_originals = Vec::new();
+                                            let mut random_choice_targets = Vec::new();
+                                            // 預先組出所有要查詢 random_choices 的 (paragraph_id, choice_index, original_choices)
                                             loop {
                                                 let text = match current.texts.iter().find(|t| t.lang == state().current_language) {
                                                     Some(t) => t,
-                                                    None => {
-                                                        break;
-                                                    }
+                                                    None => { break; }
                                                 };
-                                                
-                                                if text.choices.is_empty() { 
-                                                    break; 
-                                                }
-                                                
-                                                let mut choice_ids: Vec<String> = Vec::new();
+                                                if text.choices.is_empty() { break; }
+                                                let mut next_choice: Option<(String, Option<(usize, Vec<String>)>)> = None;
                                                 for (i, c) in text.choices.iter().enumerate() {
                                                     if let Some(complex_choice) = current.choices.get(i) {
-                                                        // Randomly select one target from multi-target paragraph
                                                         if !complex_choice.to.is_empty() {
-                                                            let chosen_target = complex_choice.to.iter()
-                                                                .choose(&mut rand::thread_rng())
-                                                                .cloned()
-                                                                .unwrap_or_default();
-                                                            choice_ids.push(chosen_target);
-                                                        }
-                                                    } else {
-                                                        choice_ids.push(c.clone());
-                                                    }
-                                                }
-                                                
-                                                let valid_choice_ids: Vec<String> = choice_ids.iter().filter(|id| !id.is_empty()).cloned().collect();
-                                                
-                                                if valid_choice_ids.is_empty() {
-                                                    let mut story_context = story_context.clone();
-                                                    story_context.write().target_paragraph_id = None;
-                                                    _expanded_paragraphs.set(path.clone());
-                                                    break;
-                                                }
-                                                
-                                                let context_choice_id: Option<String> = {
-                                                    let ctx = story_context.read();
-                                                    let ids = ctx.choice_ids.read();
-                                                    if !ids.is_empty() {
-                                                        ids.first().cloned()
-                                                    } else {
-                                                        None
-                                                    }
-                                                };
-                                                
-                                                let next_id = if let Some(id) = context_choice_id {
-                                                    if !id.is_empty() {
-                                                        id
-                                                    } else {
-                                                        match valid_choice_ids.choose(&mut rand::thread_rng()).cloned() {
-                                                            Some(val) => val,
-                                                            None => {
+                                                            if complex_choice.to.len() > 1 {
+                                                                // 多目標，記錄要查詢的 random_choices
+                                                                random_choice_paragraph_ids.push(current.id.clone());
+                                                                random_choice_indices.push(i as u32);
+                                                                random_choice_originals.push(complex_choice.to.clone());
+                                                                next_choice = Some((current.id.clone(), Some((i, complex_choice.to.clone()))));
+                                                                break;
+                                                            } else {
+                                                                // 單一目標
+                                                                next_choice = Some((complex_choice.to[0].clone(), None));
                                                                 break;
                                                             }
                                                         }
+                                                    } else {
+                                                        next_choice = Some((c.clone(), None));
+                                                        break;
                                                     }
-                                                } else {
-                                                    match valid_choice_ids.choose(&mut rand::thread_rng()).cloned() {
-                                                        Some(chosen) => {
-                                                            if !current.chapter_id.is_empty() {
-                                                                set_choice_to_indexeddb(&current.chapter_id, &chosen);
-                                                                story_context.write().choice_ids.set(vec![chosen.clone()]);
-                                                            }
-                                                            chosen
-                                                        },
-                                                        None => {
+                                                }
+                                                if let Some((next_id, multi)) = next_choice {
+                                                    if let Some((idx, _originals)) = multi {
+                                                        // 多目標，先放空，稍後查詢
+                                                        random_choice_targets.push((current.id.clone(), idx));
+                                                        break; // 只支援一層多目標，避免複雜巢狀
+                                                    } else {
+                                                        if let Some(next) = paragraph_data.iter().find(|p| p.id == next_id) {
+                                                            if visited.contains(&next.id) { break; }
+                                                            path.push(next.clone());
+                                                            visited.push(next.id.clone());
+                                                            current = next.clone();
+                                                        } else {
                                                             break;
                                                         }
                                                     }
-                                                };
-                                                
-                                                if let Some(next) = paragraph_data.iter().find(|p| p.id == next_id) {
-                                                    if visited.contains(&next.id) { 
-                                                        break; 
-                                                    }
-                                                    path.push(next.clone());
-                                                    visited.push(next.id.clone());
-                                                    current = next.clone();
-                                                    
-                                                    // Clear context choice_ids to allow fresh random selection for next iteration
-                                                    story_context.write().choice_ids.set(vec![]);
                                                 } else {
                                                     break;
                                                 }
                                             }
-                                            
+                                            // 查詢所有 random_choices
+                                            let mut selected_targets: Vec<String> = Vec::new();
+                                            for (pid, idx) in random_choice_targets.iter() {
+                                                let fut = wasm_bindgen_futures::JsFuture::from(js_sys::Promise::new(&mut |resolve, _reject| {
+                                                    let cb = Closure::wrap(Box::new(move |js_value: wasm_bindgen::JsValue| {
+                                                        resolve.call1(&JsValue::NULL, &js_value).unwrap_or_else(|e| e);
+                                                    }) as Box<dyn FnMut(wasm_bindgen::JsValue)>);
+                                                    crate::services::indexeddb::get_random_choice_from_indexeddb(pid, *idx as u32, cb.as_ref().unchecked_ref());
+                                                    cb.forget();
+                                                }));
+                                                random_choice_futures.push(fut);
+                                            }
+                                            let results = join_all(random_choice_futures).await;
+                                            // 用查詢結果組成完整路徑
+                                            for (i, result) in results.into_iter().enumerate() {
+                                                let original_choices = &random_choice_originals[i];
+                                                let paragraph_id = &random_choice_paragraph_ids[i];
+                                                let idx = random_choice_indices[i];
+                                                let chosen_target = if let Ok(js_value) = result {
+                                                    if let Some(s) = js_value.as_string() {
+                                                        s
+                                                    } else {
+                                                        // 沒有紀錄才隨機
+                                                        let chosen = original_choices.iter().choose(&mut rand::thread_rng()).cloned().unwrap_or_default();
+                                                        // 寫入 random_choices
+                                                        let js_array = js_sys::Array::new();
+                                                        for choice in original_choices {
+                                                            js_array.push(&JsValue::from_str(choice));
+                                                        }
+                                                        crate::services::indexeddb::set_random_choice_to_indexeddb(paragraph_id, idx, &js_array, &chosen);
+                                                        chosen
+                                                    }
+                                                } else {
+                                                    let chosen = original_choices.iter().choose(&mut rand::thread_rng()).cloned().unwrap_or_default();
+                                                    let js_array = js_sys::Array::new();
+                                                    for choice in original_choices {
+                                                        js_array.push(&JsValue::from_str(choice));
+                                                    }
+                                                    crate::services::indexeddb::set_random_choice_to_indexeddb(paragraph_id, idx, &js_array, &chosen);
+                                                    chosen
+                                                };
+                                                // 找到下一個段落
+                                                if let Some(next) = paragraph_data.iter().find(|p| p.id == chosen_target) {
+                                                    if visited.contains(&next.id) { break; }
+                                                    path.push(next.clone());
+                                                    visited.push(next.id.clone());
+                                                    current = next.clone();
+                                                } else {
+                                                    break;
+                                                }
+                                            }
                                             _expanded_paragraphs.set(path.clone());
                                             let mut story_context = story_context.clone();
                                             story_context.write().target_paragraph_id = None;
@@ -618,7 +625,9 @@ pub fn Story(props: StoryProps) -> Element {
             let mut story_context = use_context::<Signal<crate::contexts::story_context::StoryContext>>();
             spawn_local(async move {
                 let mut all_ids = Vec::new();
-                for chapter in chapters {
+                let mut chapters_sorted = chapters.clone();
+                chapters_sorted.sort_by_key(|c| c.order);
+                for chapter in chapters_sorted.iter() {
                     let _chapter_id = chapter.id.clone();
                     let (tx, rx) = futures_channel::oneshot::channel();
                     let cb = Closure::once(Box::new(move |js_value: JsValue| {
@@ -626,7 +635,7 @@ pub fn Story(props: StoryProps) -> Element {
                         let ids: Vec<String> = arr.iter().filter_map(|v| v.as_string()).collect();
                         let _ = tx.send(ids);
                     }) as Box<dyn FnOnce(JsValue)>);
-                    get_choice_from_indexeddb(&chapter.id, cb.as_ref().unchecked_ref());
+                    get_choice_from_indexeddb(&_chapter_id, cb.as_ref().unchecked_ref());
                     cb.forget();
                     if let Ok(ids) = rx.await {
                         all_ids.extend(ids);
@@ -644,29 +653,32 @@ pub fn Story(props: StoryProps) -> Element {
     // Automatically jump to selected paragraph (read-only, separate async block for data cloning)
     {
         let paragraph_data = paragraph_data.clone();
-        let _expanded_paragraphs = _expanded_paragraphs.clone();
+        let mut expanded_paragraphs = _expanded_paragraphs.clone();
         let story_context = story_context.clone();
+        let mut initialized = use_signal(|| false);
         use_effect(move || {
+            if *initialized.read() {
+                return;
+            }
             if let Ok(paragraph_data_vec) = paragraph_data.try_read() {
                 let paragraph_data_vec = paragraph_data_vec.clone();
                 let ctx = story_context.read();
                 let choice_ids_vec = ctx.choice_ids.read().clone();
-                let mut expanded_paragraphs = _expanded_paragraphs.clone();
-                let story_context = story_context.clone();
-                if let Some(paragraph_id) = choice_ids_vec.first() {
-                    if let Some(target) = paragraph_data_vec.iter().find(|p| &p.id == paragraph_id) {
-                        let target = target.clone();
-                        let paragraph_id = paragraph_id.clone();
-                        wasm_bindgen_futures::spawn_local(async move {
-                            let mut expanded = expanded_paragraphs.read().clone();
-                            if !expanded.iter().any(|p| &p.id == &paragraph_id) {
-                                expanded.push(target);
-                                expanded_paragraphs.set(expanded);
-                                let mut story_context = story_context.clone();
-                                story_context.write().target_paragraph_id = Some(paragraph_id);
+                if !choice_ids_vec.is_empty() {
+                    wasm_bindgen_futures::spawn_local(async move {
+                        let mut expanded = Vec::new();
+                        for paragraph_id in &choice_ids_vec {
+                            if let Some(target) = paragraph_data_vec.iter().find(|p| p.id == *paragraph_id) {
+                                if !expanded.iter().any(|p: &Paragraph| p.id == *paragraph_id) {
+                                    expanded.push(target.clone());
+                                }
                             }
-                        });
-                    }
+                        }
+                        if !expanded.is_empty() && expanded_paragraphs.read().as_slice() != expanded.as_slice() {
+                            expanded_paragraphs.set(expanded.clone());
+                            initialized.set(true);
+                        }
+                    });
                 }
             }
         });

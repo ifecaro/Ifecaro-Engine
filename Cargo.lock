@@ -1495,6 +1495,7 @@ dependencies = [
  "dioxus-ssr",
  "dotenv",
  "futures-channel",
+ "futures-util",
  "getrandom 0.2.16",
  "gloo-timers",
  "js-sys",
