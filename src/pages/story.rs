@@ -696,9 +696,23 @@ pub fn Story(props: StoryProps) -> Element {
                 if !last.chapter_id.is_empty() {
                     let order = story_context.read().chapters.read().iter().find(|c| c.id == last.chapter_id).map(|c| c.order).unwrap_or(0);
                     if order != 0 {
-                        set_choice_to_indexeddb(&last.chapter_id, &goto);
-                        let mut story_context = story_context.clone();
-                        story_context.write().choice_ids.set(vec![goto.clone()]);
+                        // 判斷是否多目標選項
+                        let is_multi_target = last.choices.get(choice_index).map(|c| c.to.len() > 1).unwrap_or(false);
+                        if is_multi_target {
+                            // 多目標只寫入 random_choices，不寫入 choices
+                            let paragraph_id = last.id.clone();
+                            let original_choices = last.choices[choice_index].to.clone();
+                            let selected = goto.clone();
+                            let js_array = js_sys::Array::new();
+                            for choice in &original_choices {
+                                js_array.push(&JsValue::from_str(choice));
+                            }
+                            set_random_choice_to_indexeddb(&paragraph_id, choice_index as u32, &js_array, &selected);
+                        } else {
+                            set_choice_to_indexeddb(&last.chapter_id, &goto);
+                            let mut story_context = story_context.clone();
+                            story_context.write().choice_ids.set(vec![goto.clone()]);
+                        }
                     }
                 }
             }
