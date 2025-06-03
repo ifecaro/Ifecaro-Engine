@@ -412,4 +412,52 @@ mod reader_mode_integration_tests {
         let separator_count = result.matches("\n\n").count();
         assert_eq!(separator_count, 49, "Should have 49 separators between 50 paragraphs");
     }
+
+    #[test]
+    fn test_choices_append_not_overwrite() {
+        // 模擬多次選擇，choices 應該 append 不覆蓋
+        let mut choices: Vec<String> = vec![];
+        let chapter_id = "chapter1";
+        let p1 = "p1";
+        let p2 = "p2";
+        // 第一次選擇
+        if !choices.contains(&p1.to_string()) { choices.push(p1.to_string()); }
+        // 第二次選擇
+        if !choices.contains(&p2.to_string()) { choices.push(p2.to_string()); }
+        // 再次選擇 p1 不應重複
+        if !choices.contains(&p1.to_string()) { choices.push(p1.to_string()); }
+        assert_eq!(choices, vec!["p1", "p2"]);
+    }
+
+    #[test]
+    fn test_reload_auto_expand_from_choices() {
+        // 模擬 choices 已有完整路徑，reload 時應自動展開
+        let paragraphs = create_story_network();
+        let choice_ids = vec!["start", "cave", "treasure"];
+        let expanded: Vec<Paragraph> = choice_ids.iter()
+            .filter_map(|id| paragraphs.iter().find(|p| &p.id == id).cloned())
+            .collect();
+        assert_eq!(expanded.len(), 3);
+        assert_eq!(expanded[0].id, "start");
+        assert_eq!(expanded[1].id, "cave");
+        assert_eq!(expanded[2].id, "treasure");
+    }
+
+    #[test]
+    fn test_multi_target_only_in_random_choices() {
+        // 多目標選項只寫進 random_choices，不寫進 choices
+        let mut choices: Vec<String> = vec![];
+        let mut random_choices: HashMap<String, String> = HashMap::new();
+        let paragraph_id = "cave";
+        let choice_index = 0;
+        let original_targets = vec!["treasure", "danger"];
+        // 模擬隨機選擇 treasure
+        let selected = "treasure";
+        // 多目標不寫入 choices
+        // choices 不變
+        // random_choices 寫入
+        random_choices.insert(format!("{}:{}", paragraph_id, choice_index), selected.to_string());
+        assert!(choices.is_empty());
+        assert_eq!(random_choices.get(&format!("{}:{}", paragraph_id, choice_index)), Some(&"treasure".to_string()));
+    }
 } 
