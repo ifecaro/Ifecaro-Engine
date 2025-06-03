@@ -599,9 +599,6 @@ mod interaction_tests {
             button_texts: std::collections::HashMap<String, String>,
             error_messages: std::collections::HashMap<String, String>,
             placeholder_texts: std::collections::HashMap<String, String>,
-            
-            // Chapter and paragraph data cache
-            content_cache: std::collections::HashMap<String, (String, Vec<String>)>,
         }
         
         impl ComprehensiveEditState {
@@ -695,7 +692,6 @@ mod interaction_tests {
             button_texts: std::collections::HashMap::new(),
             error_messages: std::collections::HashMap::new(),
             placeholder_texts: std::collections::HashMap::new(),
-            content_cache: std::collections::HashMap::new(),
         };
         
         // Initialize with Chinese UI

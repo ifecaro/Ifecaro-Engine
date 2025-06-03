@@ -6,6 +6,7 @@ use ifecaro::pages::dashboard::{DashboardProps};
 /// Simplified test Dashboard component that mimics the basic structure
 #[component]
 fn TestDashboard(props: DashboardProps) -> Element {
+    let _ = props; // Suppress unused variable warning
     rsx! {
         div { 
             class: "min-h-screen bg-gray-50 dark:bg-gray-900",
