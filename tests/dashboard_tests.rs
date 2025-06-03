@@ -863,7 +863,6 @@ mod ui_state_tests {
         struct EditState {
             current_ui_language: String,
             current_content_language: String,
-            editing_paragraph_id: String,
             content_cache: HashMap<String, (String, Vec<String>)>, // lang -> (content, choices)
         }
         
@@ -893,7 +892,6 @@ mod ui_state_tests {
         let mut edit_state = EditState {
             current_ui_language: "zh-TW".to_string(),
             current_content_language: "zh-TW".to_string(),
-            editing_paragraph_id: paragraph.id.clone(),
             content_cache: HashMap::new(),
         };
         
