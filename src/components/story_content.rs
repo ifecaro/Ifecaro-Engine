@@ -392,7 +392,9 @@ pub fn StoryContent(props: StoryContentProps) -> Element {
                                 let idx = num - 1;
                                 let choice = &choices[idx];
                                 let goto = choice.action.to.clone();
-                                let is_disabled = disabled_by_countdown.read().get(idx).copied().unwrap_or(false);
+                                let is_disabled = disabled_by_countdown.try_read()
+                                    .map(|guard| guard.get(idx).copied().unwrap_or(false))
+                                    .unwrap_or(false);
                                 if enabled_choices.contains(&choice.action.to) && !is_disabled {
                                     keyboard_state.write().selected_index = idx as i32;
                                     on_choice_click.call((goto.clone(), idx));
@@ -479,7 +481,9 @@ pub fn StoryContent(props: StoryContentProps) -> Element {
                             let caption = choice.caption.clone();
                             let goto = choice.action.to.clone();
                             let is_enabled = enabled_choices.contains(&choice.action.to)
-                                && !disabled_by_countdown.read().get(index).copied().unwrap_or(false);
+                                && !disabled_by_countdown.try_read()
+                                    .map(|guard| guard.get(index).copied().unwrap_or(false))
+                                    .unwrap_or(false);
                             let is_selected = keyboard_state.read().selected_index == index as i32;
                             let on_click = {
                                 let goto = goto.clone();
@@ -528,7 +532,9 @@ pub fn StoryContent(props: StoryContentProps) -> Element {
                                     }},
                                     onclick: on_click,
                                     span { class: "mr-2", {caption.clone()} }
-                                    { (countdown > 0 && !disabled_by_countdown.read().get(index).copied().unwrap_or(false)).then(|| rsx! {
+                                    { (countdown > 0 && !disabled_by_countdown.try_read()
+                                        .map(|guard| guard.get(index).copied().unwrap_or(false))
+                                        .unwrap_or(false)).then(|| rsx! {
                                         style { "{keyframes}" }
                                         div {
                                             class: format!("w-full h-px bg-current mt-2 origin-left will-change-transform {}", 
