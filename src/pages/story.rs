@@ -381,68 +381,66 @@ pub fn Story(props: StoryProps) -> Element {
             // 取 expanded_paragraphs 的最後一個段落
             let expanded_vec = _expanded_paragraphs.read();
             let paragraph = expanded_vec.last();
-            if paragraph.is_none() {
-                return;
-            }
-            let paragraph = paragraph.unwrap();
-            current_paragraph.set(Some(paragraph.clone()));
-            debug!(target: "story", "Set current_paragraph: id={}", paragraph.id);
-            if let Some(text) = paragraph.texts.iter().find(|t| t.lang == state().current_language) {
-                current_text.set(Some(text.clone()));
-                debug!(target: "story", "Set current_text: lang={}, paragraph_id={}", state().current_language, paragraph.id);
-                let choices: Vec<Choice> = paragraph.choices.iter().enumerate().map(|(index, c)| {
-                    let choice: StoryChoice = StoryChoice::Complex(c.clone());
-                    let mut choice_obj: Choice = choice.into();
-                    if let Some(text) = paragraph.texts.iter().find(|t| t.lang == state().current_language) {
-                        if let Some(caption) = text.choices.get(index) {
-                            choice_obj.caption = caption.clone();
-                        }
-                    }
-                    debug!(target: "story", "Build choice: paragraph_id={}, index={}, caption={}", paragraph.id, index, choice_obj.caption);
-                    // Check if there are multiple targets, if so perform random selection
-                    if c.to.len() > 1 {
-                        // Randomly select one target from multi-target paragraph
-                        let selected_target = c.to.iter()
-                            .choose(&mut rand::thread_rng())
-                            .cloned()
-                            .unwrap_or_default();
-                        choice_obj.action.to = selected_target.clone();
-                        
-                        // Asynchronously record choice to IndexedDB
-                        let paragraph_id = paragraph.id.clone();
-                        let choice_index = index as u32;
-                        let original_choices = c.to.clone();
-                        let selected = selected_target.clone();
-                        spawn_local(async move {
-                            let js_array = js_sys::Array::new();
-                            for choice in &original_choices {
-                                js_array.push(&JsValue::from_str(choice));
+            if let Some(paragraph) = paragraph {
+                current_paragraph.set(Some(paragraph.clone()));
+                debug!(target: "story", "Set current_paragraph: id={}", paragraph.id);
+                if let Some(text) = paragraph.texts.iter().find(|t| t.lang == state().current_language) {
+                    current_text.set(Some(text.clone()));
+                    debug!(target: "story", "Set current_text: lang={}, paragraph_id={}", state().current_language, paragraph.id);
+                    let choices: Vec<Choice> = paragraph.choices.iter().enumerate().map(|(index, c)| {
+                        let choice: StoryChoice = StoryChoice::Complex(c.clone());
+                        let mut choice_obj: Choice = choice.into();
+                        if let Some(text) = paragraph.texts.iter().find(|t| t.lang == state().current_language) {
+                            if let Some(caption) = text.choices.get(index) {
+                                choice_obj.caption = caption.clone();
                             }
-                            set_random_choice_to_indexeddb(&paragraph_id, choice_index, &js_array, &selected);
-                        });
-                    } else if !c.to.is_empty() {
-                        choice_obj.action.to = c.to.first().cloned().unwrap_or_default();
-                    }
-                    choice_obj
-                }).collect();
-                debug!(target: "story", "Set current_choices: paragraph_id={}, choices_count={}", paragraph.id, choices.len());
-                current_choices.set(choices.clone());
-                // Check if each option's target paragraph has translation in current language
-                let mut enabled = Vec::new();
-                if let Ok(_paragraph_data_read) = paragraph_data.try_read() {
-                    // Use already randomly selected choices for checking
-                    for choice in &choices {
-                        let target_id = &choice.action.to;
-                        if !target_id.is_empty() {
-                            if let Some(target_paragraph) = _paragraph_data_read.iter().find(|p| p.id == *target_id) {
-                                if target_paragraph.texts.iter().any(|t| t.lang == state().current_language) {
-                                    enabled.push(target_id.clone());
+                        }
+                        debug!(target: "story", "Build choice: paragraph_id={}, index={}, caption={}", paragraph.id, index, choice_obj.caption);
+                        // Check if there are multiple targets, if so perform random selection
+                        if c.to.len() > 1 {
+                            // Randomly select one target from multi-target paragraph
+                            let selected_target = c.to.iter()
+                                .choose(&mut rand::thread_rng())
+                                .cloned()
+                                .unwrap_or_default();
+                            choice_obj.action.to = selected_target.clone();
+                            
+                            // Asynchronously record choice to IndexedDB
+                            let paragraph_id = paragraph.id.clone();
+                            let choice_index = index as u32;
+                            let original_choices = c.to.clone();
+                            let selected = selected_target.clone();
+                            spawn_local(async move {
+                                let js_array = js_sys::Array::new();
+                                for choice in &original_choices {
+                                    js_array.push(&JsValue::from_str(choice));
+                                }
+                                set_random_choice_to_indexeddb(&paragraph_id, choice_index, &js_array, &selected);
+                            });
+                        } else if !c.to.is_empty() {
+                            choice_obj.action.to = c.to.first().cloned().unwrap_or_default();
+                        }
+                        choice_obj
+                    }).collect();
+                    debug!(target: "story", "Set current_choices: paragraph_id={}, choices_count={}", paragraph.id, choices.len());
+                    current_choices.set(choices.clone());
+                    // Check if each option's target paragraph has translation in current language
+                    let mut enabled = Vec::new();
+                    if let Ok(_paragraph_data_read) = paragraph_data.try_read() {
+                        // Use already randomly selected choices for checking
+                        for choice in &choices {
+                            let target_id = &choice.action.to;
+                            if !target_id.is_empty() {
+                                if let Some(target_paragraph) = _paragraph_data_read.iter().find(|p| p.id == *target_id) {
+                                    if target_paragraph.texts.iter().any(|t| t.lang == state().current_language) {
+                                        enabled.push(target_id.clone());
+                                    }
                                 }
                             }
                         }
                     }
+                    enabled_choices.set(enabled);
                 }
-                enabled_choices.set(enabled);
             }
         });
     }
