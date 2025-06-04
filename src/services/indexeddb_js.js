@@ -126,8 +126,6 @@ export function setChoiceToIndexedDB(chapterId, paragraphId) {
             if (!arr.includes(paragraphId)) {
                 arr.push(paragraphId);
             }
-            // 直接用 console.debug 輸出
-            console.debug(`setChoiceToIndexedDB: chapterId=${chapterId}, arr=${JSON.stringify(arr)}`);
             const putReq = store.put(arr, chapterId);
             putReq.onsuccess = function () { };
             putReq.onerror = function (e) { };
@@ -437,8 +435,27 @@ export function setChoicesToIndexedDB(chapterId, idsArray) {
         const db = event.target.result;
         const tx = db.transaction('choices', 'readwrite');
         const store = tx.objectStore('choices');
-        // 直接寫入完整陣列
-        store.put(idsArray, chapterId);
+        // 先讀出原本的陣列
+        const getReq = store.get(chapterId);
+        getReq.onsuccess = function () {
+            let arr = getReq.result;
+            if (!Array.isArray(arr)) arr = [];
+            // append 傳入的 idsArray，且不重複
+            idsArray.forEach(id => {
+                if (!arr.includes(id)) {
+                    arr.push(id);
+                }
+            });
+            const putReq = store.put(arr, chapterId);
+            putReq.onsuccess = function () { };
+            putReq.onerror = function (e) { };
+        };
+        getReq.onerror = function (e) {
+            // 若讀取失敗直接存新陣列
+            const putReq = store.put(idsArray, chapterId);
+            putReq.onsuccess = function () { };
+            putReq.onerror = function (e) { };
+        };
         tx.oncomplete = function () {
             db.close();
         };

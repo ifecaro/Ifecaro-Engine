@@ -21,7 +21,6 @@ use std::cell::RefCell;
 use crate::contexts::story_merged_context::{use_story_merged_context, provide_story_merged_context};
 use js_sys;
 use futures_util::future::join_all;
-use tracing::debug;
 
 #[derive(Deserialize, Clone, Debug)]
 #[allow(dead_code)]
@@ -383,10 +382,8 @@ pub fn Story(props: StoryProps) -> Element {
             let paragraph = expanded_vec.last();
             if let Some(paragraph) = paragraph {
                 current_paragraph.set(Some(paragraph.clone()));
-                debug!(target: "story", "Set current_paragraph: id={}", paragraph.id);
                 if let Some(text) = paragraph.texts.iter().find(|t| t.lang == state().current_language) {
                     current_text.set(Some(text.clone()));
-                    debug!(target: "story", "Set current_text: lang={}, paragraph_id={}", state().current_language, paragraph.id);
                     let choices: Vec<Choice> = paragraph.choices.iter().enumerate().map(|(index, c)| {
                         let choice: StoryChoice = StoryChoice::Complex(c.clone());
                         let mut choice_obj: Choice = choice.into();
@@ -395,7 +392,6 @@ pub fn Story(props: StoryProps) -> Element {
                                 choice_obj.caption = caption.clone();
                             }
                         }
-                        debug!(target: "story", "Build choice: paragraph_id={}, index={}, caption={}", paragraph.id, index, choice_obj.caption);
                         // Check if there are multiple targets, if so perform random selection
                         if c.to.len() > 1 {
                             // Randomly select one target from multi-target paragraph
@@ -422,7 +418,6 @@ pub fn Story(props: StoryProps) -> Element {
                         }
                         choice_obj
                     }).collect();
-                    debug!(target: "story", "Set current_choices: paragraph_id={}, choices_count={}", paragraph.id, choices.len());
                     current_choices.set(choices.clone());
                     // Check if each option's target paragraph has translation in current language
                     let mut enabled = Vec::new();
@@ -588,6 +583,35 @@ pub fn Story(props: StoryProps) -> Element {
                                                 }
                                             }
                                             _expanded_paragraphs.set(path.clone());
+                                            // 新增：讀者模式自動寫入 indexedDB（先比對再寫入）
+                                            if reader_mode {
+                                                if let Some(first) = path.first() {
+                                                    let chapter_id = &first.chapter_id;
+                                                    let ids: Vec<String> = path.iter().map(|p| p.id.clone()).collect();
+                                                    let js_array = js_sys::Array::new();
+                                                    for id in &ids {
+                                                        js_array.push(&JsValue::from_str(id));
+                                                    }
+                                                    // 先讀取 indexedDB，只有不同才寫入
+                                                    let ids_clone = ids.clone();
+                                                    let chapter_id_clone = chapter_id.clone();
+                                                    wasm_bindgen_futures::spawn_local(async move {
+                                                        let (tx, rx) = futures_channel::oneshot::channel();
+                                                        let cb = Closure::once(Box::new(move |js_value: JsValue| {
+                                                            let arr = js_sys::Array::from(&js_value);
+                                                            let result: Vec<String> = arr.iter().filter_map(|v| v.as_string()).collect();
+                                                            let _ = tx.send(result);
+                                                        }) as Box<dyn FnOnce(JsValue)>);
+                                                        get_choice_from_indexeddb(&chapter_id_clone, cb.as_ref().unchecked_ref());
+                                                        cb.forget();
+                                                        if let Ok(existing) = rx.await {
+                                                            if existing != ids_clone {
+                                                                crate::services::indexeddb::set_choices_to_indexeddb(&chapter_id_clone, &js_array);
+                                                            }
+                                                        }
+                                                    });
+                                                }
+                                            }
                                             let mut story_context = story_context.clone();
                                             story_context.write().target_paragraph_id = None;
                                         });
@@ -637,7 +661,6 @@ pub fn Story(props: StoryProps) -> Element {
                         all_ids.extend(ids);
                     }
                 }
-                debug!(target: "story", "[choice_ids init] all_ids={:?}", all_ids);
                 let current_ids = story_context.read().choice_ids.read().clone();
                 if current_ids != all_ids {
                     story_context.write().choice_ids.set(all_ids);
@@ -661,7 +684,6 @@ pub fn Story(props: StoryProps) -> Element {
                 let paragraph_data_vec = paragraph_data_vec.clone();
                 let ctx = story_context.read();
                 let choice_ids_vec = ctx.choice_ids.read().clone();
-                debug!(target: "story", "[auto expand] choice_ids_vec={:?}", choice_ids_vec);
                 if !choice_ids_vec.is_empty() {
                     wasm_bindgen_futures::spawn_local(async move {
                         let mut expanded = Vec::new();
@@ -672,7 +694,6 @@ pub fn Story(props: StoryProps) -> Element {
                                 }
                             }
                         }
-                        debug!(target: "story", "[auto expand] expanded_paragraphs={:?}", expanded.iter().map(|p| p.id.clone()).collect::<Vec<_>>());
                         if !expanded.is_empty() && expanded_paragraphs.read().as_slice() != expanded.as_slice() {
                             expanded_paragraphs.set(expanded.clone());
                             initialized.set(true);
@@ -715,7 +736,6 @@ pub fn Story(props: StoryProps) -> Element {
                                 js_array.push(&JsValue::from_str(id));
                             }
                             crate::services::indexeddb::set_choices_to_indexeddb(&last.chapter_id, &js_array);
-                            set_choice_to_indexeddb(&last.chapter_id, &goto); // 保持最後一個也寫入
                             let mut story_context = story_context.clone();
                             story_context.write().choice_ids.set(vec![goto.clone()]);
                         }
@@ -874,7 +894,6 @@ pub fn Story(props: StoryProps) -> Element {
         let last_paragraph_id = last_paragraph_id.clone();
         let expanded = expanded.read();
         if let Some(paragraph) = expanded.last() {
-            debug!(target: "story", "[main effect] expanded.last.id={}", paragraph.id);
             let is_settings_chapter = paragraph.chapter_id == "settingschapter";
             story_context.write().is_settings_chapter.set(is_settings_chapter);
             if *last_paragraph_id.borrow() != paragraph.id {
