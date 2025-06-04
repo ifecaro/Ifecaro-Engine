@@ -416,8 +416,9 @@ mod reader_mode_integration_tests {
     #[test]
     fn test_choices_append_not_overwrite() {
         // 模擬多次選擇，choices 應該 append 不覆蓋
+        let _chapter_id = "chapter1";
+        let _original_targets = vec!["treasure", "danger"];
         let mut choices: Vec<String> = vec![];
-        let chapter_id = "chapter1";
         let p1 = "p1";
         let p2 = "p2";
         // 第一次選擇
@@ -450,7 +451,7 @@ mod reader_mode_integration_tests {
         let mut random_choices: HashMap<String, String> = HashMap::new();
         let paragraph_id = "cave";
         let choice_index = 0;
-        let original_targets = vec!["treasure", "danger"];
+        let _original_targets = vec!["treasure", "danger"];
         // 模擬隨機選擇 treasure
         let selected = "treasure";
         // 多目標不寫入 choices
@@ -459,5 +460,25 @@ mod reader_mode_integration_tests {
         random_choices.insert(format!("{}:{}", paragraph_id, choice_index), selected.to_string());
         assert!(choices.is_empty());
         assert_eq!(random_choices.get(&format!("{}:{}", paragraph_id, choice_index)), Some(&"treasure".to_string()));
+    }
+
+    #[test]
+    fn test_game_mode_choices_append_full_path() {
+        // 模擬遊戲模式下多次選擇，choices 應該依序 append 完整路徑
+        let mut choices: Vec<String> = vec![];
+        let _chapter_id = "chapter1";
+        let path = vec!["start", "cave", "treasure"];
+        for id in &path {
+            if !choices.contains(&id.to_string()) {
+                choices.push(id.to_string());
+            }
+        }
+        // 模擬再次選擇最後一個段落
+        let last = "treasure";
+        if !choices.contains(&last.to_string()) {
+            choices.push(last.to_string());
+        }
+        // 應該只會有 start, cave, treasure
+        assert_eq!(choices, vec!["start", "cave", "treasure"]);
     }
 } 

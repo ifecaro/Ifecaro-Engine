@@ -121,14 +121,14 @@ impl ApiClient for HttpApiClient {
 }
 
 // Mock client for testing
-#[cfg(test)]
+#[allow(dead_code)]
 pub struct MockApiClient {
     pub paragraphs: Vec<Paragraph>,
     pub chapters: Vec<Chapter>,
     pub should_fail: bool,
 }
 
-#[cfg(test)]
+#[allow(dead_code)]
 impl MockApiClient {
     pub fn new() -> Self {
         Self {

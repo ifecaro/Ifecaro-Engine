@@ -1,4 +1,4 @@
-#[cfg(test)]
+#[cfg(not(target_arch = "wasm32"))]
 mod integration_tests {
     use dioxus::prelude::*;
     use dioxus_ssr::render;
