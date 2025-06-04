@@ -311,6 +311,20 @@ fn deploy() -> Result<()> {
     }
     println!("{}", "✅ Test suite passed".green().bold());
 
+    // 1.5. Run wasm-pack test (browser, headless)
+    println!("\n{}", "🦀 Running wasm-pack test (headless, Chrome)...".yellow().bold());
+    let wasm_pack_result = Command::new("wasm-pack")
+        .args(&["test", "--headless", "--chrome"])
+        .stdout(Stdio::inherit())
+        .stderr(Stdio::inherit())
+        .status()
+        .context("Failed to run wasm-pack test")?;
+
+    if !wasm_pack_result.success() {
+        anyhow::bail!("❌ wasm-pack test failed, aborting deployment");
+    }
+    println!("{}", "✅ wasm-pack test passed".green().bold());
+
     // 2. Run Rust build
     println!("\n{}", "🏗️ Running Rust build...".yellow().bold());
     let rust_build = Command::new("cargo")
