@@ -252,7 +252,7 @@ pub fn Story(props: StoryProps) -> Element {
                 let settings = wasm_bindgen_futures::JsFuture::from(js_sys::Promise::new(&mut |resolve, _reject| {
                     let cb = Closure::wrap(Box::new(move |js_value: wasm_bindgen::JsValue| {
                         resolve.call1(&JsValue::NULL, &js_value).unwrap_or_else(|e| {
-                            // Logs cleared
+                            tracing::error!("Failed to resolve JS callback: {:?}", e);
                             e
                         });
                     }) as Box<dyn FnMut(wasm_bindgen::JsValue)>);
@@ -537,7 +537,10 @@ pub fn Story(props: StoryProps) -> Element {
                                             for (pid, idx) in random_choice_targets.iter() {
                                                 let fut = wasm_bindgen_futures::JsFuture::from(js_sys::Promise::new(&mut |resolve, _reject| {
                                                     let cb = Closure::wrap(Box::new(move |js_value: wasm_bindgen::JsValue| {
-                                                        resolve.call1(&JsValue::NULL, &js_value).unwrap_or_else(|e| e);
+                                                        resolve.call1(&JsValue::NULL, &js_value).unwrap_or_else(|e| {
+                                                            tracing::error!("Failed to resolve JS callback: {:?}", e);
+                                                            e
+                                                        });
                                                     }) as Box<dyn FnMut(wasm_bindgen::JsValue)>);
                                                     crate::services::indexeddb::get_random_choice_from_indexeddb(pid, *idx as u32, cb.as_ref().unchecked_ref());
                                                     cb.forget();
@@ -776,7 +779,7 @@ pub fn Story(props: StoryProps) -> Element {
                             let settings = wasm_bindgen_futures::JsFuture::from(js_sys::Promise::new(&mut |resolve, _reject| {
                                 let cb = Closure::wrap(Box::new(move |js_value: wasm_bindgen::JsValue| {
                                     resolve.call1(&JsValue::NULL, &js_value).unwrap_or_else(|e| {
-                                        // Logs cleared
+                                        tracing::error!("Failed to resolve JS callback: {:?}", e);
                                         e
                                     });
                                 }) as Box<dyn FnMut(wasm_bindgen::JsValue)>);
