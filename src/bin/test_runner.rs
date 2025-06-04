@@ -247,6 +247,14 @@ impl TestRunner {
             self.run_test(name, command)?;
         }
 
+        // 新增 wasm-bindgen-test (wasm-pack test --headless --chrome)
+        let wasm_test_cmd = if self.is_internal {
+            "wasm-pack test --headless --chrome"
+        } else {
+            "docker compose exec app wasm-pack test --headless --chrome"
+        };
+        self.run_test("WASM Bindgen Tests (Chrome Headless)", wasm_test_cmd)?;
+
         println!("\n{}", "🎉 Complete test suite passed!".green().bold());
 
         Ok(())

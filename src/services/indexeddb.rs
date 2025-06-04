@@ -28,4 +28,7 @@ extern "C" {
 
     #[wasm_bindgen(js_name = getRandomChoiceFromIndexedDB)]
     pub fn get_random_choice_from_indexeddb(paragraph_id: &str, choice_index: u32, callback: &js_sys::Function);
+
+    #[wasm_bindgen(js_name = setChoicesToIndexedDB)]
+    pub fn set_choices_to_indexeddb(chapter_id: &str, ids_array: &js_sys::Array);
 } 

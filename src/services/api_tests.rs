@@ -1,4 +1,4 @@
-#[cfg(test)]
+#[cfg(not(target_arch = "wasm32"))]
 mod tests {
     use super::super::api::*;
     use crate::contexts::paragraph_context::{Paragraph, Text, ParagraphChoice};

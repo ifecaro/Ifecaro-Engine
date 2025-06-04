@@ -413,4 +413,36 @@ export function getRandomChoiceFromIndexedDB(paragraphId, choiceIndex, callback)
     request.onerror = function (event) {
         callback(null);
     };
+}
+
+// 一次寫入完整 choices 陣列
+export function setChoicesToIndexedDB(chapterId, idsArray) {
+    const request = indexedDB.open('ifecaro', 4);
+    request.onupgradeneeded = function (event) {
+        const db = event.target.result;
+        if (!db.objectStoreNames.contains('settings')) {
+            db.createObjectStore('settings');
+        }
+        if (!db.objectStoreNames.contains('choices')) {
+            db.createObjectStore('choices');
+        }
+        if (!db.objectStoreNames.contains('disabled_choices')) {
+            db.createObjectStore('disabled_choices');
+        }
+        if (!db.objectStoreNames.contains('random_choices')) {
+            db.createObjectStore('random_choices');
+        }
+    };
+    request.onsuccess = function (event) {
+        const db = event.target.result;
+        const tx = db.transaction('choices', 'readwrite');
+        const store = tx.objectStore('choices');
+        // 直接寫入完整陣列
+        store.put(idsArray, chapterId);
+        tx.oncomplete = function () {
+            db.close();
+        };
+        tx.onerror = function (e) { db.close(); };
+    };
+    request.onerror = function (event) { };
 } 
