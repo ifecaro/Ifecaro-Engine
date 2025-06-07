@@ -1,0 +1,7 @@
+Fix: prevent panic on JS callback unwrap in story.rs
+
+- Replace all unwrap() on JS callback resolve with unwrap_or_else and tracing::error! for error logging
+- Avoid panic and ValueDroppedError when async callback fails
+- Ensure all async callback errors are logged, not panicked
+
+Related to async/future safety in Dioxus WASM context

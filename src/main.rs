@@ -1,3 +1,8 @@
+#[cfg(target_arch = "wasm32")]
+use console_error_panic_hook;
+#[cfg(target_arch = "wasm32")]
+use tracing_wasm;
+
 mod components;
 mod enums;
 mod i18n;
@@ -21,6 +26,12 @@ use crate::{
 };
 
 fn main() {
+    #[cfg(target_arch = "wasm32")]
+    {
+        web_sys::console::log_1(&"WASM main() started".into());
+        console_error_panic_hook::set_once();
+        tracing_wasm::set_as_global_default();
+    }
     launch(App);
 }
 

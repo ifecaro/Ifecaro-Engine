@@ -258,6 +258,21 @@ fn test(mode: Option<TestMode>) -> Result<()> {
         anyhow::bail!("❌ Test suite failed");
     }
 
+    // 新增：自動執行 wasm-pack test
+    println!("\n{}", "🦀 Running wasm-pack test (headless, Chrome)...".yellow().bold());
+    let wasm_pack_result = Command::new("wasm-pack")
+        .args(&["test", "--headless", "--chrome"])
+        .stdout(Stdio::inherit())
+        .stderr(Stdio::inherit())
+        .status()
+        .context("Failed to run wasm-pack test")?;
+
+    if wasm_pack_result.success() {
+        println!("{}", "✅ wasm-pack test passed".green().bold());
+    } else {
+        anyhow::bail!("❌ wasm-pack test failed");
+    }
+
     Ok(())
 }
 
