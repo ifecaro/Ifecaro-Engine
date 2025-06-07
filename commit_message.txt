@@ -5,3 +5,9 @@ Fix: prevent panic on JS callback unwrap in story.rs
 - Ensure all async callback errors are logged, not panicked
 
 Related to async/future safety in Dioxus WASM context
+
+feat: Refactor settings menu button
+
+- Change settings menu button from an SVG icon to a text-based button.
+- Apply consistent styling to the settings button to match other navbar elements.
+- Implement an open/close transition animation for the settings dropdown menu.
