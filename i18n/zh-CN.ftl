@@ -54,4 +54,4 @@ none = 无
 setting = 设置
 this_field_is_required = 此字段为必填项目
 please_fill_in_this_field = 请填写此字段
-reader_mode = 阅读模式 
+reader_mode = 读者模式 

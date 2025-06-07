@@ -54,6 +54,6 @@ none = 無
 setting = 設定
 this_field_is_required = 此欄位為必填項目
 please_fill_in_this_field = 請填寫此欄位
-reader_mode = 閱讀模式
+reader_mode = 讀者模式
 clear_choices = 清除選項
 search_settings = 搜尋設定... 

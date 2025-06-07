@@ -77,51 +77,42 @@ pub fn Navbar(closure_signal: Signal<Option<Closure<dyn FnMut(Event)>>>) -> Elem
                         class: "flex-1 sm:flex-none text-center text-xs text-gray-700 dark:text-white hover:text-gray-900 dark:hover:text-gray-300 transition-colors duration-200 py-2",
                         "{t!(\"dashboard\")}" 
                     }
-                    div {
-                        class: "flex items-center space-x-2",
-                    div {
-                        class: "flex-1 sm:flex-none relative language-dropdown text-center",
-                        Dropdown {
-                            label: String::new(),
-                            value: current_language,
-                            options: filtered_languages.read().clone(),
-                            is_open: *is_open.read(),
-                            search_query: search_query.read().to_string(),
-                            on_toggle: move |_| {
-                                let current = *is_open.read();
-                                is_open.set(!current);
-                            },
-                            on_search: move |query| search_query.set(query),
-                            on_select: move |lang: &Language| {
-                                let lang_code = lang.code.to_string();
-                                state.write().set_language(&lang_code);
-                                match route {
-                                    Route::Story { .. } => {
-                                        let _ = navigator.push(Route::Story { lang: lang_code.clone() });
-                                    }
-                                    Route::Dashboard { .. } => {
-                                        let _ = navigator.push(Route::Dashboard { lang: lang_code.clone() });
-                                    }
-                                    _ => {}
-                                };
-                                is_open.set(false);
-                                search_query.set(String::new());
-                            },
-                            display_fn: display_language,
-                            class: String::new(),
-                            search_placeholder: t!("search_language"),
-                            button_class: String::from("flex-1 sm:flex-none text-center text-xs text-gray-700 dark:text-white hover:text-gray-900 dark:hover:text-gray-300 transition-colors duration-200 py-2 cursor-pointer"),
-                            show_arrow: false,
-                            label_class: String::new(),
-                            dropdown_width: Some("min-w-max".to_string()),
-                            dropdown_position: Some("right-0".to_string()),
-                        }
-                        }
-                        div {
-                            class: "flex-1 sm:flex-none text-center",
-                            Settings {}
-                        }
+                    Dropdown {
+                        label: String::new(),
+                        value: current_language,
+                        options: filtered_languages.read().clone(),
+                        is_open: *is_open.read(),
+                        search_query: search_query.read().to_string(),
+                        on_toggle: move |_| {
+                            let current = *is_open.read();
+                            is_open.set(!current);
+                        },
+                        on_search: move |query| search_query.set(query),
+                        on_select: move |lang: &Language| {
+                            let lang_code = lang.code.to_string();
+                            state.write().set_language(&lang_code);
+                            match route {
+                                Route::Story { .. } => {
+                                    let _ = navigator.push(Route::Story { lang: lang_code.clone() });
+                                }
+                                Route::Dashboard { .. } => {
+                                    let _ = navigator.push(Route::Dashboard { lang: lang_code.clone() });
+                                }
+                                _ => {}
+                            };
+                            is_open.set(false);
+                            search_query.set(String::new());
+                        },
+                        display_fn: display_language,
+                        class: String::new(),
+                        search_placeholder: t!("search_language"),
+                        button_class: String::from("flex-1 sm:flex-none text-center text-xs text-gray-700 dark:text-white hover:text-gray-900 dark:hover:text-gray-300 transition-colors duration-200 py-2 cursor-pointer"),
+                        show_arrow: false,
+                        label_class: String::new(),
+                        dropdown_width: Some("min-w-max".to_string()),
+                        dropdown_position: Some("right-0".to_string()),
                     }
+                    Settings {}
                 }
             }
         }

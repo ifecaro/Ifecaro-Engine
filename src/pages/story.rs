@@ -862,21 +862,6 @@ pub fn Story(props: StoryProps) -> Element {
         }
     };
 
-    let toggle_reader_mode = {
-        let settings_context = settings_context.clone();
-        move |_event: MouseEvent| {
-            let mut settings_context = settings_context.clone();
-            let new_reader_mode = !settings_context.read().settings.get("reader_mode").map(|v| v == "true").unwrap_or(false);
-            settings_context.write().settings.insert("reader_mode".to_string(), new_reader_mode.to_string());
-            #[cfg(target_arch = "wasm32")]
-            {
-                web_sys::console::log_1(&format!("Before updating reader_mode in indexedDB: {}", new_reader_mode).into());
-                set_setting_to_indexeddb("reader_mode", &new_reader_mode.to_string());
-                web_sys::console::log_1(&format!("After updating reader_mode to {} in indexedDB.", new_reader_mode).into());
-            }
-        }
-    };
-    
     // Merge paragraph content into merged context
     {
         let expanded = _expanded_paragraphs.clone();
@@ -999,7 +984,7 @@ pub fn Story(props: StoryProps) -> Element {
             choices: current_choices.read().clone(),
             enabled_choices: enabled_choices.read().clone(),
             on_choice_click: on_choice_click.clone(),
-            on_toggle_reader_mode: toggle_reader_mode,
+            on_toggle_reader_mode: EventHandler::new(|_| {}), // Empty handler since we moved it to navbar
             countdowns: countdowns.clone(),
             max_times: max_times.clone(),
             progress_started: progress_started.clone(),
