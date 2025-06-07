@@ -52,14 +52,16 @@ pub fn Settings() -> Element {
                         div {
                             class: "border-t border-gray-200 dark:border-gray-700 my-1",
                         }
-                        button {
-                            class: "w-full px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 flex items-center justify-between",
-                            onclick: move |_| {
-                                clear_choices_and_random_choices();
-                                toast.write().show("Choices cleared successfully.".to_string(), ToastType::Success, 5000);
-                                is_open.set(false);
-                            },
-                            span { {t!("clear_all_story_choices")} }
+                        if cfg!(debug_assertions) {
+                            button {
+                                class: "w-full px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 flex items-center justify-between",
+                                onclick: move |_| {
+                                    clear_choices_and_random_choices();
+                                    toast.write().show("Choices cleared successfully.".to_string(), ToastType::Success, 5000);
+                                    is_open.set(false);
+                                },
+                                span { {t!("clear_all_story_choices")} }
+                            }
                         }
                     }
                 }
