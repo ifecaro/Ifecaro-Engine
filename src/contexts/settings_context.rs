@@ -5,6 +5,7 @@ use std::collections::HashMap;
 pub struct SettingsContext {
     pub settings: HashMap<String, String>,
     pub loaded: bool,
+    pub settings_done: Signal<bool>,
 }
 
 pub fn use_settings_context() -> Signal<SettingsContext> {

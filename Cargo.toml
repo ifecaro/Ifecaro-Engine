@@ -66,6 +66,7 @@ tracing = { version = "0.1.40", features = [
     "max_level_debug",
     "release_max_level_info",
 ] }
+tracing-subscriber = "0.3"
 dioxus-logger = { git = "https://github.com/DogeDark/dioxus-logger.git" }
 dioxus-core = "0.6.3"
 gloo-timers = { version = "0.3", features = ["futures"] }
@@ -76,6 +77,8 @@ clap = { version = "4.0", features = ["derive"] }
 anyhow = "1.0"
 colored = "2.0"
 chrono = { version = "0.4", features = ["serde"] }
+console_error_panic_hook = "0.1"
+tracing-wasm = "0.2"
 
 [profile]
 
@@ -106,6 +109,7 @@ codegen-units = 1
 [dev-dependencies]
 dioxus-ssr = "0.6.2"
 pretty_assertions = "1.4.1"
+wasm-bindgen-test = "0.3"
 
 [target.'cfg(not(target_arch = "wasm32"))'.dev-dependencies]
 tokio = { version = "1.0", features = ["macros", "rt-multi-thread"] }

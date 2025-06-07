@@ -21,6 +21,7 @@ pub struct StoryContentProps {
     pub paragraph: Signal<String>,
     pub choices: Vec<Choice>,
     pub on_choice_click: EventHandler<(String, usize)>,
+    pub on_toggle_reader_mode: EventHandler<MouseEvent>,
     pub enabled_choices: Vec<String>,
     pub countdowns: Signal<Vec<u32>>,
     pub max_times: Signal<Vec<u32>>,
@@ -148,6 +149,7 @@ pub fn StoryContent(props: StoryContentProps) -> Element {
     let choices = Arc::new(props.choices.clone());
     let enabled_choices = Arc::new(props.enabled_choices.clone());
     let on_choice_click = props.on_choice_click.clone();
+    let on_toggle_reader_mode = props.on_toggle_reader_mode.clone();
     let mut keyboard_state = use_context::<Signal<KeyboardState>>();
     let story_ctx = use_story_context();
     let settings_ctx = use_settings_context();
@@ -406,6 +408,16 @@ pub fn StoryContent(props: StoryContentProps) -> Element {
                 }
             },
             onblur: move |_| {
+                // 只有在不是點擊讀者模式按鈕時才顯示遮罩
+                if let Some((_, document)) = get_window_document() {
+                    if let Some(active_element) = document.active_element() {
+                        if let Ok(Some(button)) = document.query_selector(".reader-mode-button") {
+                            if active_element == button {
+                                return;
+                            }
+                        }
+                    }
+                }
                 // Safely set signal to avoid ValueDroppedError
                 if let Ok(mut guard) = show_filter.try_write() {
                     *guard = true;
@@ -453,9 +465,28 @@ pub fn StoryContent(props: StoryContentProps) -> Element {
                 div {
                     class: "w-full flex items-center justify-center min-h-[calc(100vh_-_56px)]",
                     div {
-                        class: "text-3xl md:text-4xl text-gray-900 dark:text-white text-center w-full select-none flex items-center justify-center",
+                        class: "relative text-3xl md:text-4xl text-gray-900 dark:text-white text-center w-full select-none flex items-center justify-center",
                         style: "letter-spacing: 0.1em;",
-                        {props.chapter_title.clone()}
+                        {props.chapter_title.clone()},
+                        div {
+                            class: "absolute right-0",
+                            button {
+                                class: "text-sm p-2 rounded reader-mode-button",
+                                onmousedown: move |evt| {
+                                    evt.prevent_default();
+                                },
+                                onclick: move |evt| {
+                                    tracing::info!("Reader mode button clicked");
+                                    evt.stop_propagation();
+                                    on_toggle_reader_mode.call(evt);
+                                },
+                                if props.reader_mode {
+                                    "Exit Reader Mode"
+                                } else {
+                                    "Enter Reader Mode"
+                                }
+                            }
+                        }
                     }
                 }
             }
