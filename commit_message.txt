@@ -11,3 +11,11 @@ feat: Refactor settings menu button
 - Change settings menu button from an SVG icon to a text-based button.
 - Apply consistent styling to the settings button to match other navbar elements.
 - Implement an open/close transition animation for the settings dropdown menu.
+
+Fix compilation warning and update UI elements
+
+- Resolve unused import warning in settings.rs by adding conditional compilation
+- Update navbar styles with enum-based class management
+- Add reader mode toggle with on/off status display
+- Update translations for multiple languages
+- Adjust tailwind.css with updated spacing and hover effects

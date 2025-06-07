@@ -57,3 +57,5 @@ please_fill_in_this_field = Please fill in this field
 reader_mode = Reader Mode
 clear_choices = Clear Choices
 search_settings = Search settings... 
+on = On
+off = Off 

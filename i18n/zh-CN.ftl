@@ -55,3 +55,7 @@ setting = 设置
 this_field_is_required = 此字段为必填项目
 please_fill_in_this_field = 请填写此字段
 reader_mode = 读者模式 
+clear_choices = 清除选项
+search_settings = 搜索设置...
+on = 开启
+off = 关闭 

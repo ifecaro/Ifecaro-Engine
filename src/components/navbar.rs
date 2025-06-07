@@ -1,5 +1,6 @@
 use dioxus::prelude::*;
 use crate::enums::route::Route;
+use crate::enums::style::NavbarStyle;
 use dioxus_i18n::t;
 use wasm_bindgen::{closure::Closure, JsCast};
 use web_sys::Event;
@@ -69,12 +70,12 @@ pub fn Navbar(closure_signal: Signal<Option<Closure<dyn FnMut(Event)>>>) -> Elem
                     class: "flex items-center justify-between sm:justify-end space-x-0 sm:space-x-6 w-full",
                     Link { 
                         to: Route::Story { lang: current_lang.clone() },
-                        class: "flex-1 sm:flex-none text-center text-xs text-gray-700 dark:text-white hover:text-gray-900 dark:hover:text-gray-300 transition-colors duration-200 py-2",
+                        class: NavbarStyle::Link.class(),
                         "{t!(\"story\")}" 
                     }
                     Link { 
                         to: Route::Dashboard { lang: current_lang.clone() },
-                        class: "flex-1 sm:flex-none text-center text-xs text-gray-700 dark:text-white hover:text-gray-900 dark:hover:text-gray-300 transition-colors duration-200 py-2",
+                        class: NavbarStyle::Link.class(),
                         "{t!(\"dashboard\")}" 
                     }
                     Dropdown {
@@ -106,11 +107,13 @@ pub fn Navbar(closure_signal: Signal<Option<Closure<dyn FnMut(Event)>>>) -> Elem
                         display_fn: display_language,
                         class: String::new(),
                         search_placeholder: t!("search_language"),
-                        button_class: String::from("flex-1 sm:flex-none text-center text-xs text-gray-700 dark:text-white hover:text-gray-900 dark:hover:text-gray-300 transition-colors duration-200 py-2 cursor-pointer"),
+                        button_class: Some(NavbarStyle::Dropdown.class().to_string()),
                         show_arrow: false,
                         label_class: String::new(),
                         dropdown_width: Some("min-w-max".to_string()),
                         dropdown_position: Some("right-0".to_string()),
+                        show_search: true,
+                        option_class: NavbarStyle::DropdownOption.class().to_string(),
                     }
                     Settings {}
                 }

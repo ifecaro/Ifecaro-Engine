@@ -57,3 +57,5 @@ please_fill_in_this_field = 請填寫此欄位
 reader_mode = 讀者模式
 clear_choices = 清除選項
 search_settings = 搜尋設定... 
+on = 開啟
+off = 關閉 
