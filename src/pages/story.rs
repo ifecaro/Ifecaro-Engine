@@ -999,7 +999,7 @@ pub fn Story(props: StoryProps) -> Element {
             choices: current_choices.read().clone(),
             enabled_choices: enabled_choices.read().clone(),
             on_choice_click: on_choice_click.clone(),
-            on_toggle_reader_mode: toggle_reader_mode,
+            on_toggle_reader_mode: EventHandler::new(|_| {}), // Empty handler since we moved it to navbar
             countdowns: countdowns.clone(),
             max_times: max_times.clone(),
             progress_started: progress_started.clone(),

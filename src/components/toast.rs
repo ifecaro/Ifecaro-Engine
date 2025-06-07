@@ -37,7 +37,7 @@ pub fn ToastContainer() -> Element {
 
     rsx! {
         div {
-            class: "fixed bottom-4 right-4 flex flex-col space-y-2",
+            class: "fixed bottom-4 right-4 flex flex-col space-y-2 z-[9999]",
             for toast in toasts.read().iter() {
                 ToastItem {
                     key: "{toast.id}",
@@ -78,7 +78,7 @@ fn ToastItem(props: ToastItemProps) -> Element {
     
     rsx! {
         div {
-            class: "text-white px-6 py-3 rounded shadow-lg z-50 transform transition-transform transition-opacity duration-300 ease-in-out {bg_color}",
+            class: "text-white px-6 py-3 rounded shadow-lg transform transition-transform transition-opacity duration-300 ease-in-out {bg_color}",
             onclick: move |_| props.on_dismiss.call(toast.id),
             "{toast.message}"
         }
