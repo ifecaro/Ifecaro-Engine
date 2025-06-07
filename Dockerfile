@@ -60,8 +60,6 @@ RUN apt-get update && \
         libxinerama1 \
         libc-bin && \
     apt-get clean && rm -rf /var/lib/apt/lists/* && \
-    cargo install wasm-pack && \
-    cargo install dioxus-cli --force && \
     ln -s /usr/lib/x86_64-linux-gnu/libglib-2.0.so.0 /usr/lib/libglib-2.0.so.0 || true
 
 # Download Tailwind CSS Standalone CLI
@@ -79,6 +77,8 @@ COPY public ./public
 
 RUN cargo fetch
 RUN cargo update
+RUN cargo install wasm-pack
+RUN cargo install dioxus-cli
 
 ENV CHROME_BINARY=/usr/bin/chromium
 ENV PATH="/usr/local/cargo/bin:${PATH}"

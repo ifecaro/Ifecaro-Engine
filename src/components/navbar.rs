@@ -117,7 +117,10 @@ pub fn Navbar(closure_signal: Signal<Option<Closure<dyn FnMut(Event)>>>) -> Elem
                             dropdown_position: Some("right-0".to_string()),
                         }
                         }
-                        Settings {}
+                        div {
+                            class: "flex-1 sm:flex-none text-center",
+                            Settings {}
+                        }
                     }
                 }
             }
