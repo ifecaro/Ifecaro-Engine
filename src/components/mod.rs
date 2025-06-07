@@ -9,6 +9,7 @@ pub mod language_selector;
 pub mod paragraph_form;
 pub mod translation_form;
 pub mod chapter_selector;
+pub mod settings;
 
 #[cfg(test)]
 pub mod story_content_tests;

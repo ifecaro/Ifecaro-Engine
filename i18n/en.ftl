@@ -53,4 +53,5 @@ redirecting = Redirecting...
 none = None
 setting = Setting
 this_field_is_required = This field is required
-please_fill_in_this_field = Please fill in this field 
+please_fill_in_this_field = Please fill in this field
+reader_mode = Reader Mode 

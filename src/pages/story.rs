@@ -493,7 +493,7 @@ pub fn Story(props: StoryProps) -> Element {
                                                 if text.choices.is_empty() { break; }
                                                 
                                                 let mut available_choices = Vec::new();
-                                                for (i, c) in text.choices.iter().enumerate() {
+                                                for (i, _c) in text.choices.iter().enumerate() {
                                                     if let Some(complex_choice) = current.choices.get(i) {
                                                         if !complex_choice.to.is_empty() {
                                                             available_choices.push((i, complex_choice.clone()));

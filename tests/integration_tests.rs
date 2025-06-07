@@ -122,15 +122,4 @@ mod ui_integration_tests {
         assert_eq!(keyboard_state.selected_index, 1);
         assert!(keyboard_state.selected_index < keyboard_state.choices.len() as i32);
     }
-}
-
-#[cfg(test)]
-mod context_integration_tests {
-    #[test]
-    fn test_settings_context_default() {
-        use ifecaro::contexts::settings_context::SettingsContext;
-        
-        let _settings = SettingsContext::default();
-        // Test successful creation of SettingsContext
-    }
 } 

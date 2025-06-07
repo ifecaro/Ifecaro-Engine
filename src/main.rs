@@ -22,13 +22,14 @@ use crate::{
         chapter_context::ChapterProvider,
         paragraph_context::ParagraphProvider,
         story_context::provide_story_context,
+        toast_context::provide_toast_context,
     },
+    components::toast::ToastContainer,
 };
 
 fn main() {
     #[cfg(target_arch = "wasm32")]
     {
-        web_sys::console::log_1(&"WASM main() started".into());
         console_error_panic_hook::set_once();
         tracing_wasm::set_as_global_default();
     }
@@ -37,6 +38,7 @@ fn main() {
 
 #[component]
 fn App() -> Element {
+    provide_toast_context();
     provide_context(Signal::new(SettingsContext::default()));
     rsx! {
         LanguageProvider {
@@ -44,6 +46,7 @@ fn App() -> Element {
                 ParagraphProvider {
                     StoryProvider {
                         Router::<Route> {}
+                        ToastContainer {}
                     }
                 }
             }

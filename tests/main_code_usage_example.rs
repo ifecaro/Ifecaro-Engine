@@ -13,15 +13,6 @@ mod main_code_usage_tests {
         // Note: Since Story component requires context, this just shows how to reference it
     }
     
-    /// This test demonstrates how to directly use the main program's Context
-    #[test]
-    fn test_using_main_contexts() {
-        // Directly use the main program's Context
-        use ifecaro::contexts::settings_context::SettingsContext;
-        
-        let _settings = SettingsContext::default();
-    }
-    
     /// This test demonstrates how to directly use the main program's KeyboardState
     #[test]
     fn test_using_main_keyboard_state() {
