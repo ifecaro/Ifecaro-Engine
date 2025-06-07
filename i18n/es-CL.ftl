@@ -54,3 +54,4 @@ none = Ninguno
 setting = Configuración
 this_field_is_required = Este campo es obligatorio
 please_fill_in_this_field = Por favor, rellene este campo 
+reader_mode = Modo Lector 

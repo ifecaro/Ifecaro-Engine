@@ -6,6 +6,7 @@ use web_sys::Event;
 use crate::contexts::language_context::LanguageState;
 use crate::components::dropdown::Dropdown;
 use crate::components::language_selector::{AVAILABLE_LANGUAGES, Language, display_language};
+use crate::components::settings::Settings;
 
 #[component]
 pub fn Navbar(closure_signal: Signal<Option<Closure<dyn FnMut(Event)>>>) -> Element {
@@ -77,6 +78,8 @@ pub fn Navbar(closure_signal: Signal<Option<Closure<dyn FnMut(Event)>>>) -> Elem
                         "{t!(\"dashboard\")}" 
                     }
                     div {
+                        class: "flex items-center space-x-2",
+                    div {
                         class: "flex-1 sm:flex-none relative language-dropdown text-center",
                         Dropdown {
                             label: String::new(),
@@ -113,6 +116,8 @@ pub fn Navbar(closure_signal: Signal<Option<Closure<dyn FnMut(Event)>>>) -> Elem
                             dropdown_width: Some("min-w-max".to_string()),
                             dropdown_position: Some("right-0".to_string()),
                         }
+                        }
+                        Settings {}
                     }
                 }
             }

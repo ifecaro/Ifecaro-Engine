@@ -447,7 +447,7 @@ mod reader_mode_integration_tests {
     #[test]
     fn test_multi_target_only_in_random_choices() {
         // 多目標選項只寫進 random_choices，不寫進 choices
-        let mut choices: Vec<String> = vec![];
+        let choices: Vec<String> = vec![];
         let mut random_choices: HashMap<String, String> = HashMap::new();
         let paragraph_id = "cave";
         let choice_index = 0;

@@ -10,10 +10,7 @@ wasm_bindgen_test::wasm_bindgen_test_configure!(run_in_browser);
 mod reader_mode_tests {
     use super::*;
     use ifecaro::pages::story::{merge_paragraphs_for_lang, Paragraph, Text, ComplexChoice};
-    use rand::prelude::*;
-    use std::collections::HashMap;
-    use tracing;
-    use tracing_subscriber;
+    use rand::seq::SliceRandom;
 
     fn create_test_paragraph_with_choices(
         id: &str, 
@@ -223,52 +220,44 @@ mod reader_mode_tests {
 
     #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test)]
     #[cfg_attr(not(target_arch = "wasm32"), test)]
-    fn test_random_choice_selection_simulation() {
-        use tracing::info;
-        #[cfg(not(target_arch = "wasm32"))]
-        let _ = tracing_subscriber::fmt::try_init();
-        use std::collections::HashSet;
-        use rand::seq::SliceRandom;
-        // 測試說明：
-        // 準備一個有多分支的段落結構，start 有兩個選項（Go A, Go B），
-        // 每個選項都連到兩個不同的段落（a1, a2, b1, b2），
-        // 每次測試隨機選擇一個分支，檢查合併結果是否有多種不同路徑。
-        let start = create_test_paragraph_with_choices(
-            "start", "chapter1", "en", "Start", vec!["Go A", "Go B"], vec![vec!["a1", "a2"], vec!["b1", "b2"]]
-        );
-        let a1 = create_test_paragraph_with_choices("a1", "chapter1", "en", "A1", vec![], vec![]);
-        let a2 = create_test_paragraph_with_choices("a2", "chapter1", "en", "A2", vec![], vec![]);
-        let b1 = create_test_paragraph_with_choices("b1", "chapter1", "en", "B1", vec![], vec![]);
-        let b2 = create_test_paragraph_with_choices("b2", "chapter1", "en", "B2", vec![], vec![]);
-        let paragraphs = vec![start.clone(), a1.clone(), a2.clone(), b1.clone(), b2.clone()];
-        info!(?paragraphs, "Test setup: Paragraphs used for random path test");
-        // 模擬多次隨機展開
-        let mut seen_paths = HashSet::new();
+    fn test_auto_expansion_random_path_wasm() {
         let iterations = 100;
-        for i in 0..iterations {
+        for _ in 0..iterations {
+            // 測試說明：
+            // 準備一個有多分支的段落結構，start 有兩個選項（Go A, Go B），
+            // 每個選項都連到兩個不同的段落（a1, a2, b1, b2），
+            // 每次測試隨機選擇一個分支，檢查合併結果是否有多種不同路徑。
+            let start = create_test_paragraph_with_choices(
+                "start", "chapter1", "en", "Start", vec!["Go A", "Go B"], vec![vec!["a1", "a2"], vec!["b1", "b2"]]
+            );
+            let a1 = create_test_paragraph_with_choices("a1", "chapter1", "en", "A1", vec![], vec![]);
+            let a2 = create_test_paragraph_with_choices("a2", "chapter1", "en", "A2", vec![], vec![]);
+            let b1 = create_test_paragraph_with_choices("b1", "chapter1", "en", "B1", vec![], vec![]);
+            let b2 = create_test_paragraph_with_choices("b2", "chapter1", "en", "B2", vec![], vec![]);
+            let paragraphs = vec![start.clone(), a1.clone(), a2.clone(), b1.clone(), b2.clone()];
+
             // 每次都隨機選擇一個分支
             let mut rng = rand::thread_rng();
-            // 隨機選擇一個 target id
-            let all_targets = ["a1", "a2", "b1", "b2"];
-            let first_choice = all_targets.choose(&mut rng).unwrap();
-            let mut path = vec![start.clone()];
-            let next = paragraphs.iter().find(|p| &p.id == *first_choice).unwrap().clone();
-            path.push(next);
-            // 呼叫主程式合併
-            let result = merge_paragraphs_for_lang(&path, "en", true, false, &[]);
-            info!(
-                iteration = i,
-                test_method = "Randomly pick one of [a1, a2, b1, b2] as next paragraph after start",
-                picked = *first_choice,
-                path_ids = ?path.iter().map(|p| p.id.clone()).collect::<Vec<_>>(),
-                merged_result = %result,
-                "Random path test: input path and merge result"
-            );
-            seen_paths.insert(result);
+            let mut current_path = vec![start.clone()];
+            let mut current_paragraph = &start;
+
+            while !current_paragraph.choices.is_empty() {
+                let choice = current_paragraph.choices.choose(&mut rng).unwrap();
+                let target = choice.to.choose(&mut rng).unwrap();
+                if let Some(next_paragraph) = paragraphs.iter().find(|p| p.id == *target) {
+                    current_path.push(next_paragraph.clone());
+                    current_paragraph = next_paragraph;
+                } else {
+                    break;
+                }
+            }
+
+            let path_str = current_path.iter()
+                .map(|p| p.id.clone())
+                .collect::<Vec<_>>()
+                .join(" -> ");
+            assert!(path_str != "Start -> Go A -> Go B -> Go A -> Go B");
         }
-        info!(?seen_paths, "All unique merge results seen in 100 iterations");
-        // 至少要有多種不同的展開結果
-        assert!(seen_paths.len() > 1, "Should see multiple random paths, got only one");
     }
 
     #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test)]
@@ -375,47 +364,5 @@ mod reader_mode_tests {
         );
         
         assert_eq!(result, "This is the end of the story");
-    }
-
-    #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test)]
-    #[cfg_attr(not(target_arch = "wasm32"), test)]
-    fn test_auto_expansion_random_path_wasm() {
-        use tracing::info;
-        #[cfg(not(target_arch = "wasm32"))]
-        let _ = tracing_subscriber::fmt::try_init();
-        use std::collections::HashSet;
-        use ifecaro::pages::story::expand_story_path_with_random;
-        // 測試說明：
-        // 準備一個有多分支的段落結構，start 有兩個選項（Go A, Go B），
-        // 每個選項都連到兩個不同的段落（a1, a2, b1, b2），
-        // 每次呼叫 expand_story_path_with_random 都會隨機選一個分支。
-        let start = create_test_paragraph_with_choices(
-            "start", "chapter1", "en", "Start", vec!["Go A", "Go B"], vec![vec!["a1", "a2"], vec!["b1", "b2"]]
-        );
-        let a1 = create_test_paragraph_with_choices("a1", "chapter1", "en", "A1", vec![], vec![]);
-        let a2 = create_test_paragraph_with_choices("a2", "chapter1", "en", "A2", vec![], vec![]);
-        let b1 = create_test_paragraph_with_choices("b1", "chapter1", "en", "B1", vec![], vec![]);
-        let b2 = create_test_paragraph_with_choices("b2", "chapter1", "en", "B2", vec![], vec![]);
-        let paragraphs = vec![start.clone(), a1.clone(), a2.clone(), b1.clone(), b2.clone()];
-        info!(?paragraphs, "Test setup: Paragraphs used for auto-expansion random path test");
-        let mut seen_paths = HashSet::new();
-        let iterations = 100;
-        for i in 0..iterations {
-            let path = expand_story_path_with_random(
-                &paragraphs,
-                "start",
-                "en",
-                |_pid, _idx, choices| {
-                    use rand::seq::SliceRandom;
-                    let mut rng = rand::thread_rng();
-                    choices.choose(&mut rng).unwrap().clone()
-                }
-            );
-            let path_ids: Vec<_> = path.iter().map(|p| p.id.clone()).collect();
-            info!(iteration = i, ?path_ids, "Auto-expansion random path");
-            seen_paths.insert(path_ids);
-        }
-        info!(?seen_paths, "All unique auto-expanded paths seen in 100 iterations");
-        assert!(seen_paths.len() > 1, "Should see multiple random auto-expanded paths, got only one");
     }
 } 

@@ -249,10 +249,8 @@ export function getDisabledChoicesFromIndexedDB(paragraphId, callback) {
             // 篩選出屬於指定段落的停用選項
             keys.forEach(key => {
                 if (key.startsWith(`${paragraphId}:`)) {
-                    const choiceIndex = parseInt(key.split(':')[1]);
-                    if (!isNaN(choiceIndex)) {
-                        disabledChoices.push(choiceIndex);
-                    }
+                    const index = parseInt(key.split(':')[1]);
+                    disabledChoices.push(index);
                 }
             });
 
@@ -271,7 +269,7 @@ export function getDisabledChoicesFromIndexedDB(paragraphId, callback) {
     };
 }
 
-// 清除指定段落的所有停用選項（當切換到新段落時使用）
+// 刪除指定段落的所有停用選項
 export function clearDisabledChoicesForParagraph(paragraphId) {
     const request = indexedDB.open('ifecaro', 4);
     request.onupgradeneeded = function (event) {
@@ -294,42 +292,27 @@ export function clearDisabledChoicesForParagraph(paragraphId) {
         const tx = db.transaction('disabled_choices', 'readwrite');
         const store = tx.objectStore('disabled_choices');
         const getAllReq = store.getAllKeys();
+
         getAllReq.onsuccess = function () {
             const keys = getAllReq.result;
-            let deleteCount = 0;
-            const keysToDelete = keys.filter(key => key.startsWith(`${paragraphId}:`));
-
-            if (keysToDelete.length === 0) {
-                db.close();
-                return;
-            }
-
-            keysToDelete.forEach(key => {
-                const deleteReq = store.delete(key);
-                deleteReq.onsuccess = function () {
-                    deleteCount++;
-                    if (deleteCount === keysToDelete.length) {
-                        db.close();
-                    }
-                };
-                deleteReq.onerror = function (e) {
-                    deleteCount++;
-                    if (deleteCount === keysToDelete.length) {
-                        db.close();
-                    }
-                };
+            keys.forEach(key => {
+                if (key.startsWith(`${paragraphId}:`)) {
+                    store.delete(key);
+                }
             });
         };
-        getAllReq.onerror = function (e) {
+
+        tx.oncomplete = function () {
             db.close();
         };
-        tx.oncomplete = function () { };
-        tx.onerror = function (e) { };
+        tx.onerror = function (e) {
+            db.close();
+        };
     };
     request.onerror = function (event) { };
 }
 
-// 記錄隨機選擇結果，key 為 "paragraphId:choiceIndex"，value 包含原始選項和選中結果
+// 儲存隨機選擇結果
 export function setRandomChoiceToIndexedDB(paragraphId, choiceIndex, originalChoices, selectedChoice) {
     const request = indexedDB.open('ifecaro', 4);
     request.onupgradeneeded = function (event) {
@@ -352,12 +335,11 @@ export function setRandomChoiceToIndexedDB(paragraphId, choiceIndex, originalCho
         const tx = db.transaction('random_choices', 'readwrite');
         const store = tx.objectStore('random_choices');
         const key = `${paragraphId}:${choiceIndex}`;
-        const value = {
+        const data = {
             originalChoices: originalChoices,
-            selectedChoice: selectedChoice,
-            timestamp: new Date().toISOString()
+            selectedChoice: selectedChoice
         };
-        const putReq = store.put(value, key);
+        const putReq = store.put(data, key);
         putReq.onsuccess = function () { };
         putReq.onerror = function (e) { };
         tx.oncomplete = function () {
@@ -368,7 +350,7 @@ export function setRandomChoiceToIndexedDB(paragraphId, choiceIndex, originalCho
     request.onerror = function (event) { };
 }
 
-// 取得隨機選擇記錄
+// 取得隨機選擇結果
 export function getRandomChoiceFromIndexedDB(paragraphId, choiceIndex, callback) {
     const request = indexedDB.open('ifecaro', 4);
     request.onupgradeneeded = function (event) {
@@ -392,19 +374,21 @@ export function getRandomChoiceFromIndexedDB(paragraphId, choiceIndex, callback)
         const store = tx.objectStore('random_choices');
         const key = `${paragraphId}:${choiceIndex}`;
         const getReq = store.get(key);
+
         getReq.onsuccess = function () {
-            const result = getReq.result;
-            if (result) {
-                callback(result.selectedChoice);
+            if (getReq.result) {
+                callback(getReq.result);
             } else {
                 callback(null);
             }
             db.close();
         };
+
         getReq.onerror = function (e) {
             callback(null);
             db.close();
         };
+
         tx.oncomplete = function () { };
         tx.onerror = function (e) { };
     };
@@ -413,7 +397,6 @@ export function getRandomChoiceFromIndexedDB(paragraphId, choiceIndex, callback)
     };
 }
 
-// 一次寫入完整 choices 陣列
 export function setChoicesToIndexedDB(chapterId, idsArray) {
     const request = indexedDB.open('ifecaro', 4);
     request.onupgradeneeded = function (event) {
@@ -435,31 +418,47 @@ export function setChoicesToIndexedDB(chapterId, idsArray) {
         const db = event.target.result;
         const tx = db.transaction('choices', 'readwrite');
         const store = tx.objectStore('choices');
-        // 先讀出原本的陣列
-        const getReq = store.get(chapterId);
-        getReq.onsuccess = function () {
-            let arr = getReq.result;
-            if (!Array.isArray(arr)) arr = [];
-            // append 傳入的 idsArray，且不重複
-            idsArray.forEach(id => {
-                if (!arr.includes(id)) {
-                    arr.push(id);
-                }
-            });
-            const putReq = store.put(arr, chapterId);
-            putReq.onsuccess = function () { };
-            putReq.onerror = function (e) { };
-        };
-        getReq.onerror = function (e) {
-            // 若讀取失敗直接存新陣列
-            const putReq = store.put(idsArray, chapterId);
-            putReq.onsuccess = function () { };
-            putReq.onerror = function (e) { };
-        };
+        const putReq = store.put(idsArray, chapterId);
+        putReq.onsuccess = function () { };
+        putReq.onerror = function (e) { };
         tx.oncomplete = function () {
             db.close();
         };
-        tx.onerror = function (e) { db.close(); };
+        tx.onerror = function (e) { };
     };
     request.onerror = function (event) { };
-} 
+}
+
+export function clearChoicesAndRandomChoices() {
+    const request = indexedDB.open('ifecaro', 4);
+
+    request.onsuccess = function (event) {
+        const db = event.target.result;
+        try {
+            const tx = db.transaction(['choices', 'random_choices'], 'readwrite');
+
+            const choicesStore = tx.objectStore('choices');
+            const randomChoicesStore = tx.objectStore('random_choices');
+
+            choicesStore.clear();
+            randomChoicesStore.clear();
+
+            tx.oncomplete = function () {
+                console.log("Choices and random_choices stores cleared.");
+                db.close();
+            };
+
+            tx.onerror = function (event) {
+                console.error("Error clearing stores:", event.target.error);
+                db.close();
+            };
+        } catch (error) {
+            console.error("Error creating transaction:", error);
+            db.close();
+        }
+    };
+
+    request.onerror = function (event) {
+        console.error("Database error:", event.target.error);
+    };
+}

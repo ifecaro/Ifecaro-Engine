@@ -149,7 +149,6 @@ pub fn StoryContent(props: StoryContentProps) -> Element {
     let choices = Arc::new(props.choices.clone());
     let enabled_choices = Arc::new(props.enabled_choices.clone());
     let on_choice_click = props.on_choice_click.clone();
-    let on_toggle_reader_mode = props.on_toggle_reader_mode.clone();
     let mut keyboard_state = use_context::<Signal<KeyboardState>>();
     let story_ctx = use_story_context();
     let settings_ctx = use_settings_context();
@@ -468,24 +467,40 @@ pub fn StoryContent(props: StoryContentProps) -> Element {
                         class: "relative text-3xl md:text-4xl text-gray-900 dark:text-white text-center w-full select-none flex items-center justify-center",
                         style: "letter-spacing: 0.1em;",
                         {props.chapter_title.clone()},
-                        div {
-                            class: "absolute right-0",
-                            button {
-                                class: "text-sm p-2 rounded reader-mode-button",
-                                onmousedown: move |evt| {
-                                    evt.prevent_default();
-                                },
-                                onclick: move |evt| {
-                                    tracing::info!("Reader mode button clicked");
-                                    evt.stop_propagation();
-                                    on_toggle_reader_mode.call(evt);
-                                },
-                                if props.reader_mode {
-                                    "Exit Reader Mode"
-                                } else {
-                                    "Enter Reader Mode"
-                                }
-                            }
+                    }
+                }
+            }
+            // Reader Mode Toggle Button
+            button {
+                class: "reader-mode-button fixed top-20 right-4 z-50 p-2 rounded-full bg-white dark:bg-gray-800 shadow-lg hover:bg-gray-100 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500",
+                onclick: move |evt| props.on_toggle_reader_mode.call(evt),
+                title: t!("reader_mode"),
+                if props.reader_mode {
+                    // Book Open Icon
+                    svg {
+                        class: "w-6 h-6 text-gray-700 dark:text-white",
+                        fill: "none",
+                        stroke: "currentColor",
+                        "stroke-width": "2",
+                        "viewBox": "0 0 24 24",
+                        path {
+                            "stroke-linecap": "round",
+                            "stroke-linejoin": "round",
+                            d: "M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"
+                        }
+                    }
+                } else {
+                    // Book Closed Icon
+                    svg {
+                        class: "w-6 h-6 text-gray-700 dark:text-white",
+                        fill: "none",
+                        stroke: "currentColor",
+                        "stroke-width": "2",
+                        "viewBox": "0 0 24 24",
+                        path {
+                            "stroke-linecap": "round",
+                            "stroke-linejoin": "round",
+                            d: "M4 6h16M4 12h16M4 18h16"
                         }
                     }
                 }

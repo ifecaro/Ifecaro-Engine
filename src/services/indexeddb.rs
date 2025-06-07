@@ -31,4 +31,7 @@ extern "C" {
 
     #[wasm_bindgen(js_name = setChoicesToIndexedDB)]
     pub fn set_choices_to_indexeddb(chapter_id: &str, ids_array: &js_sys::Array);
+
+    #[wasm_bindgen(js_name = clearChoicesAndRandomChoices)]
+    pub fn clear_choices_and_random_choices();
 } 
