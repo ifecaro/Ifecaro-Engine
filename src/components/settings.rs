@@ -59,7 +59,7 @@ pub fn Settings() -> Element {
                                 toast.write().show("Choices cleared successfully.".to_string(), ToastType::Success, 5000);
                                 is_open.set(false);
                             },
-                            span { {t!("clear_choices")} }
+                            span { {t!("clear_all_story_choices")} }
                         }
                     }
                 }
