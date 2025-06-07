@@ -57,6 +57,9 @@ pub struct DropdownProps<T: Clone + PartialEq + 'static> {
     /// Dropdown position class (optional)
     #[props(default = None)]
     pub dropdown_position: Option<String>,
+    /// Whether to show search box
+    #[props(default = true)]
+    pub show_search: bool,
 }
 
 #[component]
@@ -145,15 +148,21 @@ pub fn Dropdown<T: Clone + PartialEq + 'static>(props: DropdownProps<T>) -> Elem
                     rsx! {
                         div {
                             class: dropdown_container_class,
-                            div { 
-                                class: "p-2 border-b border-gray-200 dark:border-gray-700",
-                                input {
-                                    class: search_input_class,
-                                    placeholder: props.search_placeholder,
-                                    value: "{search_query}",
-                                    oninput: move |e| props.on_search.call(e.value().clone())
+                            {if props.show_search {
+                                rsx! {
+                                    div { 
+                                        class: "p-2 border-b border-gray-200 dark:border-gray-700",
+                                        input {
+                                            class: search_input_class,
+                                            placeholder: props.search_placeholder,
+                                            value: "{search_query}",
+                                            oninput: move |e| props.on_search.call(e.value().clone())
+                                        }
+                                    }
                                 }
-                            }
+                            } else {
+                                rsx! {}
+                            }}
                             div { 
                                 class: "max-h-[clamp(12rem,calc(100vh_-_16rem),24rem)] overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-600 scrollbar-track-transparent",
                                 {props.options.iter().map(|option| {
