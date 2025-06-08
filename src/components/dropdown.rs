@@ -1,4 +1,5 @@
 use dioxus::prelude::*;
+use crate::enums::style::DROPDOWN_PANEL_CLASS;
 
 #[derive(Props, Clone, PartialEq)]
 pub struct DropdownProps<T: Clone + PartialEq + 'static> {
@@ -82,8 +83,8 @@ pub fn Dropdown<T: Clone + PartialEq + 'static>(props: DropdownProps<T>) -> Elem
     let label_class = props.label_class.clone().unwrap_or_else(|| "block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2".to_string());
     
     let width_class = props.dropdown_width.clone().unwrap_or_else(|| "w-full".to_string());
-    let position_class = props.dropdown_position.clone().unwrap_or_else(|| "left-0".to_string());
-    let dropdown_container_class = format!("absolute {} top-full mt-2 rounded-md shadow-lg bg-white dark:bg-gray-800 ring-1 ring-black ring-opacity-5 transition duration-200 ease-in-out transform origin-top {dropdown_class} z-[1000] will-change-transform will-change-opacity {} {}", position_class, props.dropdown_class, width_class);
+    let position_class = props.dropdown_position.clone().unwrap_or_else(|| "right-0 bottom-full sm:bottom-auto sm:top-full mb-2 sm:mb-0 sm:mt-2".to_string());
+    let dropdown_container_class = format!("{} {} {}", DROPDOWN_PANEL_CLASS, dropdown_class, width_class);
     
     let search_input_class = format!("w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent {}", props.search_input_class);
     

@@ -63,11 +63,11 @@ pub fn Navbar(closure_signal: Signal<Option<Closure<dyn FnMut(Event)>>>) -> Elem
 
     rsx! {
         div { 
-            class: "fixed top-0 left-0 right-0 w-full bg-white dark:bg-gray-900 z-[9999]",
+            class: "fixed bottom-0 sm:top-0 sm:bottom-auto left-0 right-0 w-full bg-white dark:bg-gray-900 z-[9999]",
             div { 
                 class: "container mx-auto px-0 sm:px-6 py-3",
                 div { 
-                    class: "flex items-center justify-between sm:justify-end space-x-0 sm:space-x-6 w-full",
+                    class: "flex items-center sm:justify-end sm:space-x-6 w-full",
                     Link { 
                         to: Route::Story { lang: current_lang.clone() },
                         class: NavbarStyle::Link.class(),
@@ -105,13 +105,13 @@ pub fn Navbar(closure_signal: Signal<Option<Closure<dyn FnMut(Event)>>>) -> Elem
                             search_query.set(String::new());
                         },
                         display_fn: display_language,
-                        class: String::new(),
+                        class: "flex-1 sm:flex-none".to_string(),
                         search_placeholder: t!("search_language"),
                         button_class: Some(NavbarStyle::Dropdown.class().to_string()),
                         show_arrow: false,
                         label_class: String::new(),
                         dropdown_width: Some("min-w-max".to_string()),
-                        dropdown_position: Some("right-0".to_string()),
+                        dropdown_position: None,
                         show_search: true,
                         option_class: NavbarStyle::DropdownOption.class().to_string(),
                     }
