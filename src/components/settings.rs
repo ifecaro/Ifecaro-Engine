@@ -51,7 +51,6 @@ pub fn Settings() -> Element {
                             {
                                 set_setting_to_indexeddb("reader_mode", &new_reader_mode.to_string());
                             }
-                            is_open.set(false);
                         },
                         div {
                             class: "flex items-center justify-between w-full",

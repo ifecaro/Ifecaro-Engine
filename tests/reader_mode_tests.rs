@@ -11,6 +11,10 @@ mod reader_mode_tests {
     use super::*;
     use ifecaro::pages::story::{merge_paragraphs_for_lang, Paragraph, Text, ComplexChoice};
     use rand::seq::SliceRandom;
+    use dioxus::prelude::*;
+    use std::sync::Arc;
+    use std::sync::RwLock;
+    use std::collections::HashMap;
 
     fn create_test_paragraph_with_choices(
         id: &str, 
