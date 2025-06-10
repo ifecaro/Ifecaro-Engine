@@ -4,3 +4,4 @@ pocketbase/hooks
 pocketbase/public
 pocketbase/data
 pocketbase/.env
+.env

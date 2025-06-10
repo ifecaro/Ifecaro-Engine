@@ -311,11 +311,25 @@ docker compose exec app cargo run --bin deploy clean
 Create a `.env` file with deployment configuration:
 
 ```env
-DEPLOY_USER=your-username
-DEPLOY_HOST=your-server-ip
-DEPLOY_PATH=/path/to/deployment
-SSH_KEY_PATH=/root/.ssh
+# Server connection settings
+DEPLOY_USER=your-username        # Your SSH username on the server
+DEPLOY_HOST=your-server-ip       # Server IP address or domain name
+DEPLOY_PATH=/home/your-username/ifecaro  # Deployment directory on server
+SSH_KEY_PATH=/home/your-local-username/.ssh  # Local SSH key directory
+
+# Example:
+# DEPLOY_USER=developer
+# DEPLOY_HOST=192.168.1.100
+# DEPLOY_PATH=/home/developer/ifecaro
+# SSH_KEY_PATH=/home/user/.ssh
 ```
+
+Note: Make sure to:
+1. Replace `your-username` with your actual server username
+2. Replace `your-server-ip` with your server's IP address
+3. Replace `your-local-username` with your local machine username
+4. Ensure the deployment path exists on the server
+5. Verify SSH key permissions (600 for private key, 644 for public key)
 
 ### Deployment Pipeline
 
