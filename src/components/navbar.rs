@@ -63,9 +63,9 @@ pub fn Navbar(closure_signal: Signal<Option<Closure<dyn FnMut(Event)>>>) -> Elem
 
     rsx! {
         div { 
-            class: "fixed bottom-0 sm:top-0 sm:bottom-auto left-0 right-0 w-full bg-white dark:bg-gray-900 z-[9999]",
+            class: "fixed bottom-0 sm:top-0 sm:bottom-auto left-0 right-0 w-full bg-white dark:bg-gray-900 z-[9999] h-14 sm:h-auto",
             div { 
-                class: "container mx-auto px-0 sm:px-6 py-3",
+                class: "container mx-auto px-0 sm:px-6 h-full flex items-center",
                 div { 
                     class: "flex items-center sm:justify-end sm:space-x-6 w-full",
                     Link { 
@@ -105,12 +105,11 @@ pub fn Navbar(closure_signal: Signal<Option<Closure<dyn FnMut(Event)>>>) -> Elem
                             search_query.set(String::new());
                         },
                         display_fn: display_language,
-                        class: "flex-1 sm:flex-none".to_string(),
+                        class: "flex-1 sm:flex-none language-dropdown".to_string(),
                         search_placeholder: t!("search_language"),
                         button_class: Some(NavbarStyle::Dropdown.class().to_string()),
                         show_arrow: false,
                         label_class: String::new(),
-                        dropdown_width: Some("min-w-max".to_string()),
                         dropdown_position: None,
                         show_search: true,
                         option_class: NavbarStyle::DropdownOption.class().to_string(),

@@ -14,5 +14,3 @@ impl NavbarStyle {
         }
     }
 } 
-
-pub const DROPDOWN_PANEL_CLASS: &str = "absolute right-0 bottom-full sm:bottom-auto sm:top-full mb-2 sm:mb-0 sm:mt-2 w-full sm:min-w-max rounded-md shadow-lg bg-white dark:bg-gray-800 ring-1 ring-black ring-opacity-5 z-[1000] transition duration-200 ease-in-out transform will-change-transform will-change-opacity"; 

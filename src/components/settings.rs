@@ -38,7 +38,7 @@ pub fn Settings() -> Element {
                 }
             }
             div {
-                class: format!("absolute right-0 bottom-full sm:bottom-auto sm:top-full mb-2 sm:mb-0 sm:mt-2 w-full sm:min-w-max rounded-md shadow-lg bg-white dark:bg-gray-800 ring-1 ring-black ring-opacity-5 z-[1000] transition duration-200 ease-in-out transform {dropdown_class} will-change-transform will-change-opacity"),
+                class: format!("fixed sm:absolute bottom-14 sm:bottom-auto left-0 right-0 sm:left-auto sm:right-0 sm:top-full mb-0 sm:mt-2 w-full sm:min-w-max rounded-t-lg sm:rounded-md shadow-lg bg-white dark:bg-gray-800 ring-1 ring-black ring-opacity-5 z-[1000] transition duration-200 ease-in-out transform {dropdown_class} will-change-transform will-change-opacity"),
                 div {
                     class: "py-1",
                     button {
