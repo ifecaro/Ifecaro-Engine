@@ -1002,6 +1002,9 @@ pub fn Story(props: StoryProps) -> Element {
         });
     }
     
+    // 在清除故事資料的地方加入
+    crate::services::indexeddb::clear_all_disabled_choices_from_indexeddb();
+    
     rsx! {
         StoryContent {
             paragraph: story_merged_context.read().merged_paragraph.clone(),

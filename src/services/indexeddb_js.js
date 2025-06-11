@@ -435,16 +435,18 @@ export function clearChoicesAndRandomChoices() {
     request.onsuccess = function (event) {
         const db = event.target.result;
         try {
-            const tx = db.transaction(['choices', 'random_choices'], 'readwrite');
+            const tx = db.transaction(['choices', 'random_choices', 'disabled_choices'], 'readwrite');
 
             const choicesStore = tx.objectStore('choices');
             const randomChoicesStore = tx.objectStore('random_choices');
+            const disabledChoicesStore = tx.objectStore('disabled_choices');
 
             choicesStore.clear();
             randomChoicesStore.clear();
+            disabledChoicesStore.clear();
 
             tx.oncomplete = function () {
-                console.log("Choices and random_choices stores cleared.");
+                console.log("Choices, random_choices and disabled_choices stores cleared.");
                 db.close();
             };
 
@@ -462,3 +464,39 @@ export function clearChoicesAndRandomChoices() {
         console.error("Database error:", event.target.error);
     };
 }
+
+// 刪除所有段落的停用選項
+export function clearAllDisabledChoices() {
+    const request = indexedDB.open('ifecaro', 4);
+    request.onupgradeneeded = function (event) {
+        const db = event.target.result;
+        if (!db.objectStoreNames.contains('settings')) {
+            db.createObjectStore('settings');
+        }
+        if (!db.objectStoreNames.contains('choices')) {
+            db.createObjectStore('choices');
+        }
+        if (!db.objectStoreNames.contains('disabled_choices')) {
+            db.createObjectStore('disabled_choices');
+        }
+        if (!db.objectStoreNames.contains('random_choices')) {
+            db.createObjectStore('random_choices');
+        }
+    };
+    request.onsuccess = function (event) {
+        const db = event.target.result;
+        const tx = db.transaction('disabled_choices', 'readwrite');
+        const store = tx.objectStore('disabled_choices');
+        const clearReq = store.clear();
+        clearReq.onsuccess = function () {
+            db.close();
+        };
+        clearReq.onerror = function (e) {
+            db.close();
+        };
+    };
+    request.onerror = function (event) { };
+}
+
+// 確保函數被暴露給 window 物件
+window.clearAllDisabledChoices = clearAllDisabledChoices;

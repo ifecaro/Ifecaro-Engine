@@ -34,4 +34,11 @@ extern "C" {
 
     #[wasm_bindgen(js_name = clearChoicesAndRandomChoices)]
     pub fn clear_choices_and_random_choices();
+
+    #[wasm_bindgen(js_namespace = window)]
+    pub fn clearAllDisabledChoices();
+}
+
+pub fn clear_all_disabled_choices_from_indexeddb() {
+    clearAllDisabledChoices();
 } 
