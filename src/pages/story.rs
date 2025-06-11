@@ -599,8 +599,32 @@ pub fn Story(props: StoryProps) -> Element {
                                                         get_choice_from_indexeddb(&chapter_id_clone, cb.as_ref().unchecked_ref());
                                                         cb.forget();
                                                         if let Ok(existing) = rx.await {
-                                                            if existing != ids_clone {
+                                                            if existing.is_empty() {
                                                                 crate::services::indexeddb::set_choices_to_indexeddb(&chapter_id_clone, &js_array);
+                                                                // 使用新的選擇
+                                                                let mut story_context = story_context.clone();
+                                                                let ids = ids_clone.clone();
+                                                                story_context.write().choice_ids.set(ids.clone());
+                                                                // 展開新的選擇
+                                                                let mut expanded = Vec::new();
+                                                                for id in &ids {
+                                                                    if let Some(p) = paragraph_data.iter().find(|p| p.id == *id) {
+                                                                        expanded.push(p.clone());
+                                                                    }
+                                                                }
+                                                                _expanded_paragraphs.set(expanded);
+                                                            } else {
+                                                                // 使用 IndexedDB 中的選擇
+                                                                let mut story_context = story_context.clone();
+                                                                story_context.write().choice_ids.set(existing.clone());
+                                                                // 展開 IndexedDB 中的選擇
+                                                                let mut expanded = Vec::new();
+                                                                for id in &existing {
+                                                                    if let Some(p) = paragraph_data.iter().find(|p| p.id == *id) {
+                                                                        expanded.push(p.clone());
+                                                                    }
+                                                                }
+                                                                _expanded_paragraphs.set(expanded);
                                                             }
                                                         }
                                                     });
