@@ -18,7 +18,7 @@ pub fn Settings() -> Element {
     let dropdown_class = if *is_open.read() {
         "translate-y-0 opacity-100"
     } else {
-        "-translate-y-2 opacity-0 pointer-events-none"
+        "translate-y-2 opacity-0 pointer-events-none"
     };
     
     let reader_mode_status = if reader_mode { t!("on") } else { t!("off") };

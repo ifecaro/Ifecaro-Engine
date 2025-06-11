@@ -67,7 +67,10 @@ pub fn Dropdown<T: Clone + PartialEq + 'static>(props: DropdownProps<T>) -> Elem
     let dropdown_class = if props.is_open {
         "translate-y-0 opacity-100"
     } else {
-        "-translate-y-2 opacity-0 pointer-events-none"
+        match props.dropdown_position.as_deref() {
+            Some(pos) if pos.contains("bottom") => "translate-y-2 opacity-0 pointer-events-none",
+            _ => "-translate-y-2 opacity-0 pointer-events-none"
+        }
     };
 
     let search_query = props.search_query.clone();

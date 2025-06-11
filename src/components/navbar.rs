@@ -110,7 +110,7 @@ pub fn Navbar(closure_signal: Signal<Option<Closure<dyn FnMut(Event)>>>) -> Elem
                         button_class: Some(NavbarStyle::Dropdown.class().to_string()),
                         show_arrow: false,
                         label_class: String::new(),
-                        dropdown_position: None,
+                        dropdown_position: Some("fixed bottom-14 left-0 right-0 rounded-t-lg sm:absolute sm:bottom-auto sm:right-0 sm:top-full sm:left-auto sm:rounded-md".to_string()),
                         show_search: true,
                         option_class: NavbarStyle::DropdownOption.class().to_string(),
                     }
