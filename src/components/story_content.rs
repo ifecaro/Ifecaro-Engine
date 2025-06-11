@@ -564,7 +564,16 @@ pub fn StoryContent(props: StoryContentProps) -> Element {
                                                         let is_settings_chapter = story_ctx_clone.read().is_settings_chapter();
                                                         if !current_paragraph_id_clone.is_empty() && !is_settings_chapter {
                                                             set_disabled_choice_to_indexeddb(&current_paragraph_id_clone, index as u32);
-                                                        } else if is_settings_chapter {
+                                                        }
+                                                    }
+                                                } else {
+                                                    // 當倒數計時結束時，也要確保停用選項被儲存
+                                                    let mut arr = disabled_by_countdown.write();
+                                                    if !arr.get(index).copied().unwrap_or(false) {
+                                                        arr[index] = true;
+                                                        let is_settings_chapter = story_ctx_clone.read().is_settings_chapter();
+                                                        if !current_paragraph_id_clone.is_empty() && !is_settings_chapter {
+                                                            set_disabled_choice_to_indexeddb(&current_paragraph_id_clone, index as u32);
                                                         }
                                                     }
                                                 }
