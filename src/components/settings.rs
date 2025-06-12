@@ -9,17 +9,32 @@ use crate::contexts::settings_context::use_settings_context;
 use crate::enums::style::NavbarStyle;
 use wasm_bindgen_futures::spawn_local;
 
+#[derive(Props, Clone, PartialEq)]
+pub struct SettingsProps {
+    is_desktop: Signal<bool>,
+}
+
 #[component]
-pub fn Settings() -> Element {
+pub fn Settings(props: SettingsProps) -> Element {
     let mut is_open = use_signal(|| false);
     let mut toast = use_toast();
     let settings_context = use_settings_context();
     let reader_mode = settings_context.read().settings.get("reader_mode").map(|v| v == "true").unwrap_or(false);
 
-    let dropdown_class = if *is_open.read() {
+    let animation_class = if *is_open.read() {
         "translate-y-0 opacity-100"
     } else {
-        "translate-y-2 opacity-0 pointer-events-none"
+        if *props.is_desktop.read() {
+            "-translate-y-2 opacity-0 pointer-events-none"
+        } else {
+            "translate-y-2 opacity-0 pointer-events-none"
+        }
+    };
+
+    let position_class = if *props.is_desktop.read() {
+        "absolute right-0 top-full left-auto bottom-auto rounded-md mt-2"
+    } else {
+        "fixed bottom-14 left-0 right-0 rounded-t-lg"
     };
     
     let reader_mode_status = if reader_mode { t!("on") } else { t!("off") };
@@ -39,7 +54,7 @@ pub fn Settings() -> Element {
                 }
             }
             div {
-                class: format!("fixed sm:absolute bottom-14 sm:bottom-auto left-0 right-0 sm:left-auto sm:right-0 sm:top-full mb-0 sm:mt-2 w-full sm:min-w-max rounded-t-lg sm:rounded-md shadow-lg bg-white dark:bg-gray-800 ring-1 ring-black ring-opacity-5 z-[1000] transition duration-200 ease-in-out transform {dropdown_class} will-change-transform will-change-opacity"),
+                class: format!("{position_class} w-full sm:min-w-max shadow-lg bg-white dark:bg-gray-800 ring-1 ring-black ring-opacity-5 z-[1000] transition duration-200 ease-in-out transform {animation_class} will-change-transform will-change-opacity"),
                 div {
                     class: "py-1",
                     button {

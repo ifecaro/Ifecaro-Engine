@@ -8,6 +8,7 @@ use crate::contexts::language_context::LanguageState;
 use crate::components::dropdown::Dropdown;
 use crate::components::language_selector::{AVAILABLE_LANGUAGES, Language, display_language};
 use crate::components::settings::Settings;
+use web_sys::window;
 
 #[component]
 pub fn Navbar(closure_signal: Signal<Option<Closure<dyn FnMut(Event)>>>) -> Element {
@@ -17,6 +18,37 @@ pub fn Navbar(closure_signal: Signal<Option<Closure<dyn FnMut(Event)>>>) -> Elem
     let current_lang = state.read().current_language.clone();
     let mut is_open = use_signal(|| false);
     let mut search_query = use_signal(|| String::new());
+    let mut is_desktop = use_signal(|| false);
+    let mut resize_closure: Signal<Option<Closure<dyn FnMut(Event)>>> = use_signal(|| None);
+
+    // Check if we are in desktop mode and listen for window resize
+    use_effect(move || {
+        let win = window().unwrap();
+        let width = win.inner_width().unwrap().as_f64().unwrap();
+        let is_desktop_mode = width >= 640.0; // sm breakpoint is 640px
+        is_desktop.set(is_desktop_mode);
+
+        // Create resize event listener
+        let closure = Closure::wrap(Box::new(move |_event: Event| {
+            let win = window().unwrap();
+            let width = win.inner_width().unwrap().as_f64().unwrap();
+            let is_desktop_mode = width >= 640.0;
+            is_desktop.set(is_desktop_mode);
+        }) as Box<dyn FnMut(Event)>);
+
+        win
+            .add_event_listener_with_callback("resize", closure.as_ref().unchecked_ref())
+            .unwrap();
+        
+        resize_closure.set(Some(closure));
+    });
+
+    use_drop(move || {
+        if let Some(closure) = resize_closure.take() {
+            let win = window().unwrap();
+            win.remove_event_listener_with_callback("resize", closure.as_ref().unchecked_ref()).unwrap();
+        }
+    });
 
     let filtered_languages = use_memo(move || {
         let query = search_query.read().to_lowercase();
@@ -53,12 +85,6 @@ pub fn Navbar(closure_signal: Signal<Option<Closure<dyn FnMut(Event)>>>) -> Elem
             .unwrap();
 
         closure_signal.set(Some(closure));
-
-        (move || {
-            if let Some(closure) = closure_signal.read().as_ref() {
-                document.remove_event_listener_with_callback("click", closure.as_ref().unchecked_ref()).unwrap();
-            }
-        })()
     });
 
     rsx! {
@@ -110,11 +136,18 @@ pub fn Navbar(closure_signal: Signal<Option<Closure<dyn FnMut(Event)>>>) -> Elem
                         button_class: Some(NavbarStyle::Dropdown.class().to_string()),
                         show_arrow: false,
                         label_class: String::new(),
-                        dropdown_position: Some("fixed bottom-14 left-0 right-0 rounded-t-lg sm:absolute sm:bottom-auto sm:right-0 sm:top-full sm:left-auto sm:rounded-md".to_string()),
+                        dropdown_position: Some(if *is_desktop.read() {
+                            "absolute right-0 top-full left-auto bottom-auto rounded-md"
+                        } else {
+                            "fixed bottom-14 left-0 right-0 rounded-t-lg"
+                        }.to_string()),
                         show_search: true,
                         option_class: NavbarStyle::DropdownOption.class().to_string(),
+                        is_desktop: *is_desktop.read(),
                     }
-                    Settings {}
+                    Settings {
+                        is_desktop: is_desktop
+                    }
                 }
             }
         }

@@ -60,6 +60,9 @@ pub struct DropdownProps<T: Clone + PartialEq + 'static> {
     /// Whether to show search box
     #[props(default = true)]
     pub show_search: bool,
+    /// Whether in desktop mode
+    #[props(default = false)]
+    pub is_desktop: bool,
 }
 
 #[component]
@@ -67,9 +70,10 @@ pub fn Dropdown<T: Clone + PartialEq + 'static>(props: DropdownProps<T>) -> Elem
     let dropdown_class = if props.is_open {
         "translate-y-0 opacity-100"
     } else {
-        match props.dropdown_position.as_deref() {
-            Some(pos) if pos.contains("bottom") => "translate-y-2 opacity-0 pointer-events-none",
-            _ => "-translate-y-2 opacity-0 pointer-events-none"
+        if props.is_desktop {
+            "-translate-y-2 opacity-0 pointer-events-none"
+        } else {
+            "translate-y-2 opacity-0 pointer-events-none"
         }
     };
 
