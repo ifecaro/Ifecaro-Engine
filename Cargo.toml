@@ -58,6 +58,7 @@ dioxus-i18n = "0.4.2"
 unic-langid = { version = "0.9.4", features = ["unic-langid-macros"] }
 rand = "0.8"
 getrandom = { version = "0.2", features = ["js"] }
+futures = "0.3"
 futures-channel = "0.3"
 futures-util = "0.3"
 

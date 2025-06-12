@@ -242,7 +242,8 @@ pub fn StoryContent(props: StoryContentProps) -> Element {
     let mut show_filter = use_signal(|| true);
     let mut is_focused = use_signal(|| false);
     let mut is_mobile = use_signal(|| false);
-    let is_countdown_paused = use_signal(|| true);
+    let mut is_countdown_paused = use_signal(|| true);
+    let mut has_shown_choices = use_signal(|| false);
     
     let is_mobile_memo = use_memo(move || {
         if let Some((window, _)) = get_window_document() {
@@ -290,70 +291,102 @@ pub fn StoryContent(props: StoryContentProps) -> Element {
     let is_settings_chapter = story_ctx.read().is_settings_chapter();
     
     let has_countdown = use_memo(move || countdowns.read().iter().any(|&c| c > 0));
-    let show_choices = use_signal(|| !*has_countdown.read());
+    let show_choices = use_signal(|| false);
+    let is_countdown_paused = use_signal(|| true);
+    let has_shown_choices = use_signal(|| false);
+    let mut show_filter = show_filter.clone();
+
+    // 初始顯示邏輯
     {
-        let show_choices = show_choices.clone();
-        let mut is_countdown_paused = is_countdown_paused.clone();
+        let mut show_choices = show_choices.clone();
+        let mut has_shown_choices = has_shown_choices.clone();
         let has_countdown = has_countdown.clone();
+        use_effect(move || {
+            if *has_countdown.read() {
+                // 有倒數計時時，預設隱藏選項列表
+                show_choices.set(false);
+                has_shown_choices.set(false);
+            } else {
+                // 沒有倒數計時時，直接顯示選項列表
+                show_choices.set(true);
+                has_shown_choices.set(true);
+            }
+            (|| {})()
+        });
+    }
+
+    // 捲動檢查邏輯
+    {
+        let mut show_choices = show_choices.clone();
+        let mut has_shown_choices = has_shown_choices.clone();
+        let mut is_countdown_paused = is_countdown_paused.clone();
         let show_filter = show_filter.clone();
         use_effect(move || {
-            let mut show_choices = show_choices.clone();
-            if !*has_countdown.read() {
+            let mut check_scroll = move || {
+                if *show_filter.read() {
+                    return;
+                }
+                if let Some((_, _document)) = get_window_document() {
+                    if let Some(document_element) = _document.document_element() {
+                        let scroll_height = document_element.scroll_height();
+                        let client_height = document_element.client_height();
+                        let scroll_top = document_element.scroll_top();
+                        if scroll_height - client_height - scroll_top <= 10 {
+                            show_choices.set(true);
+                            has_shown_choices.set(true);
+                            is_countdown_paused.set(false);
+                        }
+                    }
+                }
+            };
+
+            // 初始檢查
+            check_scroll();
+
+            // 監聽捲動事件
+            let closure = wasm_bindgen::closure::Closure::wrap(Box::new(move || {
+                check_scroll();
+            }) as Box<dyn FnMut()>);
+            if let Some((_, document)) = get_window_document() {
+                if let Some(window) = web_sys::window() {
+                    if let Ok(_) = window.add_event_listener_with_callback("scroll", closure.as_ref().unchecked_ref()) {
+                        closure.forget();
+                    }
+                }
+            }
+            (|| {})()
+        });
+    }
+
+    // 遮罩出現時的邏輯
+    {
+        let mut show_choices = show_choices.clone();
+        let mut is_countdown_paused = is_countdown_paused.clone();
+        let has_shown_choices = has_shown_choices.clone();
+        let show_filter = show_filter.clone();
+        use_effect(move || {
+            if *show_filter.read() {
+                if *has_shown_choices.read() {
+                    show_choices.set(true);
+                }
+                is_countdown_paused.set(true);
+            }
+            (|| {})()
+        });
+    }
+
+    // 遮罩消失時的邏輯
+    {
+        let mut show_choices = show_choices.clone();
+        let mut is_countdown_paused = is_countdown_paused.clone();
+        let has_shown_choices = has_shown_choices.clone();
+        let show_filter = show_filter.clone();
+        use_effect(move || {
+            if !*show_filter.read() && *has_shown_choices.read() {
                 show_choices.set(true);
                 is_countdown_paused.set(false);
-                return;
             }
-            // Countdown must be paused when overlay is still visible
-            if *show_filter.read() {
-                show_choices.set(false);
-                is_countdown_paused.set(true);
-                return;
-            }
-            
-            // Check scroll position initially (via JS)
-            if let Some((window, _)) = get_window_document() {
-                let _ = js_sys::Reflect::get(&window, &JsValue::from_str("checkScrollPosition"))
-                    .and_then(|func| {
-                        if func.is_function() {
-                            let func: js_sys::Function = func.unchecked_into();
-                            func.call0(&window)
-                        } else {
-                            Ok(JsValue::UNDEFINED)
-                        }
-                    });
-            }
-            
-            // Listen for scroll events sent from JS side
-            if let Some((_, document)) = get_window_document() {
-                let mut show_choices_scroll = show_choices.clone();
-                let mut is_countdown_paused_scroll = is_countdown_paused.clone();
-                
-                // Listen for reached bottom event
-                let reached_bottom_handler = wasm_bindgen::closure::Closure::wrap(Box::new(move |_event: web_sys::CustomEvent| {
-                    // Safely set signal to avoid ValueDroppedError
-                    if let Ok(mut guard) = show_choices_scroll.try_write() {
-                        *guard = true;
-                    }
-                    if let Ok(mut guard) = is_countdown_paused_scroll.try_write() {
-                        *guard = false;
-                    }
-                }) as Box<dyn FnMut(web_sys::CustomEvent)>);
-                if let Ok(_) = document.add_event_listener_with_callback("scroll_reached_bottom", reached_bottom_handler.as_ref().unchecked_ref()) {
-                reached_bottom_handler.forget();
-                }
-                
-                // Listen for left bottom event
-                let mut is_countdown_paused_left = is_countdown_paused.clone();
-                let left_bottom_handler = wasm_bindgen::closure::Closure::wrap(Box::new(move |_event: web_sys::CustomEvent| {
-                    // Safely set signal to avoid ValueDroppedError
-                    if let Ok(mut guard) = is_countdown_paused_left.try_write() {
-                        *guard = true;
-                    }
-                }) as Box<dyn FnMut(web_sys::CustomEvent)>);
-                if let Ok(_) = document.add_event_listener_with_callback("scroll_left_bottom", left_bottom_handler.as_ref().unchecked_ref()) {
-                left_bottom_handler.forget();
-                }
-            }
+            (|| {})()
         });
     }
     
@@ -364,7 +397,7 @@ pub fn StoryContent(props: StoryContentProps) -> Element {
         ""
     };
     // New: Control choice container visibility
-    let choices_visible = *show_choices.read();
+    let choices_visible = *show_choices.read() || *show_filter.read();
     let choices_opacity_class = if choices_visible {
         "opacity-100 pointer-events-auto"
     } else {

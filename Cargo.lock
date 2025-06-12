@@ -1495,6 +1495,7 @@ dependencies = [
  "dioxus-logger 0.5.1",
  "dioxus-ssr",
  "dotenv",
+ "futures",
  "futures-channel",
  "futures-util",
  "getrandom 0.2.16",
