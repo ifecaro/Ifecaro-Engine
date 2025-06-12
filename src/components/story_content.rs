@@ -10,8 +10,6 @@ use dioxus_i18n::t;
 use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
 use crate::services::indexeddb::{set_disabled_choice_to_indexeddb, get_disabled_choices_from_indexeddb};
-use wasm_bindgen::closure::Closure;
-use wasm_bindgen::JsValue;
 use wasm_bindgen_futures::spawn_local;
 use crate::contexts::settings_context::use_settings_context;
 use js_sys;
@@ -211,8 +209,7 @@ pub fn StoryContent(props: StoryContentProps) -> Element {
             
             let paragraph_id_for_async = paragraph_id.clone();
             spawn_local(async move {
-                let (tx, rx) = futures_channel::oneshot::channel();
-                let cb = Closure::once(Box::new(move |js_value: JsValue| {
+                if let Ok(js_value) = get_disabled_choices_from_indexeddb(&paragraph_id_for_async).await {
                     let disabled_indices: Vec<usize> = if let Ok(array) = js_value.dyn_into::<js_sys::Array>() {
                         array.iter()
                             .filter_map(|v| v.as_f64().map(|n| n as usize))
@@ -220,13 +217,7 @@ pub fn StoryContent(props: StoryContentProps) -> Element {
                     } else {
                         Vec::new()
                     };
-                    let _ = tx.send(disabled_indices);
-                }) as Box<dyn FnOnce(JsValue)>);
-                
-                get_disabled_choices_from_indexeddb(&paragraph_id_for_async, cb.as_ref().unchecked_ref());
-                cb.forget();
-                
-                if let Ok(disabled_indices) = rx.await {
+
                     let mut current_disabled = disabled_by_countdown.read().clone();
                     for &index in &disabled_indices {
                         if index < current_disabled.len() {
@@ -242,8 +233,8 @@ pub fn StoryContent(props: StoryContentProps) -> Element {
     let mut show_filter = use_signal(|| true);
     let mut is_focused = use_signal(|| false);
     let mut is_mobile = use_signal(|| false);
-    let mut is_countdown_paused = use_signal(|| true);
-    let mut has_shown_choices = use_signal(|| false);
+    let _is_countdown_paused = use_signal(|| true);
+    let _has_shown_choices = use_signal(|| false);
     
     let is_mobile_memo = use_memo(move || {
         if let Some((window, _)) = get_window_document() {
@@ -272,7 +263,7 @@ pub fn StoryContent(props: StoryContentProps) -> Element {
     {
         let show_filter = show_filter.clone();
         use_effect(move || {
-            if let Some((_, document)) = get_window_document() {
+            if let Some((_, _document)) = get_window_document() {
                 let mut show_filter = show_filter.clone();
                 let handler = wasm_bindgen::closure::Closure::wrap(Box::new(move |_event: web_sys::CustomEvent| {
                     // Safely set signal to avoid ValueDroppedError
@@ -280,7 +271,7 @@ pub fn StoryContent(props: StoryContentProps) -> Element {
                         *guard = true;
                     }
                 }) as Box<dyn FnMut(web_sys::CustomEvent)>);
-                if let Ok(_) = document.add_event_listener_with_callback("show_filter", handler.as_ref().unchecked_ref()) {
+                if let Ok(_) = _document.add_event_listener_with_callback("show_filter", handler.as_ref().unchecked_ref()) {
                 handler.forget();
                 }
             }
@@ -589,25 +580,17 @@ pub fn StoryContent(props: StoryContentProps) -> Element {
                                                 animation_name, duration, animation_play_state
                                             ),
                                             onanimationend: move |_| {
-                                                if countdown > 0 {
-                                                    let mut arr = disabled_by_countdown.write();
-                                                    if !arr.get(index).copied().unwrap_or(false) {
-                                                        arr[index] = true;
-                                                        // Save disabled state to IndexedDB (excluding settings chapter)
-                                                        let is_settings_chapter = story_ctx_clone.read().is_settings_chapter();
-                                                        if !current_paragraph_id_clone.is_empty() && !is_settings_chapter {
-                                                            set_disabled_choice_to_indexeddb(&current_paragraph_id_clone, index as u32);
-                                                        }
-                                                    }
-                                                } else {
-                                                    // 當倒數計時結束時，也要確保停用選項被儲存
-                                                    let mut arr = disabled_by_countdown.write();
-                                                    if !arr.get(index).copied().unwrap_or(false) {
-                                                        arr[index] = true;
-                                                        let is_settings_chapter = story_ctx_clone.read().is_settings_chapter();
-                                                        if !current_paragraph_id_clone.is_empty() && !is_settings_chapter {
-                                                            set_disabled_choice_to_indexeddb(&current_paragraph_id_clone, index as u32);
-                                                        }
+                                                let mut arr = disabled_by_countdown.write();
+                                                if !arr.get(index).copied().unwrap_or(false) {
+                                                    arr[index] = true;
+                                                    // Save disabled state to IndexedDB (excluding settings chapter)
+                                                    let is_settings_chapter = story_ctx_clone.read().is_settings_chapter();
+                                                    if !current_paragraph_id_clone.is_empty() && !is_settings_chapter {
+                                                        let current_paragraph_id_clone_for_db = current_paragraph_id_clone.clone();
+                                                        let index_for_db = index;
+                                                        spawn_local(async move {
+                                                            let _ = set_disabled_choice_to_indexeddb(&current_paragraph_id_clone_for_db, index_for_db as u32).await;
+                                                        });
                                                     }
                                                 }
                                             },

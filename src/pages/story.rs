@@ -590,17 +590,12 @@ pub fn Story(props: StoryProps) -> Element {
                                                     let ids_clone = ids.clone();
                                                     let chapter_id_clone = chapter_id.clone();
                                                     wasm_bindgen_futures::spawn_local(async move {
-                                                        let (tx, rx) = futures_channel::oneshot::channel();
-                                                        let cb = Closure::once(Box::new(move |js_value: JsValue| {
+                                                        if let Ok(js_value) = get_choice_from_indexeddb(&chapter_id_clone).await {
                                                             let arr = js_sys::Array::from(&js_value);
-                                                            let result: Vec<String> = arr.iter().filter_map(|v| v.as_string()).collect();
-                                                            let _ = tx.send(result);
-                                                        }) as Box<dyn FnOnce(JsValue)>);
-                                                        get_choice_from_indexeddb(&chapter_id_clone, cb.as_ref().unchecked_ref());
-                                                        cb.forget();
-                                                        if let Ok(existing) = rx.await {
+                                                            let existing: Vec<String> = arr.iter().filter_map(|v| v.as_string()).collect();
+
                                                             if existing.is_empty() {
-                                                                crate::services::indexeddb::set_choices_to_indexeddb(&chapter_id_clone, &js_array);
+                                                                crate::services::indexeddb::set_choices_to_indexeddb(&chapter_id_clone, &js_array).await.unwrap();
                                                                 // 使用新的選擇
                                                                 let mut story_context = story_context.clone();
                                                                 let ids = ids_clone.clone();
@@ -667,15 +662,9 @@ pub fn Story(props: StoryProps) -> Element {
                 chapters_sorted.sort_by_key(|c| c.order);
                 for chapter in chapters_sorted.iter() {
                     let _chapter_id = chapter.id.clone();
-                    let (tx, rx) = futures_channel::oneshot::channel();
-                    let cb = Closure::once(Box::new(move |js_value: JsValue| {
+                    if let Ok(js_value) = get_choice_from_indexeddb(&_chapter_id).await {
                         let arr = js_sys::Array::from(&js_value);
                         let ids: Vec<String> = arr.iter().filter_map(|v| v.as_string()).collect();
-                        let _ = tx.send(ids);
-                    }) as Box<dyn FnOnce(JsValue)>);
-                    get_choice_from_indexeddb(&_chapter_id, cb.as_ref().unchecked_ref());
-                    cb.forget();
-                    if let Ok(ids) = rx.await {
                         all_ids.extend(ids);
                     }
                 }
@@ -756,7 +745,10 @@ pub fn Story(props: StoryProps) -> Element {
                             for id in &ids {
                                 js_array.push(&JsValue::from_str(id));
                             }
-                            crate::services::indexeddb::set_choices_to_indexeddb(&last.chapter_id, &js_array);
+                            let chapter_id = last.chapter_id.clone();
+                            spawn_local(async move {
+                                let _ = crate::services::indexeddb::set_choices_to_indexeddb(&chapter_id, &js_array).await;
+                            });
                             let mut story_context = story_context.clone();
                             story_context.write().choice_ids.set(vec![goto.clone()]);
                         }
@@ -847,7 +839,11 @@ pub fn Story(props: StoryProps) -> Element {
                         if !last.chapter_id.is_empty() {
                             let order = story_context.read().chapters.read().iter().find(|c| c.id == last.chapter_id).map(|c| c.order).unwrap_or(0);
                             if order != 0 {
-                                set_choice_to_indexeddb(&last.chapter_id, &goto);
+                                let last_chapter_id = last.chapter_id.clone();
+                                let goto_clone = goto.clone();
+                                spawn_local(async move {
+                                    let _ = set_choice_to_indexeddb(&last_chapter_id, &goto_clone).await;
+                                });
                                 let mut story_context = story_context.clone();
                                 story_context.write().choice_ids.set(vec![goto.clone()]);
                             }

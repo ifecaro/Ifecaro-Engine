@@ -7,6 +7,7 @@ use crate::contexts::toast_context::use_toast;
 use dioxus_i18n::t;
 use crate::contexts::settings_context::use_settings_context;
 use crate::enums::style::NavbarStyle;
+use wasm_bindgen_futures::spawn_local;
 
 #[component]
 pub fn Settings() -> Element {
@@ -66,7 +67,9 @@ pub fn Settings() -> Element {
                         button {
                             class: "w-full text-left px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 font-medium",
                             onclick: move |_| {
-                                clear_choices_and_random_choices();
+                                spawn_local(async move {
+                                    let _ = clear_choices_and_random_choices().await;
+                                });
                                 toast.write().show("Choices cleared successfully.".to_string(), ToastType::Success, 5000);
                                 is_open.set(false);
                             },

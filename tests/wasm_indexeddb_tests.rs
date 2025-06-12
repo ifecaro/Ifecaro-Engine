@@ -3,159 +3,98 @@ use wasm_bindgen_test::wasm_bindgen_test_configure;
 use wasm_bindgen_test::wasm_bindgen_test;
 use js_sys::Array;
 use wasm_bindgen::JsValue;
-use ifecaro::services::indexeddb::{set_choices_to_indexeddb, get_choice_from_indexeddb, set_disabled_choice_to_indexeddb, get_disabled_choices_from_indexeddb};
-use wasm_bindgen_futures::JsFuture;
-use web_sys::window;
+use ifecaro::services::indexeddb::{
+    set_choices_to_indexeddb, 
+    get_choice_from_indexeddb, 
+    set_disabled_choice_to_indexeddb, 
+    get_disabled_choices_from_indexeddb,
+    clear_all_disabled_choices_from_indexeddb
+};
+use web_sys::console;
 
 wasm_bindgen_test_configure!(run_in_browser);
 
-// 增加超時時間
-const TEST_TIMEOUT_MS: u32 = 5000;
-
 #[wasm_bindgen_test]
 async fn test_indexeddb_choices_full_path_real() {
-    use wasm_bindgen::JsCast;
-    // 清空 chapter1 的 choices
-    let chapter_id = "chapter1";
-    let arr = Array::new();
-    set_choices_to_indexeddb(chapter_id, &arr);
+    console::log_1(&"Starting test_indexeddb_choices_full_path_real".into());
     
-    // 等待 IndexedDB 操作完成
-    let promise = js_sys::Promise::resolve(&JsValue::NULL);
-    let _ = JsFuture::from(promise).await;
+    let chapter_id = "chapter1";
+    
+    // 清空 chapter1 的 choices
+    let empty_arr = Array::new();
+    set_choices_to_indexeddb(chapter_id, &empty_arr).await.unwrap();
     
     // 寫入完整路徑
     let ids = vec!["start", "cave", "treasure"];
-    let arr = Array::new();
-    for id in &ids {
-        arr.push(&JsValue::from_str(id));
-    }
-    set_choices_to_indexeddb(chapter_id, &arr);
-    
-    // 等待 IndexedDB 操作完成
-    let promise = js_sys::Promise::resolve(&JsValue::NULL);
-    let _ = JsFuture::from(promise).await;
+    let arr = ids.iter().map(|s| JsValue::from_str(s)).collect::<Array>();
+    set_choices_to_indexeddb(chapter_id, &arr).await.unwrap();
     
     // 讀出驗證
-    let (tx, rx) = futures_channel::oneshot::channel();
-    let cb = wasm_bindgen::closure::Closure::once(Box::new(move |js_value: JsValue| {
-        let arr = js_sys::Array::from(&js_value);
-        let result: Vec<String> = arr.iter().filter_map(|v| v.as_string()).collect();
-        let _ = tx.send(result);
-    }) as Box<dyn FnOnce(JsValue)>);
-    
-    get_choice_from_indexeddb(chapter_id, cb.as_ref().unchecked_ref());
-    cb.forget();
-    
-    // 使用超時機制
-    let result = match futures::future::timeout(
-        std::time::Duration::from_millis(TEST_TIMEOUT_MS as u64),
-        rx
-    ).await {
-        Ok(Ok(result)) => result,
-        Ok(Err(_)) => panic!("Channel error"),
-        Err(_) => panic!("Test timed out after {}ms", TEST_TIMEOUT_MS),
-    };
-    
-    assert_eq!(result, vec!["start", "cave", "treasure"]);
+    console::log_1(&"Getting choices from IndexedDB".into());
+    let result_js = get_choice_from_indexeddb(chapter_id).await.unwrap();
+    let result_arr = Array::from(&result_js);
+    let result: Vec<String> = result_arr.iter().filter_map(|v| v.as_string()).collect();
+
+    console::log_1(&format!("Final result: {:?}", result).into());
+    assert_eq!(result, ids);
 }
 
 #[wasm_bindgen_test]
 async fn test_disabled_choices_storage() {
-    use wasm_bindgen::JsCast;
-    // 清空所有停用選項
-    ifecaro::services::indexeddb::clear_all_disabled_choices_from_indexeddb();
+    console::log_1(&"Starting test_disabled_choices_storage".into());
     
-    // 等待 IndexedDB 操作完成
-    let promise = js_sys::Promise::resolve(&JsValue::NULL);
-    let _ = JsFuture::from(promise).await;
+    // 清空所有停用選項
+    clear_all_disabled_choices_from_indexeddb().await.unwrap();
     
     // 設定一個停用選項
-    let paragraph_id = "test_paragraph";
+    let paragraph_id = "test_paragraph_storage";
     let choice_index = 1u32;
-    set_disabled_choice_to_indexeddb(paragraph_id, choice_index);
-    
-    // 等待 IndexedDB 操作完成
-    let promise = js_sys::Promise::resolve(&JsValue::NULL);
-    let _ = JsFuture::from(promise).await;
+    set_disabled_choice_to_indexeddb(paragraph_id, choice_index).await.unwrap();
     
     // 讀出並驗證
-    let (tx, rx) = futures_channel::oneshot::channel();
-    let cb = wasm_bindgen::closure::Closure::once(Box::new(move |js_value: JsValue| {
-        let arr = js_sys::Array::from(&js_value);
-        let result: Vec<u32> = arr.iter()
-            .filter_map(|v| v.as_f64().map(|n| n as u32))
-            .collect();
-        let _ = tx.send(result);
-    }) as Box<dyn FnOnce(JsValue)>);
-    
-    get_disabled_choices_from_indexeddb(paragraph_id, cb.as_ref().unchecked_ref());
-    cb.forget();
-    
-    // 使用超時機制
-    let result = match futures::future::timeout(
-        std::time::Duration::from_millis(TEST_TIMEOUT_MS as u64),
-        rx
-    ).await {
-        Ok(Ok(result)) => result,
-        Ok(Err(_)) => panic!("Channel error"),
-        Err(_) => panic!("Test timed out after {}ms", TEST_TIMEOUT_MS),
-    };
-    
+    console::log_1(&"Getting disabled choices from IndexedDB".into());
+    let result_js = get_disabled_choices_from_indexeddb(paragraph_id).await.unwrap();
+    let result_arr = Array::from(&result_js);
+    let result: Vec<u32> = result_arr.iter()
+        .filter_map(|v| v.as_f64().map(|n| n as u32))
+        .collect();
+
+    console::log_1(&format!("Final result: {:?}", result).into());
     assert!(result.contains(&choice_index), "Disabled choice should be stored in IndexedDB");
+    assert_eq!(result.len(), 1, "Should only have one disabled choice");
 }
 
 #[wasm_bindgen_test]
 async fn test_disabled_choices_persistence() {
-    use wasm_bindgen::JsCast;
-    use ifecaro::services::indexeddb::{set_disabled_choice_to_indexeddb, get_disabled_choices_from_indexeddb};
+    console::log_1(&"Starting test_disabled_choices_persistence".into());
     
-    // 清空所有停用選項
-    ifecaro::services::indexeddb::clear_all_disabled_choices_from_indexeddb();
+    let paragraph_id = "test_paragraph_persistence";
     
-    // 等待 IndexedDB 操作完成
-    let promise = js_sys::Promise::resolve(&JsValue::NULL);
-    let _ = JsFuture::from(promise).await;
-    
+    // 清空停用選項
+    clear_all_disabled_choices_from_indexeddb().await.unwrap();
+
     // 設定多個停用選項
-    let paragraph_id = "test_paragraph";
     let choice_indices = vec![1u32, 3u32, 5u32];
     for &index in &choice_indices {
-        set_disabled_choice_to_indexeddb(paragraph_id, index);
+        console::log_1(&format!("Setting disabled choice: {}", index).into());
+        set_disabled_choice_to_indexeddb(paragraph_id, index).await.unwrap();
+    }
+    
+    // 讀出並驗證
+    console::log_1(&"Getting disabled choices from IndexedDB".into());
+    let result_js = get_disabled_choices_from_indexeddb(paragraph_id).await.unwrap();
+    let result_arr = Array::from(&result_js);
+    let mut result: Vec<u32> = result_arr.iter()
+        .filter_map(|v| v.as_f64().map(|n| n as u32))
+        .collect();
         
-        // 等待每個 IndexedDB 操作完成
-        let promise = js_sys::Promise::resolve(&JsValue::NULL);
-        let _ = JsFuture::from(promise).await;
-    }
+    console::log_1(&format!("Final result: {:?}", result).into());
     
-    // 模擬重新載入：讀出並驗證
-    let (tx, rx) = futures_channel::oneshot::channel();
-    let cb = wasm_bindgen::closure::Closure::once(Box::new(move |js_value: JsValue| {
-        let arr = js_sys::Array::from(&js_value);
-        let result: Vec<u32> = arr.iter()
-            .filter_map(|v| v.as_f64().map(|n| n as u32))
-            .collect();
-        let _ = tx.send(result);
-    }) as Box<dyn FnOnce(JsValue)>);
-    
-    get_disabled_choices_from_indexeddb(paragraph_id, cb.as_ref().unchecked_ref());
-    cb.forget();
-    
-    // 使用超時機制
-    let result = match futures::future::timeout(
-        std::time::Duration::from_millis(TEST_TIMEOUT_MS as u64),
-        rx
-    ).await {
-        Ok(Ok(result)) => result,
-        Ok(Err(_)) => panic!("Channel error"),
-        Err(_) => panic!("Test timed out after {}ms", TEST_TIMEOUT_MS),
-    };
-    
+    // 排序以進行確定性比較
+    result.sort();
+    let mut expected = choice_indices.clone();
+    expected.sort();
+
     // 驗證所有停用選項都存在
-    for &index in &choice_indices {
-        assert!(result.contains(&index), "Disabled choice {} should persist after reload", index);
-    }
-    
-    // 驗證沒有多餘的停用選項
-    assert_eq!(result.len(), choice_indices.len(), "Should have exactly the same number of disabled choices");
+    assert_eq!(result, expected, "All disabled choices should persist");
 } 
