@@ -441,8 +441,20 @@ pub fn Story(props: StoryProps) -> Element {
                         for choice in &choices {
                             let target_id = &choice.action.to;
                             if !target_id.is_empty() {
-                                if let Some(target_paragraph) = _paragraph_data_read.iter().find(|p| p.id == *target_id) {
-                                    if target_paragraph.texts.iter().any(|t| t.lang == state().current_language) {
+                                // Some paragraph IDs coming from the API may contain accidental
+                                // leading / trailing whitespaces.  Compare the *trimmed* versions to
+                                // avoid a mismatch that would incorrectly mark a valid choice as
+                                // disabled.
+                                let target_trimmed = target_id.trim();
+                                if let Some(target_paragraph) = _paragraph_data_read
+                                    .iter()
+                                    .find(|p| p.id.trim() == target_trimmed)
+                                {
+                                    if target_paragraph
+                                        .texts
+                                        .iter()
+                                        .any(|t| t.lang == state().current_language)
+                                    {
                                         enabled.push(target_id.clone());
                                     }
                                 }
