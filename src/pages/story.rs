@@ -756,14 +756,6 @@ pub fn Story(props: StoryProps) -> Element {
             let expanded_vec = _expanded_paragraphs.read().clone();
             let last_paragraph = expanded_vec.last().cloned();
 
-            // LOG: initial click info
-            tracing::info!(
-                "on_choice_click: goto={}, choice_index={}, expanded_before={:?}",
-                goto,
-                choice_index,
-                expanded_vec.iter().map(|p| p.id.clone()).collect::<Vec<_>>()
-            );
-            
             if let Some(ref last) = last_paragraph {
                 if !last.chapter_id.is_empty() {
                     let order = story_context.read().chapters.read().iter().find(|c| c.id == last.chapter_id).map(|c| c.order).unwrap_or(0);
@@ -910,9 +902,6 @@ pub fn Story(props: StoryProps) -> Element {
                         // Avoid pushing duplicate paragraph if it is already the last item
                         if expanded.last().map(|p| p.id != target_paragraph.id).unwrap_or(true) {
                             expanded.push((*target_paragraph).clone());
-                            tracing::info!("same_page push: added {}, expanded_after={:?}", target_paragraph.id, expanded.iter().map(|p| p.id.clone()).collect::<Vec<_>>() );
-                        } else {
-                            tracing::info!("same_page: target {} already last, no push", target_paragraph.id);
                         }
                         _expanded_paragraphs.set(expanded);
                         show_chapter_title.set(true);
@@ -921,9 +910,7 @@ pub fn Story(props: StoryProps) -> Element {
                         if let Some(window) = web_sys::window() {
                             window.scroll_to_with_x_and_y(0.0, 0.0);
                         }
-                        tracing::info!("new_page: switching to {}", target_paragraph.id);
                         _expanded_paragraphs.set(vec![(*target_paragraph).clone()]);
-                        tracing::info!("new_page: after set expanded={:?}", _expanded_paragraphs.read().iter().map(|p| p.id.clone()).collect::<Vec<_>>());
                         show_chapter_title.set(false);
                     }
                 }
@@ -953,7 +940,6 @@ pub fn Story(props: StoryProps) -> Element {
                     is_settings_chapter,
                     &choice_ids,
                 );
-                tracing::info!("merge_paragraph_effect: expanded_ids={:?}", expanded.iter().map(|p| p.id.clone()).collect::<Vec<_>>() );
                 let mut merged_paragraph_signal = story_merged_context.read().merged_paragraph.clone();
                 merged_paragraph_signal.set(merged_paragraph_str.clone());
             }
