@@ -12,7 +12,6 @@ use crate::services::indexeddb::get_settings_from_indexeddb;
 use wasm_bindgen::closure::Closure;
 use wasm_bindgen::JsCast;
 use wasm_bindgen::JsValue;
-use crate::services::indexeddb::set_choice_to_indexeddb;
 use crate::services::indexeddb::get_choice_from_indexeddb;
 use crate::services::indexeddb::{set_random_choice_to_indexeddb};
 use rand::prelude::IteratorRandom;
@@ -183,7 +182,7 @@ pub fn merge_paragraphs_for_lang(
     let mut merged_paragraph_str = String::new();
     
     if reader_mode && !is_settings_chapter {
-        // In reader mode, show all paragraphs in the expanded path
+        // Reader mode: show the entire expanded path
         for paragraph in expanded.iter() {
             if let Some(text) = paragraph.texts.iter().find(|t| t.lang == current_language) {
                 if !merged_paragraph_str.is_empty() {
@@ -193,6 +192,12 @@ pub fn merge_paragraphs_for_lang(
             }
         }
     } else {
+        // Game mode: concatenate the entire expanded path as well, ensuring the player can
+        // review previously visited paragraphs after a page reload.  Real-time duplication is
+        // avoided because in game mode `_expanded_paragraphs` normally contains only the last
+        // paragraph when navigating to a new page (i.e. `same_page == false`).  Therefore this
+        // concatenation will either produce the single latest paragraph or the complete stored
+        // history when the page is refreshed.
         for paragraph in expanded.iter() {
             if let Some(text) = paragraph.texts.iter().find(|t| t.lang == current_language) {
                 if !merged_paragraph_str.is_empty() {
@@ -204,6 +209,14 @@ pub fn merge_paragraphs_for_lang(
     }
     
     merged_paragraph_str
+}
+
+// Add helper function after merge_paragraphs_for_lang
+pub fn update_choice_history(mut current_history: Vec<String>, new_paragraph_id: &str) -> Vec<String> {
+    if !current_history.contains(&new_paragraph_id.to_string()) {
+        current_history.push(new_paragraph_id.to_string());
+    }
+    current_history
 }
 
 #[component]
@@ -488,12 +501,12 @@ pub fn Story(props: StoryProps) -> Element {
                 return;
             }
             let settings = settings_context.read().settings.clone();
+            let _reader_mode_enabled = settings.get("reader_mode").map(|v| v == "true").unwrap_or(false);
             let settings_done = settings.get("settings_done").map(|v| v == "true").unwrap_or(false);
-            let reader_mode = settings.get("reader_mode").map(|v| v == "true").unwrap_or(false);
             if let Some(target_id) = target_id {
                 if let Ok(paragraph_data_guard) = paragraph_data.try_read() {
                     if let Some(paragraph) = paragraph_data_guard.iter().find(|p| &p.id == &target_id) {
-                        if settings_done && reader_mode && paragraph.chapter_id != "settingschapter" {
+                        if settings_done && _reader_mode_enabled && paragraph.chapter_id != "settingschapter" {
                             if let Some(text) = paragraph.texts.iter().find(|t| t.lang == state().current_language) {
                                 if !text.choices.is_empty() {
                                     *last_expansion_id.borrow_mut() = target_id_str;
@@ -605,7 +618,7 @@ pub fn Story(props: StoryProps) -> Element {
                                             }
                                             _expanded_paragraphs.set(path.clone());
                                             // 新增：讀者模式自動寫入 indexedDB（先比對再寫入）
-                                            if reader_mode {
+                                            if _reader_mode_enabled {
                                                 if let Some(first) = path.first() {
                                                     let chapter_id = &first.chapter_id;
                                                     let ids: Vec<String> = path.iter().map(|p| p.id.clone()).collect();
@@ -720,7 +733,7 @@ pub fn Story(props: StoryProps) -> Element {
             }
 
             // Read the flag at effect-run time (settings are already loaded in an earlier effect)
-            let reader_mode_enabled = settings_context
+            let _reader_mode_enabled = settings_context
                 .read()
                 .settings
                 .get("reader_mode")
@@ -743,11 +756,14 @@ pub fn Story(props: StoryProps) -> Element {
                         }
 
                         // In normal mode keep only the last paragraph.
+                        // (Disabled – we now keep the entire expanded path for both reader and game modes)
+                        /*
                         if !reader_mode_enabled {
                             if let Some(last) = expanded.last().cloned() {
                                 expanded = vec![last];
                             }
                         }
+                        */
 
                         if !expanded.is_empty() && expanded_paragraphs.read().as_slice() != expanded.as_slice() {
                             expanded_paragraphs.set(expanded.clone());
@@ -787,11 +803,17 @@ pub fn Story(props: StoryProps) -> Element {
 
                             set_random_choice_to_indexeddb(&paragraph_id, choice_index as u32, &js_array, &selected);
                         } else {
-                            // 將目前已展開的所有段落 id（加上此次選擇的 goto）一次寫入 choices
-                            let mut ids: Vec<String> = expanded_vec.iter().map(|p| p.id.clone()).collect();
-                            if !ids.contains(&goto) {
-                                ids.push(goto.clone());
-                            }
+                            // Always build history from existing stored choice_ids to preserve the full
+                            // navigation path even after page reloads.  Fallback to currently expanded
+                            // paragraphs if the history is still empty (e.g. very first choice).
+                            let existing_history = story_context.read().choice_ids.read().clone();
+                            let mut ids: Vec<String> = if existing_history.is_empty() {
+                                expanded_vec.iter().map(|p| p.id.clone()).collect()
+                            } else {
+                                existing_history
+                            };
+
+                            ids = update_choice_history(ids, &goto);
                             // 更新 context 內的 choice_ids，避免其他 effect 將 expanded 還原
                             story_context.write().choice_ids.set(ids.clone());
                             let js_array = js_sys::Array::new();
@@ -890,11 +912,7 @@ pub fn Story(props: StoryProps) -> Element {
                         if !last.chapter_id.is_empty() {
                             let order = story_context.read().chapters.read().iter().find(|c| c.id == last.chapter_id).map(|c| c.order).unwrap_or(0);
                             if order != 0 {
-                                let last_chapter_id = last.chapter_id.clone();
-                                let goto_clone = goto.clone();
-                                spawn_local(async move {
-                                    let _ = set_choice_to_indexeddb(&last_chapter_id, &goto_clone).await;
-                                });
+                                // ※ 已於上方 set_choices_to_indexeddb 儲存完整路徑，這裡不再覆寫為單一段落。
                             }
                         }
                     }
