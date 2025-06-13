@@ -13,6 +13,8 @@ use crate::services::indexeddb::{set_disabled_choice_to_indexeddb, get_disabled_
 use wasm_bindgen_futures::spawn_local;
 use crate::contexts::settings_context::use_settings_context;
 use js_sys;
+use wasm_bindgen::JsValue;
+use web_sys::console;
 
 #[derive(Props, Clone, PartialEq)]
 pub struct StoryContentProps {
@@ -162,31 +164,79 @@ pub fn StoryContent(props: StoryContentProps) -> Element {
         let mut max_times = max_times.clone();
         let story_ctx = story_ctx.clone();
         use_effect(move || {
+            console::log_1(&JsValue::from_str("Effect: sync countdowns and max_times"));
             let time_limits = story_ctx.read().countdowns.read().clone();
-            countdowns.set(time_limits.clone());
-            max_times.set(time_limits.clone());
+
+            // Schedule updates outside this reactive scope to avoid a read→write loop
+            let maybe_update = |signal: Signal<Vec<u32>>, new_val: Vec<u32>| {
+                let mut sig = signal.clone();
+                gloo_timers::callback::Timeout::new(0, move || {
+                    // Use try_write to avoid panic if component unmounted
+                    if let Ok(mut guard) = sig.try_write() {
+                        *guard = new_val.clone();
+                    }
+                })
+                .forget();
+            };
+
+            if countdowns.try_read().map(|v| v.clone()).unwrap_or_default() != time_limits {
+                maybe_update(countdowns.clone(), time_limits.clone());
+            }
+            if max_times.try_read().map(|v| v.clone()).unwrap_or_default() != time_limits {
+                maybe_update(max_times.clone(), time_limits.clone());
+            }
         });
     }
     {
         let mut progress_started = progress_started.clone();
         let story_ctx = story_ctx.clone();
         use_effect(move || {
+            console::log_1(&JsValue::from_str("Effect: init progress_started"));
             let time_limits = story_ctx.read().countdowns.read().clone();
-            progress_started.set(vec![false; time_limits.len()]);
-            gloo_timers::callback::Timeout::new(10, move || {
-                let mut arr = progress_started.write();
-                for v in arr.iter_mut() {
-                    *v = true;
-                }
-            }).forget();
+            let current_len = progress_started.try_read().map(|v| v.len()).unwrap_or(0);
+
+            if current_len != time_limits.len() {
+                let mut ps_signal = progress_started.clone();
+                let new_len = time_limits.len();
+                // Update length outside scope
+                gloo_timers::callback::Timeout::new(0, move || {
+                    if let Ok(mut guard) = ps_signal.try_write() {
+                        *guard = vec![false; new_len];
+                    }
+
+                    // Start all countdowns slightly later
+                    let mut ps_signal_2 = ps_signal.clone();
+                    gloo_timers::callback::Timeout::new(10, move || {
+                        if let Ok(mut guard) = ps_signal_2.try_write() {
+                            for v in guard.iter_mut() {
+                                *v = true;
+                            }
+                        }
+                    })
+                    .forget();
+                })
+                .forget();
+            }
         });
     }
     {
         let mut disabled_by_countdown = disabled_by_countdown.clone();
         let story_ctx = story_ctx.clone();
         use_effect(move || {
+            console::log_1(&JsValue::from_str("Effect: reset disabled_by_countdown length"));
             let time_limits = story_ctx.read().countdowns.read().clone();
-            disabled_by_countdown.set(vec![false; time_limits.len()]);
+            let current_len = disabled_by_countdown.try_read().map(|v| v.len()).unwrap_or(0);
+
+            if current_len != time_limits.len() {
+                let mut dbc_signal = disabled_by_countdown.clone();
+                let new_len = time_limits.len();
+                gloo_timers::callback::Timeout::new(0, move || {
+                    if let Ok(mut guard) = dbc_signal.try_write() {
+                        *guard = vec![false; new_len];
+                    }
+                })
+                .forget();
+            }
         });
     }
     
@@ -209,6 +259,7 @@ pub fn StoryContent(props: StoryContentProps) -> Element {
             
             let paragraph_id_for_async = paragraph_id.clone();
             spawn_local(async move {
+                console::log_1(&JsValue::from_str("Loading disabled state from IndexedDB"));
                 if let Ok(js_value) = get_disabled_choices_from_indexeddb(&paragraph_id_for_async).await {
                     let disabled_indices: Vec<usize> = if let Ok(array) = js_value.dyn_into::<js_sys::Array>() {
                         array.iter()
@@ -284,13 +335,16 @@ pub fn StoryContent(props: StoryContentProps) -> Element {
     let has_countdown = use_memo(move || countdowns.read().iter().any(|&c| c > 0));
     let show_choices = use_signal(|| false);
     let is_countdown_paused = use_signal(|| true);
-    let has_shown_choices = use_signal(|| false);
-    let mut show_filter = show_filter.clone();
+    let mut has_shown_choices = use_signal(|| false);
+    let mut show_filter_clone = show_filter.clone();
+    let mut show_choices_clone = show_choices.clone();
+    let mut has_shown_choices_clone = has_shown_choices.clone();
+    let mut is_countdown_paused_clone = is_countdown_paused.clone();
 
     // 初始顯示邏輯
     {
-        let mut show_choices = show_choices.clone();
-        let mut has_shown_choices = has_shown_choices.clone();
+        let mut show_choices = show_choices_clone.clone();
+        let mut has_shown_choices = has_shown_choices_clone.clone();
         let has_countdown = has_countdown.clone();
         use_effect(move || {
             if *has_countdown.read() {
@@ -308,59 +362,90 @@ pub fn StoryContent(props: StoryContentProps) -> Element {
 
     // 捲動檢查邏輯
     {
-        let mut show_choices = show_choices.clone();
-        let mut has_shown_choices = has_shown_choices.clone();
-        let mut is_countdown_paused = is_countdown_paused.clone();
-        let show_filter = show_filter.clone();
+        let mut show_choices = show_choices_clone.clone();
+        let mut has_shown_choices = has_shown_choices_clone.clone();
+        let mut is_countdown_paused = is_countdown_paused_clone.clone();
+        let show_filter = show_filter_clone.clone();
+
         use_effect(move || {
+            // Helper closure for scroll position check
             let mut check_scroll = move || {
+                // Only run when overlay is dismissed
                 if *show_filter.read() {
                     return;
                 }
-                if let Some((_, _document)) = get_window_document() {
-                    if let Some(document_element) = _document.document_element() {
+
+                if let Some((_, document)) = get_window_document() {
+                    if let Some(document_element) = document.document_element() {
                         let scroll_height = document_element.scroll_height();
                         let client_height = document_element.client_height();
                         let scroll_top = document_element.scroll_top();
+
                         if scroll_height - client_height - scroll_top <= 10 {
-                            show_choices.set(true);
-                            has_shown_choices.set(true);
-                            is_countdown_paused.set(false);
+                            if !*show_choices.read() {
+                                show_choices.set(true);
+                            }
+                            if !*has_shown_choices.read() {
+                                has_shown_choices.set(true);
+                            }
+                            if *is_countdown_paused.read() {
+                                is_countdown_paused.set(false);
+                            }
                         }
                     }
                 }
             };
 
-            // 初始檢查
-            check_scroll();
-
-            // 監聽捲動事件
-            let closure = wasm_bindgen::closure::Closure::wrap(Box::new(move || {
+            // 執行一次初始檢查，排程在下一個事件迴圈，避免在 effect 執行階段對 signal 建立依賴
+            gloo_timers::callback::Timeout::new(0, move || {
                 check_scroll();
-            }) as Box<dyn FnMut()>);
-            if let Some((_, document)) = get_window_document() {
-                if let Some(window) = web_sys::window() {
-                    if let Ok(_) = window.add_event_listener_with_callback("scroll", closure.as_ref().unchecked_ref()) {
-                        closure.forget();
-                    }
-                }
+            })
+            .forget();
+
+            // 設置 scroll 事件監聽，只做一次
+            if let Some(window) = web_sys::window() {
+                let cb = wasm_bindgen::closure::Closure::wrap(Box::new(move || {
+                    check_scroll();
+                }) as Box<dyn FnMut()>);
+
+                let _ = window.add_event_listener_with_callback("scroll", cb.as_ref().unchecked_ref());
+
+                cb.forget();
             }
+
+            // 不需要清理函式，留空即可
             (|| {})()
         });
     }
 
     // 遮罩出現時的邏輯
     {
-        let mut show_choices = show_choices.clone();
-        let mut is_countdown_paused = is_countdown_paused.clone();
-        let has_shown_choices = has_shown_choices.clone();
-        let show_filter = show_filter.clone();
+        let mut show_choices = show_choices_clone.clone();
+        let mut is_countdown_paused = is_countdown_paused_clone.clone();
+        let mut has_shown_choices = has_shown_choices_clone.clone();
+        let show_filter = show_filter_clone.clone();
         use_effect(move || {
             if *show_filter.read() {
-                if *has_shown_choices.read() {
-                    show_choices.set(true);
+                let should_show = has_shown_choices.try_read().map(|v| *v).unwrap_or(false);
+                let currently_showing = show_choices.try_read().map(|v| *v).unwrap_or(false);
+                if should_show && !currently_showing {
+                    let mut sc = show_choices.clone();
+                    gloo_timers::callback::Timeout::new(0, move || {
+                        if let Ok(mut guard) = sc.try_write() {
+                            *guard = true;
+                        }
+                    }).forget();
                 }
-                is_countdown_paused.set(true);
+
+                let paused = is_countdown_paused.try_read().map(|v| *v).unwrap_or(true);
+                if !paused {
+                    let mut icp = is_countdown_paused.clone();
+                    gloo_timers::callback::Timeout::new(0, move || {
+                        if let Ok(mut guard) = icp.try_write() {
+                            *guard = true;
+                        }
+                    }).forget();
+                }
             }
             (|| {})()
         });
@@ -368,14 +453,74 @@ pub fn StoryContent(props: StoryContentProps) -> Element {
 
     // 遮罩消失時的邏輯
     {
-        let mut show_choices = show_choices.clone();
-        let mut is_countdown_paused = is_countdown_paused.clone();
-        let has_shown_choices = has_shown_choices.clone();
-        let show_filter = show_filter.clone();
+        let mut show_choices = show_choices_clone.clone();
+        let mut is_countdown_paused = is_countdown_paused_clone.clone();
+        let mut has_shown_choices = has_shown_choices_clone.clone();
+        let show_filter = show_filter_clone.clone();
+        let has_countdown = has_countdown.clone();
         use_effect(move || {
-            if !*show_filter.read() && *has_shown_choices.read() {
-                show_choices.set(true);
-                is_countdown_paused.set(false);
+            if !*show_filter.read() {
+                // Overlay dismissed
+                let mut should_show_choices = has_shown_choices.try_read().map(|v| *v).unwrap_or(false);
+
+                // If there are countdowns and choices haven't been revealed yet, check scrollability
+                if *has_countdown.read() && !should_show_choices {
+                    if let Some((_, document)) = get_window_document() {
+                        if let Some(document_element) = document.document_element() {
+                            let scroll_height = document_element.scroll_height();
+                            let client_height = document_element.client_height();
+                            // When the content cannot scroll (i.e., fits within viewport), force showing the choices
+                            if scroll_height <= client_height {
+                                should_show_choices = true;
+                            }
+                        }
+                    }
+                }
+
+                if should_show_choices {
+                    // Schedule updates to avoid read->write loop
+                    let show_needed = show_choices.try_read().map(|v| !*v).unwrap_or(true);
+                    if show_needed {
+                        let mut sc = show_choices.clone();
+                        gloo_timers::callback::Timeout::new(0, move || {
+                            if let Ok(mut guard) = sc.try_write() {
+                                *guard = true;
+                            }
+                        }).forget();
+                    }
+
+                    let hsc_needed = has_shown_choices.try_read().map(|v| !*v).unwrap_or(true);
+                    if hsc_needed {
+                        let mut hsc = has_shown_choices.clone();
+                        gloo_timers::callback::Timeout::new(0, move || {
+                            if let Ok(mut guard) = hsc.try_write() {
+                                *guard = true;
+                            }
+                        }).forget();
+                    }
+
+                    let paused = is_countdown_paused.try_read().map(|v| *v).unwrap_or(true);
+                    if paused {
+                        let mut icp = is_countdown_paused.clone();
+                        gloo_timers::callback::Timeout::new(0, move || {
+                            if let Ok(mut guard) = icp.try_write() {
+                                *guard = false;
+                            }
+                        }).forget();
+                    }
+                }
+            }
+            (|| {})()
+        });
+    }
+    
+    // 同步 has_shown_choices <- show_choices
+    {
+        let show_choices = show_choices_clone.clone();
+        let mut has_shown_choices = has_shown_choices_clone.clone();
+        use_effect(move || {
+            if *show_choices.read() {
+                has_shown_choices.set(true);
             }
             (|| {})()
         });
@@ -604,6 +749,37 @@ pub fn StoryContent(props: StoryContentProps) -> Element {
             }
         }
     }
+}
+
+/// Determine if the choice list should be shown after the overlay has been dismissed.
+///
+/// This is extracted from the in-component effect logic so that it can be unit-tested.
+/// The logic is:
+/// 1. If the overlay is still shown (`show_filter == true`) => do not show.
+/// 2. If the choices have already been shown once (`has_shown_choices == true`) => show.
+/// 3. If a countdown exists and the document is **not** scrollable (`scroll_height <= client_height`) => show.
+/// 4. Otherwise => do not show.
+#[allow(dead_code)]
+pub fn should_show_choices_on_overlay_hide(
+    show_filter: bool,
+    has_shown_choices: bool,
+    has_countdown: bool,
+    scroll_height: i32,
+    client_height: i32,
+) -> bool {
+    if show_filter {
+        return false;
+    }
+
+    if has_shown_choices {
+        return true;
+    }
+
+    if has_countdown && scroll_height <= client_height {
+        return true;
+    }
+
+    false
 }
 
 /*

@@ -19,3 +19,6 @@ pub mod story_content_advanced_tests;
 
 #[cfg(test)]
 pub mod story_content_api_integration_tests;
+
+#[cfg(test)]
+pub mod story_content_overlay_tests;
