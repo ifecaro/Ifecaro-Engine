@@ -382,14 +382,38 @@ pub fn StoryContent(props: StoryContentProps) -> Element {
                         let scroll_top = document_element.scroll_top();
 
                         if scroll_height - client_height - scroll_top <= 10 {
-                            if !*show_choices.read() {
-                                show_choices.set(true);
+                            // Schedule signal updates to avoid read→write loops
+                            let show_needed = show_choices.try_read().map(|v| !*v).unwrap_or(true);
+                            if show_needed {
+                                let mut sc = show_choices.clone();
+                                gloo_timers::callback::Timeout::new(0, move || {
+                                    if let Ok(mut guard) = sc.try_write() {
+                                        *guard = true;
+                                    }
+                                })
+                                .forget();
                             }
-                            if !*has_shown_choices.read() {
-                                has_shown_choices.set(true);
+
+                            let hsc_needed = has_shown_choices.try_read().map(|v| !*v).unwrap_or(true);
+                            if hsc_needed {
+                                let mut hsc = has_shown_choices.clone();
+                                gloo_timers::callback::Timeout::new(0, move || {
+                                    if let Ok(mut guard) = hsc.try_write() {
+                                        *guard = true;
+                                    }
+                                })
+                                .forget();
                             }
-                            if *is_countdown_paused.read() {
-                                is_countdown_paused.set(false);
+
+                            let paused = is_countdown_paused.try_read().map(|v| *v).unwrap_or(true);
+                            if paused {
+                                let mut icp = is_countdown_paused.clone();
+                                gloo_timers::callback::Timeout::new(0, move || {
+                                    if let Ok(mut guard) = icp.try_write() {
+                                        *guard = false;
+                                    }
+                                })
+                                .forget();
                             }
                         }
                     }
