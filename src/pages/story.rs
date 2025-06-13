@@ -394,9 +394,24 @@ pub fn Story(props: StoryProps) -> Element {
                         }
                         // Check if there are multiple targets, if so perform random selection
                         if c.to.len() > 1 {
-                            // Randomly select one target from multi-target paragraph
-                            let selected_target = c.to.iter()
-                                .choose(&mut rand::thread_rng())
+                            // Randomly select one target from multi-target choice, but avoid staying on the
+                            // same paragraph (i.e. target id == current paragraph id). If after filtering there
+                            // are no valid candidates, fall back to the original list.
+                            let mut rng = rand::thread_rng();
+                            let mut candidates: Vec<String> = c
+                                .to
+                                .iter()
+                                .filter(|id| *id != &paragraph.id)
+                                .cloned()
+                                .collect();
+
+                            if candidates.is_empty() {
+                                candidates = c.to.clone();
+                            }
+
+                            let selected_target = candidates
+                                .iter()
+                                .choose(&mut rng)
                                 .cloned()
                                 .unwrap_or_default();
                             choice_obj.action.to = selected_target.clone();
@@ -444,7 +459,7 @@ pub fn Story(props: StoryProps) -> Element {
     {
         let paragraph_data = paragraph_data.clone();
         let mut _expanded_paragraphs = _expanded_paragraphs.clone();
-        let story_context = story_context.clone();
+        let mut story_context = story_context.clone();
         let settings_context = settings_context.clone();
         let state = state.clone();
         let last_expansion_id = Rc::new(RefCell::new(String::new()));
@@ -677,9 +692,13 @@ pub fn Story(props: StoryProps) -> Element {
         });
     }
     
-    // Automatically jump to selected paragraph (read-only, separate async block for data cloning)
+    // Automatically jump to the stored paragraph when reloading the page.
+    // In reader-mode we still expand the entire stored path, but in normal mode
+    // we should *only* jump to the last paragraph to avoid the accidental
+    // concatenation that the user reported.
     {
         let paragraph_data = paragraph_data.clone();
+        let settings_context = settings_context.clone();
         let mut expanded_paragraphs = _expanded_paragraphs.clone();
         let story_context = story_context.clone();
         let mut initialized = use_signal(|| false);
@@ -687,13 +706,22 @@ pub fn Story(props: StoryProps) -> Element {
             if *initialized.read() {
                 return;
             }
+
+            // Read the flag at effect-run time (settings are already loaded in an earlier effect)
+            let reader_mode_enabled = settings_context
+                .read()
+                .settings
+                .get("reader_mode")
+                .map(|v| v == "true")
+                .unwrap_or(false);
+
             if let Ok(paragraph_data_vec) = paragraph_data.try_read() {
                 let paragraph_data_vec = paragraph_data_vec.clone();
                 let ctx = story_context.read();
                 let choice_ids_vec = ctx.choice_ids.read().clone();
                 if !choice_ids_vec.is_empty() {
                     wasm_bindgen_futures::spawn_local(async move {
-                        let mut expanded = Vec::new();
+                        let mut expanded: Vec<Paragraph> = Vec::new();
                         for paragraph_id in &choice_ids_vec {
                             if let Some(target) = paragraph_data_vec.iter().find(|p| p.id == *paragraph_id) {
                                 if !expanded.iter().any(|p: &Paragraph| p.id == *paragraph_id) {
@@ -701,6 +729,14 @@ pub fn Story(props: StoryProps) -> Element {
                                 }
                             }
                         }
+
+                        // In normal mode keep only the last paragraph.
+                        if !reader_mode_enabled {
+                            if let Some(last) = expanded.last().cloned() {
+                                expanded = vec![last];
+                            }
+                        }
+
                         if !expanded.is_empty() && expanded_paragraphs.read().as_slice() != expanded.as_slice() {
                             expanded_paragraphs.set(expanded.clone());
                             initialized.set(true);
@@ -713,13 +749,21 @@ pub fn Story(props: StoryProps) -> Element {
     
     let on_choice_click = {
         let mut _expanded_paragraphs = _expanded_paragraphs.clone();
-        let story_context = story_context.clone();
+        let mut story_context = story_context.clone();
         let paragraph_data = paragraph_data.clone();
         let mut show_chapter_title = show_chapter_title.clone();
         move |(goto, choice_index): (String, usize)| {
             let expanded_vec = _expanded_paragraphs.read().clone();
             let last_paragraph = expanded_vec.last().cloned();
 
+            // LOG: initial click info
+            tracing::info!(
+                "on_choice_click: goto={}, choice_index={}, expanded_before={:?}",
+                goto,
+                choice_index,
+                expanded_vec.iter().map(|p| p.id.clone()).collect::<Vec<_>>()
+            );
+            
             if let Some(ref last) = last_paragraph {
                 if !last.chapter_id.is_empty() {
                     let order = story_context.read().chapters.read().iter().find(|c| c.id == last.chapter_id).map(|c| c.order).unwrap_or(0);
@@ -739,8 +783,13 @@ pub fn Story(props: StoryProps) -> Element {
 
                             set_random_choice_to_indexeddb(&paragraph_id, choice_index as u32, &js_array, &selected);
                         } else {
-                            // 將目前已展開的所有段落 id 一次寫入 choices
-                            let ids: Vec<String> = expanded_vec.iter().map(|p| p.id.clone()).collect();
+                            // 將目前已展開的所有段落 id（加上此次選擇的 goto）一次寫入 choices
+                            let mut ids: Vec<String> = expanded_vec.iter().map(|p| p.id.clone()).collect();
+                            if !ids.contains(&goto) {
+                                ids.push(goto.clone());
+                            }
+                            // 更新 context 內的 choice_ids，避免其他 effect 將 expanded 還原
+                            story_context.write().choice_ids.set(ids.clone());
                             let js_array = js_sys::Array::new();
                             for id in &ids {
                                 js_array.push(&JsValue::from_str(id));
@@ -749,8 +798,6 @@ pub fn Story(props: StoryProps) -> Element {
                             spawn_local(async move {
                                 let _ = crate::services::indexeddb::set_choices_to_indexeddb(&chapter_id, &js_array).await;
                             });
-                            let mut story_context = story_context.clone();
-                            story_context.write().choice_ids.set(vec![goto.clone()]);
                         }
                     }
                 }
@@ -844,24 +891,29 @@ pub fn Story(props: StoryProps) -> Element {
                                 spawn_local(async move {
                                     let _ = set_choice_to_indexeddb(&last_chapter_id, &goto_clone).await;
                                 });
-                                let mut story_context = story_context.clone();
-                                story_context.write().choice_ids.set(vec![goto.clone()]);
                             }
                         }
                     }
+                    // Determine whether this choice should stay on the same page by directly
+                    // checking the *clicked* choice (using choice_index) instead of searching
+                    // by target paragraph id. This avoids accidentally matching another choice
+                    // that happens to contain the same target but has a different `same_page` setting.
                     let mut same_page = false;
                     if let Some(ref last) = last_paragraph {
-                        // Find matching target in multiple target paragraph
-                        if let Some(choice) = last.choices.iter().find(|choice| choice.to.contains(&goto)) {
+                        if let Some(choice) = last.choices.get(choice_index) {
                             same_page = choice.same_page.unwrap_or(false);
                         }
                     }
 
                     if same_page {
                         let mut expanded = _expanded_paragraphs.read().clone();
-                        expanded.push((*target_paragraph).clone());
-                        let _ = _expanded_paragraphs;
-                        _expanded_paragraphs = _expanded_paragraphs.clone();
+                        // Avoid pushing duplicate paragraph if it is already the last item
+                        if expanded.last().map(|p| p.id != target_paragraph.id).unwrap_or(true) {
+                            expanded.push((*target_paragraph).clone());
+                            tracing::info!("same_page push: added {}, expanded_after={:?}", target_paragraph.id, expanded.iter().map(|p| p.id.clone()).collect::<Vec<_>>() );
+                        } else {
+                            tracing::info!("same_page: target {} already last, no push", target_paragraph.id);
+                        }
                         _expanded_paragraphs.set(expanded);
                         show_chapter_title.set(true);
                     } else {
@@ -869,13 +921,10 @@ pub fn Story(props: StoryProps) -> Element {
                         if let Some(window) = web_sys::window() {
                             window.scroll_to_with_x_and_y(0.0, 0.0);
                         }
-                        let _ = _expanded_paragraphs;
-                        _expanded_paragraphs = _expanded_paragraphs.clone();
+                        tracing::info!("new_page: switching to {}", target_paragraph.id);
                         _expanded_paragraphs.set(vec![(*target_paragraph).clone()]);
+                        tracing::info!("new_page: after set expanded={:?}", _expanded_paragraphs.read().iter().map(|p| p.id.clone()).collect::<Vec<_>>());
                         show_chapter_title.set(false);
-                        // Add back target_paragraph_id setting
-                        let mut story_context = story_context.clone();
-                        story_context.write().target_paragraph_id = Some(goto);
                     }
                 }
             }
@@ -904,8 +953,9 @@ pub fn Story(props: StoryProps) -> Element {
                     is_settings_chapter,
                     &choice_ids,
                 );
+                tracing::info!("merge_paragraph_effect: expanded_ids={:?}", expanded.iter().map(|p| p.id.clone()).collect::<Vec<_>>() );
                 let mut merged_paragraph_signal = story_merged_context.read().merged_paragraph.clone();
-                merged_paragraph_signal.set(merged_paragraph_str);
+                merged_paragraph_signal.set(merged_paragraph_str.clone());
             }
             ()
         });
