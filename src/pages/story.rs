@@ -219,6 +219,26 @@ pub fn update_choice_history(mut current_history: Vec<String>, new_paragraph_id:
     current_history
 }
 
+/// Compute the list of *enabled* target paragraph IDs for the given choices.
+///
+/// A choice is considered enabled **as long as it has a non-empty target id** –
+/// we no longer require the paragraph to be present in the pre-loaded dataset
+/// because it can be fetched on-demand when the user clicks.
+#[allow(dead_code)]
+pub fn compute_enabled_choices(choices: &[Choice]) -> Vec<String> {
+    choices
+        .iter()
+        .filter_map(|c| {
+            let trimmed = c.action.to.trim();
+            if trimmed.is_empty() {
+                None
+            } else {
+                Some(trimmed.to_string())
+            }
+        })
+        .collect()
+}
+
 #[component]
 pub fn Story(props: StoryProps) -> Element {
     provide_story_merged_context();
@@ -447,33 +467,8 @@ pub fn Story(props: StoryProps) -> Element {
                         choice_obj
                     }).collect();
                     current_choices.set(choices.clone());
-                    // Check if each option's target paragraph has translation in current language
-                    let mut enabled = Vec::new();
-                    if let Ok(_paragraph_data_read) = paragraph_data.try_read() {
-                        // Use already randomly selected choices for checking
-                        for choice in &choices {
-                            let target_id = &choice.action.to;
-                            if !target_id.is_empty() {
-                                // Some paragraph IDs coming from the API may contain accidental
-                                // leading / trailing whitespaces.  Compare the *trimmed* versions to
-                                // avoid a mismatch that would incorrectly mark a valid choice as
-                                // disabled.
-                                let target_trimmed = target_id.trim();
-                                if let Some(target_paragraph) = _paragraph_data_read
-                                    .iter()
-                                    .find(|p| p.id.trim() == target_trimmed)
-                                {
-                                    if target_paragraph
-                                        .texts
-                                        .iter()
-                                        .any(|t| t.lang == state().current_language)
-                                    {
-                                        enabled.push(target_id.clone());
-                                    }
-                                }
-                            }
-                        }
-                    }
+                    // Compute enabled targets using the relaxed rule.
+                    let enabled = compute_enabled_choices(&choices);
                     enabled_choices.set(enabled);
                 }
             }
@@ -943,6 +938,41 @@ pub fn Story(props: StoryProps) -> Element {
                         _expanded_paragraphs.set(vec![(*target_paragraph).clone()]);
                         show_chapter_title.set(false);
                     }
+                } else {
+                    // Fallback: target paragraph is not yet loaded – fetch it from the API and proceed.
+                    let goto_id = goto.clone();
+                    let paragraph_data_signal = paragraph_data.clone();
+                    let mut _expanded_paragraphs = _expanded_paragraphs.clone();
+                    let mut story_context = story_context.clone();
+                    let mut show_chapter_title = show_chapter_title.clone();
+                    wasm_bindgen_futures::spawn_local(async move {
+                        // Construct the record URL: /collections/paragraphs/records/{id}
+                        let fetch_url = format!("{}{}{}{}", BASE_API_URL, PARAGRAPHS, "/", goto_id);
+                        let client = reqwest::Client::new();
+                        if let Ok(response) = client.get(&fetch_url).send().await {
+                            if response.status().is_success() {
+                                if let Ok(text) = response.text().await {
+                                    // Attempt to deserialize directly into a `Paragraph` record.
+                                    if let Ok(paragraph) = serde_json::from_str::<Paragraph>(&text) {
+                                        // Append to the global paragraph dataset.
+                                        let mut pd_signal = paragraph_data_signal;
+                                        let mut current_pd = pd_signal.read().clone();
+                                        // Avoid duplicates.
+                                        if !current_pd.iter().any(|p| p.id == paragraph.id) {
+                                            current_pd.push(paragraph.clone());
+                                            pd_signal.set(current_pd.clone());
+                                            story_context.write().paragraphs.set(current_pd.clone());
+                                        }
+
+                                        // Update expanded paragraph path – mimic normal navigation (new page).
+                                        _expanded_paragraphs.set(vec![paragraph.clone()]);
+                                        story_context.write().target_paragraph_id = Some(paragraph.id.clone());
+                                        show_chapter_title.set(false);
+                                    }
+                                }
+                            }
+                        }
+                    });
                 }
             }
         }

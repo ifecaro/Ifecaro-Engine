@@ -152,68 +152,57 @@ pub fn StoryContent(props: StoryContentProps) -> Element {
     let mut keyboard_state = use_context::<Signal<KeyboardState>>();
     let story_ctx = use_story_context();
     let settings_ctx = use_settings_context();
-    let countdowns = props.countdowns.clone();
-    let max_times = props.max_times.clone();
-    let progress_started = props.progress_started.clone();
+    let mut countdowns = props.countdowns.clone();
+    let mut max_times = props.max_times.clone();
+    let mut progress_started = props.progress_started.clone();
     let mut disabled_by_countdown = props.disabled_by_countdown.clone();
     
     // Use current paragraph ID signal passed from props
     let current_paragraph_id_signal = props.current_paragraph_id.clone();
+    let disabled_state_loaded = use_signal(|| false);
     {
+        let mut story_ctx = story_ctx.clone();
+        let disabled_by_countdown = disabled_by_countdown.clone();
         let mut countdowns = countdowns.clone();
         let mut max_times = max_times.clone();
-        let story_ctx = story_ctx.clone();
         use_effect(move || {
-            console::log_1(&JsValue::from_str("Effect: sync countdowns and max_times"));
-            let time_limits = story_ctx.read().countdowns.read().clone();
-
-            // Schedule updates outside this reactive scope to avoid a read→write loop
-            let maybe_update = |signal: Signal<Vec<u32>>, new_val: Vec<u32>| {
-                let mut sig = signal.clone();
-                gloo_timers::callback::Timeout::new(0, move || {
-                    // Use try_write to avoid panic if component unmounted
-                    if let Ok(mut guard) = sig.try_write() {
-                        *guard = new_val.clone();
+            // 1. 取得 global 倒數並套用 disabled 遮罩
+            let mut source = story_ctx.read().countdowns.read().clone();
+            if let Ok(mask) = disabled_by_countdown.try_read() {
+                for (i, disabled) in mask.iter().enumerate() {
+                    if *disabled && i < source.len() {
+                        source[i] = 0;
                     }
-                })
-                .forget();
-            };
+                }
+            }
 
-            if countdowns.try_read().map(|v| v.clone()).unwrap_or_default() != time_limits {
-                maybe_update(countdowns.clone(), time_limits.clone());
-            }
-            if max_times.try_read().map(|v| v.clone()).unwrap_or_default() != time_limits {
-                maybe_update(max_times.clone(), time_limits.clone());
-            }
+            // 2. 在下一個事件迴圈中更新，避免在同一 reactive scope 內同時讀寫
+            gloo_timers::callback::Timeout::new(0, move || {
+                if countdowns.read().as_slice() != source.as_slice() {
+                    countdowns.set(source.clone());
+                }
+                if max_times.read().as_slice() != source.as_slice() {
+                    max_times.set(source);
+                }
+            })
+            .forget();
         });
     }
     {
         let mut progress_started = progress_started.clone();
-        let story_ctx = story_ctx.clone();
+        let mut story_ctx = story_ctx.clone();
         use_effect(move || {
-            console::log_1(&JsValue::from_str("Effect: init progress_started"));
             let time_limits = story_ctx.read().countdowns.read().clone();
             let current_len = progress_started.try_read().map(|v| v.len()).unwrap_or(0);
 
             if current_len != time_limits.len() {
+                console::log_1(&JsValue::from_str("Effect: init progress_started (updated length)"));
                 let mut ps_signal = progress_started.clone();
                 let new_len = time_limits.len();
-                // Update length outside scope
                 gloo_timers::callback::Timeout::new(0, move || {
                     if let Ok(mut guard) = ps_signal.try_write() {
                         *guard = vec![false; new_len];
                     }
-
-                    // Start all countdowns slightly later
-                    let mut ps_signal_2 = ps_signal.clone();
-                    gloo_timers::callback::Timeout::new(10, move || {
-                        if let Ok(mut guard) = ps_signal_2.try_write() {
-                            for v in guard.iter_mut() {
-                                *v = true;
-                            }
-                        }
-                    })
-                    .forget();
                 })
                 .forget();
             }
@@ -223,20 +212,15 @@ pub fn StoryContent(props: StoryContentProps) -> Element {
         let mut disabled_by_countdown = disabled_by_countdown.clone();
         let story_ctx = story_ctx.clone();
         use_effect(move || {
-            console::log_1(&JsValue::from_str("Effect: reset disabled_by_countdown length"));
-            let time_limits = story_ctx.read().countdowns.read().clone();
-            let current_len = disabled_by_countdown.try_read().map(|v| v.len()).unwrap_or(0);
+            let desired_len = story_ctx.read().countdowns.read().len();
 
-            if current_len != time_limits.len() {
-                let mut dbc_signal = disabled_by_countdown.clone();
-                let new_len = time_limits.len();
-                gloo_timers::callback::Timeout::new(0, move || {
-                    if let Ok(mut guard) = dbc_signal.try_write() {
-                        *guard = vec![false; new_len];
-                    }
-                })
-                .forget();
-            }
+            // 在下一個事件迴圈中調整長度，避免讀寫同一 signal
+            gloo_timers::callback::Timeout::new(0, move || {
+                if let Ok(mut guard) = disabled_by_countdown.try_write() {
+                    guard.resize(desired_len, false);
+                }
+            })
+            .forget();
         });
     }
     
@@ -244,10 +228,16 @@ pub fn StoryContent(props: StoryContentProps) -> Element {
     {
         let mut disabled_by_countdown = disabled_by_countdown.clone();
         let current_paragraph_id_signal = current_paragraph_id_signal.clone();
-        let story_ctx = story_ctx.clone();
+        let mut story_ctx = story_ctx.clone();
+        let mut disabled_state_loaded = disabled_state_loaded.clone();
         use_effect(move || {
             let paragraph_id = current_paragraph_id_signal.read().clone();
             if paragraph_id.is_empty() {
+                return;
+            }
+            
+            // Skip if disabled state already loaded for this paragraph
+            if *disabled_state_loaded.read() {
                 return;
             }
             
@@ -269,13 +259,78 @@ pub fn StoryContent(props: StoryContentProps) -> Element {
                         Vec::new()
                     };
 
-                    let mut current_disabled = disabled_by_countdown.read().clone();
+                    console::log_1(&JsValue::from_str(&format!(
+                        "Loaded disabled indices from IndexedDB: {:?}", disabled_indices
+                    )));
+
+                    // Always apply disabled state from IndexedDB (use try_read to avoid ValueDroppedError)
+                    let mut current_disabled = disabled_by_countdown.try_read().map(|v| v.clone()).unwrap_or_default();
                     for &index in &disabled_indices {
                         if index < current_disabled.len() {
                             current_disabled[index] = true;
                         }
                     }
-                    disabled_by_countdown.set(current_disabled);
+                    // Write back updated disabled vector safely
+                    if let Ok(mut guard) = disabled_by_countdown.try_write() {
+                        *guard = current_disabled;
+                    }
+
+                    // Also zero out countdown and max_time for disabled choices to avoid any countdown restart
+                    {
+                        // Step 1: immediately update the global story_ctx countdowns so that any sync effect
+                        // sees the already-zeroed values and will not overwrite our local signals back to the
+                        // original non-zero numbers.
+                        if let Ok(mut ctx_write) = story_ctx.try_write() {
+                            if let Ok(mut ctx_cd) = ctx_write.countdowns.try_write() {
+                                for &idx in &disabled_indices {
+                                    if idx < ctx_cd.len() {
+                                        ctx_cd[idx] = 0;
+                                    }
+                                }
+                            }
+                        }
+
+                        // Step 2: update local reactive signals.
+                        if let Ok(mut c_guard) = countdowns.try_write() {
+                            for &idx in &disabled_indices {
+                                if idx < c_guard.len() {
+                                    c_guard[idx] = 0;
+                                }
+                            }
+                            console::log_1(&JsValue::from_str(&format!(
+                                "Local countdowns after zeroing: {:?}", *c_guard
+                            )));
+                        }
+
+                        if let Ok(mut m_guard) = max_times.try_write() {
+                            for &idx in &disabled_indices {
+                                if idx < m_guard.len() {
+                                    m_guard[idx] = 0;
+                                }
+                            }
+                            console::log_1(&JsValue::from_str(&format!(
+                                "Local max_times after zeroing: {:?}", *m_guard
+                            )));
+                        }
+
+                        if let Ok(mut p_guard) = progress_started.try_write() {
+                            for &idx in &disabled_indices {
+                                if idx < p_guard.len() {
+                                    p_guard[idx] = true;
+                                }
+                            }
+                        }
+                    }
+
+                    // Log the updated story_ctx countdowns immediately after mutation
+                    if let Ok(ctx_read_after) = story_ctx.try_read() {
+                        console::log_1(&JsValue::from_str(&format!(
+                            "story_ctx.countdowns after mutation: {:?}", ctx_read_after.countdowns.read().clone()
+                        )));
+                    }
+
+                    // Mark that disabled state has completed loading (do this after all mutations to guarantee correct state)
+                    disabled_state_loaded.set(true);
                 }
             });
         });
@@ -346,11 +401,14 @@ pub fn StoryContent(props: StoryContentProps) -> Element {
         let mut show_choices = show_choices_clone.clone();
         let mut has_shown_choices = has_shown_choices_clone.clone();
         let has_countdown = has_countdown.clone();
+        let mut is_countdown_paused = is_countdown_paused.clone();
         use_effect(move || {
             if *has_countdown.read() {
                 // 有倒數計時時，預設隱藏選項列表
                 show_choices.set(false);
                 has_shown_choices.set(false);
+                // 確保倒數計時最初是暫停的
+                is_countdown_paused.set(true);
             } else {
                 // 沒有倒數計時時，直接顯示選項列表
                 show_choices.set(true);
@@ -365,6 +423,7 @@ pub fn StoryContent(props: StoryContentProps) -> Element {
         let mut show_choices = show_choices_clone.clone();
         let mut has_shown_choices = has_shown_choices_clone.clone();
         let mut is_countdown_paused = is_countdown_paused_clone.clone();
+        let mut progress_started = progress_started.clone();
         let show_filter = show_filter_clone.clone();
 
         use_effect(move || {
@@ -415,6 +474,18 @@ pub fn StoryContent(props: StoryContentProps) -> Element {
                                 })
                                 .forget();
                             }
+                            
+                            // 同時在這裡設置 progress_started 為 true
+                            let mut ps = progress_started.clone();
+                            gloo_timers::callback::Timeout::new(0, move || {
+                                if let Ok(mut guard) = ps.try_write() {
+                                    // 將所有值設為 true，表示所有倒數計時開始
+                                    for v in guard.iter_mut() {
+                                        *v = true;
+                                    }
+                                }
+                            })
+                            .forget();
                         }
                     }
                 }
@@ -589,7 +660,14 @@ pub fn StoryContent(props: StoryContentProps) -> Element {
                                 let is_disabled = disabled_by_countdown.try_read()
                                     .map(|guard| guard.get(idx).copied().unwrap_or(false))
                                     .unwrap_or(false);
-                                if enabled_choices.contains(&choice.action.to) && !is_disabled {
+                                // Some paragraph IDs may contain stray whitespaces in the JSON.  Allow
+                                // a match either on the original id or its trimmed version so that the
+                                // UI does not incorrectly mark a valid choice as disabled.
+                                let trimmed_id = choice.action.to.trim();
+                                let is_enabled = (enabled_choices.contains(&choice.action.to)
+                                    || enabled_choices.contains(&trimmed_id.to_string()))
+                                    && !is_disabled;
+                                if is_enabled {
                                     keyboard_state.write().selected_index = idx as i32;
                                     on_choice_click.call((goto.clone(), idx));
                                 }
@@ -599,22 +677,7 @@ pub fn StoryContent(props: StoryContentProps) -> Element {
                     }
                 }
             },
-            onblur: move |_| {
-                // 只有在不是點擊讀者模式按鈕時才顯示遮罩
-                if let Some((_, document)) = get_window_document() {
-                    if let Some(active_element) = document.active_element() {
-                        if let Ok(Some(button)) = document.query_selector(".reader-mode-button") {
-                            if active_element == button {
-                                return;
-                            }
-                        }
-                    }
-                }
-                // Safely set signal to avoid ValueDroppedError
-                if let Ok(mut guard) = show_filter.try_write() {
-                    *guard = true;
-                }
-            },
+            onblur: |_| { /* do nothing – avoid誤觸重新顯示遮罩 */ },
             div {
                 class: {
                     format!("fixed inset-0 backdrop-blur-sm z-10 flex items-center justify-center transition duration-500 cursor-pointer will-change-transform will-change-opacity {}",
@@ -684,7 +747,12 @@ pub fn StoryContent(props: StoryContentProps) -> Element {
                         {choices.iter().enumerate().map(|(index, choice)| {
                             let caption = choice.caption.clone();
                             let goto = choice.action.to.clone();
-                            let is_enabled = enabled_choices.contains(&choice.action.to)
+                            // Some paragraph IDs may contain stray whitespaces in the JSON.  Allow
+                            // a match either on the original id or its trimmed version so that the
+                            // UI does not incorrectly mark a valid choice as disabled.
+                            let trimmed_id = choice.action.to.trim();
+                            let is_enabled = (enabled_choices.contains(&choice.action.to)
+                                || enabled_choices.contains(&trimmed_id.to_string()))
                                 && !disabled_by_countdown.try_read()
                                     .map(|guard| guard.get(index).copied().unwrap_or(false))
                                     .unwrap_or(false);
@@ -736,7 +804,7 @@ pub fn StoryContent(props: StoryContentProps) -> Element {
                                     }},
                                     onclick: on_click,
                                     span { class: "mr-2", {caption.clone()} }
-                                    { (countdown > 0 && !disabled_by_countdown.try_read()
+                                    { ( *disabled_state_loaded.read() && countdown > 0 && !disabled_by_countdown.try_read()
                                         .map(|guard| guard.get(index).copied().unwrap_or(false))
                                         .unwrap_or(false)).then(|| rsx! {
                                         style { "{keyframes}" }
@@ -745,21 +813,24 @@ pub fn StoryContent(props: StoryContentProps) -> Element {
                                                 if *time_left_enabled.read() { "" } else { "opacity-0" }
                                             ),
                                             style: format!(
-                                                "animation: {} linear {} forwards;animation-play-state:{};",
+                                                "animation: {} linear {} forwards;animation-play-state:{};animation-delay:0.2s;",
                                                 animation_name, duration, animation_play_state
                                             ),
                                             onanimationend: move |_| {
-                                                let mut arr = disabled_by_countdown.write();
-                                                if !arr.get(index).copied().unwrap_or(false) {
-                                                    arr[index] = true;
-                                                    // Save disabled state to IndexedDB (excluding settings chapter)
-                                                    let is_settings_chapter = story_ctx_clone.read().is_settings_chapter();
-                                                    if !current_paragraph_id_clone.is_empty() && !is_settings_chapter {
-                                                        let current_paragraph_id_clone_for_db = current_paragraph_id_clone.clone();
-                                                        let index_for_db = index;
-                                                        spawn_local(async move {
-                                                            let _ = set_disabled_choice_to_indexeddb(&current_paragraph_id_clone_for_db, index_for_db as u32).await;
-                                                        });
+                                                // 只有在 animation 正常運行 (非 paused) 狀態下，才在結束時停用選項
+                                                if !countdown_paused {
+                                                    let mut arr = disabled_by_countdown.write();
+                                                    if !arr.get(index).copied().unwrap_or(false) {
+                                                        arr[index] = true;
+                                                        // Save disabled state to IndexedDB (excluding settings chapter)
+                                                        let is_settings_chapter = story_ctx_clone.read().is_settings_chapter();
+                                                        if !current_paragraph_id_clone.is_empty() && !is_settings_chapter {
+                                                            let current_paragraph_id_clone_for_db = current_paragraph_id_clone.clone();
+                                                            let index_for_db = index;
+                                                            spawn_local(async move {
+                                                                let _ = set_disabled_choice_to_indexeddb(&current_paragraph_id_clone_for_db, index_for_db as u32).await;
+                                                            });
+                                                        }
                                                     }
                                                 }
                                             },

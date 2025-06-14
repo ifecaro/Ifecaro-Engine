@@ -435,3 +435,43 @@ mod integration_tests {
         assert_eq!(chinese_result, "這是中文內容");
     }
 }
+
+#[test]
+fn test_compute_enabled_choices_basic() {
+    use crate::components::story_content::{Action, Choice};
+    use crate::pages::story::compute_enabled_choices;
+
+    let choices = vec![
+        Choice {
+            caption: "Go to p1".to_string(),
+            action: Action {
+                type_: "goto".to_string(),
+                key: None,
+                value: None,
+                to: "p1".to_string(),
+            },
+        },
+        Choice {
+            caption: "Go to p2".to_string(),
+            action: Action {
+                type_: "goto".to_string(),
+                key: None,
+                value: None,
+                to: "p2".to_string(),
+            },
+        },
+        // An empty target id should be ignored
+        Choice {
+            caption: "Invalid".to_string(),
+            action: Action {
+                type_: "goto".to_string(),
+                key: None,
+                value: None,
+                to: "".to_string(),
+            },
+        },
+    ];
+
+    let enabled = compute_enabled_choices(&choices);
+    assert_eq!(enabled, vec!["p1".to_string(), "p2".to_string()]);
+}
