@@ -24,6 +24,7 @@ RUN curl -LO https://github.com/tailwindlabs/tailwindcss/releases/latest/downloa
 
 # Add environment variables (persistent for all RUN and CMD steps)
 ENV RUSTC_WRAPPER="sccache"
+ENV SCCACHE_DIR="~/.cache/sccache"
 ENV CHROME_BINARY="/usr/bin/chromium"
 ENV PATH="/root/.cargo/bin:${PATH}"
 # ENV RUST_LOG="error"
