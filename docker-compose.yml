@@ -2,12 +2,14 @@ services:
   app:
     build: .
     volumes:
-      - ./:/app
-      - ~/.ssh:/root/.ssh
+      - /mnt/ramdisk/Ifecaro-Engine:/app
+      # - /mnt/ramdisk/target:/app/target
+    environment:
+      - RUST_LOG=debug
+      # - RUST_LOG=error
+    tty: true
     ports:
       - "9999:9999"
     env_file:
       - .env
-    environment:
-      - RUST_LOG=error
     command: bash -c "mkdir -p /root/.ssh && ssh-keyscan 38.242.233.231 >> /root/.ssh/known_hosts; tailwindcss -i ./src/input.css -o ./public/tailwind.css -w & while true; do sleep 30; done"
