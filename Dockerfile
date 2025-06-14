@@ -23,8 +23,8 @@ RUN curl -LO https://github.com/tailwindlabs/tailwindcss/releases/latest/downloa
     mv tailwindcss-linux-x64 /usr/local/bin/tailwindcss
 
 # Add environment variables (persistent for all RUN and CMD steps)
-ENV RUSTFLAGS="-C link-arg=-fuse-ld=mold"
 ENV RUSTC_WRAPPER="sccache"
+ENV SCCACHE_DIR="~/.cache/sccache"
 ENV CHROME_BINARY="/usr/bin/chromium"
 ENV PATH="/root/.cargo/bin:${PATH}"
 # ENV RUST_LOG="error"

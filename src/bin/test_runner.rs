@@ -85,21 +85,28 @@ impl TestRunner {
     }
 
     fn run_test(&mut self, name: &str, command: &str) -> Result<()> {
+        // Ensure cargo check/test use release profile to avoid debug artifacts
+        let mut cmd_str = command.to_string();
+        if cmd_str.contains("cargo check") && !cmd_str.contains("--release") {
+            cmd_str = cmd_str.replacen("cargo check", "cargo check --release", 1);
+        } else if cmd_str.contains("cargo test") && !cmd_str.contains("--release") {
+            cmd_str = cmd_str.replacen("cargo test", "cargo test --release", 1);
+        }
+
         println!("\n{}", format!("📋 Running {}...", name).yellow().bold());
-        println!("Command: {}", command.cyan());
+        println!("Command: {}", cmd_str.cyan());
         println!("{}", "------------------------------------------------".dimmed());
 
         let start_time = Instant::now();
         
-        // Check if this is a test or check command that should skip Tailwind compilation
-        let should_skip_tailwind = command.contains("test") || command.contains("check");
+        let should_skip_tailwind = cmd_str.contains("test") || cmd_str.contains("check");
         
         let (program, args) = if self.is_internal {
             // Execute directly inside container
-            self.parse_internal_command(command)
+            self.parse_internal_command(&cmd_str)
         } else {
             // Execute externally through docker compose exec
-            self.parse_external_command(command)
+            self.parse_external_command(&cmd_str)
         };
 
         let mut cmd = Command::new(&program);
@@ -145,7 +152,7 @@ impl TestRunner {
             name: name.to_string(),
             passed,
             duration,
-            command: command.to_string(),
+            command: cmd_str.clone(),
             error_message: if passed { None } else { Some("Test failed".to_string()) },
         };
 
@@ -249,9 +256,9 @@ impl TestRunner {
 
         // 新增 wasm-bindgen-test (wasm-pack test --headless --chrome)
         let wasm_test_cmd = if self.is_internal {
-            "wasm-pack test --headless --chrome"
+            "wasm-pack test --headless --chrome --release"
         } else {
-            "docker compose exec app wasm-pack test --headless --chrome"
+            "docker compose exec app wasm-pack test --headless --chrome --release"
         };
         self.run_test("WASM Bindgen Tests (Chrome Headless)", wasm_test_cmd)?;
 
@@ -277,7 +284,7 @@ impl TestRunner {
 
         // Container tests don't need docker compose exec app prefix
         let commands = vec![
-            "cargo check",
+            "cargo check --release",
             "cargo test --lib",
             "cargo test story_tests",
             "cargo test --test integration_tests",

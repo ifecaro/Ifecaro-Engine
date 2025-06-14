@@ -2,8 +2,8 @@ services:
   app:
     build: .
     volumes:
-      - /mnt/ramdisk/Ifecaro-Engine:/app
-      # - /mnt/ramdisk/target:/app/target
+      - .:/app
+      - ~/.ssh:/home/deck/.ssh:ro
     environment:
       - RUST_LOG=debug
       # - RUST_LOG=error

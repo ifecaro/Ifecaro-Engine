@@ -1,3 +1,4 @@
+#![allow(unused_mut)]
 use std::sync::Arc;
 use dioxus::prelude::*;
 use serde::{Serialize, Deserialize};
@@ -12,9 +13,6 @@ use std::hash::{Hash, Hasher};
 use crate::services::indexeddb::{set_disabled_choice_to_indexeddb, get_disabled_choices_from_indexeddb};
 use wasm_bindgen_futures::spawn_local;
 use crate::contexts::settings_context::use_settings_context;
-use js_sys;
-use wasm_bindgen::JsValue;
-use web_sys::console;
 use crate::contexts::language_context::LanguageState;
 use crate::pages::story::paragraph_has_translation;
 
@@ -203,13 +201,10 @@ pub fn StoryContent(props: StoryContentProps) -> Element {
         use_effect(move || {
             let time_limits = story_ctx.read().countdowns.read().clone();
             let current_len = progress_started.try_read().map(|v| v.len()).unwrap_or(0);
-
-            if current_len != time_limits.len() {
-                console::log_1(&JsValue::from_str("Effect: init progress_started (updated length)"));
-                let mut ps_signal = progress_started.clone();
-                let new_len = time_limits.len();
+            let new_len = time_limits.len();
+            if current_len != new_len {
                 gloo_timers::callback::Timeout::new(0, move || {
-                    if let Ok(mut guard) = ps_signal.try_write() {
+                    if let Ok(mut guard) = progress_started.try_write() {
                         *guard = vec![false; new_len];
                     }
                 })
@@ -258,7 +253,6 @@ pub fn StoryContent(props: StoryContentProps) -> Element {
             
             let paragraph_id_for_async = paragraph_id.clone();
             spawn_local(async move {
-                console::log_1(&JsValue::from_str("Loading disabled state from IndexedDB"));
                 if let Ok(js_value) = get_disabled_choices_from_indexeddb(&paragraph_id_for_async).await {
                     let disabled_indices: Vec<usize> = if let Ok(array) = js_value.dyn_into::<js_sys::Array>() {
                         array.iter()
@@ -267,10 +261,6 @@ pub fn StoryContent(props: StoryContentProps) -> Element {
                     } else {
                         Vec::new()
                     };
-
-                    console::log_1(&JsValue::from_str(&format!(
-                        "Loaded disabled indices from IndexedDB: {:?}", disabled_indices
-                    )));
 
                     // Always apply disabled state from IndexedDB (use try_read to avoid ValueDroppedError)
                     let mut current_disabled = disabled_by_countdown.try_read().map(|v| v.clone()).unwrap_or_default();
@@ -306,9 +296,6 @@ pub fn StoryContent(props: StoryContentProps) -> Element {
                                     c_guard[idx] = 0;
                                 }
                             }
-                            console::log_1(&JsValue::from_str(&format!(
-                                "Local countdowns after zeroing: {:?}", *c_guard
-                            )));
                         }
 
                         if let Ok(mut m_guard) = max_times.try_write() {
@@ -317,9 +304,6 @@ pub fn StoryContent(props: StoryContentProps) -> Element {
                                     m_guard[idx] = 0;
                                 }
                             }
-                            console::log_1(&JsValue::from_str(&format!(
-                                "Local max_times after zeroing: {:?}", *m_guard
-                            )));
                         }
 
                         if let Ok(mut p_guard) = progress_started.try_write() {
@@ -329,13 +313,6 @@ pub fn StoryContent(props: StoryContentProps) -> Element {
                                 }
                             }
                         }
-                    }
-
-                    // Log the updated story_ctx countdowns immediately after mutation
-                    if let Ok(ctx_read_after) = story_ctx.try_read() {
-                        console::log_1(&JsValue::from_str(&format!(
-                            "story_ctx.countdowns after mutation: {:?}", ctx_read_after.countdowns.read().clone()
-                        )));
                     }
 
                     // Mark that disabled state has completed loading (do this after all mutations to guarantee correct state)

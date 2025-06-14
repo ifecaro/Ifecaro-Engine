@@ -1,3 +1,4 @@
+#![allow(unused_mut)]
 use dioxus::prelude::*;
 use dioxus_core::fc_to_builder;
 use wasm_bindgen_futures::spawn_local;
@@ -283,7 +284,7 @@ pub fn Story(props: StoryProps) -> Element {
     
     // Only responsible for background data fetching, update context after fetching
     {
-        let mut paragraph_data = paragraph_data.clone();
+        let mut _paragraph_data = paragraph_data.clone();
         let mut _expanded_paragraphs = _expanded_paragraphs.clone();
         let mut story_context = story_context.clone();
         let mut settings_context = settings_context.clone();
@@ -347,7 +348,7 @@ pub fn Story(props: StoryProps) -> Element {
                                                 _expanded_paragraphs.set(vec![first_paragraph.clone()]);
                                             }
                                             // Here first set to paragraph_data (signal), then set to context
-                                            paragraph_data.set(data.items.clone());
+                                            _paragraph_data.set(data.items.clone());
                                             story_context.write().paragraphs.set(data.items.clone());
                                         },
                                         Err(_e) => {}
@@ -410,7 +411,7 @@ pub fn Story(props: StoryProps) -> Element {
         let mut current_text = current_text.clone();
         let mut current_choices = current_choices.clone();
         let mut enabled_choices = enabled_choices.clone();
-        let paragraph_data = paragraph_data.clone();
+        let _paragraph_data = paragraph_data.clone();
         let state = state.clone();
         let _story_context = story_context.clone();
         let mut _expanded_paragraphs = _expanded_paragraphs.clone();
@@ -485,7 +486,7 @@ pub fn Story(props: StoryProps) -> Element {
     
     // Separate effect for reader mode auto-expansion
     {
-        let paragraph_data = paragraph_data.clone();
+        let _paragraph_data = paragraph_data.clone();
         let mut _expanded_paragraphs = _expanded_paragraphs.clone();
         let mut story_context = story_context.clone();
         let settings_context = settings_context.clone();
@@ -507,14 +508,14 @@ pub fn Story(props: StoryProps) -> Element {
             let _reader_mode_enabled = settings.get("reader_mode").map(|v| v == "true").unwrap_or(false);
             let settings_done = settings.get("settings_done").map(|v| v == "true").unwrap_or(false);
             if let Some(target_id) = target_id {
-                if let Ok(paragraph_data_guard) = paragraph_data.try_read() {
-                    if let Some(paragraph) = paragraph_data_guard.iter().find(|p| &p.id == &target_id) {
+                if let Ok(_paragraph_data_guard) = _paragraph_data.try_read() {
+                    if let Some(paragraph) = _paragraph_data.iter().find(|p| &p.id == &target_id) {
                         if settings_done && _reader_mode_enabled && paragraph.chapter_id != "settingschapter" {
                             if let Some(text) = paragraph.texts.iter().find(|t| t.lang == state().current_language) {
                                 if !text.choices.is_empty() {
                                     *last_expansion_id.borrow_mut() = target_id_str;
-                                    if let Ok(paragraph_data_clone) = paragraph_data.try_read() {
-                                        let paragraph_data = paragraph_data_clone.clone();
+                                    if let Ok(_paragraph_data_clone) = _paragraph_data.try_read() {
+                                        let _paragraph_data = _paragraph_data.clone();
                                         let state = state.clone();
                                         let paragraph = paragraph.clone();
                                         let story_context = story_context.clone();
@@ -556,7 +557,7 @@ pub fn Story(props: StoryProps) -> Element {
                                                     break; // Only handle one multi-choice for now, then reconstruct path
                                                 } else {
                                                     let next_id = &choice.to[0];
-                                                    if let Some(next) = paragraph_data.iter().find(|p| p.id == *next_id) {
+                                                    if let Some(next) = _paragraph_data.iter().find(|p| p.id == *next_id) {
                                                         if visited.contains(&next.id) { break; }
                                                         path.push(next.clone());
                                                         visited.push(next.id.clone());
@@ -611,7 +612,7 @@ pub fn Story(props: StoryProps) -> Element {
                                                     chosen
                                                 };
                                                 // 找到下一個段落
-                                                if let Some(next) = paragraph_data.iter().find(|p| p.id == chosen_target) {
+                                                if let Some(next) = _paragraph_data.iter().find(|p| p.id == chosen_target) {
                                                     if visited.contains(&next.id) { break; }
                                                     path.push(next.clone());
                                                     visited.push(next.id.clone());
@@ -646,7 +647,7 @@ pub fn Story(props: StoryProps) -> Element {
                                                                 // 展開新的選擇
                                                                 let mut expanded = Vec::new();
                                                                 for id in &ids {
-                                                                    if let Some(p) = paragraph_data.iter().find(|p| p.id == *id) {
+                                                                    if let Some(p) = _paragraph_data.iter().find(|p| p.id == *id) {
                                                                         expanded.push(p.clone());
                                                                     }
                                                                 }
@@ -658,7 +659,7 @@ pub fn Story(props: StoryProps) -> Element {
                                                                 // 展開 IndexedDB 中的選擇
                                                                 let mut expanded = Vec::new();
                                                                 for id in &existing {
-                                                                    if let Some(p) = paragraph_data.iter().find(|p| p.id == *id) {
+                                                                    if let Some(p) = _paragraph_data.iter().find(|p| p.id == *id) {
                                                                         expanded.push(p.clone());
                                                                     }
                                                                 }
@@ -725,7 +726,7 @@ pub fn Story(props: StoryProps) -> Element {
     // we should *only* jump to the last paragraph to avoid the accidental
     // concatenation that the user reported.
     {
-        let paragraph_data = paragraph_data.clone();
+        let _paragraph_data = paragraph_data.clone();
         let settings_context = settings_context.clone();
         let mut expanded_paragraphs = _expanded_paragraphs.clone();
         let story_context = story_context.clone();
@@ -743,15 +744,15 @@ pub fn Story(props: StoryProps) -> Element {
                 .map(|v| v == "true")
                 .unwrap_or(false);
 
-            if let Ok(paragraph_data_vec) = paragraph_data.try_read() {
-                let paragraph_data_vec = paragraph_data_vec.clone();
+            if let Ok(_paragraph_data_vec) = _paragraph_data.try_read() {
+                let _paragraph_data_vec = _paragraph_data.clone();
                 let ctx = story_context.read();
                 let choice_ids_vec = ctx.choice_ids.read().clone();
                 if !choice_ids_vec.is_empty() {
                     wasm_bindgen_futures::spawn_local(async move {
                         let mut expanded: Vec<Paragraph> = Vec::new();
                         for paragraph_id in &choice_ids_vec {
-                            if let Some(target) = paragraph_data_vec.iter().find(|p| p.id == *paragraph_id) {
+                            if let Some(target) = _paragraph_data_vec.iter().find(|p| p.id == *paragraph_id) {
                                 if !expanded.iter().any(|p: &Paragraph| p.id == *paragraph_id) {
                                     expanded.push(target.clone());
                                 }
@@ -781,7 +782,7 @@ pub fn Story(props: StoryProps) -> Element {
     let on_choice_click = {
         let mut _expanded_paragraphs = _expanded_paragraphs.clone();
         let mut story_context = story_context.clone();
-        let paragraph_data = paragraph_data.clone();
+        let _paragraph_data = paragraph_data.clone();
         let mut show_chapter_title = show_chapter_title.clone();
         move |(goto, choice_index): (String, usize)| {
             let expanded_vec = _expanded_paragraphs.read().clone();
@@ -832,7 +833,7 @@ pub fn Story(props: StoryProps) -> Element {
                 }
             }
 
-            if let Ok(paragraph_data_read) = paragraph_data.try_read() {
+            if let Ok(_paragraph_data_read) = _paragraph_data.try_read() {
                 let mut is_setting_action = false;
                 let mut setting_key = None;
                 let mut setting_value = None;
@@ -856,7 +857,7 @@ pub fn Story(props: StoryProps) -> Element {
                     // async: Set after writing, immediately get_settings, and update context, then jump
                     let mut settings_context = settings_context.clone();
                     let mut _expanded_paragraphs = _expanded_paragraphs.clone();
-                    let paragraphs = paragraph_data_read.clone();
+                    let paragraphs = _paragraph_data.clone();
                     let goto = goto.clone();
                     let mut story_context = story_context.clone();
                     let mut show_chapter_title = show_chapter_title.clone();
@@ -910,7 +911,7 @@ pub fn Story(props: StoryProps) -> Element {
                     return;
                 }
 
-                if let Some(ref target_paragraph) = paragraph_data_read.iter().find(|p| p.id == goto) {
+                if let Some(ref target_paragraph) = _paragraph_data.iter().find(|p| p.id == goto) {
                     if let Some(ref last) = last_paragraph {
                         if !last.chapter_id.is_empty() {
                             let order = story_context.read().chapters.read().iter().find(|c| c.id == last.chapter_id).map(|c| c.order).unwrap_or(0);
@@ -949,7 +950,7 @@ pub fn Story(props: StoryProps) -> Element {
                 } else {
                     // Fallback: target paragraph is not yet loaded – fetch it from the API and proceed.
                     let goto_id = goto.clone();
-                    let paragraph_data_signal = paragraph_data.clone();
+                    let paragraph_data_signal = _paragraph_data.clone();
                     let mut _expanded_paragraphs = _expanded_paragraphs.clone();
                     let mut story_context = story_context.clone();
                     let mut show_chapter_title = show_chapter_title.clone();
@@ -989,14 +990,14 @@ pub fn Story(props: StoryProps) -> Element {
     // Merge paragraph content into merged context
     {
         let expanded = _expanded_paragraphs.clone();
-        let paragraph_data = paragraph_data.clone();
+        let _paragraph_data = paragraph_data.clone();
         let state = state.clone();
         let story_context = story_context.clone();
         let settings_context = settings_context.clone();
         let story_merged_context = story_merged_context.clone();
         use_effect(move || {
             let expanded = expanded.read();
-            if let Ok(_paragraph_data_read) = paragraph_data.try_read() {
+            if let Ok(_paragraph_data_read) = _paragraph_data.try_read() {
                 let reader_mode = settings_context.read().settings.get("reader_mode").map(|v| v == "true").unwrap_or(false);
                 let chapter_id = expanded.last().map(|p| p.chapter_id.clone()).unwrap_or_default();
                 let is_settings_chapter = chapter_id == "settingschapter";

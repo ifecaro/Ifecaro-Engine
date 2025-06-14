@@ -219,7 +219,7 @@ fn check() -> Result<()> {
     println!("{}", "🔍 Running Cargo check...".yellow().bold());
     
     let output = Command::new("cargo")
-        .args(&["check"])
+        .args(&["check", "--release"])
         .stdout(Stdio::inherit())
         .stderr(Stdio::inherit())
         .status()
@@ -245,8 +245,12 @@ fn test(mode: Option<TestMode>) -> Result<()> {
         TestMode::Internal => "internal",
     };
 
+    // Always use release profile to prevent generating debug artifacts
+    let mut cargo_args = vec!["run", "--release"];
+    cargo_args.extend_from_slice(&["--bin", "test-runner", test_command]);
+
     let output = Command::new("cargo")
-        .args(&["run", "--bin", "test-runner", test_command])
+        .args(&cargo_args)
         .stdout(Stdio::inherit())
         .stderr(Stdio::inherit())
         .status()
@@ -261,9 +265,10 @@ fn test(mode: Option<TestMode>) -> Result<()> {
     // 新增：自動執行 wasm-pack test
     println!("\n{}", "🦀 Running wasm-pack test (headless, Chrome)...".yellow().bold());
     let wasm_pack_result = Command::new("wasm-pack")
-        .args(&["test", "--headless", "--chrome"])
-        .stdout(Stdio::inherit())
-        .stderr(Stdio::inherit())
+        .args(&["test", "--headless", "--chrome", "--release"])
+        .env("RUST_LOG", "info")
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
         .status()
         .context("Failed to run wasm-pack test")?;
 
@@ -280,7 +285,7 @@ fn build() -> Result<()> {
     println!("{}", "🏗 Building Rust project...".yellow().bold());
     
     let rust_build = Command::new("cargo")
-        .args(&["build", "--release"])
+        .args(&["build", "--release", "--target", "wasm32-unknown-unknown"])
         .stdout(Stdio::inherit())
         .stderr(Stdio::inherit())
         .status()
@@ -293,7 +298,7 @@ fn build() -> Result<()> {
     println!("{}", "🎯 Building Dioxus project...".yellow().bold());
     
     let dioxus_build = Command::new("dx")
-        .args(&["build", "--release"])
+        .args(&["build", "--release", "--platform", "web"])
         .stdout(Stdio::inherit())
         .stderr(Stdio::inherit())
         .status()
@@ -315,7 +320,7 @@ fn deploy() -> Result<()> {
     // 1. Run full test suite
     println!("\n{}", "📋 Running full test suite...".yellow().bold());
     let test_result = Command::new("cargo")
-        .args(&["run", "--bin", "test-runner", "full"])
+        .args(&["run", "--release", "--bin", "test-runner", "full"])
         .stdout(Stdio::inherit())
         .stderr(Stdio::inherit())
         .status()
@@ -329,9 +334,10 @@ fn deploy() -> Result<()> {
     // 1.5. Run wasm-pack test (browser, headless)
     println!("\n{}", "🦀 Running wasm-pack test (headless, Chrome)...".yellow().bold());
     let wasm_pack_result = Command::new("wasm-pack")
-        .args(&["test", "--headless", "--chrome"])
-        .stdout(Stdio::inherit())
-        .stderr(Stdio::inherit())
+        .args(&["test", "--headless", "--chrome", "--release"])
+        .env("RUST_LOG", "info")
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
         .status()
         .context("Failed to run wasm-pack test")?;
 
@@ -343,7 +349,7 @@ fn deploy() -> Result<()> {
     // 2. Run Rust build
     println!("\n{}", "🏗️ Running Rust build...".yellow().bold());
     let rust_build = Command::new("cargo")
-        .args(&["build", "--release"])
+        .args(&["build", "--release", "--target", "wasm32-unknown-unknown"])
         .stdout(Stdio::inherit())
         .stderr(Stdio::inherit())
         .status()
@@ -357,7 +363,7 @@ fn deploy() -> Result<()> {
     // 3. Run Dioxus build
     println!("\n{}", "🎯 Running Dioxus build...".yellow().bold());
     let dioxus_build = Command::new("dx")
-        .args(&["build", "--release"])
+        .args(&["build", "--release", "--platform", "web"])
         .stdout(Stdio::inherit())
         .stderr(Stdio::inherit())
         .status()
@@ -379,6 +385,9 @@ fn deploy() -> Result<()> {
 
     // 7. Upload to remote server
     upload_to_remote()?;
+
+    // Optional: clean up debug & incremental artifacts to reduce target size
+    cleanup_target_artifacts();
 
     println!("\n{}", "🎉 Deployment process completed!".green().bold());
     println!("Deployment file location: target/dx/ifecaro/release/web/public.tar.gz");
@@ -692,4 +701,21 @@ fn clean() -> Result<()> {
     }
 
     Ok(())
+}
+
+/// Remove heavy debug and incremental caches to shrink target folder size.
+fn cleanup_target_artifacts() {
+    use std::fs;
+    let paths = [
+        "target/debug",
+        "target/release/incremental",
+    ];
+
+    for p in &paths {
+        if fs::metadata(p).is_ok() {
+            if let Err(e) = fs::remove_dir_all(p) {
+                eprintln!("Warning: failed to remove {}: {}", p, e);
+            }
+        }
+    }
 } 
