@@ -97,4 +97,27 @@ async fn test_disabled_choices_persistence() {
 
     // 驗證所有停用選項都存在
     assert_eq!(result, expected, "All disabled choices should persist");
+}
+
+#[wasm_bindgen_test]
+async fn test_clear_all_disabled_choices_functionality() {
+    console::log_1(&"Starting test_clear_all_disabled_choices_functionality".into());
+
+    // Insert a disabled choice
+    let paragraph_id = "test_paragraph_clear";
+    let choice_index = 2u32;
+    set_disabled_choice_to_indexeddb(paragraph_id, choice_index).await.unwrap();
+
+    // Verify it exists
+    let pre_clear_js = get_disabled_choices_from_indexeddb(paragraph_id).await.unwrap();
+    let pre_clear_arr = Array::from(&pre_clear_js);
+    assert!(pre_clear_arr.length() > 0, "Disabled choice should exist before clearing");
+
+    // Clear all disabled choices
+    clear_all_disabled_choices_from_indexeddb().await.unwrap();
+
+    // Retrieve again to ensure it's cleared
+    let post_clear_js = get_disabled_choices_from_indexeddb(paragraph_id).await.unwrap();
+    let post_clear_arr = Array::from(&post_clear_js);
+    assert_eq!(post_clear_arr.length(), 0, "Disabled choices should be cleared from IndexedDB");
 } 

@@ -8,6 +8,8 @@ use dioxus_i18n::t;
 use crate::contexts::settings_context::use_settings_context;
 use crate::enums::style::NavbarStyle;
 use wasm_bindgen_futures::spawn_local;
+#[cfg(target_arch = "wasm32")]
+use crate::services::indexeddb::clear_all_disabled_choices_from_indexeddb;
 
 #[derive(Props, Clone, PartialEq)]
 pub struct SettingsProps {
@@ -84,6 +86,10 @@ pub fn Settings(props: SettingsProps) -> Element {
                             onclick: move |_| {
                                 spawn_local(async move {
                                     let _ = clear_choices_and_random_choices().await;
+                                    #[cfg(target_arch = "wasm32")]
+                                    {
+                                        let _ = clear_all_disabled_choices_from_indexeddb().await;
+                                    }
                                 });
                                 toast.write().show("Choices cleared successfully.".to_string(), ToastType::Success, 5000);
                                 is_open.set(false);
