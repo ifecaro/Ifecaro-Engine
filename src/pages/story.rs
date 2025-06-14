@@ -239,6 +239,14 @@ pub fn compute_enabled_choices(choices: &[Choice]) -> Vec<String> {
         .collect()
 }
 
+pub fn paragraph_has_translation(paragraphs: &[Paragraph], paragraph_id: &str, lang: &str) -> bool {
+    paragraphs
+        .iter()
+        .find(|p| p.id.trim() == paragraph_id.trim())
+        .map(|p| p.texts.iter().any(|t| t.lang == lang))
+        .unwrap_or(false)
+}
+
 #[component]
 pub fn Story(props: StoryProps) -> Element {
     provide_story_merged_context();
