@@ -15,6 +15,8 @@ use crate::contexts::settings_context::use_settings_context;
 use js_sys;
 use wasm_bindgen::JsValue;
 use web_sys::console;
+use crate::contexts::language_context::LanguageState;
+use crate::pages::story::paragraph_has_translation;
 
 #[derive(Props, Clone, PartialEq)]
 pub struct StoryContentProps {
@@ -160,6 +162,13 @@ pub fn StoryContent(props: StoryContentProps) -> Element {
     // Use current paragraph ID signal passed from props
     let current_paragraph_id_signal = props.current_paragraph_id.clone();
     let disabled_state_loaded = use_signal(|| false);
+    let language_state = use_context::<Signal<LanguageState>>();
+    // Current interface language
+    let current_language = language_state.read().current_language.clone();
+    // Snapshot of all paragraphs for translation lookup
+    let paragraphs_vec = story_ctx.read().paragraphs.read().clone();
+    let paragraphs_vec_keydown = paragraphs_vec.clone();
+    let current_language_keydown = current_language.clone();
     {
         let mut story_ctx = story_ctx.clone();
         let disabled_by_countdown = disabled_by_countdown.clone();
@@ -664,9 +673,11 @@ pub fn StoryContent(props: StoryContentProps) -> Element {
                                 // a match either on the original id or its trimmed version so that the
                                 // UI does not incorrectly mark a valid choice as disabled.
                                 let trimmed_id = choice.action.to.trim();
+                                let has_translation = paragraph_has_translation(&paragraphs_vec_keydown, trimmed_id, &current_language_keydown);
                                 let is_enabled = (enabled_choices.contains(&choice.action.to)
                                     || enabled_choices.contains(&trimmed_id.to_string()))
-                                    && !is_disabled;
+                                    && !is_disabled
+                                    && has_translation;
                                 if is_enabled {
                                     keyboard_state.write().selected_index = idx as i32;
                                     on_choice_click.call((goto.clone(), idx));
@@ -751,11 +762,13 @@ pub fn StoryContent(props: StoryContentProps) -> Element {
                             // a match either on the original id or its trimmed version so that the
                             // UI does not incorrectly mark a valid choice as disabled.
                             let trimmed_id = choice.action.to.trim();
+                            let has_translation = paragraph_has_translation(&paragraphs_vec_keydown, trimmed_id, &current_language_keydown);
                             let is_enabled = (enabled_choices.contains(&choice.action.to)
                                 || enabled_choices.contains(&trimmed_id.to_string()))
                                 && !disabled_by_countdown.try_read()
                                     .map(|guard| guard.get(index).copied().unwrap_or(false))
-                                    .unwrap_or(false);
+                                    .unwrap_or(false)
+                                && has_translation;
                             let is_selected = keyboard_state.read().selected_index == index as i32;
                             let on_click = {
                                 let goto = goto.clone();
@@ -806,7 +819,8 @@ pub fn StoryContent(props: StoryContentProps) -> Element {
                                     span { class: "mr-2", {caption.clone()} }
                                     { ( *disabled_state_loaded.read() && countdown > 0 && !disabled_by_countdown.try_read()
                                         .map(|guard| guard.get(index).copied().unwrap_or(false))
-                                        .unwrap_or(false)).then(|| rsx! {
+                                        .unwrap_or(false)
+                                        && is_enabled).then(|| rsx! {
                                         style { "{keyframes}" }
                                         div {
                                             class: format!("w-full h-px bg-current mt-2 origin-left will-change-transform {}", 

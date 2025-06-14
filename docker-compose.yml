@@ -2,7 +2,7 @@ services:
   app:
     build: .
     volumes:
-      - /mnt/ramdisk/Ifecaro-Engine:/app
+      - .:/app
       # - /mnt/ramdisk/target:/app/target
     environment:
       - RUST_LOG=debug
