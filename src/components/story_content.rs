@@ -13,9 +13,6 @@ use std::hash::{Hash, Hasher};
 use crate::services::indexeddb::{set_disabled_choice_to_indexeddb, get_disabled_choices_from_indexeddb};
 use wasm_bindgen_futures::spawn_local;
 use crate::contexts::settings_context::use_settings_context;
-use js_sys;
-use wasm_bindgen::JsValue;
-use web_sys::console;
 use crate::contexts::language_context::LanguageState;
 use crate::pages::story::paragraph_has_translation;
 
@@ -204,10 +201,10 @@ pub fn StoryContent(props: StoryContentProps) -> Element {
         use_effect(move || {
             let time_limits = story_ctx.read().countdowns.read().clone();
             let current_len = progress_started.try_read().map(|v| v.len()).unwrap_or(0);
-
-            if current_len != time_limits.len() {
+            let new_len = time_limits.len();
+            if current_len != new_len {
                 gloo_timers::callback::Timeout::new(0, move || {
-                    if let Ok(mut guard) = ps_signal.try_write() {
+                    if let Ok(mut guard) = progress_started.try_write() {
                         *guard = vec![false; new_len];
                     }
                 })
