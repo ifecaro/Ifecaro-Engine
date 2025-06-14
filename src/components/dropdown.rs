@@ -1,5 +1,6 @@
 use dioxus::prelude::*;
 
+#[allow(unpredictable_function_pointer_comparisons)]
 #[derive(Props, Clone, PartialEq)]
 pub struct DropdownProps<T: Clone + PartialEq + 'static> {
     /// Dropdown label

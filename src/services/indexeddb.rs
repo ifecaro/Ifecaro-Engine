@@ -39,6 +39,7 @@ extern "C" {
     async fn clear_all_disabled_choices() -> Result<JsValue, JsValue>;
 }
 
+#[allow(dead_code)]
 pub async fn clear_all_disabled_choices_from_indexeddb() -> Result<(), JsValue> {
     clear_all_disabled_choices().await?;
     Ok(())
