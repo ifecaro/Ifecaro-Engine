@@ -7,6 +7,7 @@ pub mod contexts;
 pub mod constants;
 pub mod models;
 pub mod services;
+pub mod hooks;
 
 // Re-export dioxus related content for testing use
 pub use dioxus::prelude::*;

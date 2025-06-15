@@ -23,6 +23,7 @@ fn create_test_paragraph(id: &str, chapter_id: &str, lang: &str, text: &str, cho
             value: None,
             same_page: None,
             time_limit: None,
+            timeout_to: None,
         }
     }).collect();
 
@@ -55,6 +56,7 @@ fn create_multilingual_paragraph(id: &str, chapter_id: &str, texts: Vec<(&str, &
                 value: None,
                 same_page: None,
                 time_limit: None,
+                timeout_to: None,
             }
         ],
         chapter_id: chapter_id.to_string(),
@@ -137,6 +139,7 @@ fn test_paragraph_with_time_limit_integration() {
             value: None,
             same_page: None,
             time_limit: Some(10),
+            timeout_to: None,
         },
         ComplexChoice {
             to: vec!["p3".to_string()],
@@ -145,6 +148,7 @@ fn test_paragraph_with_time_limit_integration() {
             value: None,
             same_page: None,
             time_limit: Some(0),
+            timeout_to: None,
         },
         ComplexChoice {
             to: vec!["p4".to_string()],
@@ -153,6 +157,7 @@ fn test_paragraph_with_time_limit_integration() {
             value: None,
             same_page: None,
             time_limit: Some(5),
+            timeout_to: None,
         },
     ];
     
@@ -312,6 +317,7 @@ fn test_complex_choice_structure_validation() {
         value: None,
         same_page: None,
         time_limit: None,
+        timeout_to: None,
     };
     
     assert_eq!(basic_choice.to, vec!["target1"]);
@@ -326,6 +332,7 @@ fn test_complex_choice_structure_validation() {
         value: Some(serde_json::json!({"param": "value"})),
         same_page: Some(true),
         time_limit: Some(30),
+        timeout_to: None,
     };
     
     assert_eq!(complex_choice.to.len(), 2);
@@ -343,6 +350,7 @@ fn test_story_choice_conversion() {
         value: Some(serde_json::json!(42)),
         same_page: Some(false),
         time_limit: Some(15),
+        timeout_to: None,
     };
     
     let story_choice = StoryChoice::Complex(complex_choice.clone());
@@ -485,4 +493,17 @@ fn test_compute_enabled_choices_basic() {
 
     let enabled = compute_enabled_choices(&choices);
     assert_eq!(enabled, hs!("p1", "p2"));
+}
+
+#[test]
+fn test_update_choice_history_no_duplicates() {
+    use crate::pages::story::update_choice_history;
+    let original = vec!["p1".to_string(), "p2".to_string()];
+    // Case 1: Adding existing id should keep the list unchanged
+    let updated_same = update_choice_history(original.clone(), "p2");
+    assert_eq!(updated_same, original);
+
+    // Case 2: Adding new id should append to the end
+    let updated_new = update_choice_history(original.clone(), "p3");
+    assert_eq!(updated_new, vec!["p1".to_string(), "p2".to_string(), "p3".to_string()]);
 }

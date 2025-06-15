@@ -58,4 +58,6 @@ reader_mode = Modo lector
 clear_all_story_choices = Borrar todas las opciones de la historia
 search_settings = Buscar configuración... 
 on = Activado
-off = Desactivado 
+off = Desactivado
+timeout_target = Párrafo tras tiempo agotado
+timeout_target_chapter = Capítulo tras tiempo agotado 

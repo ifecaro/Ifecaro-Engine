@@ -79,6 +79,7 @@ mod dashboard_test_helpers {
                             value: Some(serde_json::json!("test_value")),
                             same_page: Some(false),
                             time_limit: Some(30),
+                            timeout_to: None,
                         },
                     ],
                 },
@@ -210,7 +211,7 @@ mod unit_tests {
         
         // Test Complex choice
         match &paragraph.choices[1] {
-            ParagraphChoice::Complex { to, type_, key, value, same_page, time_limit } => {
+            ParagraphChoice::Complex { to, type_, key, value, same_page, time_limit, timeout_to } => {
                 assert_eq!(to.len(), 1);
                 assert_eq!(to[0], "para3");
                 assert_eq!(type_, "goto");
@@ -218,6 +219,7 @@ mod unit_tests {
                 assert_eq!(value.as_ref().unwrap(), &serde_json::json!("test_value"));
                 assert_eq!(same_page.unwrap(), false);
                 assert_eq!(time_limit.unwrap(), 30);
+                assert!(timeout_to.is_none());
             },
             _ => panic!("Expected Complex choice"),
         }

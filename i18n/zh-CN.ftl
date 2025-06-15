@@ -58,4 +58,6 @@ reader_mode = 读者模式
 clear_all_story_choices = 清除所有故事选择
 search_settings = 搜索设置...
 on = 开启
-off = 关闭 
+off = 关闭
+timeout_target = 倒计时失败段落
+timeout_target_chapter = 倒计时失败章节 

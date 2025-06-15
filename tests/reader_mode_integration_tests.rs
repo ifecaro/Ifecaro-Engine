@@ -86,6 +86,7 @@ mod reader_mode_integration_tests {
                 value: None,
                 same_page: None,
                 time_limit: None,
+                timeout_to: None,
             }
         }).collect();
         
@@ -327,6 +328,7 @@ mod reader_mode_integration_tests {
                 value: None,
                 same_page: None,
                 time_limit: None,
+                timeout_to: None,
             }],
             collection_id: String::new(),
             collection_name: String::new(),

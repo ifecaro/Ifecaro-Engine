@@ -46,6 +46,8 @@ pub struct LanguageProviderProps {
 #[component]
 pub fn LanguageProvider(props: LanguageProviderProps) -> Element {
     let i18n = use_init_i18n(|| crate::i18n::create_i18n_store());
+    // Provide the I18n context so that components can access it via `use_i18n` or the `t!` macro.
+    provide_context(i18n.clone());
     let state = use_signal(|| {
         let mut state = LanguageState::new(i18n);
         state.set_language("zh-TW");

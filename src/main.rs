@@ -12,6 +12,7 @@ mod contexts;
 mod constants;
 mod models;
 mod services;
+mod hooks;
 
 use dioxus::prelude::*;
 use crate::{
@@ -22,7 +23,7 @@ use crate::{
         chapter_context::ChapterProvider,
         paragraph_context::ParagraphProvider,
         story_context::provide_story_context,
-        toast_context::provide_toast_context,
+        toast_context::ToastManager,
     },
     components::toast::ToastContainer,
 };
@@ -39,7 +40,7 @@ fn main() {
 
 #[component]
 fn App() -> Element {
-    provide_toast_context();
+    use_context_provider(|| Signal::new(ToastManager::new()));
     provide_context(Signal::new(SettingsContext::default()));
     rsx! {
         LanguageProvider {

@@ -10,3 +10,10 @@ Resolves:
 - No progress restored on reload.
 - Paragraph 1+2 concatenation after first choice.
 - Keeps full path after reload while keeping single paragraph on navigation.
+
+refactor(dashboard): migrate to global ToastManager
+
+- Replaced local toast signals, effects, and JSX blocks with centralized ToastManager calls
+- Removed redundant `_extra_target_chapters` signal and other obsolete error-toast signals
+- Simplified `handle_submit` by delegating success & error feedback to ToastManager
+- Ensured cleaner state handling and reduced hook complexity

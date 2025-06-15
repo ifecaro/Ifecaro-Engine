@@ -25,7 +25,7 @@ pub struct ParagraphFormProps {
     on_add_choice: EventHandler<()>,
     on_remove_choice: EventHandler<usize>,
     on_submit: EventHandler<()>,
-    choices: Vec<(String, Vec<String>, String, Option<String>, Option<serde_json::Value>, String, Option<u32>)>,
+    choices: Vec<(String, Vec<String>, String, Option<String>, Option<serde_json::Value>, String, bool, Option<u32>, Option<String>, String)>,
     available_chapters: Vec<Chapter>,
     selected_language: String,
     choice_paragraphs: Vec<Paragraph>,
@@ -43,7 +43,7 @@ pub struct ParagraphFormProps {
 
 #[component]
 pub fn ParagraphForm(props: ParagraphFormProps) -> Element {
-    let mut choices = use_signal(|| Vec::<(String, Vec<String>, String, Option<String>, Option<serde_json::Value>, String, Option<u32>)>::new());
+    let mut choices = use_signal(|| Vec::<(String, Vec<String>, String, Option<String>, Option<serde_json::Value>, String, bool, Option<u32>, Option<String>, String)>::new());
     let available_chapters = use_signal(|| Vec::<Chapter>::new());
     let selected_language = use_signal(|| String::new());
     let choice_paragraphs = use_signal(|| Vec::<Paragraph>::new());
@@ -90,7 +90,7 @@ pub fn ParagraphForm(props: ParagraphFormProps) -> Element {
 
             // Option settings
             ChoiceOptions {
-                choices: choices.read().clone().into_iter().map(|(a,b,c,d,e,f,g)| (a,b,c,d,e,f,false,g)).collect(),
+                choices: choices.read().clone(),
                 on_choice_change: move |(index, field, value): (usize, String, String)| {
                     let mut choices_write = choices.write();
                     match field.as_str() {
@@ -100,7 +100,10 @@ pub fn ParagraphForm(props: ParagraphFormProps) -> Element {
                         "action_key" => choices_write[index].3 = Some(value),
                         "action_value" => choices_write[index].4 = Some(serde_json::Value::String(value)),
                         "target_chapter" => choices_write[index].5 = value,
-                        "time_limit" => choices_write[index].6 = value.parse::<u32>().ok(),
+                        "same_page" => choices_write[index].6 = value == "true",
+                        "time_limit" => choices_write[index].7 = value.parse::<u32>().ok(),
+                        "timeout_to" => choices_write[index].8 = if value.trim().is_empty() { None } else { Some(value) },
+                        "timeout_target_chapter" => choices_write[index].9 = value,
                         _ => {}
                     }
                 },
@@ -126,7 +129,10 @@ pub fn ParagraphForm(props: ParagraphFormProps) -> Element {
                         None,
                         None,
                         String::new(),
+                        false,
                         None,
+                        None,
+                        String::new(),
                     ));
                 },
                 on_remove_choice: move |index| {
@@ -139,10 +145,19 @@ pub fn ParagraphForm(props: ParagraphFormProps) -> Element {
                 choice_chapters_search: vec![String::new()],
                 choice_paragraphs_open: vec![false],
                 choice_paragraphs_search: vec![String::new()],
-                on_chapter_toggle: move |_| {},
-                on_chapter_search: move |_| {},
-                on_paragraph_toggle: move |_| {},
-                on_paragraph_search: move |_| {},
+                on_chapter_toggle: move |_idx: usize| {},
+                on_chapter_search: move |_pair: (usize, String)| {},
+                on_paragraph_toggle: move |_idx: usize| {},
+                on_paragraph_search: move |_pair: (usize, String)| {},
+                timeout_chapter_open: vec![false],
+                timeout_chapter_search: vec![String::new()],
+                timeout_paragraphs_open: vec![false],
+                timeout_paragraphs_search: vec![String::new()],
+                timeout_paragraphs: vec![Vec::new()],
+                on_timeout_chapter_toggle: move |_idx: usize| {},
+                on_timeout_chapter_search: move |_pair: (usize, String)| {},
+                on_timeout_paragraph_toggle: move |_idx: usize| {},
+                on_timeout_paragraph_search: move |_pair: (usize, String)| {},
                 action_type_open: action_type_open.read().clone(),
                 on_action_type_toggle: move |index| {
                     let mut current = action_type_open.read().clone();

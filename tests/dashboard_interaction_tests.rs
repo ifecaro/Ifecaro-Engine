@@ -73,6 +73,7 @@ mod interaction_tests {
                             value: Some(serde_json::json!(true)),
                             same_page: Some(false),
                             time_limit: Some(60),
+                            timeout_to: None,
                         },
                     ],
                 },
@@ -119,6 +120,7 @@ mod interaction_tests {
                             value: Some(serde_json::json!(1)),
                             same_page: Some(false),
                             time_limit: None,
+                            timeout_to: None,
                         },
                         ParagraphChoice::Simple(vec!["para7".to_string()]),
                     ],
@@ -331,7 +333,7 @@ mod interaction_tests {
                                     None,
                                 ));
                             },
-                            ParagraphChoice::Complex { to, type_, key, value, same_page, time_limit } => {
+                            ParagraphChoice::Complex { to, type_, key, value, same_page, time_limit, timeout_to } => {
                                 choices.push((
                                     choice_text.clone(),
                                     to.clone(),
@@ -421,26 +423,28 @@ mod interaction_tests {
         
         // Test complex choice structure
         match &paragraph.choices[1] {
-            ParagraphChoice::Complex { to, type_, key, value, same_page, time_limit } => {
+            ParagraphChoice::Complex { to, type_, key, value, same_page, time_limit, timeout_to } => {
                 assert_eq!(to, &vec!["para3".to_string()]);
                 assert_eq!(type_, "conditional");
                 assert_eq!(key.as_ref().unwrap(), "forest_knowledge");
                 assert_eq!(value.as_ref().unwrap(), &serde_json::json!(true));
                 assert_eq!(same_page.unwrap(), false);
                 assert_eq!(time_limit.unwrap(), 60);
+                assert!(timeout_to.is_none());
             },
             _ => panic!("Expected Complex choice"),
         }
         
         let paragraph3 = &paragraph_state.paragraphs[2]; // para3
         match &paragraph3.choices[0] {
-            ParagraphChoice::Complex { to, type_, key, value, same_page, time_limit } => {
+            ParagraphChoice::Complex { to, type_, key, value, same_page, time_limit, timeout_to } => {
                 assert_eq!(to, &vec!["para6".to_string()]);
                 assert_eq!(type_, "gain_item");
                 assert_eq!(key.as_ref().unwrap(), "ancient_key");
                 assert_eq!(value.as_ref().unwrap(), &serde_json::json!(1));
                 assert_eq!(same_page.unwrap(), false);
                 assert!(time_limit.is_none());
+                assert!(timeout_to.is_none());
             },
             _ => panic!("Expected Complex choice"),
         }
@@ -923,6 +927,7 @@ mod edge_case_tests {
             value: Some(serde_json::json!(100)),
             same_page: Some(false),
             time_limit: None,
+            timeout_to: None,
         };
         
         match valid_choice {
@@ -947,6 +952,7 @@ mod edge_case_tests {
             })),
             same_page: Some(true),
             time_limit: Some(120),
+            timeout_to: None,
         };
         
         match complex_choice {

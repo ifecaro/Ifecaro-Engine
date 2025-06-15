@@ -35,6 +35,7 @@ mod tests {
                     value: None,
                     same_page: None,
                     time_limit: Some(30),
+                    timeout_to: None,
                 },
             ],
         }
@@ -155,6 +156,7 @@ mod tests {
             value: Some(json!({"min": 5, "max": 10})),
             same_page: Some(true),
             time_limit: Some(30),
+            timeout_to: None,
         };
 
         // Test complex option data structure
@@ -162,13 +164,14 @@ mod tests {
         let deserialized: ParagraphChoice = serde_json::from_str(&json_str).unwrap();
         
         match deserialized {
-            ParagraphChoice::Complex { to, type_, key, value, same_page, time_limit } => {
+            ParagraphChoice::Complex { to, type_, key, value, same_page, time_limit, timeout_to } => {
                 assert_eq!(to, vec!["target1", "target2"]);
                 assert_eq!(type_, "conditional");
                 assert_eq!(key, Some("player_level".to_string()));
                 assert!(value.is_some());
                 assert_eq!(same_page, Some(true));
                 assert_eq!(time_limit, Some(30));
+                assert_eq!(timeout_to, None);
             },
             _ => panic!("Expected Complex variant"),
         }
@@ -180,6 +183,7 @@ mod tests {
         assert!(complex_choice.get_value().is_some());
         assert_eq!(complex_choice.get_same_page(), Some(true));
         assert_eq!(complex_choice.get_time_limit(), Some(30));
+        // timeout_to is validated above; no getter implemented
 
         // Test second complex option
         let simple_choice = ParagraphChoice::Simple(vec!["simple_target".to_string()]);
@@ -189,6 +193,7 @@ mod tests {
         assert_eq!(simple_choice.get_value(), None);
         assert_eq!(simple_choice.get_same_page(), None);
         assert_eq!(simple_choice.get_time_limit(), None);
+        // simple choice timeout_to none verified implicitly
     }
 
     #[tokio::test]
@@ -223,6 +228,7 @@ mod tests {
                     value: None,
                     same_page: None,
                     time_limit: Some(30),
+                    timeout_to: None,
                 },
             ],
         };

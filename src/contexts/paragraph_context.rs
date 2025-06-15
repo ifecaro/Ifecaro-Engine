@@ -20,6 +20,8 @@ pub enum ParagraphChoice {
         same_page: Option<bool>,
         #[serde(default, skip_serializing_if = "Option::is_none")]
         time_limit: Option<u32>,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        timeout_to: Option<String>,
     },
     ComplexOld {
         to: String,
@@ -33,6 +35,8 @@ pub enum ParagraphChoice {
         same_page: Option<bool>,
         #[serde(default, skip_serializing_if = "Option::is_none")]
         time_limit: Option<u32>,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        timeout_to: Option<String>,
     },
     Simple(Vec<String>),
     SimpleOld(String),

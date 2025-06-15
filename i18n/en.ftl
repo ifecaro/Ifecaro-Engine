@@ -58,4 +58,6 @@ reader_mode = Reader Mode
 clear_all_story_choices = Clear all story choices
 search_settings = Search settings... 
 on = On
-off = Off 
+off = Off
+timeout_target = Timeout target paragraph
+timeout_target_chapter = Timeout target chapter 

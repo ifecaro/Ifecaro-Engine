@@ -6,7 +6,8 @@ use crate::contexts::chapter_context::Chapter;
 
 #[derive(Props, Clone, PartialEq)]
 pub struct ChoiceOptionsProps {
-    pub choices: Vec<(String, Vec<String>, String, Option<String>, Option<serde_json::Value>, String, bool, Option<u32>)>,
+    // (caption, goto, action_type, action_key, action_value, target_chapter, same_page, time_limit, timeout_to, timeout_target_chapter)
+    pub choices: Vec<(String, Vec<String>, String, Option<String>, Option<serde_json::Value>, String, bool, Option<u32>, Option<String>, String)>,
     pub on_choice_change: EventHandler<(usize, String, String)>,
     pub on_choice_add_paragraph: EventHandler<(usize, String)>,
     pub on_choice_remove_paragraph: EventHandler<(usize, String)>,
@@ -23,6 +24,16 @@ pub struct ChoiceOptionsProps {
     pub on_chapter_search: EventHandler<(usize, String)>,
     pub on_paragraph_toggle: EventHandler<usize>,
     pub on_paragraph_search: EventHandler<(usize, String)>,
+    // --- New: timeout dropdown related states/handlers ---
+    pub timeout_chapter_open: Vec<bool>,
+    pub timeout_chapter_search: Vec<String>,
+    pub timeout_paragraphs_open: Vec<bool>,
+    pub timeout_paragraphs_search: Vec<String>,
+    pub timeout_paragraphs: Vec<Vec<Paragraph>>, // per-choice cached paragraphs for timeout target
+    pub on_timeout_chapter_toggle: EventHandler<usize>,
+    pub on_timeout_chapter_search: EventHandler<(usize, String)>,
+    pub on_timeout_paragraph_toggle: EventHandler<usize>,
+    pub on_timeout_paragraph_search: EventHandler<(usize, String)>,
     pub action_type_open: Vec<bool>,
     pub on_action_type_toggle: EventHandler<usize>,
 }
@@ -59,9 +70,21 @@ pub fn ChoiceOptions(props: ChoiceOptionsProps) -> Element {
         }
         
         // Render all options
-        {props.choices.iter().enumerate().map(|(index, (caption, goto_list, action_type, action_key, action_value, target_chapter, same_page, time_limit))| {
+        {props.choices.iter().enumerate().map(|(index, (caption, goto_list, action_type, action_key, action_value, target_chapter, same_page, time_limit, timeout_to, timeout_target_chapter))| {
             // Check if action type is empty (None)
             let is_action_disabled = action_type.is_empty();
+            
+            // Compute currently selected timeout paragraph IDs (comma-separated string → Vec<String>)
+            let timeout_selected_ids: Vec<String> = timeout_to
+                .clone()
+                .unwrap_or_default()
+                .split(',')
+                .map(|s| s.trim().to_string())
+                .filter(|s| !s.is_empty())
+                .collect();
+            
+            let timeout_ids_for_add = timeout_selected_ids.clone();
+            let timeout_ids_for_remove = timeout_selected_ids.clone();
             
             rsx! {
                 div {
@@ -245,6 +268,67 @@ pub fn ChoiceOptions(props: ChoiceOptionsProps) -> Element {
                                 has_error: false,
                                 required: false,
                                 on_blur: move |_| {},
+                            }
+                            // Timeout target selectors
+                            div {
+                                class: "grid grid-cols-1 lg:grid-cols-2 gap-4 mt-4",
+                                // Timeout chapter selector
+                                crate::components::chapter_selector::ChapterSelector {
+                                    label: t!("timeout_target_chapter"),
+                                    value: timeout_target_chapter.clone(),
+                                    chapters: props.available_chapters.clone(),
+                                    is_open: props.timeout_chapter_open.get(index).copied().unwrap_or(false),
+                                    search_query: props.timeout_chapter_search.get(index).cloned().unwrap_or_default(),
+                                    on_toggle: {
+                                        let on_toggle = props.on_timeout_chapter_toggle.clone();
+                                        move |_| on_toggle.call(index)
+                                    },
+                                    on_search: {
+                                        let on_search = props.on_timeout_chapter_search.clone();
+                                        move |q| on_search.call((index, q))
+                                    },
+                                    on_select: move |chapter: Chapter| {
+                                        props.on_choice_change.call((index, "timeout_target_chapter".to_string(), chapter.id.clone()));
+                                    },
+                                    has_error: false,
+                                    selected_language: props.selected_language.clone(),
+                                }
+
+                                // Timeout paragraph selector (multi-select)
+                                MultiSelectParagraphList {
+                                    label: t!("timeout_target"),
+                                    selected_ids: timeout_selected_ids.clone(),
+                                    paragraphs: props.timeout_paragraphs.get(index).cloned().unwrap_or_default(),
+                                    is_open: props.timeout_paragraphs_open.get(index).copied().unwrap_or(false),
+                                    search_query: props.timeout_paragraphs_search.get(index).cloned().unwrap_or_default(),
+                                    on_toggle: {
+                                        let on_toggle = props.on_timeout_paragraph_toggle.clone();
+                                        move |_| on_toggle.call(index)
+                                    },
+                                    on_search: {
+                                        let on_search = props.on_timeout_paragraph_search.clone();
+                                        move |q| on_search.call((index, q))
+                                    },
+                                    on_select: move |id: String| {
+                                        let mut new_ids = timeout_ids_for_add.clone();
+                                        if !new_ids.contains(&id) {
+                                            new_ids.push(id);
+                                        }
+                                        let joined = new_ids.join(",");
+                                        props.on_choice_change.call((index, "timeout_to".to_string(), joined));
+                                    },
+                                    on_remove: move |id: String| {
+                                        let mut new_ids: Vec<String> = timeout_ids_for_remove.clone()
+                                            .into_iter()
+                                            .filter(|v| v != &id)
+                                            .collect();
+                                        let joined = new_ids.join(",");
+                                        props.on_choice_change.call((index, "timeout_to".to_string(), joined));
+                                    },
+                                    has_error: false,
+                                    disabled: timeout_target_chapter.is_empty(),
+                                    selected_language: props.selected_language.clone(),
+                                }
                             }
                             
                             // Delete button (mobile: shown at the end, desktop: hidden)

@@ -24,10 +24,6 @@ impl ToastManager {
     }
 }
 
-pub fn provide_toast_context() {
-    use_context_provider(|| Signal::new(ToastManager::new()));
-}
-
 pub fn use_toast() -> Signal<ToastManager> {
     use_context::<Signal<ToastManager>>()
 } 

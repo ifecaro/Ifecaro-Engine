@@ -77,43 +77,106 @@ pub fn ParagraphList(props: ParagraphListProps) -> Element {
         }
     };
 
-    // Find the currently selected paragraph
-    let selected_preview = props.paragraphs.iter()
+    // Selected paragraph (if any) in converted form
+    let selected_paragraph = props.paragraphs
+        .iter()
         .find(|p| p.id == props.value)
-        .map(convert_to_display)
-        .map(|p| p.display_text)
-        .unwrap_or_else(|| props.value.clone());
+        .map(convert_to_display);
 
-    // Filter and convert paragraphs
-    let display_paragraphs: Vec<DisplayParagraph> = props.paragraphs.iter()
+    // Filter and convert paragraphs for dropdown option list
+    let display_paragraphs: Vec<DisplayParagraph> = props
+        .paragraphs
+        .iter()
         .map(convert_to_display)
         .filter(|p| p.display_text.to_lowercase().contains(&props.search_query.to_lowercase()))
         .collect();
 
+    // Fallback button text – keep it consistent with MultiSelect list
+    let button_text = if selected_paragraph.is_some() {
+        t!("select_paragraph").to_string()
+    } else {
+        t!("select_paragraph").to_string()
+    };
+
+    // Disable dropdown when no paragraphs available or externally disabled
+    let is_disabled = props.disabled || props.paragraphs.is_empty();
+
     rsx! {
-        Dropdown {
-            label: props.label,
-            value: selected_preview,
-            options: display_paragraphs,
-            is_open: props.is_open,
-            search_query: props.search_query,
-            on_toggle: props.on_toggle,
-            on_search: props.on_search,
-            on_select: move |paragraph: DisplayParagraph| {
-                props.on_select.call(paragraph.id);
-                props.on_toggle.call(());
-            },
-            display_fn: |p: &DisplayParagraph| p.display_text.clone(),
-            has_error: props.has_error,
-            class: props.class,
-            search_placeholder: t!("search_paragraph"),
-            button_class: None,
-            label_class: None,
-            dropdown_class: "",
-            search_input_class: "",
-            option_class: "",
-            disabled: props.disabled,
-            required: props.required,
+        div {
+            class: format!("space-y-2 {}", props.class),
+
+            // Manual label (so that we can control styling like MultiSelect)
+            if !props.label.is_empty() {
+                label {
+                    class: format!("block text-sm font-medium mb-2 {}",
+                        if props.has_error {
+                            "text-red-700 dark:text-red-400"
+                        } else {
+                            "text-gray-700 dark:text-gray-300"
+                        }
+                    ),
+                    {props.label}
+                    if props.required {
+                        span { class: "text-red-500 ml-1", "*" }
+                    }
+                }
+            }
+
+            // Selected paragraph preview chip (similar style as MultiSelect chips)
+            if let Some(p) = selected_paragraph {
+                div {
+                    class: "mb-2",
+                    div {
+                        class: "text-xs text-gray-500 dark:text-gray-400 mb-2",
+                        {t!("selected_paragraphs")}
+                    }
+                    div {
+                        class: "flex flex-wrap gap-2",
+                        div {
+                            class: "inline-flex items-center bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 text-xs px-2 py-1 rounded-full",
+                            span {
+                                class: "truncate max-w-32",
+                                title: "{p.display_text.clone()}",
+                                {p.display_text.clone()}
+                            }
+                            button {
+                                class: "ml-1 text-blue-600 dark:text-blue-300 hover:text-blue-800 dark:hover:text-blue-100",
+                                onclick: move |_| {
+                                    // Clear selection by sending empty string
+                                    props.on_select.call(String::new());
+                                },
+                                "×"
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Dropdown for selecting paragraph
+            Dropdown {
+                label: String::new(), // we rendered label manually
+                value: button_text,
+                options: display_paragraphs,
+                is_open: props.is_open,
+                search_query: props.search_query,
+                on_toggle: props.on_toggle,
+                on_search: props.on_search,
+                on_select: move |paragraph: DisplayParagraph| {
+                    props.on_select.call(paragraph.id);
+                    props.on_toggle.call(());
+                },
+                display_fn: |p: &DisplayParagraph| p.display_text.clone(),
+                has_error: props.has_error,
+                class: String::new(),
+                search_placeholder: t!("search_paragraph"),
+                button_class: None,
+                label_class: None,
+                dropdown_class: "",
+                search_input_class: "",
+                option_class: "",
+                disabled: is_disabled,
+                required: props.required,
+            }
         }
     }
 }
@@ -191,7 +254,7 @@ pub fn MultiSelectParagraphList(props: MultiSelectParagraphListProps) -> Element
                                         class: "inline-flex items-center bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 text-xs px-2 py-1 rounded-full",
                                         span {
                                             class: "truncate max-w-32",
-                                            title: "{p.display_text}",
+                                            title: "{p.display_text.clone()}",
                                             {p.display_text.clone()}
                                         }
                                         button {
