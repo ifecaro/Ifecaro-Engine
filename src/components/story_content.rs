@@ -616,6 +616,24 @@ pub fn StoryContent(props: StoryContentProps) -> Element {
             .unwrap_or(false) // Default to disabled
     });
     
+    // Scroll lock effect: disable page scrolling when overlay is visible
+    {
+        let show_filter = show_filter.clone();
+        use_effect(move || {
+            let lock_scroll = *show_filter.read();
+            if let Some((_, document)) = get_window_document() {
+                if let Some(body) = document.body() {
+                    if should_lock_page_scroll(lock_scroll) {
+                        let _ = body.set_attribute("style", "overflow: hidden;");
+                    } else {
+                        let _ = body.remove_attribute("style");
+                    }
+                }
+            }
+            (|| {})()
+        });
+    }
+    
     rsx! {
         div {
             class: "relative story-content-container",
@@ -650,7 +668,18 @@ pub fn StoryContent(props: StoryContentProps) -> Element {
                     }
                 }
             },
-            onblur: |_| { /* do nothing – avoid誤觸重新顯示遮罩 */ },
+            onblur: move |_| {
+                if should_show_filter_on_blur(*is_mobile.read()) {
+                    // Show overlay again when focus is lost on desktop
+                    if let Ok(mut guard) = show_filter.try_write() {
+                        *guard = true;
+                    }
+                    // Reset focused state so that text shows "continue_reading" next time
+                    if let Ok(mut guard) = is_focused.try_write() {
+                        *guard = false;
+                    }
+                }
+            },
             div {
                 class: {
                     format!("fixed inset-0 backdrop-blur-sm z-10 flex items-center justify-center transition duration-500 cursor-pointer will-change-transform will-change-opacity {}",
@@ -852,6 +881,18 @@ pub fn should_show_choices_on_overlay_hide(
     }
 
     false
+}
+
+// 1st edit: Append new helper function.
+pub fn should_lock_page_scroll(show_filter: bool) -> bool {
+    show_filter
+}
+
+/// Determine if overlay should reappear when the story content container loses focus.
+/// Returns true for desktop (non-mobile) environments so that the overlay is shown again.
+#[allow(dead_code)]
+pub fn should_show_filter_on_blur(is_mobile: bool) -> bool {
+    !is_mobile
 }
 
 /*
