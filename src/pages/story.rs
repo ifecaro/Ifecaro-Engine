@@ -651,7 +651,10 @@ pub fn Story(props: StoryProps) -> Element {
                                                             let existing: Vec<String> = arr.iter().filter_map(|v| v.as_string()).collect();
 
                                                             if existing.is_empty() {
-                                                                crate::services::indexeddb::set_choices_to_indexeddb(&chapter_id_clone, &js_array).await.unwrap();
+                                                                // Skip persisting for settings chapter
+                                                                if chapter_id_clone != "settingschapter" {
+                                                                    crate::services::indexeddb::set_choices_to_indexeddb(&chapter_id_clone, &js_array).await.unwrap();
+                                                                }
                                                                 // 使用新的選擇
                                                                 let mut story_context = story_context.clone();
                                                                 let ids = ids_clone.clone();
@@ -725,6 +728,9 @@ pub fn Story(props: StoryProps) -> Element {
                 chapters_sorted.sort_by_key(|c| c.order);
                 for chapter in chapters_sorted.iter() {
                     let _chapter_id = chapter.id.clone();
+                    if _chapter_id == "settingschapter" {
+                        continue;
+                    }
                     if let Ok(js_value) = get_choice_from_indexeddb(&_chapter_id).await {
                         let arr = js_sys::Array::from(&js_value);
                         let ids: Vec<String> = arr.iter().filter_map(|v| v.as_string()).collect();
@@ -857,9 +863,11 @@ pub fn Story(props: StoryProps) -> Element {
                             js_array.push(&JsValue::from_str(id));
                         }
                         let chapter_id = last.chapter_id.clone();
-                        spawn_local(async move {
-                            let _ = crate::services::indexeddb::set_choices_to_indexeddb(&chapter_id, &js_array).await;
-                        });
+                        if chapter_id != "settingschapter" {
+                            spawn_local(async move {
+                                let _ = crate::services::indexeddb::set_choices_to_indexeddb(&chapter_id, &js_array).await;
+                            });
+                        }
                     }
                 }
             }
