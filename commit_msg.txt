@@ -1,0 +1,12 @@
+Fix auto-restore effect and avoid paragraph concatenation
+
+Key changes:
+- Introduce `auto_restored` signal to ensure restore runs once and stops after first click.
+- Guard restore effect with `auto_restored` and `initialized`.
+- Disable restore effect on first on_choice_click to prevent first paragraph reappearing.
+- Merge logic: game mode shows only last paragraph on new page but full path after refresh.
+
+Resolves:
+- No progress restored on reload.
+- Paragraph 1+2 concatenation after first choice.
+- Keeps full path after reload while keeping single paragraph on navigation.
