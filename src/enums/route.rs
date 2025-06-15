@@ -4,6 +4,7 @@ use crate::{
     layout::Layout,
 };
 use web_sys::window;
+use smallvec::SmallVec;
 
 #[derive(Clone, Debug, PartialEq, Routable)]
 pub enum Route {
@@ -18,7 +19,7 @@ pub enum Route {
     Dashboard { lang: String },
     
     #[route("/:..route")]
-    PageNotFound { route: Vec<String> }
+    PageNotFound { route: SmallVec<[String; 8]> }
 }
 
 impl Route {

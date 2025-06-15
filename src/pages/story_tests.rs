@@ -1,13 +1,24 @@
 use crate::pages::story::{merge_paragraphs_for_lang, ComplexChoice, StoryChoice, Text, Paragraph};
 use crate::components::story_content::Choice;
 use serde_json;
+use std::collections::HashSet;
+
+#[allow(unused_macros)]
+macro_rules! hs {
+    () => { HashSet::<String>::new() };
+    ( $( $x:expr ),+ $(,)? ) => {{
+        let mut set = HashSet::<String>::new();
+        $( set.insert($x.to_string()); )+
+        set
+    }};
+}
 
 /// Helper function: Create test paragraph with basic structure
 fn create_test_paragraph(id: &str, chapter_id: &str, lang: &str, text: &str, choices: Vec<(&str, &str)>) -> Paragraph {
     let complex_choices: Vec<ComplexChoice> = choices.into_iter().map(|(_, to)| {
         ComplexChoice {
             to: vec![to.to_string()],
-            type_: "goto".to_string(),
+            type_: "goto".into(),
             key: None,
             value: None,
             same_page: None,
@@ -39,7 +50,7 @@ fn create_multilingual_paragraph(id: &str, chapter_id: &str, texts: Vec<(&str, &
         choices: vec![
             ComplexChoice {
                 to: vec!["default_target".to_string()],
-                type_: "goto".to_string(),
+                type_: "goto".into(),
                 key: None,
                 value: None,
                 same_page: None,
@@ -121,7 +132,7 @@ fn test_paragraph_with_time_limit_integration() {
     p.choices = vec![
         ComplexChoice {
             to: vec!["p2".to_string()],
-            type_: "goto".to_string(),
+            type_: "goto".into(),
             key: None,
             value: None,
             same_page: None,
@@ -129,7 +140,7 @@ fn test_paragraph_with_time_limit_integration() {
         },
         ComplexChoice {
             to: vec!["p3".to_string()],
-            type_: "goto".to_string(),
+            type_: "goto".into(),
             key: None,
             value: None,
             same_page: None,
@@ -137,7 +148,7 @@ fn test_paragraph_with_time_limit_integration() {
         },
         ComplexChoice {
             to: vec!["p4".to_string()],
-            type_: "goto".to_string(),
+            type_: "goto".into(),
             key: None,
             value: None,
             same_page: None,
@@ -296,7 +307,7 @@ fn test_complex_choice_structure_validation() {
     // Test creating ComplexChoice with various configurations
     let basic_choice = ComplexChoice {
         to: vec!["target1".to_string()],
-        type_: "goto".to_string(),
+        type_: "goto".into(),
         key: None,
         value: None,
         same_page: None,
@@ -310,7 +321,7 @@ fn test_complex_choice_structure_validation() {
     // Test complex choice with all fields
     let complex_choice = ComplexChoice {
         to: vec!["target1".to_string(), "target2".to_string()],
-        type_: "custom_action".to_string(),
+        type_: "custom_action".into(),
         key: Some("special_key".to_string()),
         value: Some(serde_json::json!({"param": "value"})),
         same_page: Some(true),
@@ -327,7 +338,7 @@ fn test_story_choice_conversion() {
     // Test Complex choice conversion
     let complex_choice = ComplexChoice {
         to: vec!["target".to_string()],
-        type_: "custom_action".to_string(),
+        type_: "custom_action".into(),
         key: Some("special_key".to_string()),
         value: Some(serde_json::json!(42)),
         same_page: Some(false),
@@ -443,35 +454,35 @@ fn test_compute_enabled_choices_basic() {
 
     let choices = vec![
         Choice {
-            caption: "Go to p1".to_string(),
+            caption: "Go to p1".into(),
             action: Action {
-                type_: "goto".to_string(),
+                type_: "goto".into(),
                 key: None,
                 value: None,
-                to: "p1".to_string(),
+                to: "p1".into(),
             },
         },
         Choice {
-            caption: "Go to p2".to_string(),
+            caption: "Go to p2".into(),
             action: Action {
-                type_: "goto".to_string(),
+                type_: "goto".into(),
                 key: None,
                 value: None,
-                to: "p2".to_string(),
+                to: "p2".into(),
             },
         },
         // An empty target id should be ignored
         Choice {
-            caption: "Invalid".to_string(),
+            caption: "Invalid".into(),
             action: Action {
-                type_: "goto".to_string(),
+                type_: "goto".into(),
                 key: None,
                 value: None,
-                to: "".to_string(),
+                to: "".into(),
             },
         },
     ];
 
     let enabled = compute_enabled_choices(&choices);
-    assert_eq!(enabled, vec!["p1".to_string(), "p2".to_string()]);
+    assert_eq!(enabled, hs!("p1", "p2"));
 }

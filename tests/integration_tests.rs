@@ -1,5 +1,16 @@
 use ifecaro::*;
 use dioxus_core::NoOpMutations;
+use std::collections::HashSet;
+
+#[allow(unused_macros)]
+macro_rules! hs {
+    () => { HashSet::<String>::new() };
+    ( $( $x:expr ),+ $(,)? ) => {{
+        let mut set = HashSet::<String>::new();
+        $( set.insert($x.to_string()); )+
+        set
+    }};
+}
 
 #[cfg(test)]
 mod story_integration_tests {
@@ -49,12 +60,12 @@ mod story_integration_tests {
         
         let choices = vec![
             Choice { 
-                caption: "繼續故事".to_string(), 
+                caption: "繼續故事".into(), 
                 action: Action { 
-                    type_: "goto".to_string(), 
+                    type_: "goto".into(), 
                     key: None, 
                     value: None, 
-                    to: "next_paragraph".to_string() 
+                    to: "next_paragraph".into() 
                 } 
             },
         ];
@@ -62,7 +73,7 @@ mod story_integration_tests {
         let props = StoryContentUIProps {
             paragraph: "這是一個完整的故事段落測試".to_string(),
             choices: choices.clone(),
-            enabled_choices: vec!["繼續故事".to_string()],
+            enabled_choices: hs!("繼續故事"),
             disabled_by_countdown: vec![false],
             chapter_title: "整合測試章節".to_string(),
         };
@@ -90,27 +101,32 @@ mod ui_integration_tests {
         
         let choices = vec![
             Choice {
-                caption: "選項一".to_string(),
+                caption: "選項一".into(),
                 action: Action {
-                    type_: "goto".to_string(),
+                    type_: "goto".into(),
                     key: None,
                     value: None,
-                    to: "p1".to_string(),
+                    to: "p1".into(),
                 },
             },
             Choice {
-                caption: "選項二".to_string(),
+                caption: "選項二".into(),
                 action: Action {
-                    type_: "goto".to_string(),
+                    type_: "goto".into(),
                     key: None,
                     value: None,
-                    to: "p2".to_string(),
+                    to: "p2".into(),
                 },
             },
         ];
         
-        keyboard_state.choices = std::sync::Arc::new(choices);
-        keyboard_state.enabled_choices = std::sync::Arc::new(vec!["p1".to_string(), "p2".to_string()]);
+        keyboard_state.choices = std::rc::Rc::from(choices);
+        keyboard_state.enabled_choices = std::rc::Rc::new([
+            "p1".to_string(),
+            "p2".to_string(),
+        ]
+        .into_iter()
+        .collect());
         
         // Test default state
         assert_eq!(keyboard_state.selected_index, 0);

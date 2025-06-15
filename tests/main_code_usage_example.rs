@@ -1,6 +1,17 @@
 mod common;
 
 use common::*;
+use std::collections::HashSet;
+
+#[allow(unused_macros)]
+macro_rules! hs {
+    () => { HashSet::<String>::new() };
+    ( $( $x:expr ),+ $(,)? ) => {{
+        let mut set = HashSet::<String>::new();
+        $( set.insert($x.to_string()); )+
+        set
+    }};
+}
 
 #[cfg(test)]
 mod main_code_usage_tests {
@@ -52,7 +63,7 @@ mod main_code_usage_tests {
         let props = StoryContentUIProps {
             paragraph: "這是直接使用主程式組件的測試".to_string(),
             choices: choices.clone(),
-            enabled_choices: vec!["主要選項一".to_string(), "主要選項二".to_string()],
+            enabled_choices: hs!("主要選項一", "主要選項二"),
             disabled_by_countdown: vec![false, false],
             chapter_title: "主組件測試".to_string(),
         };

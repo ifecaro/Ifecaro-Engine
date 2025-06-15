@@ -1,6 +1,17 @@
 mod common;
 
 use common::*;
+use std::collections::HashSet;
+
+#[allow(unused_macros)]
+macro_rules! hs {
+    () => { HashSet::<String>::new() };
+    ( $( $x:expr ),+ $(,)? ) => {{
+        let mut set = HashSet::<String>::new();
+        $( set.insert($x.to_string()); )+
+        set
+    }};
+}
 
 #[cfg(test)]
 mod story_flow_tests {
@@ -44,7 +55,7 @@ mod story_flow_tests {
         let props = StoryContentUIProps {
             paragraph: "你來到了三岔路口...".to_string(),
             choices: choices.clone(),
-            enabled_choices: vec!["route_a".to_string(), "route_c".to_string()],
+            enabled_choices: hs!("route_a", "route_c"),
             disabled_by_countdown: vec![false, true, false], // route_b is disabled by countdown
             chapter_title: "命運的抉擇".to_string(),
         };

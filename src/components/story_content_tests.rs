@@ -3,16 +3,17 @@ use dioxus_ssr::render;
 use crate::components::story_content::{StoryContentUI, StoryContentUIProps, Choice, Action};
 use dioxus_core::NoOpMutations;
 use dioxus::prelude::VirtualDom;
+use std::collections::HashSet;
 
 /// Helper function: Create test choice
 fn create_test_choice(caption: &str, to: &str, action_type: &str) -> Choice {
     Choice {
-        caption: caption.to_string(),
+        caption: caption.to_string().into(),
         action: Action {
-            type_: action_type.to_string(),
+            type_: action_type.to_string().into(),
             key: None,
             value: None,
-            to: to.to_string(),
+            to: to.to_string().into(),
         },
     }
 }
@@ -20,12 +21,12 @@ fn create_test_choice(caption: &str, to: &str, action_type: &str) -> Choice {
 /// Helper function: Create test choice with value
 fn create_test_choice_with_value(caption: &str, to: &str, action_type: &str, key: Option<String>, value: Option<serde_json::Value>) -> Choice {
     Choice {
-        caption: caption.to_string(),
+        caption: caption.to_string().into(),
         action: Action {
-            type_: action_type.to_string(),
+            type_: action_type.to_string().into(),
             key,
             value,
-            to: to.to_string(),
+            to: to.to_string().into(),
         },
     }
 }
@@ -38,6 +39,16 @@ fn render_story_content_ui(props: StoryContentUIProps) -> String {
     render(&vdom)
 }
 
+#[allow(unused_macros)]
+macro_rules! hs {
+    () => { HashSet::<String>::new() };
+    ( $( $x:expr ),+ $(,)? ) => {{
+        let mut set = HashSet::<String>::new();
+        $( set.insert($x.to_string()); )+
+        set
+    }};
+}
+
 #[cfg(test)]
 mod basic_ui_tests {
     use super::*;
@@ -47,7 +58,7 @@ mod basic_ui_tests {
         let props = StoryContentUIProps {
             paragraph: "".to_string(),
             choices: vec![],
-            enabled_choices: vec![],
+            enabled_choices: HashSet::new(),
             disabled_by_countdown: vec![],
             chapter_title: "".to_string(),
         };
@@ -62,7 +73,7 @@ mod basic_ui_tests {
         let props = StoryContentUIProps {
             paragraph: "This is the first paragraph\n\nThis is the second paragraph\n\nThis is the third paragraph".to_string(),
             choices: vec![],
-            enabled_choices: vec![],
+            enabled_choices: HashSet::new(),
             disabled_by_countdown: vec![],
             chapter_title: "Test chapter".to_string(),
         };
@@ -81,7 +92,7 @@ mod basic_ui_tests {
         let props = StoryContentUIProps {
             paragraph: "Paragraph content".to_string(),
             choices: vec![],
-            enabled_choices: vec![],
+            enabled_choices: HashSet::new(),
             disabled_by_countdown: vec![],
             chapter_title: "Chapter 1: The Beginning of Adventure".to_string(),
         };
@@ -105,7 +116,7 @@ mod choice_tests {
         let props = StoryContentUIProps {
             paragraph: "Story content".to_string(),
             choices: choices.clone(),
-            enabled_choices: vec!["Continue".to_string()],
+            enabled_choices: hs!("Continue"),
             disabled_by_countdown: vec![false],
             chapter_title: "Test".to_string(),
         };
@@ -126,7 +137,7 @@ mod choice_tests {
         let props = StoryContentUIProps {
             paragraph: "Choose your path".to_string(),
             choices: choices.clone(),
-            enabled_choices: vec!["Option A".to_string(), "Option C".to_string()],
+            enabled_choices: hs!("Option A", "Option C"),
             disabled_by_countdown: vec![false, false, false, true], // choice4 disabled by countdown
             chapter_title: "Important Decision".to_string(),
         };
@@ -169,7 +180,7 @@ mod choice_tests {
         let props = StoryContentUIProps {
             paragraph: "配置你的遊戲".to_string(),
             choices: choices.clone(),
-            enabled_choices: vec!["設定難度".to_string(), "跳轉場景".to_string()],
+            enabled_choices: hs!("設定難度", "跳轉場景"),
             disabled_by_countdown: vec![false, false],
             chapter_title: "遊戲設定".to_string(),
         };
@@ -188,7 +199,7 @@ mod choice_tests {
         let props = StoryContentUIProps {
             paragraph: "沒有可用選項".to_string(),
             choices: choices.clone(),
-            enabled_choices: vec![], // All disabled
+            enabled_choices: hs!(), // All disabled
             disabled_by_countdown: vec![false, false],
             chapter_title: "死胡同".to_string(),
         };
@@ -209,7 +220,7 @@ mod choice_tests {
         let props = StoryContentUIProps {
             paragraph: "時間緊迫的選擇".to_string(),
             choices: choices.clone(),
-            enabled_choices: vec!["時限選項".to_string(), "普通選項".to_string()],
+            enabled_choices: hs!("時限選項", "普通選項"),
             disabled_by_countdown: vec![true, false], // First one disabled by countdown
             chapter_title: "時間壓力".to_string(),
         };
@@ -233,7 +244,7 @@ mod choice_tests {
         let props = StoryContentUIProps {
             paragraph: "測試各種標題格式".to_string(),
             choices: choices.clone(),
-            enabled_choices: vec!["".to_string(), "很長的選項標題，包含中文、English和123數字".to_string(), "<test>\"quote\"&amp;".to_string()],
+            enabled_choices: hs!("", "很長的選項標題，包含中文、English和123數字", "<test>\"quote\"&amp;"),
             disabled_by_countdown: vec![false, false, false],
             chapter_title: "標題測試".to_string(),
         };
@@ -258,7 +269,7 @@ mod responsive_design_tests {
         let props = StoryContentUIProps {
             paragraph: "響應式設計測試".to_string(),
             choices: vec![create_test_choice("測試選項", "test", "goto")],
-            enabled_choices: vec!["測試選項".to_string()],
+            enabled_choices: HashSet::new(),
             disabled_by_countdown: vec![false],
             chapter_title: "響應式章節".to_string(),
         };
@@ -286,7 +297,7 @@ mod responsive_design_tests {
         let props = StoryContentUIProps {
             paragraph: "深色模式測試".to_string(),
             choices: vec![create_test_choice("深色選項", "dark_choice", "goto")],
-            enabled_choices: vec!["深色選項".to_string()],
+            enabled_choices: hs!("深色選項"),
             disabled_by_countdown: vec![false],
             chapter_title: "深色模式".to_string(),
         };
@@ -309,7 +320,7 @@ mod responsive_design_tests {
                 create_test_choice("選項1", "c1", "goto"),
                 create_test_choice("選項2", "c2", "goto"),
             ],
-            enabled_choices: vec!["選項1".to_string(), "選項2".to_string()],
+            enabled_choices: HashSet::new(),
             disabled_by_countdown: vec![false, false],
             chapter_title: "間距測試".to_string(),
         };
@@ -339,7 +350,7 @@ mod accessibility_tests {
         let props = StoryContentUIProps {
             paragraph: "無障礙測試".to_string(),
             choices: choices.clone(),
-            enabled_choices: vec!["第一選項".to_string(), "第二選項".to_string(), "第三選項".to_string()],
+            enabled_choices: HashSet::new(),
             disabled_by_countdown: vec![false, false, false],
             chapter_title: "無障礙".to_string(),
         };
@@ -359,7 +370,7 @@ mod accessibility_tests {
         let props = StoryContentUIProps {
             paragraph: "互動測試".to_string(),
             choices: choices.clone(),
-            enabled_choices: vec!["可聚焦選項".to_string()],
+            enabled_choices: hs!("可聚焦選項"),
             disabled_by_countdown: vec![false],
             chapter_title: "互動性".to_string(),
         };
@@ -379,7 +390,7 @@ mod accessibility_tests {
         let props = StoryContentUIProps {
             paragraph: "禁用狀態測試".to_string(),
             choices: choices.clone(),
-            enabled_choices: vec![], // Not in enabled list
+            enabled_choices: HashSet::new(),
             disabled_by_countdown: vec![false],
             chapter_title: "禁用測試".to_string(),
         };
@@ -403,7 +414,7 @@ mod edge_case_tests {
         let props = StoryContentUIProps {
             paragraph: "".to_string(), // Empty paragraph
             choices: choices.clone(),
-            enabled_choices: vec!["唯一選項".to_string()],
+            enabled_choices: HashSet::new(),
             disabled_by_countdown: vec![false],
             chapter_title: "空段落測試".to_string(),
         };
@@ -423,7 +434,7 @@ mod edge_case_tests {
         let props = StoryContentUIProps {
             paragraph: long_paragraph.clone(),
             choices: choices.clone(),
-            enabled_choices: vec![long_choice.clone()],
+            enabled_choices: HashSet::new(),
             disabled_by_countdown: vec![false],
             chapter_title: long_title.clone(),
         };
@@ -444,7 +455,7 @@ mod edge_case_tests {
         let props = StoryContentUIProps {
             paragraph: special_paragraph.to_string(),
             choices: choices.clone(),
-            enabled_choices: vec![special_choice.to_string()],
+            enabled_choices: HashSet::new(),
             disabled_by_countdown: vec![false],
             chapter_title: special_title.to_string(),
         };
@@ -467,7 +478,7 @@ mod edge_case_tests {
         let props = StoryContentUIProps {
             paragraph: unicode_paragraph.to_string(),
             choices: choices.clone(),
-            enabled_choices: vec![emoji_choice.to_string()],
+            enabled_choices: HashSet::new(),
             disabled_by_countdown: vec![false],
             chapter_title: emoji_title.to_string(),
         };
@@ -491,7 +502,7 @@ mod edge_case_tests {
         let props = StoryContentUIProps {
             paragraph: "陣列不匹配測試".to_string(),
             choices: choices.clone(),
-            enabled_choices: vec!["選項1".to_string()], // Only one enabled, using caption
+            enabled_choices: HashSet::new(),
             disabled_by_countdown: vec![false, true], // Only two states
             chapter_title: "不匹配測試".to_string(),
         };
@@ -519,7 +530,7 @@ mod integration_style_tests {
         let props = StoryContentUIProps {
             paragraph: "你站在十字路口前，夕陽西下。\n\n遠方傳來狼嚎聲，你必須做出選擇。\n\n時間不多了。".to_string(),
             choices: choices.clone(),
-            enabled_choices: vec!["繼續冒險".to_string(), "返回村莊".to_string()],
+            enabled_choices: hs!("繼續冒險", "返回村莊"),
             disabled_by_countdown: vec![false, false, true], // Backpack disabled
             chapter_title: "第三章：命運的十字路口".to_string(),
         };
@@ -551,7 +562,7 @@ mod integration_style_tests {
         let props = StoryContentUIProps {
             paragraph: "CSS 類別完整性測試".to_string(),
             choices: vec![create_test_choice("測試選項", "test", "goto")],
-            enabled_choices: vec!["測試選項".to_string()],
+            enabled_choices: hs!("測試選項"),
             disabled_by_countdown: vec![false],
             chapter_title: "樣式測試".to_string(),
         };
@@ -597,7 +608,7 @@ mod performance_tests {
         let props = StoryContentUIProps {
             paragraph: "大量選項測試".to_string(),
             choices,
-            enabled_choices,
+            enabled_choices: HashSet::new(),
             disabled_by_countdown,
             chapter_title: "性能測試".to_string(),
         };
@@ -626,7 +637,7 @@ mod performance_tests {
         let props = StoryContentUIProps {
             paragraph: complex_paragraph,
             choices: vec![create_test_choice("完成", "finish", "goto")],
-            enabled_choices: vec!["完成".to_string()],
+            enabled_choices: HashSet::new(),
             disabled_by_countdown: vec![false],
             chapter_title: "複雜結構測試".to_string(),
         };
@@ -654,12 +665,12 @@ mod regression_tests {
         // Regression test: Ensure displayed is caption not action.to
         let choices = vec![
             Choice {
-                caption: "友好的問候".to_string(),
+                caption: "友好的問候".into(),
                 action: Action {
-                    type_: "goto".to_string(),
+                    type_: "greeting".into(),
                     key: None,
                     value: None,
-                    to: "unfriendly_id_12345".to_string(),
+                    to: "unfriendly_id_12345".into(),
                 },
             },
         ];
@@ -667,7 +678,7 @@ mod regression_tests {
         let props = StoryContentUIProps {
             paragraph: "測試標題顯示".to_string(),
             choices: choices.clone(),
-            enabled_choices: vec!["友好的問候".to_string()],
+            enabled_choices: HashSet::new(),
             disabled_by_countdown: vec![false],
             chapter_title: "顯示測試".to_string(),
         };
@@ -688,7 +699,7 @@ mod regression_tests {
         let props = StoryContentUIProps {
             paragraph: "Matching logic test".to_string(),
             choices: choices.clone(),
-            enabled_choices: vec!["Option A".to_string()],
+            enabled_choices: hs!("Option A"),
             disabled_by_countdown: vec![false, false],
             chapter_title: "Logic Test".to_string(),
         };
@@ -712,7 +723,7 @@ mod regression_tests {
         let props = StoryContentUIProps {
             paragraph: "Countdown priority test".to_string(),
             choices: choices.clone(),
-            enabled_choices: vec!["Countdown Option".to_string()],
+            enabled_choices: HashSet::new(),
             disabled_by_countdown: vec![true],
             chapter_title: "Priority Test".to_string(),
         };

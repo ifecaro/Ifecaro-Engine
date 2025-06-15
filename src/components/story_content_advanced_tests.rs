@@ -1,14 +1,15 @@
 use crate::components::story_content::{Choice, Action};
+use std::collections::HashSet;
 
 /// Helper function: Create test choice
 fn create_test_choice(caption: &str, to: &str, action_type: &str) -> Choice {
     Choice {
-        caption: caption.to_string(),
+        caption: caption.to_string().into(),
         action: Action {
-            type_: action_type.to_string(),
+            type_: action_type.to_string().into(),
             key: None,
             value: None,
-            to: to.to_string(),
+            to: to.to_string().into(),
         },
     }
 }
@@ -16,14 +17,24 @@ fn create_test_choice(caption: &str, to: &str, action_type: &str) -> Choice {
 /// Helper function: Create test choice with value
 fn create_test_choice_with_value(caption: &str, to: &str, action_type: &str, key: Option<String>, value: Option<serde_json::Value>) -> Choice {
     Choice {
-        caption: caption.to_string(),
+        caption: caption.to_string().into(),
         action: Action {
-            type_: action_type.to_string(),
+            type_: action_type.to_string().into(),
             key,
             value,
-            to: to.to_string(),
+            to: to.to_string().into(),
         },
     }
+}
+
+#[allow(unused_macros)]
+macro_rules! hs {
+    () => { HashSet::<String>::new() };
+    ( $( $x:expr ),+ $(,)? ) => {{
+        let mut set = HashSet::<String>::new();
+        $( set.insert($x.to_string()); )+
+        set
+    }};
 }
 
 #[cfg(test)]
@@ -214,11 +225,11 @@ mod enabled_choices_logic_tests {
             create_test_choice("Another enabled", "enabled2", "goto"),
         ];
         
-        let enabled_choices = vec!["Enabled option".to_string(), "Another enabled".to_string()];
+        let enabled_choices = hs!("Enabled option", "Another enabled");
         
         // Test enabled logic
         for (i, choice) in choices.iter().enumerate() {
-            let is_enabled = enabled_choices.contains(&choice.caption);
+            let is_enabled = enabled_choices.contains(&choice.caption.as_ref().to_string());
             match i {
                 0 => assert!(is_enabled, "First option should be enabled"),
                 1 => assert!(!is_enabled, "Second option should be disabled"),
@@ -409,14 +420,14 @@ mod keyboard_input_simulation_tests {
         ];
         
         // Test keyboard input simulation
-        let enabled_choices = vec!["choice1".to_string(), "choice2".to_string(), "choice3".to_string()];
+        let enabled_choices = hs!("choice1", "choice2", "choice3");
         
         // Simulate key presses 1, 2, 3
         for key_num in 1..=3 {
             let choice_index = key_num - 1; // Convert to array index
             if choice_index < choices.len() {
                 let choice = &choices[choice_index];
-                let is_enabled = enabled_choices.contains(&choice.action.to);
+                let is_enabled = enabled_choices.contains(&choice.action.to.as_ref().to_string());
                 assert!(is_enabled, "Key {} should correspond to enabled option", key_num);
             }
         }
@@ -514,7 +525,7 @@ mod performance_simulation_tests {
         // Test search performance (simulate enabled checking)
         let mut enabled_count = 0;
         for choice in &choices {
-            if enabled_choices.contains(&choice.caption) {
+            if enabled_choices.contains(&choice.caption.as_ref().to_string()) {
                 enabled_count += 1;
             }
         }
@@ -530,12 +541,12 @@ mod edge_case_handling_tests {
     #[test]
     fn test_empty_string_values() {
         let choice = Choice {
-            caption: "".to_string(),
+            caption: "".into(),
             action: Action {
-                type_: "".to_string(),
+                type_: "".into(),
                 key: Some("".to_string()),
                 value: Some(serde_json::Value::String("".to_string())),
-                to: "".to_string(),
+                to: "".into(),
             },
         };
         
@@ -589,12 +600,12 @@ mod edge_case_handling_tests {
     #[test]
     fn test_null_and_none_values() {
         let choice = Choice {
-            caption: "Test None values".to_string(),
+            caption: "Test None values".into(),
             action: Action {
-                type_: "test".to_string(),
+                type_: "test".into(),
                 key: None,
                 value: Some(serde_json::Value::Null),
-                to: "test_target".to_string(),
+                to: "test_target".into(),
             },
         };
         

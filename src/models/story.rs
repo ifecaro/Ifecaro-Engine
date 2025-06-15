@@ -1,4 +1,5 @@
 use serde::{Serialize, Deserialize};
+use smallvec::SmallVec;
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Story {
@@ -36,7 +37,7 @@ pub struct Action {
     pub key: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub value: Option<serde_json::Value>,
-    pub to: Vec<String>,
+    pub to: SmallVec<[String; 4]>,
 }
 
 impl<'de> serde::Deserialize<'de> for Action {
@@ -63,9 +64,17 @@ impl<'de> serde::Deserialize<'de> for Action {
         }
         
         let helper = Helper::deserialize(deserializer)?;
-        let to = match helper.to {
-            ToField::Multiple(vec) => vec,
-            ToField::Single(s) => if s.is_empty() { Vec::new() } else { vec![s] },
+        let to: SmallVec<[String; 4]> = match helper.to {
+            ToField::Multiple(vec) => SmallVec::from_vec(vec),
+            ToField::Single(s) => {
+                if s.is_empty() {
+                    SmallVec::new()
+                } else {
+                    let mut v = SmallVec::new();
+                    v.push(s);
+                    v
+                }
+            }
         };
         
         Ok(Action {

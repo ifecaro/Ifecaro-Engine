@@ -179,7 +179,7 @@ pub fn merge_paragraphs_for_lang(
     expanded: &[Paragraph],
     current_language: &str,
     reader_mode: bool,
-    is_settings_chapter: bool,
+    _is_settings_chapter: bool,
     _choice_ids: &[String],
 ) -> String {
     // 遊戲模式 (reader_mode == false):
@@ -199,10 +199,7 @@ pub fn merge_paragraphs_for_lang(
         .sum();
     let mut merged_paragraph_str = String::with_capacity(estimated_capacity);
 
-    // 設定章節在 reader_mode 下仍保持空字串
-    if reader_mode && is_settings_chapter {
-        return merged_paragraph_str;
-    }
+    // If it's a settings chapter in reader mode, we still want to merge paragraphs just like normal chapters.
 
     for paragraph in paragraphs_to_process {
         if let Some(text) = paragraph.texts.iter().find(|t| t.lang == current_language) {
@@ -1031,13 +1028,13 @@ pub fn Story(props: StoryProps) -> Element {
             if let Ok(_paragraph_data_read) = _paragraph_data.try_read() {
                 let reader_mode = settings_context.read().settings.get("reader_mode").map(|v| v == "true").unwrap_or(false);
                 let chapter_id = expanded.last().map(|p| p.chapter_id.clone()).unwrap_or_default();
-                let is_settings_chapter = chapter_id == "settingschapter";
+                let _is_settings_chapter = chapter_id == "settingschapter";
                 let choice_ids = story_context.read().choice_ids.read().clone();
                 let merged_paragraph_str = merge_paragraphs_for_lang(
                     &expanded,
                     &state.read().current_language,
                     reader_mode,
-                    is_settings_chapter,
+                    _is_settings_chapter,
                     &choice_ids,
                 );
                 let mut merged_paragraph_signal = story_merged_context.read().merged_paragraph.clone();
@@ -1055,8 +1052,8 @@ pub fn Story(props: StoryProps) -> Element {
         let last_paragraph_id = last_paragraph_id.clone();
         let expanded = expanded.read();
         if let Some(paragraph) = expanded.last() {
-            let is_settings_chapter = paragraph.chapter_id == "settingschapter";
-            story_context.write().is_settings_chapter.set(is_settings_chapter);
+            let _is_settings_chapter = paragraph.chapter_id == "settingschapter";
+            story_context.write().is_settings_chapter.set(_is_settings_chapter);
             if *last_paragraph_id.borrow() != paragraph.id {
                 *last_paragraph_id.borrow_mut() = paragraph.id.clone();
                 // Initialize countdown only when paragraph ID changes

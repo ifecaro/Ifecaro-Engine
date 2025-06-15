@@ -7,15 +7,16 @@ use crate::{
         story_context::{use_story_context, StoryContext},
     },
 };
-use std::sync::Arc;
+use std::{rc::Rc, sync::Arc};
 use wasm_bindgen::closure::Closure;
 use web_sys::Event as WebEvent;
+use std::collections::HashSet;
 
 #[derive(Debug, Clone)]
 pub struct KeyboardState {
     pub selected_index: i32,
-    pub choices: Arc<Vec<Choice>>,
-    pub enabled_choices: Arc<Vec<String>>,
+    pub choices: Rc<[Choice]>,
+    pub enabled_choices: Rc<HashSet<String>>,
     pub on_choice_click: Option<Arc<EventHandler<String>>>,
 }
 
@@ -23,8 +24,8 @@ impl Default for KeyboardState {
     fn default() -> Self {
         Self {
             selected_index: 0,
-            choices: Arc::new(Vec::new()),
-            enabled_choices: Arc::new(Vec::new()),
+            choices: Rc::<[Choice]>::from(Vec::<Choice>::new()),
+            enabled_choices: Rc::new(HashSet::new()),
             on_choice_click: None,
         }
     }
@@ -62,11 +63,11 @@ pub fn Layout() -> Element {
         let enabled_choices = keyboard_state.read().enabled_choices.clone();
         
         move |choice: &Choice, on_choice_click: EventHandler<String>| {
-            let goto = choice.action.to.clone();
-            if enabled_choices.contains(&goto) {
+            let goto = &choice.action.to;
+            if enabled_choices.contains(&goto.as_ref().to_string()) {
                 keyboard_state.write().selected_index = -1;
-                story_context.write().target_paragraph_id = Some(goto.clone());
-                on_choice_click.call(goto);
+                story_context.write().target_paragraph_id = Some(goto.to_string());
+                on_choice_click.call(goto.to_string());
             }
         }
     };
@@ -90,13 +91,12 @@ pub fn Layout() -> Element {
                 if let Ok(num) = key.parse::<usize>() {
                     if num > 0 && num <= state.choices.len() {
                         let idx = num - 1;
-                        let choice = &state.choices[idx];
-                        let goto = choice.action.to.clone();
-                        if state.enabled_choices.contains(&goto) {
+                        let goto_owned = state.choices[idx].action.to.to_string();
+                        if state.enabled_choices.contains(&goto_owned) {
                             state.selected_index = idx as i32;
-                            story_context.write().target_paragraph_id = Some(goto.clone());
+                            story_context.write().target_paragraph_id = Some(goto_owned.clone());
                             if let Some(on_choice_click) = &state.on_choice_click {
-                                on_choice_click.call(goto);
+                                on_choice_click.call(goto_owned);
                             }
                         }
                     }
@@ -105,12 +105,11 @@ pub fn Layout() -> Element {
             }
             Key::Enter => {
                 if state.selected_index >= 0 && state.selected_index < state.choices.len() as i32 {
-                    let choice = &state.choices[state.selected_index as usize];
-                    let goto = choice.action.to.clone();
-                    if state.enabled_choices.contains(&goto) {
-                        story_context.write().target_paragraph_id = Some(goto.clone());
+                    let goto_owned = state.choices[state.selected_index as usize].action.to.to_string();
+                    if state.enabled_choices.contains(&goto_owned) {
+                        story_context.write().target_paragraph_id = Some(goto_owned.clone());
                         if let Some(on_choice_click) = &state.on_choice_click {
-                            on_choice_click.call(goto);
+                            on_choice_click.call(goto_owned);
                         }
                     }
                 }
@@ -141,12 +140,11 @@ fn handle_choice_selection(
     story_context: &mut Signal<StoryContext>,
 ) {
     if idx < state.choices.len() {
-        let choice = &state.choices[idx];
-        let goto = choice.action.to.clone();
-        if state.enabled_choices.contains(&goto) {
+        let goto_owned = state.choices[idx].action.to.to_string();
+        if state.enabled_choices.contains(&goto_owned) {
             if let Some(on_choice_click) = &state.on_choice_click {
-                on_choice_click.call(goto.clone());
-                story_context.write().target_paragraph_id = Some(goto);
+                on_choice_click.call(goto_owned.clone());
+                story_context.write().target_paragraph_id = Some(goto_owned);
             }
         }
     }

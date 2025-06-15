@@ -24,12 +24,12 @@ pub fn create_test_paragraph(id: &str, chapter_id: &str, lang: &str, text: &str)
 #[allow(dead_code)]
 pub fn create_test_choice(caption: &str, to: &str) -> Choice {
     Choice {
-        caption: caption.to_string(),
+        caption: caption.to_string().into(),
         action: ifecaro::components::story_content::Action {
-            type_: "goto".to_string(),
+            type_: "goto".to_string().into(),
             key: None,
             value: None,
-            to: to.to_string(),
+            to: to.to_string().into(),
         },
     }
 }

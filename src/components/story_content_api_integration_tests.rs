@@ -6,6 +6,18 @@ mod integration_tests {
     use crate::services::api::*;
     use crate::contexts::paragraph_context::{Paragraph, Text, ParagraphChoice};
     use crate::components::story_content::{StoryContentUI, StoryContentUIProps, Choice, Action};
+    use std::collections::HashSet;
+
+    // Macro for HashSet conversion
+    #[allow(unused_macros)]
+    macro_rules! hs {
+        () => { HashSet::<String>::new() };
+        ( $( $x:expr ),+ $(,)? ) => {{
+            let mut set = HashSet::<String>::new();
+            $( set.insert($x.to_string()); )+
+            set
+        }};
+    }
 
     /// Helper function: Convert API paragraph to component choices
     fn paragraph_to_choices(paragraph: &Paragraph, lang: &str) -> Vec<Choice> {
@@ -21,12 +33,12 @@ mod integration_tests {
                     .unwrap_or_else(|| format!("Option {}", i + 1));
 
                 Choice {
-                    caption,
+                    caption: caption.into(),
                     action: Action {
-                        type_: choice.get_type(),
+                        type_: choice.get_type().into(),
                         key: choice.get_key(),
                         value: choice.get_value(),
-                        to: choice.get_to().into_iter().next().unwrap_or_default(),
+                        to: choice.get_to().into_iter().next().unwrap_or_default().into(),
                     },
                 }
             })
@@ -102,11 +114,11 @@ mod integration_tests {
         let paragraph_text = get_paragraph_text(&paragraph, "zh");
         
         // 5. Simulate enabled state (time limit options may be disabled)
-        let enabled_choices = vec![
-            "Investigate the source of the sound".to_string(),
-            "Continue forward".to_string(),
-            "Return to exit".to_string(),
-        ];
+        let enabled_choices = hs!(
+            "Investigate the source of the sound",
+            "Continue forward",
+            "Return to exit",
+        );
         
         // 6. Simulate disabled countdown state (first option has time limit)
         let disabled_by_countdown = vec![false, false, false];
@@ -151,7 +163,7 @@ mod integration_tests {
         let fallback_props = StoryContentUIProps {
             paragraph: "Loading failed, please try again later".to_string(),
             choices: vec![],
-            enabled_choices: vec![],
+            enabled_choices: hs!(),
             disabled_by_countdown: vec![],
             chapter_title: "Loading Error".to_string(),
         };
@@ -222,7 +234,7 @@ mod integration_tests {
             let props = StoryContentUIProps {
                 paragraph: text,
                 choices,
-                enabled_choices: vec![expected_choice.to_string()],
+                enabled_choices: hs!(expected_choice),
                 disabled_by_countdown: vec![false, false],
                 chapter_title: format!("Chapter 2 ({})", lang),
             };
@@ -289,12 +301,12 @@ mod integration_tests {
         let choices = paragraph_to_choices(&paragraph, "zh-TW");
 
         // Simulate partially disabled options due to time limit expiration
-        let enabled_choices = vec![
-            "Attack immediately (30 seconds)".to_string(),
-            "Find cover (15 seconds)".to_string(),
-            "Cast spell".to_string(),
-            "Escape".to_string(),
-        ];
+        let enabled_choices = hs!(
+            "Attack immediately (30 seconds)",
+            "Find cover (15 seconds)",
+            "Cast spell",
+            "Escape",
+        );
         let disabled_by_countdown = vec![true, true, false, false];
 
         let props = StoryContentUIProps {

@@ -1,8 +1,10 @@
 use dioxus::prelude::*;
 use dioxus_i18n::t;
+use smallvec::SmallVec;
 
 #[component]
-pub fn PageNotFound(route: Vec<String>) -> Element {
+#[allow(unused_variables)]
+pub fn PageNotFound(route: SmallVec<[String; 8]>) -> Element {
     rsx! {
         div {
             class: "container mx-auto px-4 pt-16",
