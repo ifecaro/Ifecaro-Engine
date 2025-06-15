@@ -535,7 +535,7 @@ pub fn StoryContent(props: StoryContentProps) -> Element {
                             let scroll_height = document_element.scroll_height();
                             let client_height = document_element.client_height();
                             // When the content cannot scroll (content height within tolerance of the viewport height), force showing the choices
-                            const NON_SCROLLABLE_TOLERANCE: i32 = 10;
+                            const NON_SCROLLABLE_TOLERANCE: i32 = 100;
                             if (scroll_height - client_height) <= NON_SCROLLABLE_TOLERANCE {
                                 should_show_choices = true;
                             }
@@ -846,7 +846,7 @@ pub fn should_show_choices_on_overlay_hide(
         return true;
     }
 
-    const NON_SCROLLABLE_TOLERANCE: i32 = 10;
+    const NON_SCROLLABLE_TOLERANCE: i32 = 100;
     if has_countdown && (scroll_height - client_height) <= NON_SCROLLABLE_TOLERANCE {
         return true;
     }
