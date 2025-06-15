@@ -28,7 +28,7 @@ enum Commands {
     Deploy,
     /// Clean build files
     Clean,
-    /// Development mode (check + quick test)
+    /// Development mode (build and deploy without tests)
     Dev,
     /// Production mode (optimized full deployment process)
     Prod,
@@ -54,9 +54,12 @@ fn main() -> Result<()> {
         Some(Commands::Deploy) => deploy()?,
         Some(Commands::Clean) => clean()?,
         Some(Commands::Dev) => {
-            check()?;
-            test(Some(TestMode::Quick))?;
-            println!("{}", "✅ Development check completed".green().bold());
+            build()?;
+            copy_pwa_resources()?;
+            create_deployment_package()?;
+            restore_tailwind_css()?;
+            upload_to_remote()?;
+            println!("{}", "✅ Development deployment completed".green().bold());
         }
         Some(Commands::Prod) => {
             deploy()?;
@@ -87,7 +90,7 @@ fn show_interactive_menu() -> Result<()> {
         println!("  {}  🧪 Run test suite", "2.".cyan().bold());
         println!("  {}  🏗  Build project", "3.".cyan().bold());
         println!("  {}  🧹 Clean build files", "4.".cyan().bold());
-        println!("  {}  ⚡ Development mode (check + quick test)", "5.".cyan().bold());
+        println!("  {}  ⚡ Development mode (build and deploy without tests)", "5.".cyan().bold());
         println!("  {}  🎯 Production mode (full one-click deployment)", "6.".cyan().bold());
         println!("  {}  ❌ Exit", "0.".red().bold());
         println!();
@@ -122,9 +125,12 @@ fn show_interactive_menu() -> Result<()> {
             },
             "5" => {
                 println!("{}", "Starting development mode...".yellow());
-                check()?;
-                test(Some(TestMode::Quick))?;
-                println!("{}", "✅ Development check completed".green().bold());
+                build()?;
+                copy_pwa_resources()?;
+                create_deployment_package()?;
+                restore_tailwind_css()?;
+                upload_to_remote()?;
+                println!("{}", "✅ Development deployment completed".green().bold());
                 wait_for_enter();
             },
             "6" => {
