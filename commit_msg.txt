@@ -1,19 +1,4 @@
-Fix auto-restore effect and avoid paragraph concatenation
+Fix scroll lock persists after leaving Story page
 
-Key changes:
-- Introduce `auto_restored` signal to ensure restore runs once and stops after first click.
-- Guard restore effect with `auto_restored` and `initialized`.
-- Disable restore effect on first on_choice_click to prevent first paragraph reappearing.
-- Merge logic: game mode shows only last paragraph on new page but full path after refresh.
-
-Resolves:
-- No progress restored on reload.
-- Paragraph 1+2 concatenation after first choice.
-- Keeps full path after reload while keeping single paragraph on navigation.
-
-refactor(dashboard): migrate to global ToastManager
-
-- Replaced local toast signals, effects, and JSX blocks with centralized ToastManager calls
-- Removed redundant `_extra_target_chapters` signal and other obsolete error-toast signals
-- Simplified `handle_submit` by delegating success & error feedback to ToastManager
-- Ensured cleaner state handling and reduced hook complexity
+- Ensure body overflow style is only applied while Story overlay is visible
+- Add unit test for should_lock_page_scroll to prevent regression
