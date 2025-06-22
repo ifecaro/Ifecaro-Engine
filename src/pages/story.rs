@@ -1080,6 +1080,8 @@ pub fn Story(props: StoryProps) -> Element {
                             _expanded_paragraphs.set(vec![target_paragraph.clone()]);
                             story_context.write().target_paragraph_id = Some(goto.clone());
                             show_chapter_title.set(true);
+                            // Reset choice history when navigating away from the settings chapter
+                            story_context.write().choice_ids.set(Vec::new());
                         }
                     });
                     return;
