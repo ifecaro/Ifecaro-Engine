@@ -410,7 +410,8 @@ pub fn StoryContent(props: StoryContentProps) -> Element {
                         let client_height = document_element.client_height();
                         let scroll_top = document_element.scroll_top();
 
-                        if scroll_height - client_height - scroll_top <= 10 {
+                        let is_mobile_device = *is_mobile.read();
+                        if is_scrolled_to_bottom(scroll_height, client_height, scroll_top, is_mobile_device) {
                             // Schedule signal updates to avoid read→write loops
                             let show_needed = show_choices.try_read().map(|v| !*v).unwrap_or(true);
                             if show_needed {
@@ -893,6 +894,29 @@ pub fn should_lock_page_scroll(show_filter: bool) -> bool {
 #[allow(dead_code)]
 pub fn should_show_filter_on_blur(is_mobile: bool) -> bool {
     !is_mobile
+}
+
+/// Determine if the user has effectively scrolled to the bottom of the page.
+///
+/// The calculation needs to accommodate mobile browsers whose UI chrome (e.g. bottom
+/// navigation bar in Firefox for Android) can overlay the viewport and thus
+/// reduce the *visually* scrollable area. To mitigate this we apply a larger
+/// tolerance when `is_mobile` is `true`.
+///
+/// * `scroll_height`  – document `scrollHeight`
+/// * `client_height`  – document `clientHeight`
+/// * `scroll_top`     – current vertical scroll offset
+/// * `is_mobile`      – whether the device is considered mobile (viewport < 768 px)
+///
+/// Returns `true` when the bottom is reached within an acceptable tolerance.
+pub fn is_scrolled_to_bottom(
+    scroll_height: i32,
+    client_height: i32,
+    scroll_top: i32,
+    is_mobile: bool,
+) -> bool {
+    let tolerance = if is_mobile { 100 } else { 10 };
+    (scroll_height - client_height - scroll_top) <= tolerance
 }
 
 /*
