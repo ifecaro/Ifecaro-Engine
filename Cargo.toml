@@ -1,6 +1,6 @@
 [package]
 name = "ifecaro"
-version = "0.15.1"
+version = "0.15.0"
 edition = "2021"
 # build = false      # Commented out, now build.rs will be enabled
 

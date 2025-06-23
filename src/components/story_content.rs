@@ -404,14 +404,18 @@ pub fn StoryContent(props: StoryContentProps) -> Element {
                     return;
                 }
 
-                if let Some((_, document)) = get_window_document() {
+                if let Some((window, document)) = get_window_document() {
                     if let Some(document_element) = document.document_element() {
-                        let scroll_height = document_element.scroll_height();
-                        let client_height = document_element.client_height();
-                        let scroll_top = document_element.scroll_top();
+                        let rect = document_element.get_bounding_client_rect();
+                        let bottom = rect.bottom();
+                        let viewport_height = window
+                            .inner_height()
+                            .ok()
+                            .and_then(|h| h.as_f64())
+                            .unwrap_or(0.0);
 
-                        let is_mobile_device = *is_mobile.read();
-                        if is_scrolled_to_bottom(scroll_height, client_height, scroll_top, is_mobile_device) {
+                        let non_scrollable = is_document_non_scrollable(&document_element);
+                        if non_scrollable || bottom - viewport_height <= 10.0 {
                             // Schedule signal updates to avoid read→write loops
                             let show_needed = show_choices.try_read().map(|v| !*v).unwrap_or(true);
                             if show_needed {
@@ -475,6 +479,7 @@ pub fn StoryContent(props: StoryContentProps) -> Element {
                 }) as Box<dyn FnMut()>);
 
                 let _ = window.add_event_listener_with_callback("scroll", cb.as_ref().unchecked_ref());
+                let _ = window.add_event_listener_with_callback("resize", cb.as_ref().unchecked_ref());
 
                 cb.forget();
             }
@@ -489,7 +494,7 @@ pub fn StoryContent(props: StoryContentProps) -> Element {
         let mut show_choices = show_choices_clone.clone();
         let mut is_countdown_paused = is_countdown_paused_clone.clone();
         let mut has_shown_choices = has_shown_choices_clone.clone();
-        let show_filter = show_filter_clone.clone();
+        let mut show_filter = show_filter_clone.clone();
         use_effect(move || {
             if *show_filter.read() {
                 let should_show = has_shown_choices.try_read().map(|v| *v).unwrap_or(false);
@@ -522,7 +527,7 @@ pub fn StoryContent(props: StoryContentProps) -> Element {
         let mut show_choices = show_choices_clone.clone();
         let mut is_countdown_paused = is_countdown_paused_clone.clone();
         let mut has_shown_choices = has_shown_choices_clone.clone();
-        let show_filter = show_filter_clone.clone();
+        let mut show_filter = show_filter_clone.clone();
         let has_countdown = has_countdown.clone();
         use_effect(move || {
             if !*show_filter.read() {
@@ -531,13 +536,18 @@ pub fn StoryContent(props: StoryContentProps) -> Element {
 
                 // If there are countdowns and choices haven't been revealed yet, check scrollability
                 if *has_countdown.read() && !should_show_choices {
-                    if let Some((_, document)) = get_window_document() {
+                    if let Some((window, document)) = get_window_document() {
                         if let Some(document_element) = document.document_element() {
-                            let scroll_height = document_element.scroll_height();
-                            let client_height = document_element.client_height();
-                            // When the content cannot scroll (content height within tolerance of the viewport height), force showing the choices
-                            const NON_SCROLLABLE_TOLERANCE: i32 = 100;
-                            if (scroll_height - client_height) <= NON_SCROLLABLE_TOLERANCE {
+                            let rect = document_element.get_bounding_client_rect();
+                            let bottom = rect.bottom();
+                            let viewport_height = window
+                                .inner_height()
+                                .ok()
+                                .and_then(|h| h.as_f64())
+                                .unwrap_or(0.0);
+
+                            let non_scrollable = is_document_non_scrollable(&document_element);
+                            if non_scrollable || bottom - viewport_height <= 10.0 {
                                 should_show_choices = true;
                             }
                         }
@@ -628,6 +638,60 @@ pub fn StoryContent(props: StoryContentProps) -> Element {
                         let _ = body.set_attribute("style", "overflow: hidden;");
                     } else {
                         let _ = body.remove_attribute("style");
+                    }
+                }
+            }
+            (|| {})()
+        });
+    }
+    
+    // Auto-hide overlay if content is non-scrollable on mobile devices
+    {
+        let mut show_filter = show_filter_clone.clone();
+        let has_countdown = has_countdown.clone();
+        let mut show_choices = show_choices_clone.clone();
+        let mut has_shown_choices = has_shown_choices_clone.clone();
+        let mut is_countdown_paused = is_countdown_paused_clone.clone();
+        let mut progress_started = progress_started.clone();
+        let is_mobile_signal = is_mobile.clone();
+        use_effect(move || {
+            if *is_mobile_signal.read() && *show_filter.read() {
+                if *has_countdown.read() {
+                    if let Some((window, document)) = get_window_document() {
+                        if let Some(document_element) = document.document_element() {
+                            let evaluate = move || {
+                                let rect = document_element.get_bounding_client_rect();
+                                let bottom = rect.bottom();
+                                let viewport_height = window
+                                    .inner_height()
+                                    .ok()
+                                    .and_then(|h| h.as_f64())
+                                    .unwrap_or(0.0);
+                                let non_scrollable = is_document_non_scrollable(&document_element);
+                                if non_scrollable || bottom - viewport_height <= 10.0 {
+                                    gloo_timers::callback::Timeout::new(0, move || {
+                                        if let Ok(mut guard) = show_filter.try_write() { *guard = false; }
+                                        if let Ok(mut guard) = show_choices.try_write() { *guard = true; }
+                                        if let Ok(mut guard) = has_shown_choices.try_write() { *guard = true; }
+                                        if let Ok(mut guard) = is_countdown_paused.try_write() { *guard = false; }
+                                        if let Ok(mut guard) = progress_started.try_write() {
+                                            for v in guard.iter_mut() { *v = true; }
+                                        }
+                                    }).forget();
+                                }
+                            };
+                            // run once immediately
+                            evaluate();
+
+                            // attach resize listener once
+                            if let Some(window) = web_sys::window() {
+                                let cb = wasm_bindgen::closure::Closure::wrap(Box::new(move || {
+                                    evaluate();
+                                }) as Box<dyn FnMut()>);
+                                let _ = window.add_event_listener_with_callback("resize", cb.as_ref().unchecked_ref());
+                                cb.forget();
+                            }
+                        }
                     }
                 }
             }
@@ -889,6 +953,13 @@ pub fn should_lock_page_scroll(show_filter: bool) -> bool {
     show_filter
 }
 
+/// Determine if the document cannot scroll (content height fits within viewport).
+fn is_document_non_scrollable(document_element: &web_sys::Element) -> bool {
+    let scroll_h = document_element.scroll_height();
+    let client_h = document_element.client_height();
+    (scroll_h - client_h).abs() <= 1
+}
+
 /// Determine if overlay should reappear when the story content container loses focus.
 /// Returns true for desktop (non-mobile) environments so that the overlay is shown again.
 #[allow(dead_code)]
@@ -896,27 +967,9 @@ pub fn should_show_filter_on_blur(is_mobile: bool) -> bool {
     !is_mobile
 }
 
-/// Determine if the user has effectively scrolled to the bottom of the page.
-///
-/// The calculation needs to accommodate mobile browsers whose UI chrome (e.g. bottom
-/// navigation bar in Firefox for Android) can overlay the viewport and thus
-/// reduce the *visually* scrollable area. To mitigate this we apply a larger
-/// tolerance when `is_mobile` is `true`.
-///
-/// * `scroll_height`  – document `scrollHeight`
-/// * `client_height`  – document `clientHeight`
-/// * `scroll_top`     – current vertical scroll offset
-/// * `is_mobile`      – whether the device is considered mobile (viewport < 768 px)
-///
-/// Returns `true` when the bottom is reached within an acceptable tolerance.
-pub fn is_scrolled_to_bottom(
-    scroll_height: i32,
-    client_height: i32,
-    scroll_top: i32,
-    is_mobile: bool,
-) -> bool {
-    let tolerance = if is_mobile { 100 } else { 10 };
-    (scroll_height - client_height - scroll_top) <= tolerance
+#[allow(dead_code)]
+pub fn should_hide_choices_after_same_page(same_page: bool, has_countdown: bool) -> bool {
+    same_page && has_countdown
 }
 
 /*

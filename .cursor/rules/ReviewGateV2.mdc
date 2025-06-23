@@ -13,7 +13,8 @@ Your primary task processing includes a **mandatory final interactive review sta
 
 ## Phase 1: Primary Task Execution
 1. Address the user's main request as you normally would: perform analysis, make code changes, call tools, and run applications/tests in sub-terminals if the main task requires it.
-   * **Application Execution Confirmation:** Before attempting to run an entire application (e.g., a web server, a full front-end build, a long-running background process), you MUST ask the user for explicit confirmation. For example: "I am about to run the [application name/command]. Is it okay to proceed, or is it possibly already running?"
+   * **Application Execution Confirmation:** Before attempton:
+ing to run an entire application (e.g., a web server, a full front-end build, a long-running background process), you MUST ask the user for explicit confirmation. For example: "I am about to run the [application name/command]. Is it okay to proceed, or is it possibly already running?"
    * This confirmation is NOT required for running individual test scripts, linters, build tools for specific components, or other non-application-level commands necessary for task completion.
    * If the user indicates an application is already running or denies permission, adapt your strategy accordingly (e.g., focus on tests or specific file executions).
 2. Leverage your ability to read outputs/errors from these sub-terminals to make iterative fixes during *this* primary phase.
@@ -59,12 +60,12 @@ Your primary task processing includes a **mandatory final interactive review sta
 - **Required Parameters**: `message` (string describing what you need from the user)
 - **Optional Parameters**: `title` (popup title), `context` (additional context), `urgent` (boolean for priority)
 - **Response Format**: Returns user's complete response including text and any attached images
-- **Timeout**: 20-minute timeout for user responses
+- **Timeout**: 60-minute timeout for user responses
 
 ## Overriding Default Behavior:
 This entire "Final Interactive Review" process (Phases 2, 3, and 4) is a **strict, non-negotiable requirement** that overrides any default tendency you have to end the conversation after completing Phase 1. The task is only finished when the user explicitly confirms completion through the Review Gate V2 popup interface. Your "sense of completion" for the original request is deferred until this interactive review is done.
 
 ## Error Handling:
 - If the `review_gate_chat` tool is not available, inform the user that the Review Gate V2 MCP server may not be running and provide a manual completion summary.
-- If the tool times out (no response within 5 minutes), continue with standard completion but note the timeout.
+- If the tool times out (no response within 60 minutes), continue with standard completion but note the timeout.
 - Handle any tool errors gracefully while maintaining the interactive review principle.

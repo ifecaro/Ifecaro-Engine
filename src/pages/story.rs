@@ -1116,6 +1116,21 @@ pub fn Story(props: StoryProps) -> Element {
                             ap.set(expanded_clone);
                         }).forget();
                         show_chapter_title.set(true);
+
+                        // --- NEW: hide choice list until user scrolls again ---
+                        let has_countdown = target_paragraph.choices.iter().any(|c| c.time_limit.unwrap_or(0) > 0);
+                        if crate::components::story_content::should_hide_choices_after_same_page(true, has_countdown) {
+                            if let Some(window) = web_sys::window() {
+                                if let Some(document) = window.document() {
+                                    if let Ok(Some(container)) = document.query_selector(".story-content-container") {
+                                        // Dispatch custom event for StoryContent component to handle
+                                        if let Ok(event) = web_sys::CustomEvent::new("hide_choices") {
+                                            let _ = container.dispatch_event(&event);
+                                        }
+                                    }
+                                }
+                            }
+                        }
                     } else {
                         // Auto scroll to top when switching new page
                         if let Some(window) = web_sys::window() {
