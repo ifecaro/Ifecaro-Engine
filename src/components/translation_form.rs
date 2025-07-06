@@ -154,6 +154,7 @@ pub fn TranslationForm(props: TranslationFormProps) -> Element {
                         is_paragraph_open.set(false);
                     },
                     has_error: false,
+                    show_selected_chip: false,
                 }
 
                 // Paragraph content field

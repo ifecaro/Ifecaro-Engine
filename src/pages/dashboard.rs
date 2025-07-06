@@ -1025,6 +1025,7 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
                                                 has_error: false,
                                                 disabled: !*is_edit_mode.read(),
                                                 selected_language: paragraph_language.read().clone(),
+                                                show_selected_chip: false,
                                             }
                                         }
                                     }

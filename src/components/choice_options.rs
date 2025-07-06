@@ -110,6 +110,7 @@ pub fn ChoiceOptions(props: ChoiceOptionsProps) -> Element {
                             selected_language: props.selected_language.clone(),
                             button_class: None,
                             label_class: None,
+                            show_selected_chip: false,
                         }
                     }
 

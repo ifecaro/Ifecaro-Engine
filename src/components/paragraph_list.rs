@@ -29,6 +29,11 @@ pub struct ParagraphListProps {
     pub required: bool,
     #[props(default = String::new())]
     pub selected_language: String,
+    /// Whether to display the selected paragraph as a removable chip instead of inside the dropdown button.
+    /// Defaults to `true` to preserve the original multi-select-style UX. Set to `false` for a simpler
+    /// single-select style.
+    #[props(default = true)]
+    pub show_selected_chip: bool,
 }
 
 #[derive(Props, Clone, PartialEq)]
@@ -84,16 +89,27 @@ pub fn ParagraphList(props: ParagraphListProps) -> Element {
         .map(convert_to_display);
 
     // Filter and convert paragraphs for dropdown option list
-    let display_paragraphs: Vec<DisplayParagraph> = props
+    let mut display_paragraphs: Vec<DisplayParagraph> = props
         .paragraphs
         .iter()
         .map(convert_to_display)
         .filter(|p| p.display_text.to_lowercase().contains(&props.search_query.to_lowercase()))
         .collect();
 
-    // Fallback button text – keep it consistent with MultiSelect list
-    let button_text = if selected_paragraph.is_some() {
-        t!("select_paragraph").to_string()
+    // For single-select style (no chip), prepend a "None" option so users can clear the selection.
+    if !props.show_selected_chip {
+        display_paragraphs.insert(0, DisplayParagraph { id: String::new(), display_text: t!("none").to_string() });
+    }
+
+    // Determine text shown inside the dropdown button depending on UX style.
+    let button_text = if let Some(p) = &selected_paragraph {
+        if props.show_selected_chip {
+            // Multi-select style → keep static label.
+            t!("select_paragraph").to_string()
+        } else {
+            // Single-select style → show the selected paragraph preview.
+            p.display_text.clone()
+        }
     } else {
         t!("select_paragraph").to_string()
     };
@@ -122,30 +138,32 @@ pub fn ParagraphList(props: ParagraphListProps) -> Element {
                 }
             }
 
-            // Selected paragraph preview chip (similar style as MultiSelect chips)
-            if let Some(p) = selected_paragraph {
-                div {
-                    class: "mb-2",
+            // Selected paragraph preview chip (multi-select style only)
+            if props.show_selected_chip {
+                if let Some(p) = selected_paragraph {
                     div {
-                        class: "text-xs text-gray-500 dark:text-gray-400 mb-2",
-                        {t!("selected_paragraphs")}
-                    }
-                    div {
-                        class: "flex flex-wrap gap-2",
+                        class: "mb-2",
                         div {
-                            class: "inline-flex items-center bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 text-xs px-2 py-1 rounded-full",
-                            span {
-                                class: "truncate max-w-32",
-                                title: "{p.display_text.clone()}",
-                                {p.display_text.clone()}
-                            }
-                            button {
-                                class: "ml-1 text-blue-600 dark:text-blue-300 hover:text-blue-800 dark:hover:text-blue-100",
-                                onclick: move |_| {
-                                    // Clear selection by sending empty string
-                                    props.on_select.call(String::new());
-                                },
-                                "×"
+                            class: "text-xs text-gray-500 dark:text-gray-400 mb-2",
+                            {t!("selected_paragraphs")}
+                        }
+                        div {
+                            class: "flex flex-wrap gap-2",
+                            div {
+                                class: "inline-flex items-center bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 text-xs px-2 py-1 rounded-full",
+                                span {
+                                    class: "truncate max-w-32",
+                                    title: "{p.display_text.clone()}",
+                                    {p.display_text.clone()}
+                                }
+                                button {
+                                    class: "ml-1 text-blue-600 dark:text-blue-300 hover:text-blue-800 dark:hover:text-blue-100",
+                                    onclick: move |_| {
+                                        // Clear selection by sending empty string
+                                        props.on_select.call(String::new());
+                                    },
+                                    "×"
+                                }
                             }
                         }
                     }
