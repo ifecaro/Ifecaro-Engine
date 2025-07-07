@@ -1,7 +1,14 @@
-Dropdown width adjustments
+Fix: preserve paragraph choices when switching to untranslated language
 
-- Make desktop dropdowns responsive with `max-w-[60vw]`
-- Provide `sm:w-auto sm:max-w-[60vw]` via prop for paragraph dropdown only
-- Update tests accordingly
-- Prevent clipping on desktop mode
+When the dashboard switches to a language that lacks a translation for the selected paragraph, the option list (choices) was previously cleared. This caused shared option metadata to disappear.
+
+Changes
+-------
+1. In `dashboard.rs` language selector and paragraph select handlers, if no translation is found:
+   • Build a placeholder `ContextText` with the same number of choices.
+   • Call `process_paragraph_select` to regenerate full choice tuples.
+   • Sync the reducer so the UI reflects the existing choices with empty captions.
+2. Updated logic compiles cleanly (`cargo check`).
+
+This ensures option metadata remains intact across language switches, improving editor usability.
 

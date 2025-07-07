@@ -817,11 +817,25 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
                             }
                         }
                     } else {
-                        // If no translation found for current language, clear all content
+                        // If no translation found for current language, keep existing paragraph choices with empty captions
                         paragraphs.set(String::new());
-                        choices.set(Vec::new());
+
+                        // Build a placeholder `ContextText` with empty captions matching the number of existing choices
+                        let placeholder_choices_count = full_paragraph.choices.len();
+                        let placeholder_text = ContextText {
+                            lang: paragraph_language.read().clone(),
+                            paragraphs: String::new(),
+                            choices: vec![String::new(); placeholder_choices_count],
+                        };
+
+                        // Re-use existing helper to derive the full choice tuples
+                        let (new_choices, _new_paragraphs) = process_paragraph_select(&placeholder_text, &full_paragraph, &paragraph_state, &paragraph_language, &language_state.read().current_language.clone());
+                        choices.set(new_choices.clone());
+
+                        // Sync reducer state so UI components reflect the updated choices list
                         let dispatch = dispatch_ps.clone();
-                        (dispatch.clone())(CAct::SetList(Vec::new()));
+                        let converted = new_choices.iter().cloned().map(ChoiceStruct::from_tuple).collect::<Vec<_>>();
+                        (dispatch.clone())(CAct::SetList(converted));
                     }
                 }
             }
@@ -946,11 +960,25 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
 
                                                             choices.set(new_choices.clone());
                                                         } else {
-                                                            // If no translation found for current language, clear all content
+                                                            // If no translation found for current language, keep existing paragraph choices with empty captions
                                                             paragraphs.set(String::new());
-                                                            choices.set(Vec::new());
+
+                                                            // Build a placeholder `ContextText` with empty captions matching the number of existing choices
+                                                            let placeholder_choices_count = paragraph.choices.len();
+                                                            let placeholder_text = ContextText {
+                                                                lang: current_lang.clone(),
+                                                                paragraphs: String::new(),
+                                                                choices: vec![String::new(); placeholder_choices_count],
+                                                            };
+
+                                                            // Re-use existing helper to derive the full choice tuples
+                                                            let (new_choices, _new_paragraphs) = process_paragraph_select(&placeholder_text, paragraph, &paragraph_state, &paragraph_language, &language_state.read().current_language.clone());
+                                                            choices.set(new_choices.clone());
+
+                                                            // Sync reducer state so UI components reflect the updated choices list
                                                             let dispatch = dispatch_dropdown.clone();
-                                                            (dispatch.clone())(CAct::SetList(Vec::new()));
+                                                            let converted = new_choices.iter().cloned().map(ChoiceStruct::from_tuple).collect::<Vec<_>>();
+                                                            (dispatch.clone())(CAct::SetList(converted));
                                                         }
                                                     }
                                                 }
