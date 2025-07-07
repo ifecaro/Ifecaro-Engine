@@ -56,7 +56,7 @@ pub fn Settings(props: SettingsProps) -> Element {
                 }
             }
             div {
-                class: format!("{position_class} w-full sm:min-w-max shadow-lg bg-white dark:bg-gray-800 ring-1 ring-black ring-opacity-5 z-[1000] transition duration-200 ease-in-out transform {animation_class} will-change-transform will-change-opacity"),
+                class: format!("{position_class} w-full sm:max-w-[60vw] shadow-lg bg-white dark:bg-gray-800 ring-1 ring-black ring-opacity-5 z-[1000] transition duration-200 ease-in-out transform {animation_class} will-change-transform will-change-opacity"),
                 div {
                     class: "py-1",
                     button {

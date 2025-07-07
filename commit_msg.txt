@@ -1,12 +1,7 @@
-feat(ui): add single-select mode to ParagraphList dropdown
+Dropdown width adjustments
 
-- Introduce `show_selected_chip` prop to `ParagraphList` (default true).
-  * When false: selected item is shown in button; chip list hidden
-  * Adds "None" placeholder to allow clearing selection
+- Make desktop dropdowns responsive with `max-w-[60vw]`
+- Provide `sm:w-auto sm:max-w-[60vw]` via prop for paragraph dropdown only
+- Update tests accordingly
+- Prevent clipping on desktop mode
 
-- Update usages:
-  * Dashboard: paragraph selector now single-select
-  * TranslationForm: paragraph selector now single-select
-  * ChoiceOptions: target paragraph selector now single-select
-
-- Verified with `docker compose exec app cargo check` (no errors)

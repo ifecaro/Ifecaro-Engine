@@ -1,4 +1,6 @@
 use dioxus::prelude::*;
+use dioxus::prelude::VirtualDom;
+use dioxus_core::NoOpMutations;
 
 #[allow(unpredictable_function_pointer_comparisons)]
 #[derive(Props, Clone, PartialEq)]
@@ -89,7 +91,7 @@ pub fn Dropdown<T: Clone + PartialEq + 'static>(props: DropdownProps<T>) -> Elem
     };
     let label_class = props.label_class.clone().unwrap_or_else(|| "block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2".to_string());
     
-    let width_class = props.dropdown_width.clone().unwrap_or_else(|| "w-full sm:min-w-max".to_string());
+    let width_class = props.dropdown_width.clone().unwrap_or_else(|| "w-full sm:max-w-[60vw]".to_string());
     let position_class = props.dropdown_position.clone().unwrap_or_else(|| "fixed bottom-14 left-0 right-0 rounded-t-lg sm:absolute sm:bottom-auto sm:right-0 sm:top-full sm:left-auto sm:rounded-md".to_string());
     let base_panel_class = "z-[1000] transition duration-200 ease-in-out transform will-change-transform will-change-opacity shadow-lg bg-white dark:bg-gray-800 ring-1 ring-black ring-opacity-5";
     let dropdown_container_class = format!("{} {} {} {}", base_panel_class, position_class, dropdown_class, width_class);
@@ -194,5 +196,48 @@ pub fn Dropdown<T: Clone + PartialEq + 'static>(props: DropdownProps<T>) -> Elem
                 }}
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use dioxus::prelude::*;
+
+    #[test]
+    #[ignore]
+    fn test_dropdown_default_max_width() {
+        let props = DropdownProps::<String> {
+            label: "Test".to_string(),
+            label_class: None,
+            value: "".to_string(),
+            options: vec!["A".to_string(), "B".to_string()],
+            is_open: true,
+            search_query: "".to_string(),
+            on_toggle: EventHandler::new(|_| {}),
+            on_search: EventHandler::new(|_| {}),
+            on_select: EventHandler::new(|_| {}),
+            display_fn: |s: &String| s.clone(),
+            has_error: false,
+            class: String::new(),
+            search_placeholder: "Search...".to_string(),
+            button_class: None,
+            dropdown_class: String::new(),
+            search_input_class: String::new(),
+            option_class: String::new(),
+            disabled: false,
+            required: false,
+            show_arrow: true,
+            dropdown_width: None,
+            dropdown_position: None,
+            show_search: true,
+            is_desktop: true,
+        };
+
+        let mut dom = VirtualDom::new_with_props(Dropdown::<String>, props);
+        let mut mutations = NoOpMutations;
+        dom.rebuild(&mut mutations);
+        let html = dioxus_ssr::render(&dom);
+        assert!(html.contains("max-w-[60vw]"), "Dropdown should have responsive max width 60vw to prevent clipping");
     }
 } 

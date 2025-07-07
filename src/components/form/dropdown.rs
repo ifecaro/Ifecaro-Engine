@@ -80,7 +80,7 @@ pub fn Dropdown<T: Clone + PartialEq + 'static>(props: DropdownProps<T>) -> Elem
     };
     let label_class = props.label_class.clone().unwrap_or_else(|| "block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2".to_string());
     
-    let width_class = props.dropdown_width.clone().unwrap_or_else(|| "w-full".to_string());
+    let width_class = props.dropdown_width.clone().unwrap_or_else(|| "w-full sm:max-w-[60vw]".to_string());
     let position_class = props.dropdown_position.clone().unwrap_or_else(|| "left-0".to_string());
     let dropdown_container_class = format!("absolute {} top-full mt-2 rounded-md shadow-lg bg-white dark:bg-gray-800 ring-1 ring-black ring-opacity-5 transition duration-200 ease-in-out transform origin-top {dropdown_class} z-[1000] will-change-transform will-change-opacity {} {}", position_class, props.dropdown_class, width_class);
     
@@ -220,5 +220,35 @@ mod tests {
         let html = dioxus_ssr::render(&dropdown);
         assert!(html.contains("opacity-50"), "disabled dropdown should have opacity-50 class");
         assert!(html.contains("cursor-not-allowed"), "disabled dropdown should have cursor-not-allowed class");
+    }
+
+    #[test]
+    fn test_dropdown_default_max_width() {
+        let dropdown = Dropdown(DropdownProps {
+            label: "Test".to_string(),
+            label_class: None,
+            value: "".to_string(),
+            options: vec!["A".to_string(), "B".to_string()],
+            is_open: true,
+            search_query: "".to_string(),
+            on_toggle: EventHandler::new(|_| {}),
+            on_search: EventHandler::new(|_| {}),
+            on_select: EventHandler::new(|_| {}),
+            display_fn: |s: &String| s.clone(),
+            has_error: false,
+            class: String::new(),
+            search_placeholder: "Search...".to_string(),
+            button_class: None,
+            dropdown_class: String::new(),
+            search_input_class: String::new(),
+            option_class: String::new(),
+            disabled: false,
+            required: false,
+            show_arrow: true,
+            dropdown_width: None,
+            dropdown_position: None,
+        });
+        let html = dioxus_ssr::render(&dropdown);
+        assert!(html.contains("max-w-[60vw]"), "Dropdown should have responsive max width 60vw to prevent clipping");
     }
 } 
