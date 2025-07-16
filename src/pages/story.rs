@@ -269,6 +269,23 @@ pub fn Story(props: StoryProps) -> Element {
     let mut _expanded_paragraphs = use_signal(|| {
         let ctx = story_context.read();
         let paragraphs = ctx.paragraphs.read();
+        let choice_ids = ctx.choice_ids.read();
+
+        // If we already have a stored history, rebuild the full path immediately so that
+        // the UI is consistent even before the async auto-restore effect runs.
+        if !choice_ids.is_empty() {
+            let mut path = Vec::new();
+            for id in choice_ids.iter() {
+                if let Some(p) = paragraphs.iter().find(|p| p.id == *id) {
+                    path.push(p.clone());
+                }
+            }
+            if !path.is_empty() {
+                return path;
+            }
+        }
+
+        // Fallback to the very first paragraph when no history is available yet.
         if !paragraphs.is_empty() {
             vec![paragraphs[0].clone()]
         } else {
@@ -353,11 +370,16 @@ pub fn Story(props: StoryProps) -> Element {
                                                 data.items.first()
                                             };
                                             if let Some(first_paragraph) = first_paragraph {
-                                                {
-                                                    let mut ctx = story_context.write();
-                                                    ctx.target_paragraph_id = Some(first_paragraph.id.clone());
+                                                // Only reset the expanded path when we don't already have a
+                                                // reconstructed history (i.e. no stored choice_ids).
+                                                let has_history = !story_context.read().choice_ids.read().is_empty();
+                                                if !has_history {
+                                                    {
+                                                        let mut ctx = story_context.write();
+                                                        ctx.target_paragraph_id = Some(first_paragraph.id.clone());
+                                                    }
+                                                    _expanded_paragraphs.set(vec![first_paragraph.clone()]);
                                                 }
-                                                _expanded_paragraphs.set(vec![first_paragraph.clone()]);
                                             }
                                             // Here first set to paragraph_data (signal), then set to context
                                             _paragraph_data.set(data.items.clone());
@@ -763,7 +785,9 @@ pub fn Story(props: StoryProps) -> Element {
                     }
                 }
                 let current_ids = story_context.read().choice_ids.read().clone();
-                if current_ids != all_ids {
+                // Avoid accidentally clearing an existing history – only overwrite when we
+                // have a **non-empty** result from IndexedDB that actually differs.
+                if !all_ids.is_empty() && current_ids != all_ids {
                     story_context.write().choice_ids.set(all_ids);
                 }
             });

@@ -22,7 +22,7 @@ use crate::{
         settings_context::SettingsContext,
         chapter_context::ChapterProvider,
         paragraph_context::ParagraphProvider,
-        story_context::provide_story_context,
+        story_context::StoryContext,
         toast_context::ToastManager,
     },
     components::toast::ToastContainer,
@@ -63,7 +63,7 @@ struct StoryProviderProps {
 
 #[component]
 fn StoryProvider(props: StoryProviderProps) -> Element {
-    provide_story_context();
+    use_context_provider(|| Signal::new(StoryContext::new()));
     rsx! {
         {props.children}
     }
