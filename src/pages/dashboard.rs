@@ -575,26 +575,29 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
 
     let mut handle_submit = {
         let paragraph_state = paragraph_state.clone();
-        let selected_paragraph = selected_paragraph.clone();
+        let mut selected_paragraph = selected_paragraph.clone();
         let paragraph_language = paragraph_language.clone();
-        let paragraphs = paragraphs.read().clone();
-        let choices = choices.read().clone();
-        let is_edit_mode = is_edit_mode.read().clone();
+        let mut paragraphs_signal = paragraphs.clone();
+        let mut choices_signal = choices.clone();
+        let is_edit_mode_signal = is_edit_mode.clone();
         let mut is_submitting = is_submitting.clone();
         let toast = toast.clone();
+        // Clone dispatcher so we can use it inside inner async block without move issues
+        let dispatch_choice_outer = dispatch_choice.clone();
+        let mut selected_chapter = selected_chapter.clone();
         move |_| {
             if *is_submitting.read() { return; }
             is_submitting.set(true);
             let text = ContextText {
                 lang: paragraph_language.read().clone(),
-                paragraphs: paragraphs.clone(),
-                choices: choices.iter().map(|(choice_text, _, _, _, _, _, _, _, _, _)| {
+                paragraphs: paragraphs_signal.read().clone(),
+                choices: choices_signal.read().iter().map(|(choice_text, _, _, _, _, _, _, _, _, _)| {
                     choice_text.clone()
                 }).collect(),
             };
 
             // Build option data
-            let paragraph_choices: Vec<ContextParagraphChoice> = choices.iter().map(|(choice_text, to_list, type_, key, value, _target_chapter, same_page, time_limit, timeout_to, _timeout_target_chapter)| {
+            let paragraph_choices: Vec<ContextParagraphChoice> = choices_signal.read().iter().map(|(choice_text, to_list, type_, key, value, _target_chapter, same_page, time_limit, timeout_to, _timeout_target_chapter)| {
                 let mut complex = ContextParagraphChoice::Complex {
                     to: to_list.clone(),
                     type_: type_.clone(),
@@ -629,6 +632,15 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
                 let mut toast = toast.clone();
                 let submit_success_text = submit_success_text.clone();
                 let submit_failed_text  = submit_failed_text.clone();
+                // Capture signals for UI sync
+                let mut selected_paragraph = selected_paragraph.clone();
+                let paragraph_language = paragraph_language.clone();
+                let mut paragraphs_signal = paragraphs_signal.clone();
+                let mut choices_signal = choices_signal.clone();
+                let language_state = language_state.clone();
+                let dispatch_choice = dispatch_choice_outer.clone();
+                let mut selected_chapter = selected_chapter.clone();
+                let is_edit_mode_flag = *is_edit_mode_signal.read();
                 async move {
                     let client = reqwest::Client::new();
                     
@@ -638,7 +650,7 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
                     // Build new paragraph data
                     let new_paragraph = if chapter_id.is_empty() {
                         serde_json::json!({
-                            "texts": if is_edit_mode {
+                            "texts": if is_edit_mode_flag {
                                 // In edit mode, keep all existing translations, only update translations for current language
                                 let mut existing_texts = selected_paragraph.read().as_ref().map(|p| p.texts.clone()).unwrap_or_default();
                                 // Remove old translations for current language (if exists)
@@ -654,7 +666,7 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
                     } else {
                         serde_json::json!({
                             "chapter_id": chapter_id,
-                            "texts": if is_edit_mode {
+                            "texts": if is_edit_mode_flag {
                                 // In edit mode, keep all existing translations, only update translations for current language
                                 let mut existing_texts = selected_paragraph.read().as_ref().map(|p| p.texts.clone()).unwrap_or_default();
                                 // Remove old translations for current language (if exists)
@@ -672,7 +684,7 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
                     // Publish to paragraph collection
                     let paragraphs_url = format!("{}{}", BASE_API_URL, PARAGRAPHS);
                     
-                    let response = if is_edit_mode {
+                    let response = if is_edit_mode_flag {
                         // Edit mode: Use PATCH method to update existing paragraph
                         if let Some(paragraph) = selected_paragraph.read().as_ref() {
                             let update_url = format!("{}{}/{}", BASE_API_URL, PARAGRAPHS, paragraph.id);
@@ -706,6 +718,60 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
                                                 Ok(data) => {
                                                     // Update paragraph data in context
                                                     paragraph_state.write().set_paragraphs(data.items.clone());
+
+                                                    // --- NEW: keep local UI state in sync ---
+                                                    if is_edit_mode_flag {
+                                                        // Refresh `selected_paragraph` and associated UI signals
+                                                        let updated_para_opt = {
+                                                            if let Some(curr_id) = selected_paragraph.read().as_ref().map(|p| p.id.clone()) {
+                                                                paragraph_state.read().get_by_id(&curr_id)
+                                                            } else {
+                                                                None
+                                                            }
+                                                        };
+
+                                                        if let Some(updated_para) = updated_para_opt {
+                                                            // Update the selected paragraph signal
+                                                            selected_paragraph.set(Some(updated_para.clone()));
+
+                                                            // Update paragraph content and choices for the current editing language
+                                                            if let Some(text) = updated_para.texts.iter().find(|t| t.lang == *paragraph_language.read()) {
+                                                                // Update paragraph body text
+                                                                paragraphs_signal.set(text.paragraphs.clone());
+
+                                                                // Re-generate choices and related caches using existing helper
+                                                                let (new_choices, _new_paragraphs) = process_paragraph_select(
+                                                                    text,
+                                                                    &updated_para,
+                                                                    &paragraph_state,
+                                                                    &paragraph_language,
+                                                                    &language_state.read().current_language.clone(),
+                                                                );
+
+                                                                choices_signal.set(new_choices.clone());
+
+                                                                // Sync reducer state so UI reflects latest data
+                                                                let dispatch = dispatch_choice.clone();
+                                                                let converted = new_choices
+                                                                    .iter()
+                                                                    .cloned()
+                                                                    .map(ChoiceStruct::from_tuple)
+                                                                    .collect::<Vec<_>>();
+                                                                (dispatch.clone())(CAct::SetList(converted));
+                                                            }
+                                                        }
+                                                    } else {
+                                                        // After creating a new paragraph, reset the form for a clean slate
+                                                        paragraphs_signal.set(String::new());
+                                                        choices_signal.set(Vec::new());
+                                                        // Clear reducer list as well
+                                                        let dispatch = dispatch_choice.clone();
+                                                        (dispatch.clone())(CAct::SetList(Vec::new()));
+
+                                                        // Reset selected chapter so that user explicitly selects again
+                                                        selected_chapter.set(String::new());
+                                                    }
+
                                                     toast.write().show(submit_success_text.clone(), ToastType::Success, 3000);
                                                     is_submitting.set(false);
                                                 },

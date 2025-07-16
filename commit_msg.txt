@@ -1,14 +1,4 @@
-feat(toast): add smooth fade-in/out animations
+fix(story_content): prevent ValueDroppedError by safe show_filter reads
 
-Implement custom toast animation using Tailwind utility classes `toast-animate-in` and `toast-animate-out`.
-
-Changes:
-- Updated `src/components/toast.rs`
-  • Use `toast-animate-in` on mount for entry animation
-  • Start visible immediately to avoid flash
-  • Apply `toast-animate-out` for exit animation
-  • Sync removal delay to animation duration
-- Added new test `tests/toast_animation_css_tests.rs` to ensure CSS classes exist
-- Adjusted timeouts in auto-dismiss logic
-
-All unit tests pass.
+t- Replace direct `show_filter.read()` calls with `show_filter.try_read().map(|v| *v).unwrap_or(...)` in scroll, overlay show/hide handlers
+- Prevent panics when `show_filter` signal is dropped after component unmount

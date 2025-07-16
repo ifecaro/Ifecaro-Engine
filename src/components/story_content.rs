@@ -400,7 +400,7 @@ pub fn StoryContent(props: StoryContentProps) -> Element {
             // Helper closure for scroll position check
             let mut check_scroll = move || {
                 // Only run when overlay is dismissed
-                if *show_filter.read() {
+                if show_filter.try_read().map(|v| *v).unwrap_or(true) {
                     return;
                 }
 
@@ -491,7 +491,7 @@ pub fn StoryContent(props: StoryContentProps) -> Element {
         let mut has_shown_choices = has_shown_choices_clone.clone();
         let show_filter = show_filter_clone.clone();
         use_effect(move || {
-            if *show_filter.read() {
+            if show_filter.try_read().map(|v| *v).unwrap_or(true) {
                 let should_show = has_shown_choices.try_read().map(|v| *v).unwrap_or(false);
                 let currently_showing = show_choices.try_read().map(|v| *v).unwrap_or(false);
                 if should_show && !currently_showing {
@@ -525,7 +525,7 @@ pub fn StoryContent(props: StoryContentProps) -> Element {
         let show_filter = show_filter_clone.clone();
         let has_countdown = has_countdown.clone();
         use_effect(move || {
-            if !*show_filter.read() {
+            if !show_filter.try_read().map(|v| *v).unwrap_or(false) {
                 // Overlay dismissed
                 let mut should_show_choices = has_shown_choices.try_read().map(|v| *v).unwrap_or(false);
 
