@@ -61,6 +61,10 @@ struct ToastItemProps {
 fn ToastItem(props: ToastItemProps) -> Element {
     let toast = props.toast.clone();
 
+    // Track visibility to drive enter/exit animations.
+    // We start in the visible state so the toast plays the "in" animation immediately after mount.
+    let mut is_visible = use_signal(|| true);
+
     let bg_color = match toast.toast_type {
         ToastType::Success => "bg-green-500",
         ToastType::Error => "bg-red-500",
@@ -68,18 +72,45 @@ fn ToastItem(props: ToastItemProps) -> Element {
         ToastType::Info => "bg-blue-500",
     };
 
+    // Start auto-dismiss timer with exit animation support
     use_effect(move || {
         let on_dismiss = props.on_dismiss.clone();
         let id = toast.id;
-        let _timeout = Timeout::new(toast.duration as u32, move || {
-            on_dismiss.call(id);
-        });
+        let mut is_visible = is_visible.clone();
+
+        // After `duration`, trigger fade/slide-out, then remove from list after 400 ms (animation length)
+        Timeout::new(toast.duration as u32, move || {
+            is_visible.set(false);
+            Timeout::new(400, move || {
+                on_dismiss.call(id);
+            })
+            .forget();
+        })
+        .forget();
     });
-    
+
+    // Use custom animation utility classes generated in `tailwind.css`
+    // (see `toast-in` and `toast-out` keyframes defined under the `@layer utilities` section).
+    // These classes handle both the opacity and translate-Y transitions so we only need to
+    // toggle between them depending on visibility.
+    let animation_class = if *is_visible.read() {
+        "toast-animate-in"
+    } else {
+        "toast-animate-out"
+    };
+
     rsx! {
         div {
-            class: "text-white px-6 py-3 rounded shadow-lg transform transition-transform transition-opacity duration-300 ease-in-out {bg_color}",
-            onclick: move |_| props.on_dismiss.call(toast.id),
+            class: "text-white px-6 py-3 rounded shadow-lg transform will-change-transform {bg_color} {animation_class}",
+            onclick: move |_| {
+                // Trigger exit animation first, then remove after it finishes (400ms)
+                is_visible.set(false);
+                Timeout::new(400, move || {
+                    let on_dismiss = props.on_dismiss.clone();
+                    let id = toast.id;
+                    on_dismiss.call(id);
+                }).forget();
+            },
             "{toast.message}"
         }
     }

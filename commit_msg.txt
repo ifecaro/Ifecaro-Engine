@@ -1,14 +1,14 @@
-Fix: preserve paragraph choices when switching to untranslated language
+feat(toast): add smooth fade-in/out animations
 
-When the dashboard switches to a language that lacks a translation for the selected paragraph, the option list (choices) was previously cleared. This caused shared option metadata to disappear.
+Implement custom toast animation using Tailwind utility classes `toast-animate-in` and `toast-animate-out`.
 
-Changes
--------
-1. In `dashboard.rs` language selector and paragraph select handlers, if no translation is found:
-   • Build a placeholder `ContextText` with the same number of choices.
-   • Call `process_paragraph_select` to regenerate full choice tuples.
-   • Sync the reducer so the UI reflects the existing choices with empty captions.
-2. Updated logic compiles cleanly (`cargo check`).
+Changes:
+- Updated `src/components/toast.rs`
+  • Use `toast-animate-in` on mount for entry animation
+  • Start visible immediately to avoid flash
+  • Apply `toast-animate-out` for exit animation
+  • Sync removal delay to animation duration
+- Added new test `tests/toast_animation_css_tests.rs` to ensure CSS classes exist
+- Adjusted timeouts in auto-dismiss logic
 
-This ensures option metadata remains intact across language switches, improving editor usability.
-
+All unit tests pass.
