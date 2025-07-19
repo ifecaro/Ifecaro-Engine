@@ -10,6 +10,8 @@ use crate::enums::style::NavbarStyle;
 use wasm_bindgen_futures::spawn_local;
 #[cfg(target_arch = "wasm32")]
 use crate::services::indexeddb::clear_all_disabled_choices_from_indexeddb;
+#[cfg(target_arch = "wasm32")]
+use web_sys::window;
 
 #[derive(Props, Clone, PartialEq)]
 pub struct SettingsProps {
@@ -40,6 +42,19 @@ pub fn Settings(props: SettingsProps) -> Element {
     };
     
     let reader_mode_status = if reader_mode { t!("on") } else { t!("off") };
+
+    // debugmode detection initial mount
+    #[cfg(target_arch = "wasm32")]
+    let debugmode_signal = use_signal(|| {
+        let raw = window().expect("no global `window` exists").location().search().unwrap_or_default();
+        raw.split('?').nth(1).unwrap_or("").split('&').any(|pair| {
+            let mut iter = pair.split('=');
+            iter.next() == Some("debugmode") && iter.next() == Some("true")
+        })
+    });
+    #[cfg(not(target_arch = "wasm32"))]
+    let debugmode_signal = use_signal(|| false);
+    let show_clear = cfg!(debug_assertions) || *debugmode_signal.read();
 
     rsx! {
         div {
@@ -77,12 +92,12 @@ pub fn Settings(props: SettingsProps) -> Element {
                             span { class: "text-xs text-gray-500 dark:text-gray-400 ml-2", "{reader_mode_status}" }
                         }
                     }
-                    if cfg!(debug_assertions) {
+                    if show_clear {
                         div {
                             class: "border-t border-gray-200 dark:border-gray-700 my-1",
                         }
                         button {
-                            class: "w-full text-left px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 font-medium",
+                            class: "w-full text-left px-4 py-2 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 font-medium",
                             onclick: move |_| {
                                 spawn_local(async move {
                                     let _ = clear_choices_and_random_choices().await;

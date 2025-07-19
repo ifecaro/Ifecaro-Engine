@@ -2,20 +2,44 @@ use dioxus::prelude::*;
 use crate::enums::route::Route;
 use crate::enums::style::NavbarStyle;
 use dioxus_i18n::t;
-use wasm_bindgen::{closure::Closure, JsCast};
+use wasm_bindgen::{closure::Closure, JsCast, JsValue};
 use web_sys::Event;
 use crate::contexts::language_context::LanguageState;
 use crate::components::dropdown::Dropdown;
 use crate::components::language_selector::{AVAILABLE_LANGUAGES, Language, display_language};
 use crate::components::settings::Settings;
 use web_sys::window;
+use gloo_timers::callback::Timeout;
 
 #[component]
 pub fn Navbar(closure_signal: Signal<Option<Closure<dyn FnMut(Event)>>>) -> Element {
     let navigator = use_navigator();
     let route: Route = use_route();
+    // debugmode detection initial mount
+    #[cfg(target_arch = "wasm32")]
+    let debugmode_signal = use_signal(|| {
+        let raw = window().unwrap().location().search().unwrap_or_default();
+        raw.split('?').nth(1).unwrap_or("").split('&').any(|pair| {
+            let mut iter = pair.split('=');
+            iter.next() == Some("debugmode") && iter.next() == Some("true")
+        })
+    });
+    #[cfg(not(target_arch = "wasm32"))]
+    let debugmode_signal = use_signal(|| false);
+    let debugmode = *debugmode_signal.read();
+    #[cfg(target_arch = "wasm32")]
+    use_effect(move || {
+        if debugmode {
+            let win = window().unwrap();
+            let path = win.location().pathname().unwrap_or_default();
+            let new_url = format!("{}?debugmode=true", path);
+            let _ = win.history().unwrap().replace_state_with_url(&JsValue::NULL, "", Some(&new_url));
+        }
+    });
     let mut state = use_context::<Signal<LanguageState>>();
     let current_lang = state.read().current_language.clone();
+    let story_lang = current_lang.clone();
+    let dashboard_lang = current_lang.clone();
     let mut is_open = use_signal(|| false);
     let mut search_query = use_signal(|| String::new());
     let mut is_desktop = use_signal(|| false);
@@ -94,15 +118,39 @@ pub fn Navbar(closure_signal: Signal<Option<Closure<dyn FnMut(Event)>>>) -> Elem
                 class: "container mx-auto px-0 sm:px-6 h-full flex items-center",
                 div { 
                     class: "flex items-center sm:justify-end sm:space-x-6 w-full",
-                    Link { 
-                        to: Route::Story { lang: current_lang.clone() },
+                    Link {
+                        to: Route::Story { lang: story_lang.clone() },
                         class: NavbarStyle::Link.class(),
-                        "{t!(\"story\")}" 
+                        onclick: move |_| {
+                            let _ = navigator.push(Route::Story { lang: story_lang.clone() });
+                            #[cfg(target_arch = "wasm32")]
+                            if debugmode {
+                                let win = window().unwrap();
+                                let path = win.location().pathname().unwrap_or_default();
+                                let new_url = format!("{}?debugmode=true", path);
+                                Timeout::new(0, move || {
+                                    let _ = window().unwrap().history().unwrap().replace_state_with_url(&JsValue::NULL, "", Some(&new_url));
+                                }).forget();
+                            }
+                        },
+                        "{t!(\"story\")}"
                     }
-                    Link { 
-                        to: Route::Dashboard { lang: current_lang.clone() },
+                    Link {
+                        to: Route::Dashboard { lang: dashboard_lang.clone() },
                         class: NavbarStyle::Link.class(),
-                        "{t!(\"dashboard\")}" 
+                        onclick: move |_| {
+                            let _ = navigator.push(Route::Dashboard { lang: dashboard_lang.clone() });
+                            #[cfg(target_arch = "wasm32")]
+                            if debugmode {
+                                let win = window().unwrap();
+                                let path = win.location().pathname().unwrap_or_default();
+                                let new_url = format!("{}?debugmode=true", path);
+                                Timeout::new(0, move || {
+                                    let _ = window().unwrap().history().unwrap().replace_state_with_url(&JsValue::NULL, "", Some(&new_url));
+                                }).forget();
+                            }
+                        },
+                        "{t!(\"dashboard\")}"
                     }
                     Dropdown {
                         label: String::new(),
