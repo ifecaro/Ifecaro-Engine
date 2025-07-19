@@ -2,14 +2,13 @@ use dioxus::prelude::*;
 use crate::enums::route::Route;
 use crate::enums::style::NavbarStyle;
 use dioxus_i18n::t;
-use wasm_bindgen::{closure::Closure, JsCast, JsValue};
+use wasm_bindgen::{closure::Closure, JsCast};
 use web_sys::Event;
 use crate::contexts::language_context::LanguageState;
 use crate::components::dropdown::Dropdown;
 use crate::components::language_selector::{AVAILABLE_LANGUAGES, Language, display_language};
 use crate::components::settings::Settings;
 use web_sys::window;
-use gloo_timers::callback::Timeout;
 
 #[component]
 pub fn Navbar(closure_signal: Signal<Option<Closure<dyn FnMut(Event)>>>) -> Element {

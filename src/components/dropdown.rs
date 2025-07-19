@@ -1,6 +1,4 @@
 use dioxus::prelude::*;
-use dioxus::prelude::VirtualDom;
-use dioxus_core::NoOpMutations;
 
 #[allow(unpredictable_function_pointer_comparisons)]
 #[derive(Props, Clone, PartialEq)]

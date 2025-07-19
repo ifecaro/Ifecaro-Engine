@@ -318,7 +318,7 @@ pub fn ChoiceOptions(props: ChoiceOptionsProps) -> Element {
                                         props.on_choice_change.call((index, "timeout_to".to_string(), joined));
                                     },
                                     on_remove: move |id: String| {
-                                        let mut new_ids: Vec<String> = timeout_ids_for_remove.clone()
+                                        let new_ids: Vec<String> = timeout_ids_for_remove.clone()
                                             .into_iter()
                                             .filter(|v| v != &id)
                                             .collect();

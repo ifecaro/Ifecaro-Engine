@@ -575,16 +575,16 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
 
     let mut handle_submit = {
         let paragraph_state = paragraph_state.clone();
-        let mut selected_paragraph = selected_paragraph.clone();
+        let selected_paragraph = selected_paragraph.clone();
         let paragraph_language = paragraph_language.clone();
-        let mut paragraphs_signal = paragraphs.clone();
-        let mut choices_signal = choices.clone();
+        let paragraphs_signal = paragraphs.clone();
+        let choices_signal = choices.clone();
         let is_edit_mode_signal = is_edit_mode.clone();
         let mut is_submitting = is_submitting.clone();
         let toast = toast.clone();
         // Clone dispatcher so we can use it inside inner async block without move issues
         let dispatch_choice_outer = dispatch_choice.clone();
-        let mut selected_chapter = selected_chapter.clone();
+        let selected_chapter = selected_chapter.clone();
         move |_| {
             if *is_submitting.read() { return; }
             is_submitting.set(true);
