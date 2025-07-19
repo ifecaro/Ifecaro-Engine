@@ -3,6 +3,8 @@ use crate::enums::route::Route;
 use crate::enums::style::NavbarStyle;
 use dioxus_i18n::t;
 use wasm_bindgen::{closure::Closure, JsCast};
+use wasm_bindgen::JsValue;
+use gloo_timers::callback::Timeout;
 use web_sys::Event;
 use crate::contexts::language_context::LanguageState;
 use crate::components::dropdown::Dropdown;
