@@ -75,7 +75,8 @@ pub fn Dropdown<T: Clone + PartialEq + 'static>(props: DropdownProps<T>) -> Elem
         if props.is_desktop {
             "-translate-y-2 opacity-0 pointer-events-none"
         } else {
-            "translate-y-2 opacity-0 pointer-events-none"
+            // Default to sliding in from the top on larger breakpoints while keeping the mobile bottom-up animation
+            "translate-y-2 sm:-translate-y-2 opacity-0 pointer-events-none"
         }
     };
 
