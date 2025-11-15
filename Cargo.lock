@@ -485,7 +485,7 @@ dependencies = [
  "dioxus-history",
  "dioxus-hooks",
  "dioxus-html",
- "dioxus-logger 0.6.2",
+ "dioxus-logger",
  "dioxus-router",
  "dioxus-signals",
  "dioxus-web",
@@ -730,17 +730,6 @@ dependencies = [
  "dioxus-rsx",
  "dioxus-signals",
  "warnings",
-]
-
-[[package]]
-name = "dioxus-logger"
-version = "0.5.1"
-source = "git+https://github.com/DogeDark/dioxus-logger.git#02be2e11c3e8caf08006fe262416c5ac43dad3ed"
-dependencies = [
- "console_error_panic_hook",
- "tracing",
- "tracing-subscriber",
- "tracing-wasm",
 ]
 
 [[package]]
@@ -1492,7 +1481,6 @@ dependencies = [
  "dioxus",
  "dioxus-core",
  "dioxus-i18n",
- "dioxus-logger 0.5.1",
  "dioxus-ssr",
  "dotenv",
  "futures",
