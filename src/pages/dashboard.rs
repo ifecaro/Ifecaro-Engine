@@ -575,7 +575,7 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
 
     let mut handle_submit = {
         let paragraph_state = paragraph_state.clone();
-        let selected_paragraph = selected_paragraph.clone();
+        let mut selected_paragraph = selected_paragraph.clone();
         let paragraph_language = paragraph_language.clone();
         let paragraphs_signal = paragraphs.clone();
         let choices_signal = choices.clone();
@@ -595,6 +595,19 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
                     choice_text.clone()
                 }).collect(),
             };
+
+            // Optimistically keep local paragraph data in sync so that
+            // sequential translations don't wipe earlier submissions while
+            // waiting for the server response.
+            if *is_edit_mode_signal.read() {
+                let text_for_state = text.clone();
+                let maybe_current_paragraph = { selected_paragraph.read().clone() };
+                if let Some(mut current_paragraph) = maybe_current_paragraph {
+                    current_paragraph.texts.retain(|t| t.lang != text_for_state.lang);
+                    current_paragraph.texts.push(text_for_state);
+                    selected_paragraph.set(Some(current_paragraph));
+                }
+            }
 
             // Build option data
             let paragraph_choices: Vec<ContextParagraphChoice> = choices_signal.read().iter().map(|(choice_text, to_list, type_, key, value, _target_chapter, same_page, time_limit, timeout_to, _timeout_target_chapter)| {
