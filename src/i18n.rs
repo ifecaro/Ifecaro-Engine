@@ -9,10 +9,13 @@ pub fn create_i18n_store() -> I18nConfig {
         .with_locale(Locale::new_static(langid!("zh-CN"), include_str!("../i18n/zh-CN.ftl")))
         .with_locale(Locale::new_static(langid!("es-ES"), include_str!("../i18n/es-ES.ftl")))
         .with_locale(Locale::new_static(langid!("es-CL"), include_str!("../i18n/es-CL.ftl")))
+        .with_locale(Locale::new_static(
+            langid!("fr-FR"),
+            include_str!("../i18n/fr-FR.ftl"),
+        ))
         // Add more language support
         .with_locale(Locale::new_static(langid!("ja"), include_str!("../i18n/en.ftl")))
         .with_locale(Locale::new_static(langid!("ko"), include_str!("../i18n/en.ftl")))
-        .with_locale(Locale::new_static(langid!("fr"), include_str!("../i18n/en.ftl")))
         .with_locale(Locale::new_static(langid!("de"), include_str!("../i18n/en.ftl")))
         .with_locale(Locale::new_static(langid!("it"), include_str!("../i18n/en.ftl")))
         .with_locale(Locale::new_static(langid!("pt"), include_str!("../i18n/en.ftl")))

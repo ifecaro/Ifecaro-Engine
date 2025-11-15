@@ -15,7 +15,7 @@ pub static ACTIONS: &str = "/collections/actions/records";
 pub static PUBLIC_COLLECTIONS: &str = "/collections/public";
 #[allow(dead_code)]
 pub static AUTH_TOKEN: &str = ""; // No auth token needed, as collections should be accessible to any user
-pub static LANGUAGES: [Language; 6] = [
+pub static LANGUAGES: [Language; 7] = [
     Language {
         name: "English (US)",
         code: "en-US",
@@ -31,6 +31,10 @@ pub static LANGUAGES: [Language; 6] = [
     Language {
         name: "Español (Chile)",
         code: "es-CL",
+    },
+    Language {
+        name: "Français (France)",
+        code: "fr-FR",
     },
     Language {
         name: "正體中文",

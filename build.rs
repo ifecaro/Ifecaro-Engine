@@ -34,6 +34,20 @@ fn main() {
     };
 
     if should_compile {
+        // Make sure Tailwind is available before attempting to compile.
+        let tailwind_available = Command::new("tailwindcss")
+            .arg("--version")
+            .status()
+            .map(|status| status.success())
+            .unwrap_or(false);
+
+        if !tailwind_available {
+            println!(
+                "cargo:warning=Tailwind CSS binary not found. Skipping compilation (set SKIP_TAILWIND=1 to silence this)."
+            );
+            return;
+        }
+
         // Compile Tailwind CSS
         println!("cargo:warning=Starting Tailwind CSS compilation...");
         let tailwind_status = Command::new("tailwindcss")

@@ -27,7 +27,7 @@ impl LanguageState {
             "es-ES" | "es-CL" | "es" => self.i18n.set_language(langid!("es-ES")),
             "ja" => self.i18n.set_language(langid!("ja")),
             "ko" => self.i18n.set_language(langid!("ko")),
-            "fr" => self.i18n.set_language(langid!("fr")),
+            "fr-FR" | "fr" => self.i18n.set_language(langid!("fr-FR")),
             "de" => self.i18n.set_language(langid!("de")),
             "it" => self.i18n.set_language(langid!("it")),
             "pt" => self.i18n.set_language(langid!("pt")),
