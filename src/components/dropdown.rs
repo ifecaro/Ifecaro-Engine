@@ -69,11 +69,18 @@ pub struct DropdownProps<T: Clone + PartialEq + 'static> {
 
 #[component]
 pub fn Dropdown<T: Clone + PartialEq + 'static>(props: DropdownProps<T>) -> Element {
-    let dropdown_class = if props.is_open {
-        "translate-y-0 opacity-100"
+    let closed_translation = if props.is_desktop {
+        // Force the desktop animation even when the viewport width is small (e.g. desktop shell with a mobile-sized viewport)
+        "-translate-y-2"
     } else {
-        // Slide down from the top on desktop while keeping the mobile bottom-up animation
-        "translate-y-2 sm:-translate-y-2 opacity-0 pointer-events-none"
+        // Fallback to responsive behavior: mobile slides up, desktop slides down
+        "translate-y-2 sm:-translate-y-2"
+    };
+
+    let dropdown_class = if props.is_open {
+        "translate-y-0 opacity-100".to_string()
+    } else {
+        format!("{closed_translation} opacity-0 pointer-events-none")
     };
 
     let search_query = props.search_query.clone();
