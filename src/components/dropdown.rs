@@ -72,11 +72,8 @@ pub fn Dropdown<T: Clone + PartialEq + 'static>(props: DropdownProps<T>) -> Elem
     let dropdown_class = if props.is_open {
         "translate-y-0 opacity-100"
     } else {
-        if props.is_desktop {
-            "-translate-y-2 opacity-0 pointer-events-none"
-        } else {
-            "translate-y-2 opacity-0 pointer-events-none"
-        }
+        // Slide down from the top on desktop while keeping the mobile bottom-up animation
+        "translate-y-2 sm:-translate-y-2 opacity-0 pointer-events-none"
     };
 
     let search_query = props.search_query.clone();
