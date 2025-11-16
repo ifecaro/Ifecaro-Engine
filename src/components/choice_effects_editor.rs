@@ -199,8 +199,8 @@ fn render_effect_row(
             let op_for_op_select = op.clone();
             let field_for_value = field.clone();
             let op_for_value = op.clone();
-            let field_input_class = "w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500";
-            let row_class = "grid grid-cols-12 gap-3 items-center bg-gray-50 dark:bg-gray-800/60 border border-gray-200 dark:border-gray-700 p-4 rounded-lg";
+            let field_input_class = "block w-full px-4 py-2.5 text-sm border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white";
+            let row_class = "grid grid-cols-1 md:grid-cols-6 gap-3 items-center border border-gray-200 dark:border-gray-700 p-4 rounded-lg bg-white dark:bg-gray-800";
             rsx! {
                 div { class: row_class,
                     select { class: field_input_class, value: effect_type_value.clone(), onchange: on_type_change,
@@ -263,7 +263,7 @@ fn render_effect_row(
                             }
                         }
                     }
-                    button { class: "text-sm font-medium text-red-600 hover:text-red-700", onclick: on_remove.clone(), "Remove" }
+                    button { class: "inline-flex items-center justify-center px-3 py-2 text-sm font-medium text-red-600 hover:text-red-700 bg-red-50 dark:bg-red-900/20 rounded-lg", onclick: on_remove.clone(), "Remove" }
                 }
             }
         }
@@ -295,8 +295,8 @@ fn render_effect_row(
             let op_for_field = op.clone();
             let op_for_op_select = op.clone();
             let op_for_value = op.clone();
-            let field_input_class = "w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500";
-            let row_class = "grid grid-cols-12 gap-3 items-center bg-gray-50 dark:bg-gray-800/60 border border-gray-200 dark:border-gray-700 p-4 rounded-lg";
+            let field_input_class = "block w-full px-4 py-2.5 text-sm border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white";
+            let row_class = "grid grid-cols-1 md:grid-cols-6 gap-3 items-center border border-gray-200 dark:border-gray-700 p-4 rounded-lg bg-white dark:bg-gray-800";
             rsx! {
                 div { class: row_class,
                     select { class: field_input_class, value: effect_type_value.clone(), onchange: on_type_change,
@@ -377,7 +377,7 @@ fn render_effect_row(
                             }
                         }
                     }
-                    button { class: "text-sm font-medium text-red-600 hover:text-red-700", onclick: on_remove.clone(), "Remove" }
+                    button { class: "inline-flex items-center justify-center px-3 py-2 text-sm font-medium text-red-600 hover:text-red-700 bg-red-50 dark:bg-red-900/20 rounded-lg", onclick: on_remove.clone(), "Remove" }
                 }
             }
         }
@@ -395,8 +395,9 @@ fn render_effect_row(
             let path_for_checkbox = path.clone();
             let value_for_character = value.clone();
             let value_for_input = value.clone();
-            let field_input_class = "w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500";
-            let row_class = "grid grid-cols-12 gap-3 items-center bg-gray-50 dark:bg-gray-800/60 border border-gray-200 dark:border-gray-700 p-4 rounded-lg";
+            let field_input_class = "block w-full px-4 py-2.5 text-sm border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white";
+            let row_class = "grid grid-cols-1 md:grid-cols-6 gap-3 items-center border border-gray-200 dark:border-gray-700 p-4 rounded-lg bg-white dark:bg-gray-800";
+            let path_input_class = format!("md:col-span-3 {}", field_input_class);
             rsx! {
                 div { class: row_class,
                     select { class: field_input_class, value: effect_type_value, onchange: on_type_change,
@@ -416,7 +417,7 @@ fn render_effect_row(
                             option { value: character.id.clone(), "{character.char_id} ({character.role.clone().unwrap_or_default()})" }
                         }
                     }
-                    input { class: "col-span-7 px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500", value: path_for_input.join("."), placeholder: "flag.key.path",
+                    input { class: path_input_class, value: path_for_input.join("."), placeholder: "flag.key.path",
                         oninput: move |evt| {
                             let segments = evt
                                 .value()
@@ -431,7 +432,7 @@ fn render_effect_row(
                             };
                         }
                     }
-                    input { class: "h-5 w-5 col-span-1", r#type: "checkbox", checked: is_checked,
+                    input { class: "h-5 w-5", r#type: "checkbox", checked: is_checked,
                         oninput: move |evt| {
                             let parsed = evt.value().parse::<bool>().unwrap_or(false);
                             effects.write()[index] = Effect::Flag {
@@ -441,8 +442,7 @@ fn render_effect_row(
                             };
                         }
                     }
-                    div { class: "col-span-1" }
-                    button { class: "text-sm font-medium text-red-600 hover:text-red-700", onclick: on_remove, "Remove" }
+                    button { class: "inline-flex items-center justify-center px-3 py-2 text-sm font-medium text-red-600 hover:text-red-700 bg-red-50 dark:bg-red-900/20 rounded-lg", onclick: on_remove, "Remove" }
                 }
             }
         }
