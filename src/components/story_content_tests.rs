@@ -250,7 +250,6 @@ mod choice_tests {
         };
         
         let html = render_story_content_ui(props);
-        
         assert!(html.contains("很長的選項標題，包含中文、English和123數字"), "應正確顯示長標題");
         // Special characters might be escaped, so we check the escaped version
         assert!(html.contains("&lt;test&gt;"));

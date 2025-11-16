@@ -1,6 +1,7 @@
 use dioxus::prelude::*;
 use crate::enums::route::Route;
 use crate::enums::style::NavbarStyle;
+use dioxus_core::use_drop;
 use dioxus_i18n::t;
 use wasm_bindgen::{closure::Closure, JsCast};
 use wasm_bindgen::JsValue;
