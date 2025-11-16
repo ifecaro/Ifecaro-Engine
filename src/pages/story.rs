@@ -1,5 +1,6 @@
 #![allow(unused_mut)]
 use dioxus::prelude::*;
+use crate::models::effects::{CharacterStateSnapshot, Effect};
 use dioxus_core::fc_to_builder;
 use wasm_bindgen_futures::spawn_local;
 use serde::Deserialize;
@@ -14,7 +15,10 @@ use wasm_bindgen::closure::Closure;
 use wasm_bindgen::JsCast;
 use wasm_bindgen::JsValue;
 use crate::services::indexeddb::get_choice_from_indexeddb;
-use crate::services::indexeddb::{set_random_choice_to_indexeddb};
+use crate::services::indexeddb::{
+    get_latest_character_state_from_indexeddb, set_latest_character_state_to_indexeddb,
+    set_random_choice_to_indexeddb,
+};
 use rand::prelude::IteratorRandom;
 use std::rc::Rc;
 use std::cell::RefCell;
@@ -24,6 +28,7 @@ use futures_util::future::join_all;
 use std::borrow::Cow;
 use std::collections::HashSet;
 use gloo_timers::callback::Timeout;
+use serde_json;
 
 #[derive(Deserialize, Clone, Debug)]
 #[allow(dead_code)]
@@ -72,6 +77,7 @@ pub struct ComplexChoice {
     pub same_page: Option<bool>,
     pub time_limit: Option<u32>,
     pub timeout_to: Option<String>,
+    pub effects: Option<Vec<Effect>>,
 }
 
 impl<'de> serde::Deserialize<'de> for ComplexChoice {
@@ -108,6 +114,8 @@ impl<'de> serde::Deserialize<'de> for ComplexChoice {
             time_limit: Option<u32>,
             #[serde(default, rename = "timeout_to")]
             timeout_to: Option<String>,
+            #[serde(default)]
+            effects: Option<Vec<Effect>>,
         }
         
         let helper = Helper::deserialize(deserializer)?;
@@ -124,6 +132,7 @@ impl<'de> serde::Deserialize<'de> for ComplexChoice {
             same_page: helper.same_page,
             time_limit: helper.time_limit,
             timeout_to: helper.timeout_to,
+            effects: helper.effects,
         })
     }
 }
@@ -986,6 +995,35 @@ pub fn Story(props: StoryProps) -> Element {
 
             let expanded_vec = _expanded_paragraphs.read().clone();
             let last_paragraph = expanded_vec.last().cloned();
+
+            if let Some(ref last) = last_paragraph {
+                if let Some(choice) = last.choices.get(choice_index) {
+                    if let Some(effects) = &choice.effects {
+                        let relevant: Vec<Effect> = effects
+                            .iter()
+                            .filter(|effect| matches!(effect, Effect::CharacterAttribute { .. } | Effect::Relationship { .. }))
+                            .cloned()
+                            .collect();
+
+                        if !relevant.is_empty() {
+                            spawn_local(async move {
+                                let base_state: CharacterStateSnapshot = get_latest_character_state_from_indexeddb()
+                                    .await
+                                    .ok()
+                                    .and_then(|val| val.as_string())
+                                    .and_then(|raw| serde_json::from_str(&raw).ok())
+                                    .unwrap_or_default();
+
+                                let updated = base_state.apply_effects(&relevant);
+
+                                if let Ok(serialized) = serde_json::to_string(&updated) {
+                                    let _ = set_latest_character_state_to_indexeddb(&serialized).await;
+                                }
+                            });
+                        }
+                    }
+                }
+            }
 
             if let Some(ref last) = last_paragraph {
                 if !last.chapter_id.is_empty() {

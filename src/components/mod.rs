@@ -1,15 +1,16 @@
+pub mod chapter_selector;
+pub mod choice_effects_editor;
+pub mod dropdown;
+pub mod form;
+pub mod language_selector;
 pub mod navbar;
+pub mod paragraph_form;
+pub mod paragraph_list;
+pub mod settings;
+pub mod story_content;
 pub mod title;
 pub mod toast;
-pub mod form;
-pub mod story_content;
-pub mod dropdown;
-pub mod paragraph_list;
-pub mod language_selector;
-pub mod paragraph_form;
 pub mod translation_form;
-pub mod chapter_selector;
-pub mod settings;
 
 #[cfg(test)]
 pub mod story_content_tests;
