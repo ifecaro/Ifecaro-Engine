@@ -17,6 +17,20 @@ use crate::contexts::language_context::LanguageState;
 use crate::pages::story::paragraph_has_translation;
 use std::borrow::Cow;
 use std::collections::HashSet;
+fn escape_html(text: &str) -> String {
+    let mut escaped = String::with_capacity(text.len());
+    for ch in text.chars() {
+        match ch {
+            '&' => escaped.push_str("&amp;"),
+            '<' => escaped.push_str("&lt;"),
+            '>' => escaped.push_str("&gt;"),
+            '"' => escaped.push_str("&quot;"),
+            '\'' => escaped.push_str("&#39;"),
+            _ => escaped.push(ch),
+        }
+    }
+    escaped
+}
 
 #[derive(Props, Clone, PartialEq)]
 pub struct StoryContentProps {
@@ -102,7 +116,7 @@ pub fn StoryContentUI(props: StoryContentUIProps) -> Element {
             div {
                 class: "text-3xl md:text-4xl text-gray-900 dark:text-white text-center w-full select-none flex items-center justify-center",
                 style: "letter-spacing: 0.1em;",
-                {props.chapter_title.clone()}
+                dangerous_inner_html: escape_html(&props.chapter_title),
             }
         }
         article {
@@ -114,7 +128,7 @@ pub fn StoryContentUI(props: StoryContentUIProps) -> Element {
                     .map(|p| rsx! {
                         p {
                             class: "indent-10 tracking-wide leading-relaxed text-justify",
-                            {p}
+                            dangerous_inner_html: escape_html(p),
                         }
                     })
                 }
@@ -137,7 +151,7 @@ pub fn StoryContentUI(props: StoryContentUIProps) -> Element {
                                     }
                                 )
                             }},
-                            span { class: "mr-2", {caption.clone()} }
+                            span { class: "mr-2", dangerous_inner_html: escape_html(caption.as_ref()) }
                         }
                     }
                 })}
@@ -808,7 +822,7 @@ pub fn StoryContent(props: StoryContentProps) -> Element {
                                         )
                                     }},
                                     onclick: on_click,
-                                    span { class: "mr-2", {caption.clone()} }
+                                    span { class: "mr-2", {caption.as_ref()} }
                                     { ( *disabled_state_loaded.read() && countdown > 0 && !disabled_by_countdown.try_read()
                                         .map(|guard| guard.get(index).copied().unwrap_or(false))
                                         .unwrap_or(false)
