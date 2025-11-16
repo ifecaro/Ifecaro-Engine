@@ -162,7 +162,7 @@ fn render_effect_row(
     let effect_type_value = effect_type(&effect).to_string();
     let label_class = "block text-sm font-medium text-gray-700 dark:text-gray-300";
     let input_class = "block w-full px-4 py-2.5 text-sm border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white";
-    let row_class = "grid grid-cols-1 lg:grid-cols-3 gap-4 items-start border border-gray-200 dark:border-gray-700 p-4 rounded-lg bg-white dark:bg-gray-800";
+    let row_class = "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 items-start border border-gray-200 dark:border-gray-700 p-4 rounded-lg bg-white dark:bg-gray-800";
     let column_class = "space-y-3";
     let characters_vec = characters.to_vec();
     let relationships_vec = relationships.to_vec();
