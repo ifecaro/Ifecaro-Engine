@@ -9,7 +9,7 @@ use crate::contexts::language_context::LanguageState;
 use crate::contexts::chapter_context::ChapterState;
 use crate::contexts::paragraph_context::{ParagraphState, Paragraph as ContextParagraph, Text as ContextText, ParagraphChoice as ContextParagraphChoice};
 use crate::components::language_selector::{Language, AVAILABLE_LANGUAGES};
-use crate::constants::config::{BASE_API_URL, PARAGRAPHS};
+use crate::constants::config::{BASE_API_URL, PARAGRAPHS, CHARACTERS, RELATIONSHIPS, ATTRIBUTES};
 use crate::components::paragraph_list::Paragraph as ParagraphListParagraph;
 use dioxus_i18n::t;
 use crate::components::form::{TextareaField, ChoiceOptions};
@@ -18,11 +18,27 @@ use crate::contexts::chapter_context::Chapter;
 use crate::hooks::choices_reducer::{use_choices, Action as CAct, Choice as ChoiceStruct};
 use crate::contexts::toast_context::use_toast;
 use crate::components::toast::ToastType;
+use crate::components::choice_effects_editor::{CharacterOption, RelationshipOption};
+use crate::models::effects::{CharacterAttributes, Effect, RelationshipMetrics};
 
 #[derive(Props, Clone, PartialEq)]
 pub struct DashboardProps {
     pub lang: String,
 }
+
+type ChoiceTuple = (
+    String,
+    Vec<String>,
+    String,
+    Option<String>,
+    Option<serde_json::Value>,
+    String,
+    bool,
+    Option<u32>,
+    Option<String>,
+    String,
+    Vec<Effect>,
+);
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Data {
@@ -89,6 +105,39 @@ pub struct SystemDataResponse {
     pub total_pages: i32,
 }
 
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct CharacterResponse {
+    pub items: Vec<CharacterOption>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct RelationshipRecord {
+    pub id: String,
+    pub from_id: String,
+    pub to_id: String,
+    #[serde(flatten)]
+    pub metrics: Option<RelationshipMetrics>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct RelationshipResponse {
+    pub items: Vec<RelationshipRecord>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct AttributeRecord {
+    pub id: String,
+    #[serde(rename = "character_id")]
+    pub character_id: String,
+    #[serde(flatten)]
+    pub metrics: CharacterAttributes,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct AttributeResponse {
+    pub items: Vec<AttributeRecord>,
+}
+
 #[allow(dead_code)]
 struct ChoiceOption {
     id: String,
@@ -125,7 +174,7 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
     let (choices_state, dispatch_choice) = use_choices();
 
     let mut paragraphs = use_signal(|| String::new());
-    let mut choices = use_signal(|| Vec::new());
+    let mut choices = use_signal(|| Vec::<ChoiceTuple>::new());
     let _init_done = use_signal(|| false);
     let mut is_open = use_signal(|| false);
     let mut search_query = use_signal(|| String::new());
@@ -166,6 +215,85 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
     let _extra_action_values = use_signal(|| Vec::<Option<serde_json::Value>>::new());
 
     let _paragraph_previews = use_signal(|| Vec::<crate::components::paragraph_list::Paragraph>::new());
+
+    let mut character_options = use_signal(|| Vec::<CharacterOption>::new());
+    let mut relationship_options = use_signal(|| Vec::<RelationshipOption>::new());
+    let mut character_attributes = use_signal(|| std::collections::HashMap::<String, CharacterAttributes>::new());
+    let mut relationship_metrics = use_signal(|| std::collections::HashMap::<(String, String), RelationshipMetrics>::new());
+
+    {
+        let mut character_options = character_options.clone();
+        let mut relationship_options = relationship_options.clone();
+        let mut character_attributes = character_attributes.clone();
+        let mut relationship_metrics = relationship_metrics.clone();
+
+        use_effect(move || {
+            spawn_local(async move {
+                let client = reqwest::Client::new();
+
+                if character_options.read().is_empty() {
+                    if let Ok(response) = client.get(format!("{}{}", BASE_API_URL, CHARACTERS)).send().await {
+                        if let Ok(data) = response.json::<CharacterResponse>().await {
+                            character_options.set(data.items);
+                        }
+                    }
+                    if character_options.read().is_empty() {
+                        character_options.set(vec![
+                            CharacterOption { id: "Spain".into(), char_id: "Spain".into(), role: Some("Leader".into()) },
+                            CharacterOption { id: "AhCheng".into(), char_id: "AhCheng".into(), role: Some("Scout".into()) },
+                        ]);
+                    }
+                }
+
+                if character_attributes.read().is_empty() {
+                    if let Ok(response) = client.get(format!("{}{}", BASE_API_URL, ATTRIBUTES)).send().await {
+                        if let Ok(data) = response.json::<AttributeResponse>().await {
+                            let map = data
+                                .items
+                                .into_iter()
+                                .map(|record| (record.character_id.clone(), record.metrics))
+                                .collect();
+                            character_attributes.set(map);
+                        }
+                    }
+                }
+
+                if relationship_options.read().is_empty() || relationship_metrics.read().is_empty() {
+                    if let Ok(response) = client.get(format!("{}{}", BASE_API_URL, RELATIONSHIPS)).send().await {
+                        if let Ok(data) = response.json::<RelationshipResponse>().await {
+                            if relationship_options.read().is_empty() {
+                                let opts = data
+                                    .items
+                                    .iter()
+                                    .map(|r| RelationshipOption {
+                                        id: r.id.clone(),
+                                        from_id: r.from_id.clone(),
+                                        to_id: r.to_id.clone(),
+                                    })
+                                    .collect();
+                                relationship_options.set(opts);
+                            }
+
+                            if relationship_metrics.read().is_empty() {
+                                let map = data
+                                    .items
+                                    .into_iter()
+                                    .filter_map(|r| r.metrics.map(|m| ((r.from_id.clone(), r.to_id.clone()), m)))
+                                    .collect();
+                                relationship_metrics.set(map);
+                            }
+                        }
+                    }
+
+                    if relationship_options.read().is_empty() {
+                        relationship_options.set(vec![RelationshipOption { id: "Spain-AhCheng".into(), from_id: "Spain".into(), to_id: "AhCheng".into() }]);
+                    }
+                }
+            });
+
+            (|| {})()
+        });
+    }
 
     // Signal to indicate async submit in progress
     let is_submitting = use_signal(|| false);
@@ -258,7 +386,7 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
             false
         };
         let choices_valid = if let Ok(choices) = choices.try_read() {
-            choices.iter().all(|(choice_text, _, _, _, _, _, _, _, _, _): &(String, Vec<String>, String, Option<String>, Option<serde_json::Value>, String, bool, Option<u32>, Option<String>, String)| {
+            choices.iter().all(|(choice_text, _, _, _, _, _, _, _, _, _, _): &ChoiceTuple| {
                 let has_content = !choice_text.is_empty();
                 if has_content {
                     !choice_text.is_empty()
@@ -297,7 +425,7 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
                         }
                         
                         // Check each option's detailed changes
-                        for (i, (new_choice_text, new_to, new_type, new_key, new_value, _new_target_chapter, new_same_page, new_time_limit, new_timeout_to, _new_timeout_target_chapter)) in new_choices.iter().enumerate() {
+                        for (i, (new_choice_text, new_to, new_type, new_key, new_value, _new_target_chapter, new_same_page, new_time_limit, new_timeout_to, _new_timeout_target_chapter, _new_effects)) in new_choices.iter().enumerate() {
                             // Check if option text changes
                             if let Some(old_choice_text) = current_text_choices.get(i) {
                                 if old_choice_text != new_choice_text {
@@ -345,7 +473,7 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
                     false
                 };
                 let has_valid_choices = if let Ok(choices) = choices.try_read() {
-                    choices.iter().any(|(choice_text, _, _, _, _, _, _, _, _, _)| {
+                    choices.iter().any(|(choice_text, _, _, _, _, _, _, _, _, _, _)| {
                         let has_content = !choice_text.is_empty();
                         if has_content {
                             !choice_text.is_empty()
@@ -591,7 +719,7 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
             let text = ContextText {
                 lang: paragraph_language.read().clone(),
                 paragraphs: paragraphs_signal.read().clone(),
-                choices: choices_signal.read().iter().map(|(choice_text, _, _, _, _, _, _, _, _, _)| {
+                choices: choices_signal.read().iter().map(|(choice_text, _, _, _, _, _, _, _, _, _, _)| {
                     choice_text.clone()
                 }).collect(),
             };
@@ -610,7 +738,7 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
             }
 
             // Build option data
-            let paragraph_choices: Vec<ContextParagraphChoice> = choices_signal.read().iter().map(|(choice_text, to_list, type_, key, value, _target_chapter, same_page, time_limit, timeout_to, _timeout_target_chapter)| {
+            let paragraph_choices: Vec<ContextParagraphChoice> = choices_signal.read().iter().map(|(choice_text, to_list, type_, key, value, _target_chapter, same_page, time_limit, timeout_to, _timeout_target_chapter, effects)| {
                 let mut complex = ContextParagraphChoice::Complex {
                     to: to_list.clone(),
                     type_: type_.clone(),
@@ -619,6 +747,7 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
                     same_page: Some(*same_page),
                     time_limit: *time_limit,
                     timeout_to: timeout_to.clone(),
+                    effects: if effects.is_empty() { None } else { Some(effects.clone()) },
                 };
                 if let Some(k) = key {
                     if !k.is_empty() {
@@ -825,6 +954,17 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
         }
     };
 
+    let handle_effects_change = {
+        let dispatch = dispatch_choice.clone();
+        let mut choices = choices.clone();
+        move |(index, new_effects): (usize, Vec<Effect>)| {
+            if let Some(choice) = choices.write().get_mut(index) {
+                choice.10 = new_effects.clone();
+            }
+            (dispatch.clone())(CAct::SetEffects { idx: index, effects: new_effects });
+        }
+    };
+
     // Restore handle_paragraph_select (used by paragraph picker)
     let mut handle_paragraph_select = {
         let mut selected_paragraph = selected_paragraph.clone();
@@ -970,8 +1110,8 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
                         paragraphs_ref.set(String::new());
 
                         let current_choices = choices_ref.read().clone();
-                        let new_choices = current_choices.iter().map(|(_, to, type_, key, value, target_chapter, same_page, time_limit, timeout_to, timeout_target_chapter)| {
-                            (String::new(), to.clone(), type_.clone(), key.clone(), value.clone(), target_chapter.clone(), *same_page, *time_limit, timeout_to.clone(), timeout_target_chapter.clone())
+                        let new_choices = current_choices.iter().map(|(_, to, type_, key, value, target_chapter, same_page, time_limit, timeout_to, timeout_target_chapter, effects)| {
+                            (String::new(), to.clone(), type_.clone(), key.clone(), value.clone(), target_chapter.clone(), *same_page, *time_limit, timeout_to.clone(), timeout_target_chapter.clone(), effects.clone())
                         }).collect();
                         choices_ref.set(new_choices);
                     }
@@ -1255,6 +1395,11 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
                                             on_timeout_paragraph_search: handle_timeout_paragraph_search,
                                             action_type_open: choices_state.read().action_type_open.clone(),
                                             on_action_type_toggle: handle_action_type_toggle,
+                                            characters: character_options.read().clone(),
+                                            relationships: relationship_options.read().clone(),
+                                            character_attributes: character_attributes.read().clone(),
+                                            relationship_metrics: relationship_metrics.read().clone(),
+                                            on_effects_change: handle_effects_change,
                                         }
                                     }
                                 }
@@ -1299,7 +1444,7 @@ fn process_paragraph_select(
     paragraph_language: &Signal<String>,
     interface_language: &str,
 ) -> (
-    Vec<(String, Vec<String>, String, Option<String>, Option<serde_json::Value>, String, bool, Option<u32>, Option<String>, String)>,
+    Vec<ChoiceTuple>,
     Vec<Vec<ParagraphListParagraph>>,
 ) {
     let mut new_choices = Vec::new();
@@ -1307,19 +1452,19 @@ fn process_paragraph_select(
     let text_choices = &text.choices;
     let paragraph_choices = &full_paragraph.choices;
     for (i, choice_text) in text_choices.iter().enumerate() {
-        let (target_ids, type_, key, value, same_page, time_limit, timeout_to_opt) = if let Some(choice) = paragraph_choices.get(i) {
+        let (target_ids, type_, key, value, same_page, time_limit, timeout_to_opt, effects) = if let Some(choice) = paragraph_choices.get(i) {
             match choice {
-                ContextParagraphChoice::Simple(texts) => (texts.clone(), "goto".to_string(), None, None, false, None, None),
-                ContextParagraphChoice::SimpleOld(text) => (vec![text.clone()], "goto".to_string(), None, None, false, None, None),
-                ContextParagraphChoice::Complex { to, type_, key, value, same_page, time_limit, timeout_to, .. } => {
-                    (to.clone(), type_.clone(), key.clone(), value.clone(), same_page.unwrap_or(false), *time_limit, timeout_to.clone())
+                ContextParagraphChoice::Simple(texts) => (texts.clone(), "goto".to_string(), None, None, false, None, None, Vec::new()),
+                ContextParagraphChoice::SimpleOld(text) => (vec![text.clone()], "goto".to_string(), None, None, false, None, None, Vec::new()),
+                ContextParagraphChoice::Complex { to, type_, key, value, same_page, time_limit, timeout_to, effects, .. } => {
+                    (to.clone(), type_.clone(), key.clone(), value.clone(), same_page.unwrap_or(false), *time_limit, timeout_to.clone(), effects.clone().unwrap_or_default())
                 },
-                ContextParagraphChoice::ComplexOld { to, type_, key, value, same_page, time_limit, timeout_to, .. } => {
-                    (vec![to.clone()], type_.clone(), key.clone(), value.clone(), same_page.unwrap_or(false), *time_limit, timeout_to.clone())
+                ContextParagraphChoice::ComplexOld { to, type_, key, value, same_page, time_limit, timeout_to, effects, .. } => {
+                    (vec![to.clone()], type_.clone(), key.clone(), value.clone(), same_page.unwrap_or(false), *time_limit, timeout_to.clone(), effects.clone().unwrap_or_default())
                 },
             }
         } else {
-            (Vec::new(), String::new(), None, None, false, None, None)
+            (Vec::new(), String::new(), None, None, false, None, None, Vec::new())
         };
         
         // Get all target paragraph chapter IDs (should be in the same chapter)
@@ -1355,6 +1500,7 @@ fn process_paragraph_select(
             time_limit,
             timeout_to_opt.clone(),
             timeout_target_chapter_id.clone(),
+            effects,
         ));
         
         if !target_chapter_id.is_empty() {

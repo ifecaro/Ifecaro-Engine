@@ -3,6 +3,7 @@ use dioxus_i18n::t;
 use crate::components::form::{TextareaField, ChoiceOptions};
 use crate::components::paragraph_list::Paragraph;
 use crate::contexts::chapter_context::Chapter;
+use crate::models::effects::Effect;
 use std::sync::Arc;
 
 #[derive(Props, Clone, PartialEq)]
@@ -25,7 +26,7 @@ pub struct ParagraphFormProps {
     on_add_choice: EventHandler<()>,
     on_remove_choice: EventHandler<usize>,
     on_submit: EventHandler<()>,
-    choices: Vec<(String, Vec<String>, String, Option<String>, Option<serde_json::Value>, String, bool, Option<u32>, Option<String>, String)>,
+    choices: Vec<(String, Vec<String>, String, Option<String>, Option<serde_json::Value>, String, bool, Option<u32>, Option<String>, String, Vec<Effect>)>,
     available_chapters: Vec<Chapter>,
     selected_language: String,
     choice_paragraphs: Vec<Paragraph>,
@@ -43,7 +44,7 @@ pub struct ParagraphFormProps {
 
 #[component]
 pub fn ParagraphForm(props: ParagraphFormProps) -> Element {
-    let mut choices = use_signal(|| Vec::<(String, Vec<String>, String, Option<String>, Option<serde_json::Value>, String, bool, Option<u32>, Option<String>, String)>::new());
+    let mut choices = use_signal(|| Vec::<(String, Vec<String>, String, Option<String>, Option<serde_json::Value>, String, bool, Option<u32>, Option<String>, String, Vec<Effect>)>::new());
     let available_chapters = use_signal(|| Vec::<Chapter>::new());
     let selected_language = use_signal(|| String::new());
     let choice_paragraphs = use_signal(|| Vec::<Paragraph>::new());
@@ -133,10 +134,20 @@ pub fn ParagraphForm(props: ParagraphFormProps) -> Element {
                         None,
                         None,
                         String::new(),
+                        Vec::new(),
                     ));
                 },
                 on_remove_choice: move |index| {
                     choices.write().remove(index);
+                },
+                characters: Vec::new(),
+                relationships: Vec::new(),
+                character_attributes: std::collections::HashMap::new(),
+                relationship_metrics: std::collections::HashMap::new(),
+                on_effects_change: move |(index, effects): (usize, Vec<Effect>)| {
+                    if let Some(choice) = choices.write().get_mut(index) {
+                        choice.10 = effects.clone();
+                    }
                 },
                 available_chapters: available_chapters.read().clone(),
                 selected_language: selected_language.read().clone(),

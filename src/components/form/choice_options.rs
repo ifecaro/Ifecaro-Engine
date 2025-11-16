@@ -1,13 +1,17 @@
 use dioxus::prelude::*;
 use dioxus_i18n::t;
-use crate::components::form::{InputField, ActionTypeSelector};
-use crate::components::paragraph_list::{Paragraph, MultiSelectParagraphList};
-use crate::contexts::chapter_context::Chapter;
+use crate::{
+    components::choice_effects_editor::{CharacterOption, ChoiceEffectsEditor, RelationshipOption},
+    components::form::{ActionTypeSelector, InputField},
+    components::paragraph_list::{MultiSelectParagraphList, Paragraph},
+    contexts::chapter_context::Chapter,
+    models::effects::{CharacterAttributes, Effect, EffectList, RelationshipMetrics},
+};
 
 #[derive(Props, Clone, PartialEq)]
 pub struct ChoiceOptionsProps {
-    // (caption, goto, action_type, action_key, action_value, target_chapter, same_page, time_limit, timeout_to, timeout_target_chapter)
-    pub choices: Vec<(String, Vec<String>, String, Option<String>, Option<serde_json::Value>, String, bool, Option<u32>, Option<String>, String)>,
+    // (caption, goto, action_type, action_key, action_value, target_chapter, same_page, time_limit, timeout_to, timeout_target_chapter, effects)
+    pub choices: Vec<(String, Vec<String>, String, Option<String>, Option<serde_json::Value>, String, bool, Option<u32>, Option<String>, String, Vec<Effect>)>,
     pub on_choice_change: EventHandler<(usize, String, String)>,
     pub on_choice_add_paragraph: EventHandler<(usize, String)>,
     pub on_choice_remove_paragraph: EventHandler<(usize, String)>,
@@ -36,6 +40,11 @@ pub struct ChoiceOptionsProps {
     pub on_timeout_paragraph_search: EventHandler<(usize, String)>,
     pub action_type_open: Vec<bool>,
     pub on_action_type_toggle: EventHandler<usize>,
+    pub characters: Vec<CharacterOption>,
+    pub relationships: Vec<RelationshipOption>,
+    pub character_attributes: std::collections::HashMap<String, CharacterAttributes>,
+    pub relationship_metrics: std::collections::HashMap<(String, String), RelationshipMetrics>,
+    pub on_effects_change: EventHandler<(usize, Vec<Effect>)>,
 }
 
 #[component]
@@ -70,7 +79,7 @@ pub fn ChoiceOptions(props: ChoiceOptionsProps) -> Element {
         }
         
         // Render all options
-        {props.choices.iter().enumerate().map(|(index, (caption, goto_list, action_type, action_key, action_value, target_chapter, same_page, time_limit, timeout_to, timeout_target_chapter))| {
+        {props.choices.iter().enumerate().map(|(index, (caption, goto_list, action_type, action_key, action_value, target_chapter, same_page, time_limit, timeout_to, timeout_target_chapter, effects))| {
             // Check if action type is empty (None)
             let is_action_disabled = action_type.is_empty();
             
@@ -328,6 +337,22 @@ pub fn ChoiceOptions(props: ChoiceOptionsProps) -> Element {
                                     has_error: false,
                                     disabled: timeout_target_chapter.is_empty(),
                                     selected_language: props.selected_language.clone(),
+                                }
+                            }
+
+                            // Effects editor
+                            div {
+                                class: "border-t border-gray-200 dark:border-gray-700 mt-4 pt-4 space-y-2",
+                                ChoiceEffectsEditor {
+                                    choice_id: format!("choice-{}", index),
+                                    initial_effects_json: EffectList(effects.clone()).to_json().ok(),
+                                    characters: props.characters.clone(),
+                                    relationships: props.relationships.clone(),
+                                    character_attributes: props.character_attributes.clone(),
+                                    relationship_metrics: props.relationship_metrics.clone(),
+                                    on_save: move |new_effects| {
+                                        props.on_effects_change.call((index, new_effects));
+                                    },
                                 }
                             }
                             

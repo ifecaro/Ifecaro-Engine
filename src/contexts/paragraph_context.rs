@@ -1,7 +1,10 @@
 use dioxus::prelude::*;
 use serde::{Deserialize, Serialize};
 use wasm_bindgen_futures::spawn_local;
-use crate::constants::config::{BASE_API_URL, PARAGRAPHS};
+use crate::{
+    constants::config::{BASE_API_URL, PARAGRAPHS},
+    models::effects::Effect,
+};
 
 // Reuse paragraph and text structures from translation_form
 // pub use crate::components::translation_form::{Paragraph as ContextParagraph, Text as ContextText, ParagraphChoice as ContextParagraphChoice};
@@ -22,6 +25,8 @@ pub enum ParagraphChoice {
         time_limit: Option<u32>,
         #[serde(default, skip_serializing_if = "Option::is_none")]
         timeout_to: Option<String>,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        effects: Option<Vec<Effect>>,
     },
     ComplexOld {
         to: String,
@@ -37,6 +42,8 @@ pub enum ParagraphChoice {
         time_limit: Option<u32>,
         #[serde(default, skip_serializing_if = "Option::is_none")]
         timeout_to: Option<String>,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        effects: Option<Vec<Effect>>,
     },
     Simple(Vec<String>),
     SimpleOld(String),

@@ -1,6 +1,6 @@
 const DB_NAME = 'ifecaro';
-const DB_VERSION = 4;
-const STORES = ['settings', 'choices', 'disabled_choices', 'random_choices'];
+const DB_VERSION = 6;
+const STORES = ['settings', 'choices', 'disabled_choices', 'random_choices', 'choice_effects', 'character_states'];
 
 function openDB() {
     return new Promise((resolve, reject) => {
@@ -24,7 +24,7 @@ function openDB() {
 }
 
 export function setSettingToIndexedDB(key, value) {
-    const request = indexedDB.open('ifecaro', 4);
+    const request = indexedDB.open('ifecaro', DB_VERSION);
     request.onupgradeneeded = function (event) {
         const db = event.target.result;
         if (!db.objectStoreNames.contains('settings')) {
@@ -38,6 +38,12 @@ export function setSettingToIndexedDB(key, value) {
         }
         if (!db.objectStoreNames.contains('random_choices')) {
             db.createObjectStore('random_choices');
+        }
+        if (!db.objectStoreNames.contains('choice_effects')) {
+            db.createObjectStore('choice_effects');
+        }
+        if (!db.objectStoreNames.contains('character_states')) {
+            db.createObjectStore('character_states');
         }
     };
     request.onsuccess = function (event) {
@@ -60,7 +66,7 @@ export function setSettingToIndexedDB(key, value) {
 }
 
 export function getSettingsFromIndexedDB(callback) {
-    const request = indexedDB.open('ifecaro', 4);
+    const request = indexedDB.open('ifecaro', DB_VERSION);
     request.onupgradeneeded = function (event) {
         const db = event.target.result;
         if (!db.objectStoreNames.contains('settings')) {
@@ -74,6 +80,12 @@ export function getSettingsFromIndexedDB(callback) {
         }
         if (!db.objectStoreNames.contains('random_choices')) {
             db.createObjectStore('random_choices');
+        }
+        if (!db.objectStoreNames.contains('choice_effects')) {
+            db.createObjectStore('choice_effects');
+        }
+        if (!db.objectStoreNames.contains('character_states')) {
+            db.createObjectStore('character_states');
         }
     };
     request.onsuccess = function (event) {
@@ -247,6 +259,112 @@ export async function getDisabledChoicesFromIndexedDB(paragraphId) {
     });
 }
 
+// 儲存具有影響的選項效果（人格/關係）
+export async function setChoiceEffectsToIndexedDB(paragraphId, choiceIndex, effectsJson) {
+    const db = await openDB();
+    return new Promise((resolve, reject) => {
+        const tx = db.transaction('choice_effects', 'readwrite');
+        const store = tx.objectStore('choice_effects');
+        const key = `${paragraphId}:${choiceIndex}`;
+        const putReq = store.put(effectsJson, key);
+
+        putReq.onsuccess = () => { };
+        putReq.onerror = (e) => {
+            console.error("Put request error in setChoiceEffectsToIndexedDB: ", e.target.error);
+        };
+
+        tx.oncomplete = function () {
+            db.close();
+            resolve();
+        };
+        tx.onerror = function (e) {
+            console.error("Transaction error in setChoiceEffectsToIndexedDB: ", e.target.error);
+            db.close();
+            reject(e.target.error);
+        };
+    });
+}
+
+// 取得指定段落選項效果
+export async function getChoiceEffectsFromIndexedDB(paragraphId, choiceIndex) {
+    const db = await openDB();
+    return new Promise((resolve, reject) => {
+        const tx = db.transaction('choice_effects', 'readonly');
+        const store = tx.objectStore('choice_effects');
+        const key = `${paragraphId}:${choiceIndex}`;
+        const getReq = store.get(key);
+
+        getReq.onsuccess = function () {
+            resolve(getReq.result || null);
+        };
+        getReq.onerror = function (e) {
+            console.error("Get request error in getChoiceEffectsFromIndexedDB: ", e.target.error);
+            reject(e.target.error);
+        };
+
+        tx.oncomplete = function () {
+            db.close();
+        };
+        tx.onerror = function (e) {
+            console.error("Transaction error in getChoiceEffectsFromIndexedDB: ", e.target.error);
+            db.close();
+            reject(e.target.error);
+        };
+    });
+}
+
+// 儲存累積後的最新人物屬性/關係狀態
+export async function setLatestCharacterStateToIndexedDB(stateJson) {
+    const db = await openDB();
+    return new Promise((resolve, reject) => {
+        const tx = db.transaction('character_states', 'readwrite');
+        const store = tx.objectStore('character_states');
+        const putReq = store.put(stateJson, 'latest');
+
+        putReq.onsuccess = () => { };
+        putReq.onerror = (e) => {
+            console.error("Put request error in setLatestCharacterStateToIndexedDB: ", e.target.error);
+        };
+
+        tx.oncomplete = function () {
+            db.close();
+            resolve();
+        };
+        tx.onerror = function (e) {
+            console.error("Transaction error in setLatestCharacterStateToIndexedDB: ", e.target.error);
+            db.close();
+            reject(e.target.error);
+        };
+    });
+}
+
+// 取得最新人物屬性/關係狀態
+export async function getLatestCharacterStateFromIndexedDB() {
+    const db = await openDB();
+    return new Promise((resolve, reject) => {
+        const tx = db.transaction('character_states', 'readonly');
+        const store = tx.objectStore('character_states');
+        const getReq = store.get('latest');
+
+        getReq.onsuccess = function () {
+            resolve(getReq.result || null);
+        };
+        getReq.onerror = function (e) {
+            console.error("Get request error in getLatestCharacterStateFromIndexedDB: ", e.target.error);
+            reject(e.target.error);
+        };
+
+        tx.oncomplete = function () {
+            db.close();
+        };
+        tx.onerror = function (e) {
+            console.error("Transaction error in getLatestCharacterStateFromIndexedDB: ", e.target.error);
+            db.close();
+            reject(e.target.error);
+        };
+    });
+}
+
 // 清除指定段落的停用選項
 export async function clearDisabledChoicesForParagraph(paragraphId) {
     const db = await openDB();
@@ -272,7 +390,7 @@ export async function clearDisabledChoicesForParagraph(paragraphId) {
 
 // 儲存隨機選擇結果
 export function setRandomChoiceToIndexedDB(paragraphId, choiceIndex, originalChoices, selectedChoice) {
-    const request = indexedDB.open('ifecaro', 4);
+    const request = indexedDB.open('ifecaro', DB_VERSION);
     request.onupgradeneeded = function (event) {
         const db = event.target.result;
         if (!db.objectStoreNames.contains('settings')) {
@@ -310,7 +428,7 @@ export function setRandomChoiceToIndexedDB(paragraphId, choiceIndex, originalCho
 
 // 取得隨機選擇結果
 export function getRandomChoiceFromIndexedDB(paragraphId, choiceIndex, callback) {
-    const request = indexedDB.open('ifecaro', 4);
+    const request = indexedDB.open('ifecaro', DB_VERSION);
     request.onupgradeneeded = function (event) {
         const db = event.target.result;
         if (!db.objectStoreNames.contains('settings')) {
