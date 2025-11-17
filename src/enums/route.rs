@@ -1,6 +1,12 @@
 use crate::{
     layout::Layout,
-    pages::{dashboard::Dashboard, home::Home, page_not_found::PageNotFound, story::Story},
+    pages::{
+        auth::{InviteCheckEmail, InviteRequest, Login, Register},
+        dashboard::Dashboard,
+        home::Home,
+        page_not_found::PageNotFound,
+        story::Story,
+    },
 };
 use dioxus::prelude::*;
 use smallvec::SmallVec;
@@ -17,6 +23,18 @@ pub enum Route {
 
     #[route("/:lang/dashboard")]
     Dashboard { lang: String },
+
+    #[route("/:lang/invite")]
+    InviteRequest { lang: String },
+
+    #[route("/:lang/invite/check-email")]
+    InviteCheckEmail { lang: String },
+
+    #[route("/:lang/register")]
+    Register { lang: String },
+
+    #[route("/:lang/login")]
+    Login { lang: String },
 
     #[route("/:..route")]
     PageNotFound { route: SmallVec<[String; 8]> },
