@@ -68,6 +68,7 @@ effect_type = Type d'effet
 effect_type_attribute = Attribut
 effect_type_relationship = Relation
 effect_type_flag = Indicateur
+effect_title = Effet { $index }
 target_character = Personnage ciblé
 relationship_from = Personnage source
 relationship_to = Personnage cible

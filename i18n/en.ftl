@@ -68,6 +68,7 @@ effect_type = Effect type
 effect_type_attribute = Attribute
 effect_type_relationship = Relationship
 effect_type_flag = Flag
+effect_title = Effect { $index }
 target_character = Target character
 relationship_from = From character
 relationship_to = To character

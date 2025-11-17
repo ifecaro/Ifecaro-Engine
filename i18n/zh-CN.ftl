@@ -68,6 +68,7 @@ effect_type = 效果类型
 effect_type_attribute = 人格属性
 effect_type_relationship = 角色关系
 effect_type_flag = 标记
+effect_title = 效果 { $index }
 target_character = 目标角色
 relationship_from = 关系发起
 relationship_to = 关系对象

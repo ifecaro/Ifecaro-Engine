@@ -160,10 +160,12 @@ fn render_effect_row(
     on_save: EventHandler<Vec<Effect>>,
 ) -> Element {
     let effect_type_value = effect_type(&effect).to_string();
-    let label_class = "block text-sm font-medium text-gray-700 dark:text-gray-300";
-    let input_class = "block w-full px-4 py-2.5 text-sm border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white";
-    let row_class = "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 items-start border border-gray-200 dark:border-gray-700 p-4 rounded-xl bg-gray-50 dark:bg-gray-900/40 shadow-sm";
+    let label_class = "block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1";
+    let input_class = "block w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white";
+    let row_class = "space-y-4 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm";
     let column_class = "space-y-3";
+    let grid_class = "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4";
+    let effect_title = t!("effect_title", index: (index + 1).to_string());
     let characters_vec = characters.to_vec();
     let relationships_vec = relationships.to_vec();
 
@@ -212,104 +214,107 @@ fn render_effect_row(
             let op_for_value = op.clone();
             rsx! {
                 div { class: row_class,
-                    div { class: column_class,
-                        div { class: "space-y-2",
-                            label { class: label_class, {t!("effect_type")} }
-                            select { class: input_class, value: effect_type_value.clone(), onchange: on_type_change,
-                                option { value: "character_attribute", {t!("effect_type_attribute")} }
-                                option { value: "relationship", {t!("effect_type_relationship")} }
-                                option { value: "flag", {t!("effect_type_flag")} }
-                            }
-                        }
-                        div { class: "space-y-2",
-                            label { class: label_class, {t!("target_character")} }
-                            select { class: input_class, value: character_id.clone(),
-                                oninput: {
-                                    let on_save = on_save.clone();
-                                    move |evt: FormEvent| {
-                                        effects.write()[index] = Effect::CharacterAttribute {
-                                            character_id: evt.value(),
-                                            field: field_for_character.clone(),
-                                            op: op_for_character.clone(),
-                                            value,
-                                        };
-                                        notify_effects_changed(&effects, &on_save);
-                                    }
-                                },
-                                for character in characters.iter() {
-                                    option { value: character.id.clone(), "{character.char_id} ({character.role.clone().unwrap_or_default()})" }
+                    div { class: "flex items-center justify-between",
+                        h4 { class: "text-sm font-semibold text-gray-800 dark:text-gray-100", "{effect_title}" }
+                        button { class: "inline-flex items-center text-sm font-medium text-red-500 hover:text-red-400", onclick: on_remove.clone(), {t!("remove_effect") } }
+                    }
+                    div { class: grid_class,
+                        div { class: column_class,
+                            div { class: "space-y-2",
+                                label { class: label_class, {t!("effect_type")} }
+                                select { class: input_class, value: effect_type_value.clone(), onchange: on_type_change,
+                                    option { value: "character_attribute", {t!("effect_type_attribute")} }
+                                    option { value: "relationship", {t!("effect_type_relationship")} }
+                                    option { value: "flag", {t!("effect_type_flag")} }
                                 }
                             }
-                        }
-                    }
-                    div { class: column_class,
-                        div { class: "space-y-2",
-                            label { class: label_class, {t!("attribute_field")} }
-                            select { class: input_class, value: format!("{:?}", field_for_field_select),
-                                oninput: {
-                                    let on_save = on_save.clone();
-                                    move |evt: FormEvent| {
-                                        if let Some((new_field, _)) = attribute_field_options().into_iter().find(|(field_option, _)| format!("{:?}", field_option) == evt.value()) {
+                            div { class: "space-y-2",
+                                label { class: label_class, {t!("target_character")} }
+                                select { class: input_class, value: character_id.clone(),
+                                    oninput: {
+                                        let on_save = on_save.clone();
+                                        move |evt: FormEvent| {
                                             effects.write()[index] = Effect::CharacterAttribute {
-                                                character_id: character_id_for_field.clone(),
-                                                field: new_field,
-                                                op: op_for_field.clone(),
+                                                character_id: evt.value(),
+                                                field: field_for_character.clone(),
+                                                op: op_for_character.clone(),
                                                 value,
                                             };
                                             notify_effects_changed(&effects, &on_save);
                                         }
+                                    },
+                                    for character in characters.iter() {
+                                        option { value: character.id.clone(), "{character.char_id} ({character.role.clone().unwrap_or_default()})" }
                                     }
-                                },
-                                for (field_option, label) in attribute_field_options() {
-                                    option { value: format!("{:?}", field_option), "{label}" }
                                 }
                             }
                         }
-                        div { class: "space-y-2",
-                            label { class: label_class, {t!("numeric_operation")} }
-                            select { class: input_class, value: format!("{:?}", op_for_op_select),
-                                oninput: {
-                                    let on_save = on_save.clone();
-                                    move |evt: FormEvent| {
-                                        if let Some((new_op, _)) = numeric_op_options().into_iter().find(|(op_option, _)| format!("{:?}", op_option) == evt.value()) {
-                                            effects.write()[index] = Effect::CharacterAttribute {
-                                                character_id: character_id_for_op.clone(),
-                                                field: field_for_field_select.clone(),
-                                                op: new_op,
-                                                value,
-                                            };
-                                            notify_effects_changed(&effects, &on_save);
+                        div { class: column_class,
+                            div { class: "space-y-2",
+                                label { class: label_class, {t!("attribute_field")} }
+                                select { class: input_class, value: format!("{:?}", field_for_field_select),
+                                    oninput: {
+                                        let on_save = on_save.clone();
+                                        move |evt: FormEvent| {
+                                            if let Some((new_field, _)) = attribute_field_options().into_iter().find(|(field_option, _)| format!("{:?}", field_option) == evt.value()) {
+                                                effects.write()[index] = Effect::CharacterAttribute {
+                                                    character_id: character_id_for_field.clone(),
+                                                    field: new_field,
+                                                    op: op_for_field.clone(),
+                                                    value,
+                                                };
+                                                notify_effects_changed(&effects, &on_save);
+                                            }
+                                        }
+                                    },
+                                    for (field_option, label) in attribute_field_options() {
+                                        option { value: format!("{:?}", field_option), "{label}" }
+                                    }
+                                }
+                            }
+                            div { class: "space-y-2",
+                                label { class: label_class, {t!("numeric_operation")} }
+                                select { class: input_class, value: format!("{:?}", op_for_op_select),
+                                    oninput: {
+                                        let on_save = on_save.clone();
+                                        move |evt: FormEvent| {
+                                            if let Some((new_op, _)) = numeric_op_options().into_iter().find(|(op_option, _)| format!("{:?}", op_option) == evt.value()) {
+                                                effects.write()[index] = Effect::CharacterAttribute {
+                                                    character_id: character_id_for_op.clone(),
+                                                    field: field_for_field_select.clone(),
+                                                    op: new_op,
+                                                    value,
+                                                };
+                                                notify_effects_changed(&effects, &on_save);
+                                            }
+                                        }
+                                    },
+                                    for (op_option, label) in numeric_op_options() {
+                                        option { value: format!("{:?}", op_option), "{label}" }
+                                    }
+                                }
+                            }
+                        }
+                        div { class: column_class,
+                            div { class: "space-y-2",
+                                label { class: label_class, {t!("numeric_value")} }
+                                input { class: input_class, r#type: "number", value: value, min: "-100", max: "100",
+                                    oninput: {
+                                        let on_save = on_save.clone();
+                                        move |evt: FormEvent| {
+                                            if let Ok(parsed) = evt.value().parse::<i32>() {
+                                                effects.write()[index] = Effect::CharacterAttribute {
+                                                    character_id: character_id_for_value.clone(),
+                                                    field: field_for_value.clone(),
+                                                    op: op_for_value.clone(),
+                                                    value: parsed,
+                                                };
+                                                notify_effects_changed(&effects, &on_save);
+                                            }
                                         }
                                     }
-                                },
-                                for (op_option, label) in numeric_op_options() {
-                                    option { value: format!("{:?}", op_option), "{label}" }
                                 }
                             }
-                        }
-                    }
-                    div { class: column_class,
-                        div { class: "space-y-2",
-                            label { class: label_class, {t!("numeric_value")} }
-                            input { class: input_class, r#type: "number", value: value, min: "-100", max: "100",
-                                oninput: {
-                                    let on_save = on_save.clone();
-                                    move |evt: FormEvent| {
-                                        if let Ok(parsed) = evt.value().parse::<i32>() {
-                                            effects.write()[index] = Effect::CharacterAttribute {
-                                                character_id: character_id_for_value.clone(),
-                                                field: field_for_value.clone(),
-                                                op: op_for_value.clone(),
-                                                value: parsed,
-                                            };
-                                            notify_effects_changed(&effects, &on_save);
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                        div { class: "flex justify-end",
-                            button { class: "inline-flex items-center justify-center px-3 py-2 text-sm font-medium text-red-600 hover:text-red-700 bg-red-50 dark:bg-red-900/20 rounded-lg", onclick: on_remove.clone(), {t!("remove_effect") } }
                         }
                     }
                 }
@@ -345,129 +350,132 @@ fn render_effect_row(
             let op_for_value = op.clone();
             rsx! {
                 div { class: row_class,
-                    div { class: column_class,
-                        div { class: "space-y-2",
-                            label { class: label_class, {t!("effect_type")} }
-                            select { class: input_class, value: effect_type_value.clone(), onchange: on_type_change,
-                                option { value: "character_attribute", {t!("effect_type_attribute")} }
-                                option { value: "relationship", {t!("effect_type_relationship")} }
-                                option { value: "flag", {t!("effect_type_flag")} }
-                            }
-                        }
-                        div { class: "space-y-2",
-                            label { class: label_class, {t!("relationship_from")} }
-                            select { class: input_class, value: from_id.clone(),
-                                oninput: {
-                                    let on_save = on_save.clone();
-                                    move |evt: FormEvent| {
-                                        effects.write()[index] = Effect::Relationship {
-                                            from_id: evt.value(),
-                                            to_id: to_id_character_select.clone(),
-                                            field: field_for_from.clone(),
-                                            op: op_for_from.clone(),
-                                            value,
-                                        };
-                                        notify_effects_changed(&effects, &on_save);
-                                    }
-                                },
-                                for character in characters.iter() {
-                                    option { value: character.id.clone(), "{character.char_id} ({character.role.clone().unwrap_or_default()})" }
-                                }
-                            }
-                        }
+                    div { class: "flex items-center justify-between",
+                        h4 { class: "text-sm font-semibold text-gray-800 dark:text-gray-100", "{effect_title}" }
+                        button { class: "inline-flex items-center text-sm font-medium text-red-500 hover:text-red-400", onclick: on_remove.clone(), {t!("remove_effect") } }
                     }
-                    div { class: column_class,
-                        div { class: "space-y-2",
-                            label { class: label_class, {t!("relationship_to")} }
-                            select { class: input_class, value: to_id.clone(),
-                                oninput: {
-                                    let on_save = on_save.clone();
-                                    move |evt: FormEvent| {
-                                        effects.write()[index] = Effect::Relationship {
-                                            from_id: from_id_for_to.clone(),
-                                            to_id: evt.value(),
-                                            field: field_for_to.clone(),
-                                            op: op_for_to.clone(),
-                                            value,
-                                        };
-                                        notify_effects_changed(&effects, &on_save);
-                                    }
-                                },
-                                for character in characters.iter() {
-                                    option { value: character.id.clone(), "{character.char_id} ({character.role.clone().unwrap_or_default()})" }
+                    div { class: grid_class,
+                        div { class: column_class,
+                            div { class: "space-y-2",
+                                label { class: label_class, {t!("effect_type")} }
+                                select { class: input_class, value: effect_type_value.clone(), onchange: on_type_change,
+                                    option { value: "character_attribute", {t!("effect_type_attribute")} }
+                                    option { value: "relationship", {t!("effect_type_relationship")} }
+                                    option { value: "flag", {t!("effect_type_flag")} }
                                 }
                             }
-                        }
-                        div { class: "space-y-2",
-                            label { class: label_class, {t!("relationship_field")} }
-                            select { class: input_class, value: format!("{:?}", field_for_field),
-                                oninput: {
-                                    let on_save = on_save.clone();
-                                    move |evt: FormEvent| {
-                                        if let Some((new_field, _)) = relationship_field_options().into_iter().find(|(field_option, _)| format!("{:?}", field_option) == evt.value()) {
+                            div { class: "space-y-2",
+                                label { class: label_class, {t!("relationship_from")} }
+                                select { class: input_class, value: from_id.clone(),
+                                    oninput: {
+                                        let on_save = on_save.clone();
+                                        move |evt: FormEvent| {
                                             effects.write()[index] = Effect::Relationship {
-                                                from_id: from_id_for_field.clone(),
-                                                to_id: to_id_for_field.clone(),
-                                                field: new_field,
-                                                op: op_for_field.clone(),
+                                                from_id: evt.value(),
+                                                to_id: to_id_character_select.clone(),
+                                                field: field_for_from.clone(),
+                                                op: op_for_from.clone(),
                                                 value,
                                             };
                                             notify_effects_changed(&effects, &on_save);
                                         }
+                                    },
+                                    for character in characters.iter() {
+                                        option { value: character.id.clone(), "{character.char_id} ({character.role.clone().unwrap_or_default()})" }
                                     }
-                                },
-                                for (field_option, label) in relationship_field_options() {
-                                    option { value: format!("{:?}", field_option), "{label}" }
                                 }
                             }
                         }
-                    }
-                    div { class: column_class,
-                        div { class: "space-y-2",
-                            label { class: label_class, {t!("numeric_operation")} }
-                            select { class: input_class, value: format!("{:?}", op_for_op_select),
-                                oninput: {
-                                    let on_save = on_save.clone();
-                                    move |evt: FormEvent| {
-                                        if let Some((new_op, _)) = numeric_op_options().into_iter().find(|(op_option, _)| format!("{:?}", op_option) == evt.value()) {
+                        div { class: column_class,
+                            div { class: "space-y-2",
+                                label { class: label_class, {t!("relationship_to")} }
+                                select { class: input_class, value: to_id.clone(),
+                                    oninput: {
+                                        let on_save = on_save.clone();
+                                        move |evt: FormEvent| {
                                             effects.write()[index] = Effect::Relationship {
-                                                from_id: from_id_for_op.clone(),
-                                                to_id: to_id_for_op.clone(),
-                                                field: field_for_op_select.clone(),
-                                                op: new_op,
+                                                from_id: from_id_for_to.clone(),
+                                                to_id: evt.value(),
+                                                field: field_for_to.clone(),
+                                                op: op_for_to.clone(),
                                                 value,
                                             };
                                             notify_effects_changed(&effects, &on_save);
                                         }
+                                    },
+                                    for character in characters.iter() {
+                                        option { value: character.id.clone(), "{character.char_id} ({character.role.clone().unwrap_or_default()})" }
                                     }
-                                },
-                                for (op_option, label) in numeric_op_options() {
-                                    option { value: format!("{:?}", op_option), "{label}" }
+                                }
+                            }
+                            div { class: "space-y-2",
+                                label { class: label_class, {t!("relationship_field")} }
+                                select { class: input_class, value: format!("{:?}", field_for_field),
+                                    oninput: {
+                                        let on_save = on_save.clone();
+                                        move |evt: FormEvent| {
+                                            if let Some((new_field, _)) = relationship_field_options().into_iter().find(|(field_option, _)| format!("{:?}", field_option) == evt.value()) {
+                                                effects.write()[index] = Effect::Relationship {
+                                                    from_id: from_id_for_field.clone(),
+                                                    to_id: to_id_for_field.clone(),
+                                                    field: new_field,
+                                                    op: op_for_field.clone(),
+                                                    value,
+                                                };
+                                                notify_effects_changed(&effects, &on_save);
+                                            }
+                                        }
+                                    },
+                                    for (field_option, label) in relationship_field_options() {
+                                        option { value: format!("{:?}", field_option), "{label}" }
+                                    }
                                 }
                             }
                         }
-                        div { class: "space-y-2",
-                            label { class: label_class, {t!("numeric_value")} }
-                            input { class: input_class, r#type: "number", value: value, min: "-100", max: "100",
-                                oninput: {
-                                    let on_save = on_save.clone();
-                                    move |evt: FormEvent| {
-                                        if let Ok(parsed) = evt.value().parse::<i32>() {
-                                            effects.write()[index] = Effect::Relationship {
-                                                from_id: from_id_for_value.clone(),
-                                                to_id: to_id_for_value.clone(),
-                                                field: field_for_value.clone(),
-                                                op: op_for_value.clone(),
-                                                value: parsed,
-                                            };
-                                            notify_effects_changed(&effects, &on_save);
+                        div { class: column_class,
+                            div { class: "space-y-2",
+                                label { class: label_class, {t!("numeric_operation")} }
+                                select { class: input_class, value: format!("{:?}", op_for_op_select),
+                                    oninput: {
+                                        let on_save = on_save.clone();
+                                        move |evt: FormEvent| {
+                                            if let Some((new_op, _)) = numeric_op_options().into_iter().find(|(op_option, _)| format!("{:?}", op_option) == evt.value()) {
+                                                effects.write()[index] = Effect::Relationship {
+                                                    from_id: from_id_for_op.clone(),
+                                                    to_id: to_id_for_op.clone(),
+                                                    field: field_for_op_select.clone(),
+                                                    op: new_op,
+                                                    value,
+                                                };
+                                                notify_effects_changed(&effects, &on_save);
+                                            }
+                                        }
+                                    },
+                                    for (op_option, label) in numeric_op_options() {
+                                        option { value: format!("{:?}", op_option), "{label}" }
+                                    }
+                                }
+                            }
+                            div { class: "space-y-2",
+                                label { class: label_class, {t!("numeric_value")} }
+                                input { class: input_class, r#type: "number", value: value, min: "-100", max: "100",
+                                    oninput: {
+                                        let on_save = on_save.clone();
+                                        move |evt: FormEvent| {
+                                            if let Ok(parsed) = evt.value().parse::<i32>() {
+                                                effects.write()[index] = Effect::Relationship {
+                                                    from_id: from_id_for_value.clone(),
+                                                    to_id: to_id_for_value.clone(),
+                                                    field: field_for_value.clone(),
+                                                    op: op_for_value.clone(),
+                                                    value: parsed,
+                                                };
+                                                notify_effects_changed(&effects, &on_save);
+                                            }
                                         }
                                     }
                                 }
                             }
-                        }
-                        div { class: "flex justify-end",
-                            button { class: "inline-flex items-center justify-center px-3 py-2 text-sm font-medium text-red-600 hover:text-red-700 bg-red-50 dark:bg-red-900/20 rounded-lg", onclick: on_remove.clone(), {t!("remove_effect") } }
                         }
                     }
                 }
@@ -489,72 +497,57 @@ fn render_effect_row(
             let value_for_input = value.clone();
             rsx! {
                 div { class: row_class,
-                    div { class: column_class,
-                        div { class: "space-y-2",
-                            label { class: label_class, {t!("effect_type")} }
-                            select { class: input_class, value: effect_type_value, onchange: on_type_change,
-                                option { value: "character_attribute", {t!("effect_type_attribute")} }
-                                option { value: "relationship", {t!("effect_type_relationship")} }
-                                option { value: "flag", {t!("effect_type_flag")} }
-                            }
-                        }
-                        div { class: "space-y-2",
-                            label { class: label_class, {t!("target_character")} }
-                            select { class: input_class, value: character_id.clone(),
-                                oninput: {
-                                    let on_save = on_save.clone();
-                                      move |evt: FormEvent| {
-                                        effects.write()[index] = Effect::Flag {
-                                            character_id: evt.value(),
-                                            path: path_for_character.clone(),
-                                            value: value_for_character.clone(),
-                                        };
-                                        notify_effects_changed(&effects, &on_save);
-                                    }
-                                },
-                                for character in characters.iter() {
-                                    option { value: character.id.clone(), "{character.char_id} ({character.role.clone().unwrap_or_default()})" }
+                    div { class: "flex items-center justify-between",
+                        h4 { class: "text-sm font-semibold text-gray-800 dark:text-gray-100", "{effect_title}" }
+                        button { class: "inline-flex items-center text-sm font-medium text-red-500 hover:text-red-400", onclick: on_remove, {t!("remove_effect") } }
+                    }
+                    div { class: grid_class,
+                        div { class: column_class,
+                            div { class: "space-y-2",
+                                label { class: label_class, {t!("effect_type")} }
+                                select { class: input_class, value: effect_type_value, onchange: on_type_change,
+                                    option { value: "character_attribute", {t!("effect_type_attribute")} }
+                                    option { value: "relationship", {t!("effect_type_relationship")} }
+                                    option { value: "flag", {t!("effect_type_flag")} }
                                 }
                             }
-                        }
-                    }
-                    div { class: column_class,
-                        div { class: "space-y-2",
-                            label { class: label_class, {t!("flag_path")} }
-                            input { class: input_class, value: path_for_input.join("."), placeholder: "flag.key.path",
-                                oninput: {
-                                    let on_save = on_save.clone();
-                                      move |evt: FormEvent| {
-                                        let segments = evt
-                                            .value()
-                                            .split('.')
-                                            .map(|s| s.trim().to_string())
-                                            .filter(|s| !s.is_empty())
-                                            .collect::<Vec<_>>();
-                                        effects.write()[index] = Effect::Flag {
-                                            character_id: character_id_for_path.clone(),
-                                            path: segments,
-                                            value: value_for_input.clone(),
-                                        };
-                                        notify_effects_changed(&effects, &on_save);
-                                    }
-                                }
-                            }
-                        }
-                    }
-                    div { class: column_class,
-                        div { class: "space-y-2",
-                            label { class: label_class, {t!("flag_value")} }
-                            div { class: "flex items-center space-x-3",
-                                input { class: "h-5 w-5", r#type: "checkbox", checked: is_checked,
+                            div { class: "space-y-2",
+                                label { class: label_class, {t!("target_character")} }
+                                select { class: input_class, value: character_id.clone(),
                                     oninput: {
                                         let on_save = on_save.clone();
                                           move |evt: FormEvent| {
-                                            let parsed = evt.value().parse::<bool>().unwrap_or(false);
                                             effects.write()[index] = Effect::Flag {
-                                                character_id: character_id_for_checkbox.clone(),
-                                                path: path_for_checkbox.clone(),
-                                                value: serde_json::Value::Bool(parsed),
+                                                character_id: evt.value(),
+                                                path: path_for_character.clone(),
+                                                value: value_for_character.clone(),
+                                            };
+                                            notify_effects_changed(&effects, &on_save);
+                                        }
+                                    },
+                                    for character in characters.iter() {
+                                        option { value: character.id.clone(), "{character.char_id} ({character.role.clone().unwrap_or_default()})" }
+                                    }
+                                }
+                            }
+                        }
+                        div { class: column_class,
+                            div { class: "space-y-2",
+                                label { class: label_class, {t!("flag_path")} }
+                                input { class: input_class, value: path_for_input.join("."), placeholder: "flag.key.path",
+                                    oninput: {
+                                        let on_save = on_save.clone();
+                                          move |evt: FormEvent| {
+                                            let segments = evt
+                                                .value()
+                                                .split('.')
+                                                .map(|s| s.trim().to_string())
+                                                .filter(|s| !s.is_empty())
+                                                .collect::<Vec<_>>();
+                                            effects.write()[index] = Effect::Flag {
+                                                character_id: character_id_for_path.clone(),
+                                                path: segments,
+                                                value: value_for_input.clone(),
                                             };
                                             notify_effects_changed(&effects, &on_save);
                                         }
@@ -562,8 +555,26 @@ fn render_effect_row(
                                 }
                             }
                         }
-                        div { class: "flex justify-end",
-                            button { class: "inline-flex items-center justify-center px-3 py-2 text-sm font-medium text-red-600 hover:text-red-700 bg-red-50 dark:bg-red-900/20 rounded-lg", onclick: on_remove, {t!("remove_effect") } }
+                        div { class: column_class,
+                            div { class: "space-y-2",
+                                label { class: label_class, {t!("flag_value")} }
+                                div { class: "flex items-center space-x-3",
+                                    input { class: "h-5 w-5", r#type: "checkbox", checked: is_checked,
+                                        oninput: {
+                                            let on_save = on_save.clone();
+                                              move |evt: FormEvent| {
+                                                let parsed = evt.value().parse::<bool>().unwrap_or(false);
+                                                effects.write()[index] = Effect::Flag {
+                                                    character_id: character_id_for_checkbox.clone(),
+                                                    path: path_for_checkbox.clone(),
+                                                    value: serde_json::Value::Bool(parsed),
+                                                };
+                                                notify_effects_changed(&effects, &on_save);
+                                            }
+                                        }
+                                    }
+                                }
+                            }
                         }
                     }
                 }
