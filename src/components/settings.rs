@@ -1,15 +1,15 @@
-use dioxus::prelude::*;
+use crate::components::toast::ToastType;
+use crate::contexts::settings_context::use_settings_context;
+use crate::contexts::toast_context::use_toast;
+use crate::enums::style::NavbarStyle;
+#[cfg(target_arch = "wasm32")]
+use crate::services::indexeddb::clear_all_disabled_choices_from_indexeddb;
 use crate::services::indexeddb::clear_choices_and_random_choices;
 #[cfg(target_arch = "wasm32")]
 use crate::services::indexeddb::set_setting_to_indexeddb;
-use crate::components::toast::ToastType;
-use crate::contexts::toast_context::use_toast;
+use dioxus::prelude::*;
 use dioxus_i18n::t;
-use crate::contexts::settings_context::use_settings_context;
-use crate::enums::style::NavbarStyle;
 use wasm_bindgen_futures::spawn_local;
-#[cfg(target_arch = "wasm32")]
-use crate::services::indexeddb::clear_all_disabled_choices_from_indexeddb;
 #[cfg(target_arch = "wasm32")]
 use web_sys::window;
 
@@ -23,7 +23,12 @@ pub fn Settings(props: SettingsProps) -> Element {
     let mut is_open = use_signal(|| false);
     let mut toast = use_toast();
     let settings_context = use_settings_context();
-    let reader_mode = settings_context.read().settings.get("reader_mode").map(|v| v == "true").unwrap_or(false);
+    let reader_mode = settings_context
+        .read()
+        .settings
+        .get("reader_mode")
+        .map(|v| v == "true")
+        .unwrap_or(false);
 
     let animation_class = if *is_open.read() {
         "translate-y-0 opacity-100"
@@ -40,13 +45,17 @@ pub fn Settings(props: SettingsProps) -> Element {
     } else {
         "fixed bottom-14 left-0 right-0 rounded-t-lg"
     };
-    
+
     let reader_mode_status = if reader_mode { t!("on") } else { t!("off") };
 
     // debugmode detection initial mount
     #[cfg(target_arch = "wasm32")]
     let debugmode_signal = use_signal(|| {
-        let raw = window().expect("no global `window` exists").location().search().unwrap_or_default();
+        let raw = window()
+            .expect("no global `window` exists")
+            .location()
+            .search()
+            .unwrap_or_default();
         raw.split('?').nth(1).unwrap_or("").split('&').any(|pair| {
             let mut iter = pair.split('=');
             iter.next() == Some("debugmode") && iter.next() == Some("true")
@@ -116,4 +125,4 @@ pub fn Settings(props: SettingsProps) -> Element {
             }
         }
     }
-} 
+}

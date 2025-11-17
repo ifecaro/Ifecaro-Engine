@@ -1,16 +1,16 @@
-use ifecaro::*;
 use dioxus_core::NoOpMutations;
+use ifecaro::*;
 
 #[cfg(test)]
 mod story_context_persistence_tests {
     use super::*;
-    use ifecaro::contexts::story_context::{use_story_context, StoryContext};
     use dioxus::prelude::*;
+    use ifecaro::contexts::story_context::{use_story_context, StoryContext};
 
     #[component]
     fn TestComponent() -> Element {
         let mut story_ctx = use_story_context();
-        // Local signal to ensure the effect runs on every render
+        // Local signal to ensure the impact runs on every render
         let mut has_set_value = use_signal(|| false);
 
         use_effect(move || {
@@ -20,7 +20,11 @@ mod story_context_persistence_tests {
                 has_set_value.set(true);
             } else {
                 // On subsequent renders, verify the value is still present.
-                assert_eq!(story_ctx.read().target_paragraph_id, Some("test_value".to_string()), "StoryContext should persist across renders");
+                assert_eq!(
+                    story_ctx.read().target_paragraph_id,
+                    Some("test_value".to_string()),
+                    "StoryContext should persist across renders"
+                );
             }
             ()
         });
@@ -52,4 +56,4 @@ mod story_context_persistence_tests {
         dom.rebuild(&mut mutations); // First build
         dom.rebuild(&mut mutations); // Second build after state change
     }
-} 
+}

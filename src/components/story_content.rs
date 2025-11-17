@@ -1,22 +1,24 @@
 #![allow(unused_mut)]
-use std::sync::Arc;
-use dioxus::prelude::*;
-use serde::{Serialize, Deserialize};
-use serde_json;
+use crate::contexts::language_context::LanguageState;
+use crate::contexts::settings_context::use_settings_context;
 use crate::contexts::story_context::use_story_context;
 use crate::layout::KeyboardState;
-use wasm_bindgen::JsCast;
-use web_sys::{Window, Document};
-use dioxus_i18n::t;
-use std::collections::hash_map::DefaultHasher;
-use std::hash::{Hash, Hasher};
-use crate::services::indexeddb::{set_disabled_choice_to_indexeddb, get_disabled_choices_from_indexeddb};
-use wasm_bindgen_futures::spawn_local;
-use crate::contexts::settings_context::use_settings_context;
-use crate::contexts::language_context::LanguageState;
 use crate::pages::story::paragraph_has_translation;
+use crate::services::indexeddb::{
+    get_disabled_choices_from_indexeddb, set_disabled_choice_to_indexeddb,
+};
+use dioxus::prelude::*;
+use dioxus_i18n::t;
+use serde::{Deserialize, Serialize};
+use serde_json;
 use std::borrow::Cow;
+use std::collections::hash_map::DefaultHasher;
 use std::collections::HashSet;
+use std::hash::{Hash, Hasher};
+use std::sync::Arc;
+use wasm_bindgen::JsCast;
+use wasm_bindgen_futures::spawn_local;
+use web_sys::{Document, Window};
 fn escape_html(text: &str) -> String {
     let mut escaped = String::with_capacity(text.len());
     for ch in text.chars() {
@@ -172,7 +174,7 @@ pub fn StoryContent(props: StoryContentProps) -> Element {
     let mut max_times = props.max_times.clone();
     let mut progress_started = props.progress_started.clone();
     let mut disabled_by_countdown = props.disabled_by_countdown.clone();
-    
+
     // Use current paragraph ID signal passed from props
     let current_paragraph_id_signal = props.current_paragraph_id.clone();
     let disabled_state_loaded = use_signal(|| false);
@@ -204,11 +206,20 @@ pub fn StoryContent(props: StoryContentProps) -> Element {
             let need_update_countdowns = countdowns.read().as_slice() != source.as_slice();
             let need_update_max_times = max_times.read().as_slice() != source.as_slice();
             let desired_len = source.len();
-            let need_resize_progress = progress_started.try_read().map(|v| v.len()).unwrap_or(0) != desired_len;
-            let need_resize_disabled = disabled_by_countdown.try_read().map(|v| v.len()).unwrap_or(0) != desired_len;
+            let need_resize_progress =
+                progress_started.try_read().map(|v| v.len()).unwrap_or(0) != desired_len;
+            let need_resize_disabled = disabled_by_countdown
+                .try_read()
+                .map(|v| v.len())
+                .unwrap_or(0)
+                != desired_len;
 
             // 3. 在下一個事件迴圈中批次寫入，避免在同一 reactive scope 內同時讀寫
-            if need_update_countdowns || need_update_max_times || need_resize_progress || need_resize_disabled {
+            if need_update_countdowns
+                || need_update_max_times
+                || need_resize_progress
+                || need_resize_disabled
+            {
                 gloo_timers::callback::Timeout::new(0, move || {
                     if need_update_countdowns {
                         countdowns.set(source.clone());
@@ -226,11 +237,12 @@ pub fn StoryContent(props: StoryContentProps) -> Element {
                             guard.resize(desired_len, false);
                         }
                     }
-                }).forget();
+                })
+                .forget();
             }
         });
     }
-    
+
     // Load disabled state from IndexedDB
     {
         let mut disabled_by_countdown = disabled_by_countdown.clone();
@@ -242,31 +254,38 @@ pub fn StoryContent(props: StoryContentProps) -> Element {
             if paragraph_id.is_empty() {
                 return;
             }
-            
+
             // Skip if disabled state already loaded for this paragraph
             if *disabled_state_loaded.read() {
                 return;
             }
-            
+
             // Check if it's settings chapter, skip if true
             let is_settings_chapter = story_ctx.read().is_settings_chapter();
             if is_settings_chapter {
                 return;
             }
-            
+
             let paragraph_id_for_async = paragraph_id.clone();
             spawn_local(async move {
-                if let Ok(js_value) = get_disabled_choices_from_indexeddb(&paragraph_id_for_async).await {
-                    let disabled_indices: Vec<usize> = if let Ok(array) = js_value.dyn_into::<js_sys::Array>() {
-                        array.iter()
-                            .filter_map(|v| v.as_f64().map(|n| n as usize))
-                            .collect()
-                    } else {
-                        Vec::new()
-                    };
+                if let Ok(js_value) =
+                    get_disabled_choices_from_indexeddb(&paragraph_id_for_async).await
+                {
+                    let disabled_indices: Vec<usize> =
+                        if let Ok(array) = js_value.dyn_into::<js_sys::Array>() {
+                            array
+                                .iter()
+                                .filter_map(|v| v.as_f64().map(|n| n as usize))
+                                .collect()
+                        } else {
+                            Vec::new()
+                        };
 
                     // Always apply disabled state from IndexedDB (use try_read to avoid ValueDroppedError)
-                    let mut current_disabled = disabled_by_countdown.try_read().map(|v| v.clone()).unwrap_or_default();
+                    let mut current_disabled = disabled_by_countdown
+                        .try_read()
+                        .map(|v| v.clone())
+                        .unwrap_or_default();
                     for &index in &disabled_indices {
                         if index < current_disabled.len() {
                             current_disabled[index] = true;
@@ -279,7 +298,7 @@ pub fn StoryContent(props: StoryContentProps) -> Element {
 
                     // Also zero out countdown and max_time for disabled choices to avoid any countdown restart
                     {
-                        // Step 1: immediately update the global story_ctx countdowns so that any sync effect
+                        // Step 1: immediately update the global story_ctx countdowns so that any sync impact
                         // sees the already-zeroed values and will not overwrite our local signals back to the
                         // original non-zero numbers.
                         if let Ok(mut ctx_write) = story_ctx.try_write() {
@@ -324,13 +343,13 @@ pub fn StoryContent(props: StoryContentProps) -> Element {
             });
         });
     }
-    
+
     let mut show_filter = use_signal(|| true);
     let mut is_focused = use_signal(|| false);
     let mut is_mobile = use_signal(|| false);
     let _is_countdown_paused = use_signal(|| true);
     let _has_shown_choices = use_signal(|| false);
-    
+
     let is_mobile_memo = use_memo(move || {
         if let Some((window, _)) = get_window_document() {
             if let Ok(width) = window.inner_width() {
@@ -341,36 +360,42 @@ pub fn StoryContent(props: StoryContentProps) -> Element {
         }
         false
     });
-    
+
     use_effect(move || {
         let mobile = *is_mobile_memo.read();
         is_mobile.set(mobile);
         // Desktop (non-mobile) 預設顯示遮罩；Mobile 則關閉
         show_filter.set(!mobile);
     });
-    
+
     // Listen for custom event show_filter, show overlay when received
     {
         let show_filter = show_filter.clone();
         use_effect(move || {
             if let Some((_, _document)) = get_window_document() {
                 let mut show_filter = show_filter.clone();
-                let handler = wasm_bindgen::closure::Closure::wrap(Box::new(move |_event: web_sys::CustomEvent| {
-                    // Safely set signal to avoid ValueDroppedError
-                    if let Ok(mut guard) = show_filter.try_write() {
-                        *guard = true;
-                    }
-                }) as Box<dyn FnMut(web_sys::CustomEvent)>);
-                if let Ok(_) = _document.add_event_listener_with_callback("show_filter", handler.as_ref().unchecked_ref()) {
-                handler.forget();
+                let handler = wasm_bindgen::closure::Closure::wrap(Box::new(
+                    move |_event: web_sys::CustomEvent| {
+                        // Safely set signal to avoid ValueDroppedError
+                        if let Ok(mut guard) = show_filter.try_write() {
+                            *guard = true;
+                        }
+                    },
+                )
+                    as Box<dyn FnMut(web_sys::CustomEvent)>);
+                if let Ok(_) = _document.add_event_listener_with_callback(
+                    "show_filter",
+                    handler.as_ref().unchecked_ref(),
+                ) {
+                    handler.forget();
                 }
             }
             (|| {})()
         });
     }
-    
+
     let is_settings_chapter = story_ctx.read().is_settings_chapter();
-    
+
     let has_countdown = use_memo(move || countdowns.read().iter().any(|&c| c > 0));
     let show_choices = use_signal(|| false);
     let is_countdown_paused = use_signal(|| true);
@@ -425,7 +450,12 @@ pub fn StoryContent(props: StoryContentProps) -> Element {
                         let scroll_top = document_element.scroll_top();
 
                         let is_mobile_device = *is_mobile.read();
-                        if is_scrolled_to_bottom(scroll_height, client_height, scroll_top, is_mobile_device) {
+                        if is_scrolled_to_bottom(
+                            scroll_height,
+                            client_height,
+                            scroll_top,
+                            is_mobile_device,
+                        ) {
                             // Schedule signal updates to avoid read→write loops
                             let show_needed = show_choices.try_read().map(|v| !*v).unwrap_or(true);
                             if show_needed {
@@ -438,7 +468,8 @@ pub fn StoryContent(props: StoryContentProps) -> Element {
                                 .forget();
                             }
 
-                            let hsc_needed = has_shown_choices.try_read().map(|v| !*v).unwrap_or(true);
+                            let hsc_needed =
+                                has_shown_choices.try_read().map(|v| !*v).unwrap_or(true);
                             if hsc_needed {
                                 let mut hsc = has_shown_choices.clone();
                                 gloo_timers::callback::Timeout::new(0, move || {
@@ -459,7 +490,7 @@ pub fn StoryContent(props: StoryContentProps) -> Element {
                                 })
                                 .forget();
                             }
-                            
+
                             // 同時在這裡設置 progress_started 為 true
                             let mut ps = progress_started.clone();
                             gloo_timers::callback::Timeout::new(0, move || {
@@ -476,7 +507,7 @@ pub fn StoryContent(props: StoryContentProps) -> Element {
                 }
             };
 
-            // 執行一次初始檢查，排程在下一個事件迴圈，避免在 effect 執行階段對 signal 建立依賴
+            // 執行一次初始檢查，排程在下一個事件迴圈，避免在 impact 執行階段對 signal 建立依賴
             gloo_timers::callback::Timeout::new(0, move || {
                 check_scroll();
             })
@@ -486,9 +517,11 @@ pub fn StoryContent(props: StoryContentProps) -> Element {
             if let Some(window) = web_sys::window() {
                 let cb = wasm_bindgen::closure::Closure::wrap(Box::new(move || {
                     check_scroll();
-                }) as Box<dyn FnMut()>);
+                })
+                    as Box<dyn FnMut()>);
 
-                let _ = window.add_event_listener_with_callback("scroll", cb.as_ref().unchecked_ref());
+                let _ =
+                    window.add_event_listener_with_callback("scroll", cb.as_ref().unchecked_ref());
 
                 cb.forget();
             }
@@ -514,7 +547,8 @@ pub fn StoryContent(props: StoryContentProps) -> Element {
                         if let Ok(mut guard) = sc.try_write() {
                             *guard = true;
                         }
-                    }).forget();
+                    })
+                    .forget();
                 }
 
                 let paused = is_countdown_paused.try_read().map(|v| *v).unwrap_or(true);
@@ -524,7 +558,8 @@ pub fn StoryContent(props: StoryContentProps) -> Element {
                         if let Ok(mut guard) = icp.try_write() {
                             *guard = true;
                         }
-                    }).forget();
+                    })
+                    .forget();
                 }
             }
             (|| {})()
@@ -541,7 +576,8 @@ pub fn StoryContent(props: StoryContentProps) -> Element {
         use_effect(move || {
             if !show_filter.try_read().map(|v| *v).unwrap_or(false) {
                 // Overlay dismissed
-                let mut should_show_choices = has_shown_choices.try_read().map(|v| *v).unwrap_or(false);
+                let mut should_show_choices =
+                    has_shown_choices.try_read().map(|v| *v).unwrap_or(false);
 
                 // If there are countdowns and choices haven't been revealed yet, check scrollability
                 if *has_countdown.read() && !should_show_choices {
@@ -567,7 +603,8 @@ pub fn StoryContent(props: StoryContentProps) -> Element {
                             if let Ok(mut guard) = sc.try_write() {
                                 *guard = true;
                             }
-                        }).forget();
+                        })
+                        .forget();
                     }
 
                     let hsc_needed = has_shown_choices.try_read().map(|v| !*v).unwrap_or(true);
@@ -577,7 +614,8 @@ pub fn StoryContent(props: StoryContentProps) -> Element {
                             if let Ok(mut guard) = hsc.try_write() {
                                 *guard = true;
                             }
-                        }).forget();
+                        })
+                        .forget();
                     }
 
                     let paused = is_countdown_paused.try_read().map(|v| *v).unwrap_or(true);
@@ -587,14 +625,15 @@ pub fn StoryContent(props: StoryContentProps) -> Element {
                             if let Ok(mut guard) = icp.try_write() {
                                 *guard = false;
                             }
-                        }).forget();
+                        })
+                        .forget();
                     }
                 }
             }
             (|| {})()
         });
     }
-    
+
     // 同步 has_shown_choices <- show_choices
     {
         let show_choices = show_choices_clone.clone();
@@ -606,7 +645,7 @@ pub fn StoryContent(props: StoryContentProps) -> Element {
             (|| {})()
         });
     }
-    
+
     // Animation class control
     let fadein_class = if *has_countdown.read() && *show_choices.read() {
         "animate-fadein-choices"
@@ -620,18 +659,21 @@ pub fn StoryContent(props: StoryContentProps) -> Element {
     } else {
         "opacity-0 pointer-events-none"
     };
-    
+
     // Move is_countdown_paused reading outside the render loop to avoid scope issues
     let countdown_paused = *is_countdown_paused.read();
-    
+
     // Check time_left setting
     let time_left_enabled = use_memo(move || {
-        settings_ctx.read().settings.get("time_left")
+        settings_ctx
+            .read()
+            .settings
+            .get("time_left")
             .map(|v| v != "false")
             .unwrap_or(false) // Default to disabled
     });
-    
-    // Scroll lock effect: disable page scrolling when overlay is visible
+
+    // Scroll lock impact: disable page scrolling when overlay is visible
     {
         let show_filter = show_filter.clone();
         use_effect(move || {
@@ -648,7 +690,7 @@ pub fn StoryContent(props: StoryContentProps) -> Element {
             (|| {})()
         });
     }
-    
+
     rsx! {
         div {
             class: "relative story-content-container",
@@ -829,7 +871,7 @@ pub fn StoryContent(props: StoryContentProps) -> Element {
                                         && is_enabled).then(|| rsx! {
                                         style { "{keyframes}" }
                                         div {
-                                            class: format!("w-full h-px bg-current mt-2 origin-left will-change-transform {}", 
+                                            class: format!("w-full h-px bg-current mt-2 origin-left will-change-transform {}",
                                                 if *time_left_enabled.read() { "" } else { "opacity-0" }
                                             ),
                                             style: format!(
@@ -868,7 +910,7 @@ pub fn StoryContent(props: StoryContentProps) -> Element {
 
 /// Determine if the choice list should be shown after the overlay has been dismissed.
 ///
-/// This is extracted from the in-component effect logic so that it can be unit-tested.
+/// This is extracted from the in-component impact logic so that it can be unit-tested.
 /// The logic is:
 /// 1. If the overlay is still shown (`show_filter == true`) => do not show.
 /// 2. If the choices have already been shown once (`has_shown_choices == true`) => show.
@@ -946,4 +988,4 @@ pub fn is_scrolled_to_bottom(
   .opacity-0 { opacity: 0; }
   .opacity-100 { opacity: 1; }
 }
-*/ 
+*/

@@ -1,16 +1,16 @@
-use dioxus::prelude::*;
 use crate::{
-    enums::route::Route,
     components::{navbar::Navbar, story_content::Choice},
     contexts::{
         language_context::LanguageState,
         story_context::{use_story_context, StoryContext},
     },
+    enums::route::Route,
 };
+use dioxus::prelude::*;
+use std::collections::HashSet;
 use std::{rc::Rc, sync::Arc};
 use wasm_bindgen::closure::Closure;
 use web_sys::Event as WebEvent;
-use std::collections::HashSet;
 
 #[derive(Debug, Clone)]
 pub struct KeyboardState {
@@ -38,7 +38,7 @@ pub fn Layout() -> Element {
     let mut keyboard_state = use_signal(KeyboardState::default);
     let mut story_context = use_story_context();
     let closure_signal = use_signal(|| None::<Closure<dyn FnMut(WebEvent)>>);
-    
+
     use_effect(move || {
         let lang = match &route {
             Route::Home {} => "zh-TW",
@@ -47,9 +47,9 @@ pub fn Layout() -> Element {
         };
         state.write().set_language(lang);
     });
-    
+
     provide_context(keyboard_state);
-    
+
     let _handle_choice = {
         let mut _story_context = story_context.clone();
         move |_choice: String| {
@@ -61,7 +61,7 @@ pub fn Layout() -> Element {
         let mut story_context = story_context.clone();
         let mut keyboard_state = keyboard_state.clone();
         let enabled_choices = keyboard_state.read().enabled_choices.clone();
-        
+
         move |choice: &Choice, on_choice_click: EventHandler<String>| {
             let goto = &choice.action.to;
             if enabled_choices.contains(&goto.as_ref().to_string()) {
@@ -71,7 +71,7 @@ pub fn Layout() -> Element {
             }
         }
     };
-    
+
     let handle_key_press = move |event: Event<KeyboardData>| {
         let mut state = keyboard_state.write();
         match event.data.key() {
@@ -105,7 +105,10 @@ pub fn Layout() -> Element {
             }
             Key::Enter => {
                 if state.selected_index >= 0 && state.selected_index < state.choices.len() as i32 {
-                    let goto_owned = state.choices[state.selected_index as usize].action.to.to_string();
+                    let goto_owned = state.choices[state.selected_index as usize]
+                        .action
+                        .to
+                        .to_string();
                     if state.enabled_choices.contains(&goto_owned) {
                         story_context.write().target_paragraph_id = Some(goto_owned.clone());
                         if let Some(on_choice_click) = &state.on_choice_click {

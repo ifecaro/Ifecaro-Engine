@@ -1,6 +1,6 @@
 use dioxus::prelude::*;
-use unic_langid::langid;
 use dioxus_i18n::prelude::*;
+use unic_langid::langid;
 
 #[derive(Clone)]
 pub struct LanguageState {
@@ -18,7 +18,7 @@ impl LanguageState {
 
     pub fn set_language(&mut self, lang: &str) {
         self.current_language = lang.to_string();
-        
+
         // Set i18n based on language code
         match lang {
             "zh-TW" => self.i18n.set_language(langid!("zh-TW")),
@@ -53,10 +53,10 @@ pub fn LanguageProvider(props: LanguageProviderProps) -> Element {
         state.set_language("zh-TW");
         state
     });
-    
+
     provide_context(state);
-    
+
     rsx! {
         {props.children}
     }
-} 
+}

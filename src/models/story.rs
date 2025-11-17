@@ -1,4 +1,4 @@
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 use smallvec::SmallVec;
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -51,7 +51,7 @@ impl<'de> serde::Deserialize<'de> for Action {
             Multiple(Vec<String>),
             Single(String),
         }
-        
+
         #[derive(Deserialize)]
         struct Helper {
             #[serde(rename = "type")]
@@ -62,7 +62,7 @@ impl<'de> serde::Deserialize<'de> for Action {
             value: Option<serde_json::Value>,
             to: ToField,
         }
-        
+
         let helper = Helper::deserialize(deserializer)?;
         let to: SmallVec<[String; 4]> = match helper.to {
             ToField::Multiple(vec) => SmallVec::from_vec(vec),
@@ -76,7 +76,7 @@ impl<'de> serde::Deserialize<'de> for Action {
                 }
             }
         };
-        
+
         Ok(Action {
             type_: helper.type_,
             key: helper.key,
@@ -84,4 +84,4 @@ impl<'de> serde::Deserialize<'de> for Action {
             to,
         })
     }
-} 
+}

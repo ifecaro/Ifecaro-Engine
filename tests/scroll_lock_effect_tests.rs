@@ -7,4 +7,4 @@ fn test_should_lock_page_scroll_basic() {
 
     // When overlay is hidden, we should not lock page scroll.
     assert!(!should_lock_page_scroll(false));
-} 
+}

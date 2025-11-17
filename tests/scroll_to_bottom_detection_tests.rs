@@ -19,4 +19,4 @@ fn is_scrolled_to_bottom_mobile() {
 
     // diff = 150px → should NOT be considered bottom.
     assert!(!is_scrolled_to_bottom(2000, 800, 1050, true));
-} 
+}

@@ -1,5 +1,5 @@
 pub mod chapter_selector;
-pub mod choice_effects_editor;
+pub mod choice_impacts_editor;
 pub mod dropdown;
 pub mod form;
 pub mod language_selector;

@@ -1,11 +1,10 @@
+use crate::{
+    components::paragraph_list::Paragraph as ParagraphListParagraph, models::impacts::Impact,
+};
 use dioxus::prelude::*;
+use gloo_timers::callback::Timeout;
 use serde_json::Value;
 use std::rc::Rc;
-use crate::{
-    components::paragraph_list::Paragraph as ParagraphListParagraph,
-    models::effects::Effect,
-};
-use gloo_timers::callback::Timeout;
 
 /// 單一選項的資料結構（對應原本 tuple）
 #[derive(Clone, PartialEq)]
@@ -20,7 +19,7 @@ pub struct Choice {
     pub time_limit: Option<u32>,
     pub timeout_to: Option<String>,
     pub timeout_target_chapter: String,
-    pub effects: Vec<Effect>,
+    pub impacts: Vec<Impact>,
 }
 
 impl Default for Choice {
@@ -36,7 +35,7 @@ impl Default for Choice {
             time_limit: None,
             timeout_to: None,
             timeout_target_chapter: String::new(),
-            effects: Vec::new(),
+            impacts: Vec::new(),
         }
     }
 }
@@ -56,7 +55,7 @@ impl Choice {
         Option<u32>,
         Option<String>,
         String,
-        Vec<Effect>,
+        Vec<Impact>,
     ) {
         (
             self.caption.clone(),
@@ -69,7 +68,7 @@ impl Choice {
             self.time_limit,
             self.timeout_to.clone(),
             self.timeout_target_chapter.clone(),
-            self.effects.clone(),
+            self.impacts.clone(),
         )
     }
 
@@ -82,13 +81,13 @@ impl Choice {
             Option<String>,
             Option<Value>,
             String,
-        bool,
-        Option<u32>,
-        Option<String>,
-        String,
-        Vec<Effect>,
-    ),
-) -> Self {
+            bool,
+            Option<u32>,
+            Option<String>,
+            String,
+            Vec<Impact>,
+        ),
+    ) -> Self {
         Self {
             caption: tup.0,
             goto: tup.1,
@@ -100,7 +99,7 @@ impl Choice {
             time_limit: tup.7,
             timeout_to: tup.8,
             timeout_target_chapter: tup.9,
-            effects: tup.10,
+            impacts: tup.10,
         }
     }
 }
@@ -134,7 +133,7 @@ pub enum Action {
     },
     SetEffects {
         idx: usize,
-        effects: Vec<Effect>,
+        impacts: Vec<Impact>,
     },
     ToggleActionType(usize),
     ToggleChapter(usize),
@@ -225,7 +224,8 @@ pub fn use_choices() -> (Signal<ChoicesState>, Rc<dyn Fn(Action)>) {
                         match field {
                             "caption" => choice.caption = value,
                             "goto" => {
-                                choice.goto = value.split(',').map(|s| s.trim().to_string()).collect();
+                                choice.goto =
+                                    value.split(',').map(|s| s.trim().to_string()).collect();
                             }
                             "action_type" => choice.action_type = value,
                             "action_key" => choice.action_key = Some(value),
@@ -239,19 +239,19 @@ pub fn use_choices() -> (Signal<ChoicesState>, Rc<dyn Fn(Action)>) {
                                 } else {
                                     choice.timeout_to = Some(value);
                                 }
-                            },
+                            }
                             "timeout_target_chapter" => choice.timeout_target_chapter = value,
                             _ => {}
                         }
                     }
                 }
-                                Action::SetEffects { idx, effects } => {
+                Action::SetEffects { idx, impacts } => {
                     if let Some(choice) = st.list.get_mut(idx) {
-                        choice.effects = effects;
+                        choice.impacts = impacts;
                     }
                 }
 
-Action::ToggleActionType(i) => {
+                Action::ToggleActionType(i) => {
                     if let Some(v) = st.action_type_open.get_mut(i) {
                         *v = !*v;
                     }
@@ -340,10 +340,11 @@ Action::ToggleActionType(i) => {
                 let mut sig2 = state_signal.clone();
                 Timeout::new(0, move || {
                     *sig2.write() = st;
-                }).forget();
+                })
+                .forget();
             }
         })
     };
 
     (state.clone(), dispatch)
-} 
+}

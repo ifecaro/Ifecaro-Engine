@@ -1,7 +1,7 @@
 #[cfg(not(target_arch = "wasm32"))]
 mod tests {
     use super::super::api::*;
-    use crate::contexts::paragraph_context::{Paragraph, Text, ParagraphChoice};
+    use crate::contexts::paragraph_context::{Paragraph, ParagraphChoice, Text};
 
     /// Helper function: Create test paragraph
     fn create_test_paragraph(id: &str, chapter_id: &str) -> Paragraph {
@@ -36,7 +36,7 @@ mod tests {
                     same_page: None,
                     time_limit: Some(30),
                     timeout_to: None,
-                    effects: None,
+                    impacts: None,
                 },
             ],
         }
@@ -60,8 +60,7 @@ mod tests {
         ];
 
         // Create mock client
-        let client = MockApiClient::new()
-            .with_paragraphs(test_paragraphs.clone());
+        let client = MockApiClient::new().with_paragraphs(test_paragraphs.clone());
 
         // Execute test
         let result = client.get_paragraphs().await;
@@ -83,7 +82,7 @@ mod tests {
         // Verify error
         assert!(result.is_err());
         match result.unwrap_err() {
-            ApiError::NetworkError(_) => {},
+            ApiError::NetworkError(_) => {}
             _ => panic!("Expected NetworkError"),
         }
     }
@@ -97,8 +96,7 @@ mod tests {
         ];
 
         // Create mock client
-        let client = MockApiClient::new()
-            .with_chapters(test_chapters.clone());
+        let client = MockApiClient::new().with_chapters(test_chapters.clone());
 
         // Execute test
         let result = client.get_chapters().await;
@@ -118,8 +116,7 @@ mod tests {
         ];
 
         // Test finding paragraph
-        let client = MockApiClient::new()
-            .with_paragraphs(test_paragraphs);
+        let client = MockApiClient::new().with_paragraphs(test_paragraphs);
 
         let result = client.get_paragraph_by_id("p1").await;
         assert!(result.is_ok());
@@ -129,19 +126,16 @@ mod tests {
     #[tokio::test]
     async fn test_get_paragraph_by_id_not_found() {
         // Prepare test data
-        let test_paragraphs = vec![
-            create_test_paragraph("p1", "c1"),
-        ];
+        let test_paragraphs = vec![create_test_paragraph("p1", "c1")];
 
         // Test paragraph not found
-        let client = MockApiClient::new()
-            .with_paragraphs(test_paragraphs);
+        let client = MockApiClient::new().with_paragraphs(test_paragraphs);
 
         let result = client.get_paragraph_by_id("p999").await;
         assert!(result.is_err());
         // Correct error type
         match result.unwrap_err() {
-            ApiError::NotFound => {},
+            ApiError::NotFound => {}
             _ => panic!("Expected NotFound error"),
         }
     }
@@ -149,7 +143,7 @@ mod tests {
     #[tokio::test]
     async fn test_complex_choice_serialization() {
         use serde_json::json;
-        
+
         let complex_choice = ParagraphChoice::Complex {
             to: vec!["target1".to_string(), "target2".to_string()],
             type_: "conditional".to_string(),
@@ -158,15 +152,24 @@ mod tests {
             same_page: Some(true),
             time_limit: Some(30),
             timeout_to: None,
-            effects: None,
+            impacts: None,
         };
 
         // Test complex option data structure
         let json_str = serde_json::to_string(&complex_choice).unwrap();
         let deserialized: ParagraphChoice = serde_json::from_str(&json_str).unwrap();
-        
+
         match deserialized {
-            ParagraphChoice::Complex { to, type_, key, value, same_page, time_limit, timeout_to, effects } => {
+            ParagraphChoice::Complex {
+                to,
+                type_,
+                key,
+                value,
+                same_page,
+                time_limit,
+                timeout_to,
+                impacts,
+            } => {
                 assert_eq!(to, vec!["target1", "target2"]);
                 assert_eq!(type_, "conditional");
                 assert_eq!(key, Some("player_level".to_string()));
@@ -174,8 +177,8 @@ mod tests {
                 assert_eq!(same_page, Some(true));
                 assert_eq!(time_limit, Some(30));
                 assert_eq!(timeout_to, None);
-                assert_eq!(effects, None);
-            },
+                assert_eq!(impacts, None);
+            }
             _ => panic!("Expected Complex variant"),
         }
 
@@ -209,7 +212,10 @@ mod tests {
                 Text {
                     lang: "zh-TW".to_string(),
                     paragraphs: "This is test paragraph 1".to_string(),
-                    choices: vec!["Continue Adventure".to_string(), "Return to Village".to_string()],
+                    choices: vec![
+                        "Continue Adventure".to_string(),
+                        "Return to Village".to_string(),
+                    ],
                 },
                 Text {
                     lang: "zh-CN".to_string(),
@@ -232,7 +238,7 @@ mod tests {
                     same_page: None,
                     time_limit: Some(30),
                     timeout_to: None,
-                    effects: None,
+                    impacts: None,
                 },
             ],
         };
@@ -243,4 +249,4 @@ mod tests {
         assert!(paragraph.texts.iter().any(|t| t.lang == "zh-CN"));
         assert!(paragraph.texts.iter().any(|t| t.lang == "en"));
     }
-} 
+}

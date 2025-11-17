@@ -18,4 +18,4 @@ pub fn use_story_merged_context() -> Signal<StoryMergedContext> {
 
 pub fn provide_story_merged_context() {
     provide_context(Signal::new(StoryMergedContext::new()));
-} 
+}

@@ -4,29 +4,26 @@ use console_error_panic_hook;
 use tracing_wasm;
 
 mod components;
+mod constants;
+mod contexts;
 mod enums;
+mod hooks;
 mod i18n;
 mod layout;
-mod pages;
-mod contexts;
-mod constants;
 mod models;
+mod pages;
 mod services;
-mod hooks;
 
-use dioxus::prelude::*;
 use crate::{
-    enums::route::Route,
-    contexts::{
-        language_context::LanguageProvider,
-        settings_context::SettingsContext,
-        chapter_context::ChapterProvider,
-        paragraph_context::ParagraphProvider,
-        story_context::StoryContext,
-        toast_context::ToastManager,
-    },
     components::toast::ToastContainer,
+    contexts::{
+        chapter_context::ChapterProvider, language_context::LanguageProvider,
+        paragraph_context::ParagraphProvider, settings_context::SettingsContext,
+        story_context::StoryContext, toast_context::ToastManager,
+    },
+    enums::route::Route,
 };
+use dioxus::prelude::*;
 
 fn main() {
     #[cfg(target_arch = "wasm32")]
@@ -68,4 +65,3 @@ fn StoryProvider(props: StoryProviderProps) -> Element {
         {props.children}
     }
 }
-

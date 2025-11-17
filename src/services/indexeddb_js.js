@@ -1,6 +1,6 @@
 const DB_NAME = 'ifecaro';
 const DB_VERSION = 6;
-const STORES = ['settings', 'choices', 'disabled_choices', 'random_choices', 'choice_effects', 'character_states'];
+const STORES = ['settings', 'choices', 'disabled_choices', 'random_choices', 'choice_impacts', 'character_states'];
 
 function openDB() {
     return new Promise((resolve, reject) => {
@@ -39,8 +39,8 @@ export function setSettingToIndexedDB(key, value) {
         if (!db.objectStoreNames.contains('random_choices')) {
             db.createObjectStore('random_choices');
         }
-        if (!db.objectStoreNames.contains('choice_effects')) {
-            db.createObjectStore('choice_effects');
+        if (!db.objectStoreNames.contains('choice_impacts')) {
+            db.createObjectStore('choice_impacts');
         }
         if (!db.objectStoreNames.contains('character_states')) {
             db.createObjectStore('character_states');
@@ -81,8 +81,8 @@ export function getSettingsFromIndexedDB(callback) {
         if (!db.objectStoreNames.contains('random_choices')) {
             db.createObjectStore('random_choices');
         }
-        if (!db.objectStoreNames.contains('choice_effects')) {
-            db.createObjectStore('choice_effects');
+        if (!db.objectStoreNames.contains('choice_impacts')) {
+            db.createObjectStore('choice_impacts');
         }
         if (!db.objectStoreNames.contains('character_states')) {
             db.createObjectStore('character_states');
@@ -259,18 +259,18 @@ export async function getDisabledChoicesFromIndexedDB(paragraphId) {
     });
 }
 
-// 儲存具有影響的選項效果（人格/關係）
-export async function setChoiceEffectsToIndexedDB(paragraphId, choiceIndex, effectsJson) {
+// 儲存具有影響的選項影響（人格/關係）
+export async function setChoiceImpactsToIndexedDB(paragraphId, choiceIndex, impactsJson) {
     const db = await openDB();
     return new Promise((resolve, reject) => {
-        const tx = db.transaction('choice_effects', 'readwrite');
-        const store = tx.objectStore('choice_effects');
+        const tx = db.transaction('choice_impacts', 'readwrite');
+        const store = tx.objectStore('choice_impacts');
         const key = `${paragraphId}:${choiceIndex}`;
-        const putReq = store.put(effectsJson, key);
+        const putReq = store.put(impactsJson, key);
 
         putReq.onsuccess = () => { };
         putReq.onerror = (e) => {
-            console.error("Put request error in setChoiceEffectsToIndexedDB: ", e.target.error);
+            console.error("Put request error in setChoiceImpactsToIndexedDB: ", e.target.error);
         };
 
         tx.oncomplete = function () {
@@ -278,19 +278,19 @@ export async function setChoiceEffectsToIndexedDB(paragraphId, choiceIndex, effe
             resolve();
         };
         tx.onerror = function (e) {
-            console.error("Transaction error in setChoiceEffectsToIndexedDB: ", e.target.error);
+            console.error("Transaction error in setChoiceImpactsToIndexedDB: ", e.target.error);
             db.close();
             reject(e.target.error);
         };
     });
 }
 
-// 取得指定段落選項效果
-export async function getChoiceEffectsFromIndexedDB(paragraphId, choiceIndex) {
+// 取得指定段落選項影響
+export async function getChoiceImpactsFromIndexedDB(paragraphId, choiceIndex) {
     const db = await openDB();
     return new Promise((resolve, reject) => {
-        const tx = db.transaction('choice_effects', 'readonly');
-        const store = tx.objectStore('choice_effects');
+        const tx = db.transaction('choice_impacts', 'readonly');
+        const store = tx.objectStore('choice_impacts');
         const key = `${paragraphId}:${choiceIndex}`;
         const getReq = store.get(key);
 
@@ -298,7 +298,7 @@ export async function getChoiceEffectsFromIndexedDB(paragraphId, choiceIndex) {
             resolve(getReq.result || null);
         };
         getReq.onerror = function (e) {
-            console.error("Get request error in getChoiceEffectsFromIndexedDB: ", e.target.error);
+            console.error("Get request error in getChoiceImpactsFromIndexedDB: ", e.target.error);
             reject(e.target.error);
         };
 
@@ -306,7 +306,7 @@ export async function getChoiceEffectsFromIndexedDB(paragraphId, choiceIndex) {
             db.close();
         };
         tx.onerror = function (e) {
-            console.error("Transaction error in getChoiceEffectsFromIndexedDB: ", e.target.error);
+            console.error("Transaction error in getChoiceImpactsFromIndexedDB: ", e.target.error);
             db.close();
             reject(e.target.error);
         };

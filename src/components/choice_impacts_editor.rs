@@ -1,4 +1,4 @@
-use crate::models::effects::{AttributeField, Effect, EffectList, NumericOp, RelationshipField};
+use crate::models::impacts::{AttributeField, Impact, ImpactList, NumericOp, RelationshipField};
 use dioxus::events::FormEvent;
 use dioxus::prelude::*;
 use dioxus_i18n::t;
@@ -76,28 +76,28 @@ fn numeric_op_options() -> Vec<(NumericOp, String)> {
     ]
 }
 
-fn notify_effects_changed(effects: &Signal<Vec<Effect>>, on_save: &EventHandler<Vec<Effect>>) {
-    on_save.call(effects.read().clone());
+fn notify_impacts_changed(impacts: &Signal<Vec<Impact>>, on_save: &EventHandler<Vec<Impact>>) {
+    on_save.call(impacts.read().clone());
 }
 
-fn effect_type(effect: &Effect) -> &'static str {
-    match effect {
-        Effect::CharacterAttribute { .. } => "character_attribute",
-        Effect::Relationship { .. } => "relationship",
-        Effect::Flag { .. } => "flag",
+fn impact_type(impact: &Impact) -> &'static str {
+    match impact {
+        Impact::CharacterAttribute { .. } => "character_attribute",
+        Impact::Relationship { .. } => "relationship",
+        Impact::Flag { .. } => "flag",
     }
 }
 
-fn update_effect_type(
-    effect: &Effect,
+fn update_impact_type(
+    impact: &Impact,
     to: &str,
     characters: &[CharacterOption],
     relations: &[RelationshipOption],
-) -> Effect {
+) -> Impact {
     match to {
         "relationship" => {
             let (from_id, to_id) = first_relationship(relations);
-            Effect::Relationship {
+            Impact::Relationship {
                 from_id,
                 to_id,
                 field: RelationshipField::Trust,
@@ -105,96 +105,96 @@ fn update_effect_type(
                 value: 0,
             }
         }
-        "flag" => Effect::Flag {
+        "flag" => Impact::Flag {
             character_id: first_character_id(characters),
             path: vec!["flag_name".to_string()],
             value: serde_json::Value::Bool(true),
         },
-        _ => Effect::default_character(first_character_id(characters)),
+        _ => Impact::default_character(first_character_id(characters)),
     }
 }
 
 #[component]
-pub fn ChoiceEffectsEditor(props: ChoiceEffectsEditorProps) -> Element {
-    let initial_effects = props
-        .initial_effects_json
+pub fn ChoiceImpactsEditor(props: ChoiceImpactsEditorProps) -> Element {
+    let initial_impacts = props
+        .initial_impacts_json
         .as_deref()
-        .and_then(|raw| EffectList::from_json(raw).ok())
+        .and_then(|raw| ImpactList::from_json(raw).ok())
         .unwrap_or_default();
 
-    let mut effects = use_signal(|| initial_effects.0);
+    let mut impacts = use_signal(|| initial_impacts.0);
 
     let on_add = {
         let characters = props.characters.clone();
-        let mut effects = effects.clone();
+        let mut impacts = impacts.clone();
         let on_save = props.on_save.clone();
         move |_| {
-            effects
+            impacts
                 .write()
-                .push(Effect::default_character(first_character_id(&characters)));
-            notify_effects_changed(&effects, &on_save);
+                .push(Impact::default_character(first_character_id(&characters)));
+            notify_impacts_changed(&impacts, &on_save);
         }
     };
 
     rsx! {
-        div { class: "choice-effects-editor space-y-4",
+        div { class: "choice-impacts-editor space-y-4",
             div { class: "flex items-center justify-between gap-3",
-                h3 { class: "text-lg font-semibold text-gray-900 dark:text-gray-100", {t!("choice_effects")} }
-                button { class: "inline-flex items-center px-3 py-2 text-sm font-medium text-white bg-green-600 hover:bg-green-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-1 dark:focus:ring-offset-gray-800", onclick: on_add, {t!("add_effect")} }
+                h3 { class: "text-lg font-semibold text-gray-900 dark:text-gray-100", {t!("choice_impacts")} }
+                button { class: "inline-flex items-center px-3 py-2 text-sm font-medium text-white bg-green-600 hover:bg-green-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-1 dark:focus:ring-offset-gray-800", onclick: on_add, {t!("add_impact")} }
             }
             div { class: "space-y-3",
-                for (index, effect) in effects.read().iter().cloned().enumerate() {
-                    { render_effect_row(index, effect, effects.clone(), &props.characters, &props.relationships, props.on_save.clone()) }
+                for (index, impact) in impacts.read().iter().cloned().enumerate() {
+                    { render_impact_row(index, impact, impacts.clone(), &props.characters, &props.relationships, props.on_save.clone()) }
                 }
             }
         }
     }
 }
 
-fn render_effect_row(
+fn render_impact_row(
     index: usize,
-    effect: Effect,
-    mut effects: Signal<Vec<Effect>>,
+    impact: Impact,
+    mut impacts: Signal<Vec<Impact>>,
     characters: &[CharacterOption],
     relationships: &[RelationshipOption],
-    on_save: EventHandler<Vec<Effect>>,
+    on_save: EventHandler<Vec<Impact>>,
 ) -> Element {
-    let effect_type_value = effect_type(&effect).to_string();
+    let impact_type_value = impact_type(&impact).to_string();
     let label_class = "block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1";
     let input_class = "block w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white";
     let row_class = "space-y-4 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm";
     let column_class = "space-y-3";
     let grid_class = "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4";
-    let effect_title = t!("effect_title", index: (index + 1).to_string());
+    let impact_title = t!("impact_title", index: (index + 1).to_string());
     let characters_vec = characters.to_vec();
     let relationships_vec = relationships.to_vec();
 
     let on_type_change = {
         let characters = characters_vec.clone();
         let relationships = relationships_vec.clone();
-        let mut effects = effects.clone();
+        let mut impacts = impacts.clone();
         let on_save = on_save.clone();
         move |evt: FormEvent| {
             {
-                let mut list = effects.write();
+                let mut list = impacts.write();
                 list[index] =
-                    update_effect_type(&list[index], &evt.value(), &characters, &relationships);
+                    update_impact_type(&list[index], &evt.value(), &characters, &relationships);
             }
-            notify_effects_changed(&effects, &on_save);
+            notify_impacts_changed(&impacts, &on_save);
         }
     };
 
     let on_remove = {
-        let mut effects = effects.clone();
+        let mut impacts = impacts.clone();
         let on_save = on_save.clone();
         move |_| {
-            effects.write().remove(index);
-            notify_effects_changed(&effects, &on_save);
+            impacts.write().remove(index);
+            notify_impacts_changed(&impacts, &on_save);
         }
     };
 
-    match effect {
-        Effect::CharacterAttribute {
+    match impact {
+        Impact::CharacterAttribute {
             character_id,
             field,
             op,
@@ -215,17 +215,17 @@ fn render_effect_row(
             rsx! {
                 div { class: row_class,
                     div { class: "flex items-center justify-between",
-                        h4 { class: "text-sm font-semibold text-gray-800 dark:text-gray-100", "{effect_title}" }
-                        button { class: "inline-flex items-center text-sm font-medium text-red-500 hover:text-red-400", onclick: on_remove.clone(), {t!("remove_effect") } }
+                        h4 { class: "text-sm font-semibold text-gray-800 dark:text-gray-100", "{impact_title}" }
+                        button { class: "inline-flex items-center text-sm font-medium text-red-500 hover:text-red-400", onclick: on_remove.clone(), {t!("remove_impact") } }
                     }
                     div { class: grid_class,
                         div { class: column_class,
                             div { class: "space-y-2",
-                                label { class: label_class, {t!("effect_type")} }
-                                select { class: input_class, value: effect_type_value.clone(), onchange: on_type_change,
-                                    option { value: "character_attribute", {t!("effect_type_attribute")} }
-                                    option { value: "relationship", {t!("effect_type_relationship")} }
-                                    option { value: "flag", {t!("effect_type_flag")} }
+                                label { class: label_class, {t!("impact_type")} }
+                                select { class: input_class, value: impact_type_value.clone(), onchange: on_type_change,
+                                    option { value: "character_attribute", {t!("impact_type_attribute")} }
+                                    option { value: "relationship", {t!("impact_type_relationship")} }
+                                    option { value: "flag", {t!("impact_type_flag")} }
                                 }
                             }
                             div { class: "space-y-2",
@@ -234,13 +234,13 @@ fn render_effect_row(
                                     oninput: {
                                         let on_save = on_save.clone();
                                         move |evt: FormEvent| {
-                                            effects.write()[index] = Effect::CharacterAttribute {
+                                            impacts.write()[index] = Impact::CharacterAttribute {
                                                 character_id: evt.value(),
                                                 field: field_for_character.clone(),
                                                 op: op_for_character.clone(),
                                                 value,
                                             };
-                                            notify_effects_changed(&effects, &on_save);
+                                            notify_impacts_changed(&impacts, &on_save);
                                         }
                                     },
                                     for character in characters.iter() {
@@ -257,13 +257,13 @@ fn render_effect_row(
                                         let on_save = on_save.clone();
                                         move |evt: FormEvent| {
                                             if let Some((new_field, _)) = attribute_field_options().into_iter().find(|(field_option, _)| format!("{:?}", field_option) == evt.value()) {
-                                                effects.write()[index] = Effect::CharacterAttribute {
+                                                impacts.write()[index] = Impact::CharacterAttribute {
                                                     character_id: character_id_for_field.clone(),
                                                     field: new_field,
                                                     op: op_for_field.clone(),
                                                     value,
                                                 };
-                                                notify_effects_changed(&effects, &on_save);
+                                                notify_impacts_changed(&impacts, &on_save);
                                             }
                                         }
                                     },
@@ -279,13 +279,13 @@ fn render_effect_row(
                                         let on_save = on_save.clone();
                                         move |evt: FormEvent| {
                                             if let Some((new_op, _)) = numeric_op_options().into_iter().find(|(op_option, _)| format!("{:?}", op_option) == evt.value()) {
-                                                effects.write()[index] = Effect::CharacterAttribute {
+                                                impacts.write()[index] = Impact::CharacterAttribute {
                                                     character_id: character_id_for_op.clone(),
                                                     field: field_for_field_select.clone(),
                                                     op: new_op,
                                                     value,
                                                 };
-                                                notify_effects_changed(&effects, &on_save);
+                                                notify_impacts_changed(&impacts, &on_save);
                                             }
                                         }
                                     },
@@ -303,13 +303,13 @@ fn render_effect_row(
                                         let on_save = on_save.clone();
                                         move |evt: FormEvent| {
                                             if let Ok(parsed) = evt.value().parse::<i32>() {
-                                                effects.write()[index] = Effect::CharacterAttribute {
+                                                impacts.write()[index] = Impact::CharacterAttribute {
                                                     character_id: character_id_for_value.clone(),
                                                     field: field_for_value.clone(),
                                                     op: op_for_value.clone(),
                                                     value: parsed,
                                                 };
-                                                notify_effects_changed(&effects, &on_save);
+                                                notify_impacts_changed(&impacts, &on_save);
                                             }
                                         }
                                     }
@@ -320,7 +320,7 @@ fn render_effect_row(
                 }
             }
         }
-        Effect::Relationship {
+        Impact::Relationship {
             from_id,
             to_id,
             field,
@@ -351,17 +351,17 @@ fn render_effect_row(
             rsx! {
                 div { class: row_class,
                     div { class: "flex items-center justify-between",
-                        h4 { class: "text-sm font-semibold text-gray-800 dark:text-gray-100", "{effect_title}" }
-                        button { class: "inline-flex items-center text-sm font-medium text-red-500 hover:text-red-400", onclick: on_remove.clone(), {t!("remove_effect") } }
+                        h4 { class: "text-sm font-semibold text-gray-800 dark:text-gray-100", "{impact_title}" }
+                        button { class: "inline-flex items-center text-sm font-medium text-red-500 hover:text-red-400", onclick: on_remove.clone(), {t!("remove_impact") } }
                     }
                     div { class: grid_class,
                         div { class: column_class,
                             div { class: "space-y-2",
-                                label { class: label_class, {t!("effect_type")} }
-                                select { class: input_class, value: effect_type_value.clone(), onchange: on_type_change,
-                                    option { value: "character_attribute", {t!("effect_type_attribute")} }
-                                    option { value: "relationship", {t!("effect_type_relationship")} }
-                                    option { value: "flag", {t!("effect_type_flag")} }
+                                label { class: label_class, {t!("impact_type")} }
+                                select { class: input_class, value: impact_type_value.clone(), onchange: on_type_change,
+                                    option { value: "character_attribute", {t!("impact_type_attribute")} }
+                                    option { value: "relationship", {t!("impact_type_relationship")} }
+                                    option { value: "flag", {t!("impact_type_flag")} }
                                 }
                             }
                             div { class: "space-y-2",
@@ -370,14 +370,14 @@ fn render_effect_row(
                                     oninput: {
                                         let on_save = on_save.clone();
                                         move |evt: FormEvent| {
-                                            effects.write()[index] = Effect::Relationship {
+                                            impacts.write()[index] = Impact::Relationship {
                                                 from_id: evt.value(),
                                                 to_id: to_id_character_select.clone(),
                                                 field: field_for_from.clone(),
                                                 op: op_for_from.clone(),
                                                 value,
                                             };
-                                            notify_effects_changed(&effects, &on_save);
+                                            notify_impacts_changed(&impacts, &on_save);
                                         }
                                     },
                                     for character in characters.iter() {
@@ -393,14 +393,14 @@ fn render_effect_row(
                                     oninput: {
                                         let on_save = on_save.clone();
                                         move |evt: FormEvent| {
-                                            effects.write()[index] = Effect::Relationship {
+                                            impacts.write()[index] = Impact::Relationship {
                                                 from_id: from_id_for_to.clone(),
                                                 to_id: evt.value(),
                                                 field: field_for_to.clone(),
                                                 op: op_for_to.clone(),
                                                 value,
                                             };
-                                            notify_effects_changed(&effects, &on_save);
+                                            notify_impacts_changed(&impacts, &on_save);
                                         }
                                     },
                                     for character in characters.iter() {
@@ -415,14 +415,14 @@ fn render_effect_row(
                                         let on_save = on_save.clone();
                                         move |evt: FormEvent| {
                                             if let Some((new_field, _)) = relationship_field_options().into_iter().find(|(field_option, _)| format!("{:?}", field_option) == evt.value()) {
-                                                effects.write()[index] = Effect::Relationship {
+                                                impacts.write()[index] = Impact::Relationship {
                                                     from_id: from_id_for_field.clone(),
                                                     to_id: to_id_for_field.clone(),
                                                     field: new_field,
                                                     op: op_for_field.clone(),
                                                     value,
                                                 };
-                                                notify_effects_changed(&effects, &on_save);
+                                                notify_impacts_changed(&impacts, &on_save);
                                             }
                                         }
                                     },
@@ -440,14 +440,14 @@ fn render_effect_row(
                                         let on_save = on_save.clone();
                                         move |evt: FormEvent| {
                                             if let Some((new_op, _)) = numeric_op_options().into_iter().find(|(op_option, _)| format!("{:?}", op_option) == evt.value()) {
-                                                effects.write()[index] = Effect::Relationship {
+                                                impacts.write()[index] = Impact::Relationship {
                                                     from_id: from_id_for_op.clone(),
                                                     to_id: to_id_for_op.clone(),
                                                     field: field_for_op_select.clone(),
                                                     op: new_op,
                                                     value,
                                                 };
-                                                notify_effects_changed(&effects, &on_save);
+                                                notify_impacts_changed(&impacts, &on_save);
                                             }
                                         }
                                     },
@@ -463,14 +463,14 @@ fn render_effect_row(
                                         let on_save = on_save.clone();
                                         move |evt: FormEvent| {
                                             if let Ok(parsed) = evt.value().parse::<i32>() {
-                                                effects.write()[index] = Effect::Relationship {
+                                                impacts.write()[index] = Impact::Relationship {
                                                     from_id: from_id_for_value.clone(),
                                                     to_id: to_id_for_value.clone(),
                                                     field: field_for_value.clone(),
                                                     op: op_for_value.clone(),
                                                     value: parsed,
                                                 };
-                                                notify_effects_changed(&effects, &on_save);
+                                                notify_impacts_changed(&impacts, &on_save);
                                             }
                                         }
                                     }
@@ -481,7 +481,7 @@ fn render_effect_row(
                 }
             }
         }
-        Effect::Flag {
+        Impact::Flag {
             character_id,
             path,
             value,
@@ -498,17 +498,17 @@ fn render_effect_row(
             rsx! {
                 div { class: row_class,
                     div { class: "flex items-center justify-between",
-                        h4 { class: "text-sm font-semibold text-gray-800 dark:text-gray-100", "{effect_title}" }
-                        button { class: "inline-flex items-center text-sm font-medium text-red-500 hover:text-red-400", onclick: on_remove, {t!("remove_effect") } }
+                        h4 { class: "text-sm font-semibold text-gray-800 dark:text-gray-100", "{impact_title}" }
+                        button { class: "inline-flex items-center text-sm font-medium text-red-500 hover:text-red-400", onclick: on_remove, {t!("remove_impact") } }
                     }
                     div { class: grid_class,
                         div { class: column_class,
                             div { class: "space-y-2",
-                                label { class: label_class, {t!("effect_type")} }
-                                select { class: input_class, value: effect_type_value, onchange: on_type_change,
-                                    option { value: "character_attribute", {t!("effect_type_attribute")} }
-                                    option { value: "relationship", {t!("effect_type_relationship")} }
-                                    option { value: "flag", {t!("effect_type_flag")} }
+                                label { class: label_class, {t!("impact_type")} }
+                                select { class: input_class, value: impact_type_value, onchange: on_type_change,
+                                    option { value: "character_attribute", {t!("impact_type_attribute")} }
+                                    option { value: "relationship", {t!("impact_type_relationship")} }
+                                    option { value: "flag", {t!("impact_type_flag")} }
                                 }
                             }
                             div { class: "space-y-2",
@@ -517,12 +517,12 @@ fn render_effect_row(
                                     oninput: {
                                         let on_save = on_save.clone();
                                           move |evt: FormEvent| {
-                                            effects.write()[index] = Effect::Flag {
+                                            impacts.write()[index] = Impact::Flag {
                                                 character_id: evt.value(),
                                                 path: path_for_character.clone(),
                                                 value: value_for_character.clone(),
                                             };
-                                            notify_effects_changed(&effects, &on_save);
+                                            notify_impacts_changed(&impacts, &on_save);
                                         }
                                     },
                                     for character in characters.iter() {
@@ -544,12 +544,12 @@ fn render_effect_row(
                                                 .map(|s| s.trim().to_string())
                                                 .filter(|s| !s.is_empty())
                                                 .collect::<Vec<_>>();
-                                            effects.write()[index] = Effect::Flag {
+                                            impacts.write()[index] = Impact::Flag {
                                                 character_id: character_id_for_path.clone(),
                                                 path: segments,
                                                 value: value_for_input.clone(),
                                             };
-                                            notify_effects_changed(&effects, &on_save);
+                                            notify_impacts_changed(&impacts, &on_save);
                                         }
                                     }
                                 }
@@ -564,12 +564,12 @@ fn render_effect_row(
                                             let on_save = on_save.clone();
                                               move |evt: FormEvent| {
                                                 let parsed = evt.value().parse::<bool>().unwrap_or(false);
-                                                effects.write()[index] = Effect::Flag {
+                                                impacts.write()[index] = Impact::Flag {
                                                     character_id: character_id_for_checkbox.clone(),
                                                     path: path_for_checkbox.clone(),
                                                     value: serde_json::Value::Bool(parsed),
                                                 };
-                                                notify_effects_changed(&effects, &on_save);
+                                                notify_impacts_changed(&impacts, &on_save);
                                             }
                                         }
                                     }
@@ -584,10 +584,10 @@ fn render_effect_row(
 }
 
 #[derive(Props, Clone, PartialEq)]
-pub struct ChoiceEffectsEditorProps {
+pub struct ChoiceImpactsEditorProps {
     pub choice_id: String,
-    pub initial_effects_json: Option<String>,
+    pub initial_impacts_json: Option<String>,
     pub characters: Vec<CharacterOption>,
     pub relationships: Vec<RelationshipOption>,
-    pub on_save: EventHandler<Vec<Effect>>,
+    pub on_save: EventHandler<Vec<Impact>>,
 }

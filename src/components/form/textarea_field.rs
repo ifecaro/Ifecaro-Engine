@@ -1,5 +1,5 @@
+use dioxus::events::{FocusEvent, FormEvent};
 use dioxus::prelude::*;
-use dioxus::events::{FormEvent, FocusEvent};
 use dioxus_i18n::t;
 
 #[component]
@@ -23,12 +23,12 @@ pub fn TextareaField(
     } else {
         rows
     };
-    
+
     rsx! {
-        div { 
+        div {
             class: "mb-6",
             {(!label.is_empty()).then(|| rsx!(
-                label { 
+                label {
                     class: "block text-gray-700 dark:text-gray-300 text-sm font-medium mb-2",
                     span { "{label}" }
                     {required.then(|| rsx!(
@@ -39,12 +39,12 @@ pub fn TextareaField(
             textarea {
                 class: {
                     let mut base_classes = "shadow appearance-none border rounded-lg w-full py-2.5 px-4 text-sm text-gray-700 dark:text-gray-300 dark:bg-gray-700 dark:border-gray-600 leading-tight focus:outline-none focus:shadow-outline dark:focus:border-gray-500".to_string();
-                    
+
                     if auto_resize {
                         // Remove overflow-hidden, only keep resize-none
                         base_classes.push_str(" resize-none");
                     }
-                    
+
                     if has_error {
                         format!("{} border-red-500", base_classes)
                     } else {
@@ -59,11 +59,11 @@ pub fn TextareaField(
                 oninput: move |evt| on_input.call(evt)
             }
             {has_error.then(|| rsx!(
-                div { 
+                div {
                     class: "text-red-500 text-sm mt-1",
                     "{t!(\"please_fill_in_this_field\")}"
                 }
             ))}
         }
     }
-} 
+}

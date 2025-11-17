@@ -1,6 +1,6 @@
+use crate::components::toast::{Toast, ToastType};
 use dioxus::prelude::*;
 use std::collections::VecDeque;
-use crate::components::toast::{Toast, ToastType};
 
 #[derive(Clone, Copy)]
 pub struct ToastManager {
@@ -26,4 +26,4 @@ impl ToastManager {
 
 pub fn use_toast() -> Signal<ToastManager> {
     use_context::<Signal<ToastManager>>()
-} 
+}

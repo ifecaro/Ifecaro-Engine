@@ -1,14 +1,14 @@
 use dioxus::prelude::*;
-use dioxus_ssr::render;
 use dioxus_core::NoOpMutations;
-use ifecaro::pages::dashboard::{DashboardProps};
+use dioxus_ssr::render;
+use ifecaro::pages::dashboard::DashboardProps;
 
 /// Simplified test Dashboard component that mimics the basic structure
 #[component]
 fn TestDashboard(props: DashboardProps) -> Element {
     let _ = props; // Suppress unused variable warning
     rsx! {
-        div { 
+        div {
             class: "min-h-screen bg-gray-50 dark:bg-gray-900",
             div {
                 class: "fixed bottom-4 right-4 z-50",
@@ -16,7 +16,7 @@ fn TestDashboard(props: DashboardProps) -> Element {
             }
             div {
                 class: "w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 lg:py-8",
-                div { 
+                div {
                     class: "bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700",
                     div {
                         class: "p-4 sm:p-6 lg:p-8",
@@ -61,14 +61,23 @@ mod dashboard_ui_rendering_tests {
         let props = DashboardProps {
             lang: "zh-TW".to_string(),
         };
-        
+
         let html = render_dashboard_ui(props);
-        
+
         // Check basic dashboard structure
-        assert!(html.contains("min-h-screen"), "Should have min-height screen class");
+        assert!(
+            html.contains("min-h-screen"),
+            "Should have min-height screen class"
+        );
         assert!(html.contains("bg-gray-50"), "Should have light background");
-        assert!(html.contains("dark:bg-gray-900"), "Should have dark mode background");
-        assert!(html.contains("max-w-7xl"), "Should have max-width container");
+        assert!(
+            html.contains("dark:bg-gray-900"),
+            "Should have dark mode background"
+        );
+        assert!(
+            html.contains("max-w-7xl"),
+            "Should have max-width container"
+        );
         assert!(html.contains("mx-auto"), "Should have centered layout");
     }
 
@@ -77,12 +86,18 @@ mod dashboard_ui_rendering_tests {
         let props = DashboardProps {
             lang: "zh-TW".to_string(),
         };
-        
+
         let html = render_dashboard_ui(props);
-        
+
         // Check form structure
-        assert!(html.contains("bg-white"), "Should have white form background");
-        assert!(html.contains("dark:bg-gray-800"), "Should have dark form background");
+        assert!(
+            html.contains("bg-white"),
+            "Should have white form background"
+        );
+        assert!(
+            html.contains("dark:bg-gray-800"),
+            "Should have dark form background"
+        );
         assert!(html.contains("rounded-lg"), "Should have rounded form");
         assert!(html.contains("shadow-sm"), "Should have form shadow");
         assert!(html.contains("border"), "Should have form border");
@@ -93,13 +108,18 @@ mod dashboard_ui_rendering_tests {
         let props = DashboardProps {
             lang: "zh-TW".to_string(),
         };
-        
+
         let html = render_dashboard_ui(props);
-        
+
         // Check language selector presence (simplified mock)
-        assert!(html.contains("Language Selector"), 
-                "Should contain language selector mock");
-        assert!(html.contains("grid"), "Should have grid layout for selectors");
+        assert!(
+            html.contains("Language Selector"),
+            "Should contain language selector mock"
+        );
+        assert!(
+            html.contains("grid"),
+            "Should have grid layout for selectors"
+        );
         assert!(html.contains("gap-4"), "Should have proper spacing");
     }
 
@@ -108,13 +128,18 @@ mod dashboard_ui_rendering_tests {
         let props = DashboardProps {
             lang: "zh-TW".to_string(),
         };
-        
+
         let html = render_dashboard_ui(props);
-        
+
         // Check chapter selector presence (simplified mock)
-        assert!(html.contains("Chapter Selector"), 
-                "Should contain chapter selector mock");
-        assert!(html.contains("lg:grid-cols-2"), "Should have responsive grid columns");
+        assert!(
+            html.contains("Chapter Selector"),
+            "Should contain chapter selector mock"
+        );
+        assert!(
+            html.contains("lg:grid-cols-2"),
+            "Should have responsive grid columns"
+        );
     }
 
     #[test]
@@ -122,15 +147,18 @@ mod dashboard_ui_rendering_tests {
         let props = DashboardProps {
             lang: "zh-TW".to_string(),
         };
-        
+
         let html = render_dashboard_ui(props);
-        
+
         // Check responsive design classes
         assert!(html.contains("flex-col"), "Should have mobile flex column");
         assert!(html.contains("lg:flex-row"), "Should have desktop flex row");
         assert!(html.contains("sm:px-6"), "Should have responsive padding");
         assert!(html.contains("lg:px-8"), "Should have large screen padding");
-        assert!(html.contains("sm:py-6"), "Should have responsive vertical padding");
+        assert!(
+            html.contains("sm:py-6"),
+            "Should have responsive vertical padding"
+        );
     }
 
     #[test]
@@ -138,11 +166,14 @@ mod dashboard_ui_rendering_tests {
         let props = DashboardProps {
             lang: "zh-TW".to_string(),
         };
-        
+
         let html = render_dashboard_ui(props);
-        
+
         // Check toast notification area
-        assert!(html.contains("fixed"), "Should have fixed positioning for toast");
+        assert!(
+            html.contains("fixed"),
+            "Should have fixed positioning for toast"
+        );
         assert!(html.contains("bottom-4"), "Should position toast at bottom");
         assert!(html.contains("right-4"), "Should position toast at right");
         assert!(html.contains("z-50"), "Should have high z-index for toast");
@@ -158,9 +189,9 @@ mod dashboard_ui_language_tests {
         let props = DashboardProps {
             lang: "zh-TW".to_string(),
         };
-        
+
         let html = render_dashboard_ui(props);
-        
+
         // Check Chinese language content is present
         assert!(html.len() > 0, "Should render content for Chinese language");
     }
@@ -170,9 +201,9 @@ mod dashboard_ui_language_tests {
         let props = DashboardProps {
             lang: "en-US".to_string(),
         };
-        
+
         let html = render_dashboard_ui(props);
-        
+
         // Check English language content is present
         assert!(html.len() > 0, "Should render content for English language");
     }
@@ -184,13 +215,13 @@ mod dashboard_ui_language_tests {
             lang: "zh-TW".to_string(),
         };
         let zh_html = render_dashboard_ui(zh_props);
-        
+
         // Test English version
         let en_props = DashboardProps {
             lang: "en-US".to_string(),
         };
         let en_html = render_dashboard_ui(en_props);
-        
+
         // HTML should be different for different languages
         assert!(zh_html.len() > 0, "Chinese version should render");
         assert!(en_html.len() > 0, "English version should render");
@@ -207,9 +238,9 @@ mod dashboard_ui_state_tests {
         let props = DashboardProps {
             lang: "zh-TW".to_string(),
         };
-        
+
         let html = render_dashboard_ui(props);
-        
+
         // Check for responsive grid layout that changes in edit mode
         // In edit mode: lg:grid-cols-3, in normal mode: lg:grid-cols-2
         assert!(
@@ -223,9 +254,9 @@ mod dashboard_ui_state_tests {
         let props = DashboardProps {
             lang: "zh-TW".to_string(),
         };
-        
+
         let html = render_dashboard_ui(props);
-        
+
         // Check form areas are present
         assert!(html.contains("w-full"), "Should have full-width components");
         assert!(html.contains("gap-4"), "Should have proper spacing");
@@ -237,11 +268,14 @@ mod dashboard_ui_state_tests {
         let props = DashboardProps {
             lang: "zh-TW".to_string(),
         };
-        
+
         let html = render_dashboard_ui(props);
-        
+
         // Check selector grid layout
-        assert!(html.contains("grid-cols-1"), "Should have single column on mobile");
+        assert!(
+            html.contains("grid-cols-1"),
+            "Should have single column on mobile"
+        );
         assert!(html.contains("flex-1"), "Should have flexible layout");
     }
 }
@@ -255,9 +289,9 @@ mod dashboard_ui_accessibility_tests {
         let props = DashboardProps {
             lang: "zh-TW".to_string(),
         };
-        
+
         let html = render_dashboard_ui(props);
-        
+
         // Check semantic HTML structure
         assert!(html.contains("<div"), "Should use div elements for layout");
         assert!(html.len() > 100, "Should generate substantial HTML content");
@@ -268,14 +302,19 @@ mod dashboard_ui_accessibility_tests {
         let props = DashboardProps {
             lang: "zh-TW".to_string(),
         };
-        
+
         let html = render_dashboard_ui(props);
-        
+
         // Check color contrast classes
         assert!(html.contains("dark:"), "Should have dark mode support");
-        assert!(html.contains("border-gray"), "Should use accessible border colors");
-        assert!(html.contains("text-white") || html.contains("bg-white"), 
-                "Should have high contrast elements");
+        assert!(
+            html.contains("border-gray"),
+            "Should use accessible border colors"
+        );
+        assert!(
+            html.contains("text-white") || html.contains("bg-white"),
+            "Should have high contrast elements"
+        );
     }
 
     #[test]
@@ -283,12 +322,18 @@ mod dashboard_ui_accessibility_tests {
         let props = DashboardProps {
             lang: "zh-TW".to_string(),
         };
-        
+
         let html = render_dashboard_ui(props);
-        
+
         // Check responsive design for accessibility
-        assert!(html.contains("sm:"), "Should have small screen responsive classes");
-        assert!(html.contains("lg:"), "Should have large screen responsive classes");
+        assert!(
+            html.contains("sm:"),
+            "Should have small screen responsive classes"
+        );
+        assert!(
+            html.contains("lg:"),
+            "Should have large screen responsive classes"
+        );
         assert!(html.contains("px-4"), "Should have base padding");
     }
 }
@@ -302,11 +347,14 @@ mod dashboard_ui_error_state_tests {
         let props = DashboardProps {
             lang: "zh-TW".to_string(),
         };
-        
+
         let html = render_dashboard_ui(props);
-        
+
         // Check toast area structure exists (simplified)
-        assert!(html.contains("fixed"), "Should have fixed positioning structure");
+        assert!(
+            html.contains("fixed"),
+            "Should have fixed positioning structure"
+        );
         assert!(html.contains("bottom-4"), "Should have bottom positioning");
         assert!(html.contains("right-4"), "Should have right positioning");
     }
@@ -316,11 +364,14 @@ mod dashboard_ui_error_state_tests {
         let props = DashboardProps {
             lang: "zh-TW".to_string(),
         };
-        
+
         let html = render_dashboard_ui(props);
-        
+
         // Check toast area structure exists (simplified)
-        assert!(html.contains("fixed"), "Should have fixed positioning structure");
+        assert!(
+            html.contains("fixed"),
+            "Should have fixed positioning structure"
+        );
         assert!(html.contains("z-50"), "Should have high z-index structure");
     }
 
@@ -329,9 +380,9 @@ mod dashboard_ui_error_state_tests {
         let props = DashboardProps {
             lang: "zh-TW".to_string(),
         };
-        
+
         let html = render_dashboard_ui(props);
-        
+
         // Check validation-related structure
         assert!(html.len() > 0, "Should render validation structure");
     }
@@ -347,22 +398,27 @@ mod dashboard_ui_performance_tests {
         let props = DashboardProps {
             lang: "zh-TW".to_string(),
         };
-        
+
         let start = Instant::now();
         let html = render_dashboard_ui(props);
         let duration = start.elapsed();
-        
+
         // Performance assertions
-        assert!(duration.as_millis() < 1000, 
-                "Dashboard rendering should complete within 1 second: {:?}", duration);
-        assert!(html.len() > 500, 
-                "Dashboard should generate substantial HTML content");
+        assert!(
+            duration.as_millis() < 1000,
+            "Dashboard rendering should complete within 1 second: {:?}",
+            duration
+        );
+        assert!(
+            html.len() > 500,
+            "Dashboard should generate substantial HTML content"
+        );
     }
 
     #[test]
     fn test_dashboard_multiple_renders() {
         let languages = vec!["zh-TW", "en-US", "ja-JP"];
-        
+
         let start = Instant::now();
         for lang in languages {
             let props = DashboardProps {
@@ -372,9 +428,12 @@ mod dashboard_ui_performance_tests {
             assert!(html.len() > 0, "Should render for language: {}", lang);
         }
         let duration = start.elapsed();
-        
-        assert!(duration.as_millis() < 3000, 
-                "Multiple Dashboard renders should complete within 3 seconds: {:?}", duration);
+
+        assert!(
+            duration.as_millis() < 3000,
+            "Multiple Dashboard renders should complete within 3 seconds: {:?}",
+            duration
+        );
     }
 }
 
@@ -387,9 +446,9 @@ mod dashboard_ui_edge_cases_tests {
         let props = DashboardProps {
             lang: "".to_string(),
         };
-        
+
         let html = render_dashboard_ui(props);
-        
+
         // Should handle empty language gracefully
         assert!(html.len() > 0, "Should render even with empty language");
     }
@@ -399,9 +458,9 @@ mod dashboard_ui_edge_cases_tests {
         let props = DashboardProps {
             lang: "invalid-lang".to_string(),
         };
-        
+
         let html = render_dashboard_ui(props);
-        
+
         // Should handle invalid language gracefully
         assert!(html.len() > 0, "Should render even with invalid language");
     }
@@ -411,11 +470,14 @@ mod dashboard_ui_edge_cases_tests {
         let props = DashboardProps {
             lang: "a".repeat(1000),
         };
-        
+
         let html = render_dashboard_ui(props);
-        
+
         // Should handle very long language string gracefully
-        assert!(html.len() > 0, "Should render even with very long language string");
+        assert!(
+            html.len() > 0,
+            "Should render even with very long language string"
+        );
     }
 
     #[test]
@@ -423,10 +485,13 @@ mod dashboard_ui_edge_cases_tests {
         let props = DashboardProps {
             lang: "zh-TW-#$%@!".to_string(),
         };
-        
+
         let html = render_dashboard_ui(props);
-        
+
         // Should handle special characters in language gracefully
-        assert!(html.len() > 0, "Should render even with special characters in language");
+        assert!(
+            html.len() > 0,
+            "Should render even with special characters in language"
+        );
     }
-} 
+}

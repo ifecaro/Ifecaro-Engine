@@ -1,4 +1,4 @@
-use ifecaro::pages::story::{Paragraph, Text, paragraph_has_translation};
+use ifecaro::pages::story::{paragraph_has_translation, Paragraph, Text};
 
 #[test]
 fn test_paragraph_has_translation_exists() {
@@ -42,4 +42,4 @@ fn test_paragraph_has_translation_missing() {
 
     let paragraphs = vec![paragraph];
     assert!(!paragraph_has_translation(&paragraphs, "p2", "zh-TW"));
-} 
+}

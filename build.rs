@@ -6,14 +6,14 @@ fn main() {
         println!("cargo:warning=Tailwind CSS compilation skipped (SKIP_TAILWIND set)");
         return;
     }
-    
+
     // Tell Cargo to re-run build script only when CSS-related files change
     println!("cargo:rerun-if-changed=src/input.css");
     println!("cargo:rerun-if-changed=tailwind.config.js");
     // Only watch specific directories that might contain Tailwind classes
     println!("cargo:rerun-if-changed=src/components/");
     println!("cargo:rerun-if-changed=src/pages/");
-    
+
     dotenv::dotenv().ok();
 
     // Check if tailwind.css already exists and is newer than input files
@@ -23,11 +23,11 @@ fn main() {
         let input_modified = std::fs::metadata("./src/input.css")
             .and_then(|m| m.modified())
             .unwrap_or(std::time::SystemTime::UNIX_EPOCH);
-        
+
         let output_modified = std::fs::metadata("./public/tailwind.css")
             .and_then(|m| m.modified())
             .unwrap_or(std::time::SystemTime::UNIX_EPOCH);
-        
+
         input_modified > output_modified
     } else {
         true

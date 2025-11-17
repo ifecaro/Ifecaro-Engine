@@ -658,7 +658,7 @@ Automatic Tailwind CSS compilation via `build.rs`:
 - **Unit Tests**: ~4s → ~2.9s (27% faster) 
 - **Integration Tests**: ~5s → ~0.5s (90% faster)
 
-**Build Cache Management**: Automatic build cache clearing ensures environment variables take effect properly.
+**Build Cache Management**: Automatic build cache clearing ensures environment variables take impact properly.
 
 ### PWA Support
 

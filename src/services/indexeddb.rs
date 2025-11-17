@@ -60,15 +60,15 @@ extern "C" {
     #[wasm_bindgen(js_name = clearAllDisabledChoices, catch)]
     async fn clear_all_disabled_choices() -> Result<JsValue, JsValue>;
 
-    #[wasm_bindgen(js_name = setChoiceEffectsToIndexedDB, catch)]
-    pub async fn set_choice_effects_to_indexeddb(
+    #[wasm_bindgen(js_name = setChoiceImpactsToIndexedDB, catch)]
+    pub async fn set_choice_impacts_to_indexeddb(
         paragraph_id: &str,
         choice_index: u32,
-        effects_json: &str,
+        impacts_json: &str,
     ) -> Result<JsValue, JsValue>;
 
-    #[wasm_bindgen(js_name = getChoiceEffectsFromIndexedDB, catch)]
-    pub async fn get_choice_effects_from_indexeddb(
+    #[wasm_bindgen(js_name = getChoiceImpactsFromIndexedDB, catch)]
+    pub async fn get_choice_impacts_from_indexeddb(
         paragraph_id: &str,
         choice_index: u32,
     ) -> Result<JsValue, JsValue>;

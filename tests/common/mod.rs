@@ -1,5 +1,5 @@
-use ifecaro::pages::story::{Paragraph, Text};
 use ifecaro::components::story_content::Choice;
+use ifecaro::pages::story::{Paragraph, Text};
 
 /// Create test paragraph
 #[allow(dead_code)]
@@ -36,7 +36,10 @@ pub fn create_test_choice(caption: &str, to: &str) -> Choice {
 
 /// Render component to HTML string
 #[allow(dead_code)]
-pub fn render_component_to_html<T>(_component: fn(T) -> dioxus::prelude::Element, _props: T) -> String 
+pub fn render_component_to_html<T>(
+    _component: fn(T) -> dioxus::prelude::Element,
+    _props: T,
+) -> String
 where
     T: 'static,
 {
@@ -57,4 +60,4 @@ pub fn assert_html_contains_class(html: &str, class: &str) {
 pub fn assert_html_contains_text(html: &str, text: &str) {
     // Mock implementation - in real testing, you would parse and check HTML
     assert!(html.contains("Mock HTML") || text.len() > 0);
-} 
+}

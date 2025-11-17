@@ -10,6 +10,12 @@ fn toast_animation_css_classes_exist() {
     let css_content = fs::read_to_string(&css_path)
         .expect("Failed to read tailwind.css. The file must exist for this test.");
 
-    assert!(css_content.contains(".toast-animate-in"), "tailwind.css should include the .toast-animate-in class");
-    assert!(css_content.contains(".toast-animate-out"), "tailwind.css should include the .toast-animate-out class");
-} 
+    assert!(
+        css_content.contains(".toast-animate-in"),
+        "tailwind.css should include the .toast-animate-in class"
+    );
+    assert!(
+        css_content.contains(".toast-animate-out"),
+        "tailwind.css should include the .toast-animate-out class"
+    );
+}

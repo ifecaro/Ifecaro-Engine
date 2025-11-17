@@ -1,5 +1,5 @@
-use dioxus::prelude::*;
 use crate::components::dropdown::Dropdown;
+use dioxus::prelude::*;
 use dioxus_i18n::t;
 
 #[derive(Debug, Clone, PartialEq)]
@@ -83,7 +83,8 @@ pub fn ParagraphList(props: ParagraphListProps) -> Element {
     };
 
     // Selected paragraph (if any) in converted form
-    let selected_paragraph = props.paragraphs
+    let selected_paragraph = props
+        .paragraphs
         .iter()
         .find(|p| p.id == props.value)
         .map(convert_to_display);
@@ -93,12 +94,22 @@ pub fn ParagraphList(props: ParagraphListProps) -> Element {
         .paragraphs
         .iter()
         .map(convert_to_display)
-        .filter(|p| p.display_text.to_lowercase().contains(&props.search_query.to_lowercase()))
+        .filter(|p| {
+            p.display_text
+                .to_lowercase()
+                .contains(&props.search_query.to_lowercase())
+        })
         .collect();
 
     // For single-select style (no chip), prepend a "None" option so users can clear the selection.
     if !props.show_selected_chip {
-        display_paragraphs.insert(0, DisplayParagraph { id: String::new(), display_text: t!("none").to_string() });
+        display_paragraphs.insert(
+            0,
+            DisplayParagraph {
+                id: String::new(),
+                display_text: t!("none").to_string(),
+            },
+        );
     }
 
     // Determine text shown inside the dropdown button depending on UX style.
@@ -218,22 +229,28 @@ pub fn MultiSelectParagraphList(props: MultiSelectParagraphListProps) -> Element
     };
 
     // Filter out selectable paragraphs (excluding already selected ones)
-    let available_paragraphs: Vec<DisplayParagraph> = props.paragraphs.iter()
+    let available_paragraphs: Vec<DisplayParagraph> = props
+        .paragraphs
+        .iter()
         .filter(|p| !props.selected_ids.contains(&p.id))
         .map(convert_to_display)
-        .filter(|p| p.display_text.to_lowercase().contains(&props.search_query.to_lowercase()))
+        .filter(|p| {
+            p.display_text
+                .to_lowercase()
+                .contains(&props.search_query.to_lowercase())
+        })
         .collect();
 
     // Display value: always show "Target Paragraph"
     let display_value = t!("select_paragraph").to_string();
-    
+
     // Check if there are available paragraphs, disable menu if none
     let is_disabled = props.disabled || props.paragraphs.is_empty();
 
     rsx! {
         div {
             class: format!("space-y-2 {}", props.class),
-            
+
             // Manually display label
             if !props.label.is_empty() {
                 label {
@@ -250,7 +267,7 @@ pub fn MultiSelectParagraphList(props: MultiSelectParagraphListProps) -> Element
                     }
                 }
             }
-            
+
             // Selected paragraphs label display (only show when there are selected items)
             if !props.selected_ids.is_empty() {
                 div {
@@ -265,7 +282,7 @@ pub fn MultiSelectParagraphList(props: MultiSelectParagraphListProps) -> Element
                             let paragraph = props.paragraphs.iter()
                                 .find(|p| &p.id == id)
                                 .map(convert_to_display);
-                            
+
                             if let Some(p) = paragraph {
                                 rsx! {
                                     div {
@@ -323,4 +340,4 @@ pub fn MultiSelectParagraphList(props: MultiSelectParagraphListProps) -> Element
             }
         }
     }
-} 
+}

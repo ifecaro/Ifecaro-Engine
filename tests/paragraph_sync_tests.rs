@@ -1,5 +1,5 @@
+use ifecaro::contexts::paragraph_context::{Paragraph, ParagraphChoice, Text};
 use ifecaro::utils::find_paragraph_by_id;
-use ifecaro::contexts::paragraph_context::{Paragraph, Text, ParagraphChoice};
 
 #[test]
 fn find_paragraph_by_id_returns_updated_object() {
@@ -21,4 +21,4 @@ fn find_paragraph_by_id_returns_updated_object() {
     // Helper should return the updated version
     let result = find_paragraph_by_id(&list, "p1").expect("Paragraph should be found");
     assert_eq!(result, updated);
-} 
+}

@@ -1,10 +1,10 @@
+use crate::{
+    constants::config::{BASE_API_URL, PARAGRAPHS},
+    models::impacts::Impact,
+};
 use dioxus::prelude::*;
 use serde::{Deserialize, Serialize};
 use wasm_bindgen_futures::spawn_local;
-use crate::{
-    constants::config::{BASE_API_URL, PARAGRAPHS},
-    models::effects::Effect,
-};
 
 // Reuse paragraph and text structures from translation_form
 // pub use crate::components::translation_form::{Paragraph as ContextParagraph, Text as ContextText, ParagraphChoice as ContextParagraphChoice};
@@ -26,7 +26,7 @@ pub enum ParagraphChoice {
         #[serde(default, skip_serializing_if = "Option::is_none")]
         timeout_to: Option<String>,
         #[serde(default, skip_serializing_if = "Option::is_none")]
-        effects: Option<Vec<Effect>>,
+        impacts: Option<Vec<Impact>>,
     },
     ComplexOld {
         to: String,
@@ -43,7 +43,7 @@ pub enum ParagraphChoice {
         #[serde(default, skip_serializing_if = "Option::is_none")]
         timeout_to: Option<String>,
         #[serde(default, skip_serializing_if = "Option::is_none")]
-        effects: Option<Vec<Effect>>,
+        impacts: Option<Vec<Impact>>,
     },
     Simple(Vec<String>),
     SimpleOld(String),
@@ -145,18 +145,17 @@ impl ParagraphState {
         self.paragraphs = paragraphs;
         self.loaded = true;
     }
-    
+
     pub fn get_by_chapter(&self, chapter_id: &str) -> Vec<Paragraph> {
-        self.paragraphs.iter()
+        self.paragraphs
+            .iter()
             .filter(|p| p.chapter_id == chapter_id)
             .cloned()
             .collect()
     }
-    
+
     pub fn get_by_id(&self, id: &str) -> Option<Paragraph> {
-        self.paragraphs.iter()
-            .find(|p| p.id == id)
-            .cloned()
+        self.paragraphs.iter().find(|p| p.id == id).cloned()
     }
 }
 
@@ -168,7 +167,7 @@ pub struct ParagraphProviderProps {
 #[component]
 pub fn ParagraphProvider(props: ParagraphProviderProps) -> Element {
     let state = use_signal(|| ParagraphState::new());
-    
+
     // Load paragraph list
     use_effect(move || {
         let mut state = state.clone();
@@ -176,11 +175,8 @@ pub fn ParagraphProvider(props: ParagraphProviderProps) -> Element {
             if !state.read().loaded {
                 let paragraphs_url = format!("{}{}", BASE_API_URL, PARAGRAPHS);
                 let client = reqwest::Client::new();
-                
-                match client.get(&paragraphs_url)
-                    .send()
-                    .await 
-                {
+
+                match client.get(&paragraphs_url).send().await {
                     Ok(response) => {
                         if response.status().is_success() {
                             match response.json::<ParagraphData>().await {
@@ -199,13 +195,13 @@ pub fn ParagraphProvider(props: ParagraphProviderProps) -> Element {
                 }
             }
         });
-        
+
         (move || {})()
     });
-    
+
     provide_context(state);
-    
+
     rsx! {
         {props.children}
     }
-} 
+}

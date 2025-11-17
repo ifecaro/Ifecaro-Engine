@@ -169,7 +169,7 @@ cargo run --bin deploy dev            # Development mode (check + quick test)
 - **Integration Tests**: ~5s → ~0.5s (90% faster)
 - **Dashboard Tests**: Optimized for large dataset handling
 
-**Build Cache Management**: Automatic build cache clearing ensures environment variables take effect properly.
+**Build Cache Management**: Automatic build cache clearing ensures environment variables take impact properly.
 
 ---
 

@@ -1,12 +1,12 @@
-use dioxus::prelude::*;
-use crate::components::form::{TextareaField, ChoiceOptions};
+use crate::components::form::{ChoiceOptions, TextareaField};
 use crate::components::paragraph_list::{Paragraph as ParagraphListItem, ParagraphList};
-use serde::{Serialize, Deserialize};
-use std::sync::Arc;
-use dioxus_i18n::t;
-use dioxus::events::FormEvent;
 use crate::contexts::chapter_context::Chapter;
-use crate::models::effects::Effect;
+use crate::models::impacts::Impact;
+use dioxus::events::FormEvent;
+use dioxus::prelude::*;
+use dioxus_i18n::t;
+use serde::{Deserialize, Serialize};
+use std::sync::Arc;
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 #[serde(untagged)]
@@ -101,7 +101,7 @@ pub struct TranslationFormProps {
 pub fn TranslationForm(props: TranslationFormProps) -> Element {
     let mut is_paragraph_open = use_signal(|| false);
     let mut paragraph_search_query = use_signal(|| String::new());
-    
+
     let available_chapters = use_signal(|| Vec::<Chapter>::new());
     let selected_language = use_signal(|| String::new());
     let choice_paragraphs = use_signal(|| Vec::<ParagraphListItem>::new());
@@ -118,7 +118,21 @@ pub fn TranslationForm(props: TranslationFormProps) -> Element {
     let _available_paragraphs = props.available_paragraphs.clone();
     let selected_paragraph = props.selected_paragraph.clone();
 
-    let mut choices = use_signal(|| Vec::<(String, Vec<String>, String, Option<String>, Option<serde_json::Value>, String, bool, Option<u32>, Option<String>, String, Vec<Effect>)>::new());
+    let mut choices = use_signal(|| {
+        Vec::<(
+            String,
+            Vec<String>,
+            String,
+            Option<String>,
+            Option<serde_json::Value>,
+            String,
+            bool,
+            Option<u32>,
+            Option<String>,
+            String,
+            Vec<Impact>,
+        )>::new()
+    });
     let mut action_type_open = use_signal(|| vec![false]);
 
     let is_form_valid = {
@@ -127,15 +141,15 @@ pub fn TranslationForm(props: TranslationFormProps) -> Element {
         let new_goto = new_goto.clone();
         let selected_paragraph = selected_paragraph.clone();
         use_memo(move || {
-            !paragraphs.trim().is_empty() &&
-            !new_caption.trim().is_empty() &&
-            !new_goto.trim().is_empty() &&
-            selected_paragraph.is_some()
+            !paragraphs.trim().is_empty()
+                && !new_caption.trim().is_empty()
+                && !new_goto.trim().is_empty()
+                && selected_paragraph.is_some()
         })
     };
 
     rsx! {
-        div { 
+        div {
             class: "max-w-3xl mx-auto p-8 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-100 dark:border-gray-700",
             div { class: "space-y-4",
                 // Paragraph selector
@@ -225,9 +239,9 @@ pub fn TranslationForm(props: TranslationFormProps) -> Element {
                     },
                     characters: Vec::new(),
                     relationships: Vec::new(),
-                    on_effects_change: move |(index, effects): (usize, Vec<Effect>)| {
+                    on_impacts_change: move |(index, impacts): (usize, Vec<Impact>)| {
                         if let Some(choice) = choices.write().get_mut(index) {
-                            choice.10 = effects.clone();
+                            choice.10 = impacts.clone();
                         }
                     },
                     available_chapters: available_chapters.read().clone(),
@@ -270,4 +284,4 @@ pub fn TranslationForm(props: TranslationFormProps) -> Element {
             }
         }
     }
-} 
+}

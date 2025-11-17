@@ -1,11 +1,11 @@
-use dioxus::prelude::*;
 use crate::components::dropdown::Dropdown;
 use crate::contexts::chapter_context::Chapter;
 use crate::contexts::language_context::LanguageState;
 use dioxus::hooks::use_context;
+use dioxus::prelude::*;
+use dioxus_i18n::t;
 use std::cell::RefCell;
 use std::thread_local;
-use dioxus_i18n::t;
 
 thread_local! {
     static SELECTED_LANGUAGE: RefCell<String> = RefCell::new(String::new());
@@ -33,41 +33,50 @@ pub struct ChapterSelectorProps {
 #[component]
 pub fn ChapterSelector(props: ChapterSelectorProps) -> Element {
     let language_state = use_context::<Signal<LanguageState>>();
-    
+
     // Use passed language parameter or get from context
     let selected_lang = if props.selected_language.is_empty() {
         language_state.read().current_language.clone()
     } else {
         props.selected_language.clone()
     };
-    
+
     // Get interface language as fallback option
     let interface_lang = language_state.read().current_language.clone();
-    
+
     // Update thread_local variable
     SELECTED_LANGUAGE.with(|lang| {
         *lang.borrow_mut() = selected_lang.clone();
     });
-    
+
     // Update interface language to thread_local
     INTERFACE_LANGUAGE.with(|lang| {
         *lang.borrow_mut() = interface_lang.clone();
     });
-    
+
     // Filter chapters
-    let filtered_chapters = props.chapters.iter()
+    let filtered_chapters = props
+        .chapters
+        .iter()
         .filter(|chapter| {
             let query = props.search_query.to_lowercase();
             if query.is_empty() {
                 return true;
             }
-            
-            let title = chapter.titles.iter()
+
+            let title = chapter
+                .titles
+                .iter()
                 .find(|t| t.lang == selected_lang)
                 .or_else(|| chapter.titles.iter().find(|t| t.lang == interface_lang))
-                .or_else(|| chapter.titles.iter().find(|t| t.lang == "en-US" || t.lang == "en-GB"))
+                .or_else(|| {
+                    chapter
+                        .titles
+                        .iter()
+                        .find(|t| t.lang == "en-US" || t.lang == "en-GB")
+                })
                 .or_else(|| chapter.titles.first());
-            
+
             if let Some(title) = title {
                 title.title.to_lowercase().contains(&query)
             } else {
@@ -76,12 +85,14 @@ pub fn ChapterSelector(props: ChapterSelectorProps) -> Element {
         })
         .cloned()
         .collect::<Vec<_>>();
-    
+
     // Find currently selected chapter
     let selected_chapter_title = if props.value.is_empty() {
         props.label.clone()
     } else {
-        props.chapters.iter()
+        props
+            .chapters
+            .iter()
             .find(|c| c.id == props.value)
             .map(|c| {
                 // First look for translation in current language
@@ -89,9 +100,15 @@ pub fn ChapterSelector(props: ChapterSelectorProps) -> Element {
                     title.title.clone()
                 } else {
                     // If current language translation not found, prioritize interface language, then English or first available translation, and add untranslated marker
-                    let fallback_title = c.titles.iter()
+                    let fallback_title = c
+                        .titles
+                        .iter()
                         .find(|t| t.lang == interface_lang)
-                        .or_else(|| c.titles.iter().find(|t| t.lang == "en-US" || t.lang == "en-GB"))
+                        .or_else(|| {
+                            c.titles
+                                .iter()
+                                .find(|t| t.lang == "en-US" || t.lang == "en-GB")
+                        })
                         .or_else(|| c.titles.first())
                         .map(|t| t.title.clone())
                         .unwrap_or_default();
@@ -105,15 +122,22 @@ pub fn ChapterSelector(props: ChapterSelectorProps) -> Element {
     fn display_chapter_title(chapter: &Chapter) -> String {
         let selected_lang = SELECTED_LANGUAGE.with(|lang| lang.borrow().clone());
         let interface_lang = INTERFACE_LANGUAGE.with(|lang| lang.borrow().clone());
-        
+
         // First look for translation in current language
         if let Some(title) = chapter.titles.iter().find(|t| t.lang == selected_lang) {
             title.title.clone()
         } else {
             // If current language translation not found, prioritize interface language, then English or first available translation, and add untranslated marker
-            let fallback_title = chapter.titles.iter()
+            let fallback_title = chapter
+                .titles
+                .iter()
                 .find(|t| t.lang == interface_lang)
-                .or_else(|| chapter.titles.iter().find(|t| t.lang == "en-US" || t.lang == "en-GB"))
+                .or_else(|| {
+                    chapter
+                        .titles
+                        .iter()
+                        .find(|t| t.lang == "en-US" || t.lang == "en-GB")
+                })
                 .or_else(|| chapter.titles.first())
                 .map(|t| t.title.clone())
                 .unwrap_or_default();
@@ -142,4 +166,4 @@ pub fn ChapterSelector(props: ChapterSelectorProps) -> Element {
             option_class: "",
         }
     }
-} 
+}

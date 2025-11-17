@@ -85,29 +85,34 @@ pub fn Dropdown<T: Clone + PartialEq + 'static>(props: DropdownProps<T>) -> Elem
 
     let search_query = props.search_query.clone();
     let display_fn = props.display_fn;
-    
+
     let button_class = props.button_class.clone().unwrap_or_else(|| "w-full px-4 py-2.5 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition duration-200 ease-in-out hover:border-green-500 dark:hover:border-green-500 flex justify-between items-center relative will-change-transform will-change-opacity".to_string());
     let button_class = if props.disabled {
         format!("{} opacity-50 cursor-not-allowed", button_class)
     } else {
         button_class
     };
-    let label_class = props.label_class.clone().unwrap_or_else(|| "block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2".to_string());
-    
+    let label_class = props.label_class.clone().unwrap_or_else(|| {
+        "block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2".to_string()
+    });
+
     let width_class = props
         .dropdown_width
         .clone()
         .unwrap_or_else(|| "w-full sm:min-w-[16rem] sm:max-w-[60vw]".to_string());
     let position_class = props.dropdown_position.clone().unwrap_or_else(|| "fixed bottom-14 left-0 right-0 rounded-t-lg sm:absolute sm:bottom-auto sm:right-0 sm:top-full sm:left-auto sm:rounded-md".to_string());
     let base_panel_class = "z-[1000] transition duration-200 ease-in-out transform will-change-transform will-change-opacity shadow-lg bg-white dark:bg-gray-800 ring-1 ring-black ring-opacity-5";
-    let dropdown_container_class = format!("{} {} {} {}", base_panel_class, position_class, dropdown_class, width_class);
-    
+    let dropdown_container_class = format!(
+        "{} {} {} {}",
+        base_panel_class, position_class, dropdown_class, width_class
+    );
+
     let search_input_class = format!("w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent {}", props.search_input_class);
-    
+
     let base_option_class = format!("block w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 transition duration-150 truncate {}", props.option_class);
 
     rsx! {
-        div { 
+        div {
             class: format!("relative {}", props.class),
             // Overlay
             {if props.is_open && !props.disabled {
@@ -121,7 +126,7 @@ pub fn Dropdown<T: Clone + PartialEq + 'static>(props: DropdownProps<T>) -> Elem
                 rsx! {}
             }}
 
-            label { 
+            label {
                 class: label_class,
                 "{props.label}"
                 {if props.required {
@@ -135,7 +140,7 @@ pub fn Dropdown<T: Clone + PartialEq + 'static>(props: DropdownProps<T>) -> Elem
                     rsx! {}
                 }}
             }
-            div { 
+            div {
                 class: "w-full",
                 button {
                     class: button_class,
@@ -146,16 +151,16 @@ pub fn Dropdown<T: Clone + PartialEq + 'static>(props: DropdownProps<T>) -> Elem
                     },
                     disabled: props.disabled,
                     "aria-required": props.required.to_string(),
-                    span { 
+                    span {
                         class: "block truncate",
-                        "{props.value}" 
+                        "{props.value}"
                     }
                     if props.show_arrow {
-                        svg { 
+                        svg {
                             class: "flex-shrink-0 fill-current h-4 w-4 transition-transform duration-200 ease-in-out",
                             xmlns: "http://www.w3.org/2000/svg",
                             view_box: "0 0 20 20",
-                            path { 
+                            path {
                                 d: "M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"
                             }
                         }
@@ -167,7 +172,7 @@ pub fn Dropdown<T: Clone + PartialEq + 'static>(props: DropdownProps<T>) -> Elem
                             class: dropdown_container_class,
                             {if props.show_search {
                                 rsx! {
-                                    div { 
+                                    div {
                                         class: "p-2 border-b border-gray-200 dark:border-gray-700",
                                         input {
                                             class: search_input_class,
@@ -180,7 +185,7 @@ pub fn Dropdown<T: Clone + PartialEq + 'static>(props: DropdownProps<T>) -> Elem
                             } else {
                                 rsx! {}
                             }}
-                            div { 
+                            div {
                                 class: "max-h-[clamp(12rem,calc(100vh_-_16rem),24rem)] overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-600 scrollbar-track-transparent",
                                 {props.options.iter().map(|option| {
                                     let display_value = display_fn(option);
@@ -244,6 +249,9 @@ mod tests {
         let mut mutations = NoOpMutations;
         dom.rebuild(&mut mutations);
         let html = dioxus_ssr::render(&dom);
-        assert!(html.contains("max-w-[60vw]"), "Dropdown should have responsive max width 60vw to prevent clipping");
+        assert!(
+            html.contains("max-w-[60vw]"),
+            "Dropdown should have responsive max width 60vw to prevent clipping"
+        );
     }
-} 
+}
