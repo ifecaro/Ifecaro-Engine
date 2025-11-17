@@ -138,8 +138,10 @@ pub fn ChoiceEffectsEditor(props: ChoiceEffectsEditorProps) -> Element {
 
     rsx! {
         div { class: "choice-effects-editor space-y-4",
-            h3 { class: "text-lg font-semibold text-gray-900 dark:text-gray-100", {t!("choice_effects")} }
-            button { class: "inline-flex items-center px-3 py-2 text-sm font-medium text-white bg-green-600 hover:bg-green-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-1 dark:focus:ring-offset-gray-800", onclick: on_add, {t!("add_effect")} }
+            div { class: "flex items-center justify-between gap-3",
+                h3 { class: "text-lg font-semibold text-gray-900 dark:text-gray-100", {t!("choice_effects")} }
+                button { class: "inline-flex items-center px-3 py-2 text-sm font-medium text-white bg-green-600 hover:bg-green-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-1 dark:focus:ring-offset-gray-800", onclick: on_add, {t!("add_effect")} }
+            }
             div { class: "space-y-3",
                 for (index, effect) in effects.read().iter().cloned().enumerate() {
                     { render_effect_row(index, effect, effects.clone(), &props.characters, &props.relationships, props.on_save.clone()) }
@@ -160,7 +162,7 @@ fn render_effect_row(
     let effect_type_value = effect_type(&effect).to_string();
     let label_class = "block text-sm font-medium text-gray-700 dark:text-gray-300";
     let input_class = "block w-full px-4 py-2.5 text-sm border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white";
-    let row_class = "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 items-start border border-gray-200 dark:border-gray-700 p-4 rounded-lg bg-white dark:bg-gray-800";
+    let row_class = "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 items-start border border-gray-200 dark:border-gray-700 p-4 rounded-xl bg-gray-50 dark:bg-gray-900/40 shadow-sm";
     let column_class = "space-y-3";
     let characters_vec = characters.to_vec();
     let relationships_vec = relationships.to_vec();
