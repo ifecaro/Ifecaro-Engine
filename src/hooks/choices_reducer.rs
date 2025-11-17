@@ -1,7 +1,10 @@
 use dioxus::prelude::*;
 use serde_json::Value;
 use std::rc::Rc;
-use crate::components::paragraph_list::Paragraph as ParagraphListParagraph;
+use crate::{
+    components::paragraph_list::Paragraph as ParagraphListParagraph,
+    models::effects::Effect,
+};
 use gloo_timers::callback::Timeout;
 
 /// 單一選項的資料結構（對應原本 tuple）
@@ -17,6 +20,7 @@ pub struct Choice {
     pub time_limit: Option<u32>,
     pub timeout_to: Option<String>,
     pub timeout_target_chapter: String,
+    pub effects: Vec<Effect>,
 }
 
 impl Default for Choice {
@@ -32,6 +36,7 @@ impl Default for Choice {
             time_limit: None,
             timeout_to: None,
             timeout_target_chapter: String::new(),
+            effects: Vec::new(),
         }
     }
 }
@@ -51,6 +56,7 @@ impl Choice {
         Option<u32>,
         Option<String>,
         String,
+        Vec<Effect>,
     ) {
         (
             self.caption.clone(),
@@ -63,6 +69,7 @@ impl Choice {
             self.time_limit,
             self.timeout_to.clone(),
             self.timeout_target_chapter.clone(),
+            self.effects.clone(),
         )
     }
 
@@ -75,12 +82,13 @@ impl Choice {
             Option<String>,
             Option<Value>,
             String,
-            bool,
-            Option<u32>,
-            Option<String>,
-            String,
-        ),
-    ) -> Self {
+        bool,
+        Option<u32>,
+        Option<String>,
+        String,
+        Vec<Effect>,
+    ),
+) -> Self {
         Self {
             caption: tup.0,
             goto: tup.1,
@@ -92,6 +100,7 @@ impl Choice {
             time_limit: tup.7,
             timeout_to: tup.8,
             timeout_target_chapter: tup.9,
+            effects: tup.10,
         }
     }
 }
@@ -122,6 +131,10 @@ pub enum Action {
         idx: usize,
         field: &'static str,
         value: String,
+    },
+    SetEffects {
+        idx: usize,
+        effects: Vec<Effect>,
     },
     ToggleActionType(usize),
     ToggleChapter(usize),
@@ -232,7 +245,13 @@ pub fn use_choices() -> (Signal<ChoicesState>, Rc<dyn Fn(Action)>) {
                         }
                     }
                 }
-                Action::ToggleActionType(i) => {
+                                Action::SetEffects { idx, effects } => {
+                    if let Some(choice) = st.list.get_mut(idx) {
+                        choice.effects = effects;
+                    }
+                }
+
+Action::ToggleActionType(i) => {
                     if let Some(v) = st.action_type_open.get_mut(i) {
                         *v = !*v;
                     }

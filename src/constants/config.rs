@@ -12,6 +12,12 @@ pub static CHAPTERS: &str = "/collections/chapters/records";
 #[allow(dead_code)]
 pub static ACTIONS: &str = "/collections/actions/records";
 #[allow(dead_code)]
+pub static CHARACTERS: &str = "/collections/characters/records";
+#[allow(dead_code)]
+pub static ATTRIBUTES: &str = "/collections/attributes/records";
+#[allow(dead_code)]
+pub static RELATIONSHIPS: &str = "/collections/relationships/records";
+#[allow(dead_code)]
 pub static PUBLIC_COLLECTIONS: &str = "/collections/public";
 #[allow(dead_code)]
 pub static AUTH_TOKEN: &str = ""; // No auth token needed, as collections should be accessible to any user
