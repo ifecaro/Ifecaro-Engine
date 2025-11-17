@@ -1,6 +1,11 @@
+use crate::models::effects::{CharacterAttributes, CharacterStateSnapshot};
+use crate::services::indexeddb::{
+    get_latest_character_state_from_indexeddb, set_latest_character_state_to_indexeddb,
+};
 use rand::Rng;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use wasm_bindgen::JsValue;
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
@@ -510,3 +515,204 @@ pub fn resolve_event_with_attribute_updates(
 //   required thresholds.
 // - Allow resist influences to also roll dice to potentially reduce successes directly.
 // - Emit probabilities for UI previews by simulating or calculating expected successes.
+
+fn character_attributes_to_actor_attrs(attrs: &CharacterAttributes) -> ActorAttrs {
+    let mut map = ActorAttrs::new();
+    map.insert("honesty".to_string(), attrs.honesty);
+    map.insert("empathy".to_string(), attrs.empathy);
+    map.insert("affability".to_string(), attrs.affability);
+    map.insert("intimidation".to_string(), attrs.intimidation);
+    map.insert("aggression".to_string(), attrs.aggression);
+    map.insert("discipline".to_string(), attrs.discipline);
+    map.insert("curiosity".to_string(), attrs.curiosity);
+    map.insert("courage".to_string(), attrs.courage);
+    map.insert("impulsivity".to_string(), attrs.impulsivity);
+    map.insert("idealism".to_string(), attrs.idealism);
+    map.insert("pragmatism".to_string(), attrs.pragmatism);
+    map.insert("loyalty".to_string(), attrs.loyalty);
+    map.insert("opportunism".to_string(), attrs.opportunism);
+    map.insert("stoicism".to_string(), attrs.stoicism);
+    map.insert("morality".to_string(), attrs.morality);
+    map.insert("health".to_string(), attrs.health);
+    map.insert("stress".to_string(), attrs.stress);
+    map.insert("fatigue".to_string(), attrs.fatigue);
+    map.insert("pain".to_string(), attrs.pain);
+    map.insert("morale".to_string(), attrs.morale);
+    map.insert("intox".to_string(), attrs.intox);
+    map
+}
+
+fn read_attr_or_current(attrs: &ActorAttrs, key: &str, current: i32) -> i32 {
+    attrs.get(key).copied().unwrap_or(current)
+}
+
+fn apply_actor_attrs_to_character(
+    mut base: CharacterAttributes,
+    attrs: &ActorAttrs,
+) -> CharacterAttributes {
+    base.honesty = read_attr_or_current(attrs, "honesty", base.honesty);
+    base.empathy = read_attr_or_current(attrs, "empathy", base.empathy);
+    base.affability = read_attr_or_current(attrs, "affability", base.affability);
+    base.intimidation = read_attr_or_current(attrs, "intimidation", base.intimidation);
+    base.aggression = read_attr_or_current(attrs, "aggression", base.aggression);
+    base.discipline = read_attr_or_current(attrs, "discipline", base.discipline);
+    base.curiosity = read_attr_or_current(attrs, "curiosity", base.curiosity);
+    base.courage = read_attr_or_current(attrs, "courage", base.courage);
+    base.impulsivity = read_attr_or_current(attrs, "impulsivity", base.impulsivity);
+    base.idealism = read_attr_or_current(attrs, "idealism", base.idealism);
+    base.pragmatism = read_attr_or_current(attrs, "pragmatism", base.pragmatism);
+    base.loyalty = read_attr_or_current(attrs, "loyalty", base.loyalty);
+    base.opportunism = read_attr_or_current(attrs, "opportunism", base.opportunism);
+    base.stoicism = read_attr_or_current(attrs, "stoicism", base.stoicism);
+    base.morality = read_attr_or_current(attrs, "morality", base.morality);
+    base.health = read_attr_or_current(attrs, "health", base.health);
+    base.stress = read_attr_or_current(attrs, "stress", base.stress);
+    base.fatigue = read_attr_or_current(attrs, "fatigue", base.fatigue);
+    base.pain = read_attr_or_current(attrs, "pain", base.pain);
+    base.morale = read_attr_or_current(attrs, "morale", base.morale);
+    base.intox = read_attr_or_current(attrs, "intox", base.intox);
+    base
+}
+
+fn clamp_personality(value: i32) -> i32 {
+    value.clamp(0, 100)
+}
+
+fn apply_deltas_to_attrs(actor_attrs: &ActorAttrs, deltas: &[AttrDelta]) -> ActorAttrs {
+    let mut updated = actor_attrs.clone();
+    for delta in deltas {
+        let entry = updated.entry(delta.key.clone()).or_insert(0);
+        let new_value = (*entry as f32 + delta.delta).round() as i32;
+        *entry = clamp_personality(new_value);
+    }
+    updated
+}
+
+fn js_error_to_string(err: JsValue) -> String {
+    format!("{:?}", err)
+}
+
+async fn fetch_latest_snapshot() -> Result<CharacterStateSnapshot, String> {
+    let raw = get_latest_character_state_from_indexeddb()
+        .await
+        .map_err(js_error_to_string)?;
+
+    let snapshot = raw
+        .as_string()
+        .and_then(|s| serde_json::from_str::<CharacterStateSnapshot>(&s).ok())
+        .unwrap_or_default();
+
+    Ok(snapshot)
+}
+
+async fn persist_snapshot(snapshot: &CharacterStateSnapshot) -> Result<(), String> {
+    let serialized = serde_json::to_string(snapshot).map_err(|e| e.to_string())?;
+    set_latest_character_state_to_indexeddb(&serialized)
+        .await
+        .map_err(js_error_to_string)?;
+    Ok(())
+}
+
+/// Load the actor's current attributes from IndexedDB, defaulting missing actors to zeros.
+pub async fn load_actor_attrs_from_db(actor_id: &str) -> Result<ActorAttrs, String> {
+    let snapshot = fetch_latest_snapshot().await?;
+    let attrs = snapshot
+        .characters
+        .get(actor_id)
+        .cloned()
+        .unwrap_or_default();
+    Ok(character_attributes_to_actor_attrs(&attrs))
+}
+
+/// Save updated actor attributes back into IndexedDB using the existing character snapshot store.
+pub async fn save_actor_attrs_to_db(actor_id: &str, attrs: &ActorAttrs) -> Result<(), String> {
+    let mut snapshot = fetch_latest_snapshot().await?;
+    let base = snapshot
+        .characters
+        .get(actor_id)
+        .cloned()
+        .unwrap_or_default();
+    let updated_character = apply_actor_attrs_to_character(base, attrs);
+    snapshot
+        .characters
+        .insert(actor_id.to_string(), updated_character);
+
+    persist_snapshot(&snapshot).await
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct EventRunResult {
+    pub resolution: EventResolutionResult,
+    pub updated_attrs: ActorAttrs,
+}
+
+/// Full event flow: load actor attributes, resolve the check, compute deltas, apply them with
+/// clamping, persist the new attributes to IndexedDB, and return the detailed outcome.
+///
+/// This function orchestrates pure logic plus the IndexedDB IO layer; it does not otherwise
+/// mutate global state. Callers can use the returned updated attributes for UI refresh and rely on
+/// the persisted snapshot for later retrieval.
+pub async fn run_event_resolution(
+    config: &EventCheckConfig,
+    update_rules: &AttrUpdateRuleMap,
+) -> Result<EventRunResult, String> {
+    let actor_attrs = load_actor_attrs_from_db(&config.actor_id).await?;
+    let resolution = resolve_event_with_attribute_updates(config, &actor_attrs, update_rules);
+    let updated_attrs = apply_deltas_to_attrs(&actor_attrs, &resolution.deltas);
+    save_actor_attrs_to_db(&config.actor_id, &updated_attrs).await?;
+
+    Ok(EventRunResult {
+        resolution,
+        updated_attrs,
+    })
+}
+
+// Example usage with IndexedDB round-tripping:
+//
+// use std::collections::HashMap;
+// use ifecaro::models::multi_attr_check::{
+//     run_event_resolution, AttrInfluence, AttrUpdateRule, AttrUpdateRuleMap, EventCheckConfig,
+//     InfluenceKind,
+// };
+//
+// let config = EventCheckConfig {
+//     actor_id: "spain".to_string(),
+//     influences: vec![
+//         AttrInfluence {
+//             key: "courage".to_string(),
+//             kind: InfluenceKind::Support,
+//             die_sides: 6,
+//             count_factor: 1.0,
+//             weight: None,
+//         },
+//         AttrInfluence {
+//             key: "fear".to_string(),
+//             kind: InfluenceKind::Resist,
+//             die_sides: 6,
+//             count_factor: 0.5,
+//             weight: None,
+//         },
+//     ],
+//     base_required: 2,
+//     resist_to_extra_required: 0.5,
+//     success_threshold: 5,
+// };
+//
+// let update_rules: AttrUpdateRuleMap = HashMap::from([
+//     (
+//         "courage".to_string(),
+//         AttrUpdateRule {
+//             key: "courage".to_string(),
+//             base_scale: 0.4,
+//             success_sign: Some(1.0),
+//             failure_sign: Some(-1.0),
+//         },
+//     ),
+// ]);
+//
+// let outcome = run_event_resolution(&config, &update_rules).await?;
+//
+// // outcome.resolution.check   -> dice result (success count, required, logs)
+// // outcome.resolution.deltas  -> per-attribute deltas that were applied
+// // outcome.resolution.outcome_tier -> UI tier for narrative selection
+// // outcome.updated_attrs      -> clamped attributes after applying deltas, already persisted
