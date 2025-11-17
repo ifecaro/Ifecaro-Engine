@@ -80,6 +80,26 @@ pub struct AttrDelta {
     pub delta: f32,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum EventOutcomeTier {
+    GreatSuccess,
+    Success,
+    Mixed,
+    Failure,
+    Disaster,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct EventResolutionResult {
+    /// Raw dice resolution outcome for this event.
+    pub check: MultiAttrCheckResult,
+    /// Continuous attribute adjustments derived from the check outcome.
+    pub deltas: Vec<AttrDelta>,
+    /// UI-only outcome tier for selecting narrative snippets; does not affect deltas.
+    pub outcome_tier: EventOutcomeTier,
+}
+
 struct SupportDiceSpec {
     log_index: usize,
     die_sides: u32,
@@ -365,6 +385,125 @@ pub fn compute_attribute_deltas(
 
     deltas
 }
+
+/// Classify the UI-facing outcome tier from a multi-attribute check. This does not affect
+/// numeric deltas; it only helps the UI pick narrative snippets.
+pub fn classify_outcome_tier(result: &MultiAttrCheckResult) -> EventOutcomeTier {
+    let successes = result.successes as i32;
+    let required = result.required_successes as i32;
+    let margin = successes - required;
+
+    if successes >= required {
+        if margin >= 3 {
+            EventOutcomeTier::GreatSuccess
+        } else {
+            EventOutcomeTier::Success
+        }
+    } else if margin >= -1 {
+        EventOutcomeTier::Mixed
+    } else if margin <= -3 {
+        EventOutcomeTier::Disaster
+    } else {
+        EventOutcomeTier::Failure
+    }
+}
+
+/// High-level helper that rolls the check, computes attribute deltas, and derives a UI tier.
+///
+/// This function is pure: it does not mutate actor attributes or persist any data. Callers
+/// should apply the returned deltas and store updated values (e.g., in IndexedDB) themselves,
+/// and use the outcome tier to choose which narrative text to display.
+pub fn resolve_event_with_attribute_updates(
+    config: &EventCheckConfig,
+    actor_attrs: &ActorAttrs,
+    update_rules: &AttrUpdateRuleMap,
+) -> EventResolutionResult {
+    let check_result = resolve_multi_attr_check(config, actor_attrs);
+    let deltas = compute_attribute_deltas(config, actor_attrs, &check_result, update_rules);
+    let outcome_tier = classify_outcome_tier(&check_result);
+
+    EventResolutionResult {
+        check: check_result,
+        deltas,
+        outcome_tier,
+    }
+}
+
+// Example usage:
+//
+// use std::collections::HashMap;
+// use ifecaro::models::multi_attr_check::{
+//     resolve_event_with_attribute_updates, AttrInfluence, AttrUpdateRule, AttrUpdateRuleMap,
+//     ActorAttrs, EventCheckConfig, InfluenceKind,
+// };
+//
+// let actor_attrs: ActorAttrs = HashMap::from([
+//     ("courage".to_string(), 7),
+//     ("empathy".to_string(), 4),
+//     ("obedience".to_string(), 8),
+//     ("fear".to_string(), 3),
+// ]);
+//
+// let config = EventCheckConfig {
+//     actor_id: "spain".to_string(),
+//     influences: vec![
+//         AttrInfluence {
+//             key: "courage".to_string(),
+//             kind: InfluenceKind::Support,
+//             die_sides: 6,
+//             count_factor: 1.0,
+//             weight: None,
+//         },
+//         AttrInfluence {
+//             key: "empathy".to_string(),
+//             kind: InfluenceKind::Support,
+//             die_sides: 8,
+//             count_factor: 0.5,
+//             weight: Some(1.2),
+//         },
+//         AttrInfluence {
+//             key: "fear".to_string(),
+//             kind: InfluenceKind::Resist,
+//             die_sides: 6,
+//             count_factor: 0.5,
+//             weight: None,
+//         },
+//     ],
+//     base_required: 2,
+//     resist_to_extra_required: 0.5,
+//     success_threshold: 5,
+// };
+//
+// let update_rules: AttrUpdateRuleMap = HashMap::from([
+//     (
+//         "courage".to_string(),
+//         AttrUpdateRule {
+//             key: "courage".to_string(),
+//             base_scale: 0.4,
+//             success_sign: Some(1.0),
+//             failure_sign: Some(-1.0),
+//         },
+//     ),
+//     (
+//         "empathy".to_string(),
+//         AttrUpdateRule {
+//             key: "empathy".to_string(),
+//             base_scale: 0.3,
+//             success_sign: Some(1.0),
+//             failure_sign: Some(-0.5),
+//         },
+//     ),
+// ]);
+//
+// let result = resolve_event_with_attribute_updates(&config, &actor_attrs, &update_rules);
+//
+// // result.check       -> dice outcome (successes, required, roll logs)
+// // result.deltas      -> floating deltas to apply to each influenced attribute
+// // result.outcome_tier-> UI-facing tier like "success" for choosing narrative text
+//
+// // Caller can now:
+// // 1. Apply deltas to actor_attrs and persist them externally.
+// // 2. Select narrative content based on outcome_tier.
 
 // Potential extension hooks:
 // - Track "critical success" or "critical failure" when successes far exceed or fall below
