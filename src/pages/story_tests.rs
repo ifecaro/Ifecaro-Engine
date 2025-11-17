@@ -24,6 +24,7 @@ fn create_test_paragraph(id: &str, chapter_id: &str, lang: &str, text: &str, cho
             same_page: None,
             time_limit: None,
             timeout_to: None,
+            effects: None,
         }
     }).collect();
 
@@ -57,6 +58,7 @@ fn create_multilingual_paragraph(id: &str, chapter_id: &str, texts: Vec<(&str, &
                 same_page: None,
                 time_limit: None,
                 timeout_to: None,
+                effects: None,
             }
         ],
         chapter_id: chapter_id.to_string(),
@@ -140,6 +142,7 @@ fn test_paragraph_with_time_limit_integration() {
             same_page: None,
             time_limit: Some(10),
             timeout_to: None,
+            effects: None,
         },
         ComplexChoice {
             to: vec!["p3".to_string()],
@@ -149,6 +152,7 @@ fn test_paragraph_with_time_limit_integration() {
             same_page: None,
             time_limit: Some(0),
             timeout_to: None,
+            effects: None,
         },
         ComplexChoice {
             to: vec!["p4".to_string()],
@@ -158,6 +162,7 @@ fn test_paragraph_with_time_limit_integration() {
             same_page: None,
             time_limit: Some(5),
             timeout_to: None,
+            effects: None,
         },
     ];
     
@@ -318,6 +323,7 @@ fn test_complex_choice_structure_validation() {
         same_page: None,
         time_limit: None,
         timeout_to: None,
+        effects: None,
     };
     
     assert_eq!(basic_choice.to, vec!["target1"]);
@@ -333,6 +339,7 @@ fn test_complex_choice_structure_validation() {
         same_page: Some(true),
         time_limit: Some(30),
         timeout_to: None,
+        effects: None,
     };
     
     assert_eq!(complex_choice.to.len(), 2);
@@ -351,6 +358,7 @@ fn test_story_choice_conversion() {
         same_page: Some(false),
         time_limit: Some(15),
         timeout_to: None,
+        effects: None,
     };
     
     let story_choice = StoryChoice::Complex(complex_choice.clone());

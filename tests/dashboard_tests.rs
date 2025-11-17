@@ -80,6 +80,7 @@ mod dashboard_test_helpers {
                             same_page: Some(false),
                             time_limit: Some(30),
                             timeout_to: None,
+                            effects: None,
                         },
                     ],
                 },
@@ -211,7 +212,7 @@ mod unit_tests {
         
         // Test Complex choice
         match &paragraph.choices[1] {
-            ParagraphChoice::Complex { to, type_, key, value, same_page, time_limit, timeout_to } => {
+            ParagraphChoice::Complex { to, type_, key, value, same_page, time_limit, timeout_to, .. } => {
                 assert_eq!(to.len(), 1);
                 assert_eq!(to[0], "para3");
                 assert_eq!(type_, "goto");

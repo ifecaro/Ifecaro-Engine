@@ -88,6 +88,7 @@ mod integration_tests {
                     same_page: Some(false),
                     time_limit: Some(45), // 45 second time limit
                     timeout_to: None,
+                    effects: None,
                 },
                 ParagraphChoice::Simple(vec!["corridor_ahead".to_string()]),
                 ParagraphChoice::Complex {
@@ -98,6 +99,7 @@ mod integration_tests {
                     same_page: Some(false),
                     time_limit: None,
                     timeout_to: None,
+                    effects: None,
                 },
             ],
         };
@@ -213,6 +215,7 @@ mod integration_tests {
                     same_page: Some(false),
                     time_limit: None,
                     timeout_to: None,
+                    effects: None,
                 },
                 ParagraphChoice::Simple(vec!["observation_scene".to_string()]),
             ],
@@ -277,6 +280,7 @@ mod integration_tests {
                     same_page: Some(false),
                     time_limit: Some(30),
                     timeout_to: None,
+                    effects: None,
                 },
                 ParagraphChoice::Complex {
                     to: vec!["cover_scene".to_string()],
@@ -286,6 +290,7 @@ mod integration_tests {
                     same_page: Some(false),
                     time_limit: Some(15),
                     timeout_to: None,
+                    effects: None,
                 },
                 ParagraphChoice::Complex {
                     to: vec!["spell_scene".to_string()],
@@ -295,6 +300,7 @@ mod integration_tests {
                     same_page: Some(false),
                     time_limit: None, // No time limit
                     timeout_to: None,
+                    effects: None,
                 },
                 ParagraphChoice::Simple(vec!["escape_scene".to_string()]),
             ],
@@ -364,6 +370,7 @@ mod integration_tests {
                     same_page: None,
                     time_limit: None,
                     timeout_to: None,
+                    effects: None,
                 },
             ],
         };

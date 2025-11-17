@@ -36,6 +36,7 @@ mod tests {
                     same_page: None,
                     time_limit: Some(30),
                     timeout_to: None,
+                    effects: None,
                 },
             ],
         }
@@ -157,6 +158,7 @@ mod tests {
             same_page: Some(true),
             time_limit: Some(30),
             timeout_to: None,
+            effects: None,
         };
 
         // Test complex option data structure
@@ -164,7 +166,7 @@ mod tests {
         let deserialized: ParagraphChoice = serde_json::from_str(&json_str).unwrap();
         
         match deserialized {
-            ParagraphChoice::Complex { to, type_, key, value, same_page, time_limit, timeout_to } => {
+            ParagraphChoice::Complex { to, type_, key, value, same_page, time_limit, timeout_to, effects } => {
                 assert_eq!(to, vec!["target1", "target2"]);
                 assert_eq!(type_, "conditional");
                 assert_eq!(key, Some("player_level".to_string()));
@@ -172,6 +174,7 @@ mod tests {
                 assert_eq!(same_page, Some(true));
                 assert_eq!(time_limit, Some(30));
                 assert_eq!(timeout_to, None);
+                assert_eq!(effects, None);
             },
             _ => panic!("Expected Complex variant"),
         }
@@ -229,6 +232,7 @@ mod tests {
                     same_page: None,
                     time_limit: Some(30),
                     timeout_to: None,
+                    effects: None,
                 },
             ],
         };
