@@ -1,5 +1,5 @@
-use dioxus::prelude::*;
 use crate::contexts::toast_context::use_toast;
+use dioxus::prelude::*;
 use gloo_timers::callback::Timeout;
 
 #[derive(Clone, PartialEq, Debug)]
@@ -123,41 +123,25 @@ mod tests {
     #[test]
     fn test_toast_creation_with_all_types() {
         // Test Success type
-        let success_toast = Toast::new(
-            "Success message".to_string(),
-            ToastType::Success,
-            5000
-        );
+        let success_toast = Toast::new("Success message".to_string(), ToastType::Success, 5000);
         assert_eq!(success_toast.message, "Success message");
         assert_eq!(success_toast.toast_type, ToastType::Success);
         assert_eq!(success_toast.duration, 5000);
 
         // Test Error type
-        let error_toast = Toast::new(
-            "Error message".to_string(),
-            ToastType::Error,
-            3000
-        );
+        let error_toast = Toast::new("Error message".to_string(), ToastType::Error, 3000);
         assert_eq!(error_toast.message, "Error message");
         assert_eq!(error_toast.toast_type, ToastType::Error);
         assert_eq!(error_toast.duration, 3000);
 
         // Test Warning type
-        let warning_toast = Toast::new(
-            "Warning message".to_string(),
-            ToastType::Warning,
-            4000
-        );
+        let warning_toast = Toast::new("Warning message".to_string(), ToastType::Warning, 4000);
         assert_eq!(warning_toast.message, "Warning message");
         assert_eq!(warning_toast.toast_type, ToastType::Warning);
         assert_eq!(warning_toast.duration, 4000);
 
         // Test Info type
-        let info_toast = Toast::new(
-            "Info message".to_string(),
-            ToastType::Info,
-            2000
-        );
+        let info_toast = Toast::new("Info message".to_string(), ToastType::Info, 2000);
         assert_eq!(info_toast.message, "Info message");
         assert_eq!(info_toast.toast_type, ToastType::Info);
         assert_eq!(info_toast.duration, 2000);
@@ -197,4 +181,4 @@ mod tests {
         };
         assert_eq!(info_bg, "bg-blue-500");
     }
-} 
+}

@@ -10,4 +10,4 @@ pub struct SettingsContext {
 
 pub fn use_settings_context() -> Signal<SettingsContext> {
     use_context::<Signal<SettingsContext>>()
-} 
+}

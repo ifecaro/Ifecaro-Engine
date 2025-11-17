@@ -1,1 +1,1 @@
-pub mod choices_reducer; 
+pub mod choices_reducer;

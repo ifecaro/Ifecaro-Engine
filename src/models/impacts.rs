@@ -52,7 +52,7 @@ pub enum RelationshipField {
 #[allow(dead_code)]
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(tag = "type", rename_all = "snake_case")]
-pub enum Effect {
+pub enum Impact {
     CharacterAttribute {
         character_id: String,
         field: AttributeField,
@@ -74,10 +74,10 @@ pub enum Effect {
     },
 }
 
-impl Effect {
+impl Impact {
     #[allow(dead_code)]
     pub fn default_character(character_id: String) -> Self {
-        Effect::CharacterAttribute {
+        Impact::CharacterAttribute {
             character_id,
             field: AttributeField::Morality,
             op: NumericOp::Add,
@@ -88,15 +88,15 @@ impl Effect {
 
 #[allow(dead_code)]
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-pub struct EffectList(pub Vec<Effect>);
+pub struct ImpactList(pub Vec<Impact>);
 
-impl Default for EffectList {
+impl Default for ImpactList {
     fn default() -> Self {
-        EffectList(Vec::new())
+        ImpactList(Vec::new())
     }
 }
 
-impl EffectList {
+impl ImpactList {
     #[allow(dead_code)]
     pub fn from_json(raw: &str) -> serde_json::Result<Self> {
         serde_json::from_str(raw)
@@ -234,9 +234,9 @@ impl CharacterStateSnapshot {
         }
     }
 
-    pub fn apply_effects(&self, effects: &[Effect]) -> Self {
+    pub fn apply_impacts(&self, impacts: &[Impact]) -> Self {
         let base = self.to_preview_state();
-        let updated = apply_effects_preview(&base.characters, &base.relationships, effects);
+        let updated = apply_impacts_preview(&base.characters, &base.relationships, impacts);
         CharacterStateSnapshot::from_preview_state(updated)
     }
 }
@@ -288,17 +288,17 @@ fn set_flag_path(root: &mut Value, path: &[String], value: Value) {
 }
 
 #[allow(dead_code)]
-pub fn apply_effects_preview(
+pub fn apply_impacts_preview(
     attributes: &HashMap<String, CharacterAttributes>,
     relationships: &HashMap<(String, String), RelationshipMetrics>,
-    effects: &[Effect],
+    impacts: &[Impact],
 ) -> PreviewState {
     let mut characters = attributes.clone();
     let mut relationships = relationships.clone();
 
-    for effect in effects {
-        match effect {
-            Effect::CharacterAttribute {
+    for impact in impacts {
+        match impact {
+            Impact::CharacterAttribute {
                 character_id,
                 field,
                 op,
@@ -377,7 +377,7 @@ pub fn apply_effects_preview(
                     }
                 }
             }
-            Effect::Relationship {
+            Impact::Relationship {
                 from_id,
                 to_id,
                 field,
@@ -408,7 +408,7 @@ pub fn apply_effects_preview(
                     }
                 }
             }
-            Effect::Flag {
+            Impact::Flag {
                 character_id,
                 path,
                 value,

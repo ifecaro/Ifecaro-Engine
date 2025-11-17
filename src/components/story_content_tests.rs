@@ -1,8 +1,8 @@
-use dioxus::prelude::*;
-use dioxus_ssr::render;
-use crate::components::story_content::{StoryContentUI, StoryContentUIProps, Choice, Action};
-use dioxus_core::NoOpMutations;
+use crate::components::story_content::{Action, Choice, StoryContentUI, StoryContentUIProps};
 use dioxus::prelude::VirtualDom;
+use dioxus::prelude::*;
+use dioxus_core::NoOpMutations;
+use dioxus_ssr::render;
 use std::collections::HashSet;
 
 /// Helper function: Create test choice
@@ -19,7 +19,13 @@ fn create_test_choice(caption: &str, to: &str, action_type: &str) -> Choice {
 }
 
 /// Helper function: Create test choice with value
-fn create_test_choice_with_value(caption: &str, to: &str, action_type: &str, key: Option<String>, value: Option<serde_json::Value>) -> Choice {
+fn create_test_choice_with_value(
+    caption: &str,
+    to: &str,
+    action_type: &str,
+    key: Option<String>,
+    value: Option<serde_json::Value>,
+) -> Choice {
     Choice {
         caption: caption.to_string().into(),
         action: Action {
@@ -62,10 +68,16 @@ mod basic_ui_tests {
             disabled_by_countdown: vec![],
             chapter_title: "".to_string(),
         };
-        
+
         let html = render_story_content_ui(props);
-        assert!(html.contains("prose-sm"), "Should contain basic article styles");
-        assert!(html.contains("list-decimal"), "Should contain ordered list styles");
+        assert!(
+            html.contains("prose-sm"),
+            "Should contain basic article styles"
+        );
+        assert!(
+            html.contains("list-decimal"),
+            "Should contain ordered list styles"
+        );
     }
 
     #[test]
@@ -77,14 +89,32 @@ mod basic_ui_tests {
             disabled_by_countdown: vec![],
             chapter_title: "Test chapter".to_string(),
         };
-        
+
         let html = render_story_content_ui(props);
-        assert!(html.contains("This is the first paragraph"), "Should display first paragraph content");
-        assert!(html.contains("This is the second paragraph"), "Should display second paragraph content");
-        assert!(html.contains("This is the third paragraph"), "Should display third paragraph content");
-        assert!(html.contains("Test chapter"), "Should display chapter title");
-        assert!(html.contains("indent-10"), "Paragraphs should have indentation styles");
-        assert!(html.contains("tracking-wide"), "Paragraphs should have letter spacing styles");
+        assert!(
+            html.contains("This is the first paragraph"),
+            "Should display first paragraph content"
+        );
+        assert!(
+            html.contains("This is the second paragraph"),
+            "Should display second paragraph content"
+        );
+        assert!(
+            html.contains("This is the third paragraph"),
+            "Should display third paragraph content"
+        );
+        assert!(
+            html.contains("Test chapter"),
+            "Should display chapter title"
+        );
+        assert!(
+            html.contains("indent-10"),
+            "Paragraphs should have indentation styles"
+        );
+        assert!(
+            html.contains("tracking-wide"),
+            "Paragraphs should have letter spacing styles"
+        );
     }
 
     #[test]
@@ -96,13 +126,28 @@ mod basic_ui_tests {
             disabled_by_countdown: vec![],
             chapter_title: "Chapter 1: The Beginning of Adventure".to_string(),
         };
-        
+
         let html = render_story_content_ui(props);
-        assert!(html.contains("Chapter 1: The Beginning of Adventure"), "Should display complete chapter title");
-        assert!(html.contains("text-3xl"), "Title should have large font styles");
-        assert!(html.contains("md:text-4xl"), "Title should have responsive font");
-        assert!(html.contains("letter-spacing: 0.1em"), "Title should have letter spacing");
-        assert!(html.contains("min-h-[calc(100vh-56px)]"), "Title container should have minimum height");
+        assert!(
+            html.contains("Chapter 1: The Beginning of Adventure"),
+            "Should display complete chapter title"
+        );
+        assert!(
+            html.contains("text-3xl"),
+            "Title should have large font styles"
+        );
+        assert!(
+            html.contains("md:text-4xl"),
+            "Title should have responsive font"
+        );
+        assert!(
+            html.contains("letter-spacing: 0.1em"),
+            "Title should have letter spacing"
+        );
+        assert!(
+            html.contains("min-h-[calc(100vh-56px)]"),
+            "Title container should have minimum height"
+        );
     }
 }
 
@@ -120,10 +165,13 @@ mod choice_tests {
             disabled_by_countdown: vec![false],
             chapter_title: "Test".to_string(),
         };
-        
+
         let html = render_story_content_ui(props);
         assert!(html.contains("Continue"), "Should display choice text");
-        assert!(html.contains("cursor-pointer"), "Enabled choices should have pointer styles");
+        assert!(
+            html.contains("cursor-pointer"),
+            "Enabled choices should have pointer styles"
+        );
     }
 
     #[test]
@@ -141,18 +189,18 @@ mod choice_tests {
             disabled_by_countdown: vec![false, false, false, true], // choice4 disabled by countdown
             chapter_title: "Important Decision".to_string(),
         };
-        
+
         let html = render_story_content_ui(props);
-        
+
         // Check all options are displayed (check captions, not action.to)
         assert!(html.contains("Option A"));
         assert!(html.contains("Option B"));
         assert!(html.contains("Option C"));
         assert!(html.contains("Option D"));
-        
+
         // Check enabled status (choice1, choice3 should be enabled)
         assert!(html.contains("cursor-pointer"));
-        
+
         // Check disabled status
         assert!(html.contains("opacity-50"));
         assert!(html.contains("cursor-not-allowed"));
@@ -176,7 +224,7 @@ mod choice_tests {
                 Some(serde_json::Value::Number(serde_json::Number::from(42))),
             ),
         ];
-        
+
         let props = StoryContentUIProps {
             paragraph: "配置你的遊戲".to_string(),
             choices: choices.clone(),
@@ -184,7 +232,7 @@ mod choice_tests {
             disabled_by_countdown: vec![false, false],
             chapter_title: "遊戲設定".to_string(),
         };
-        
+
         let html = render_story_content_ui(props);
         assert!(html.contains("設定難度"), "應顯示設定選項");
         assert!(html.contains("跳轉場景"), "應顯示跳轉選項");
@@ -203,9 +251,9 @@ mod choice_tests {
             disabled_by_countdown: vec![false, false],
             chapter_title: "死胡同".to_string(),
         };
-        
+
         let html = render_story_content_ui(props);
-        
+
         // All options should be in disabled state
         assert!(html.contains("opacity-50"));
         assert!(html.contains("cursor-not-allowed"));
@@ -224,11 +272,11 @@ mod choice_tests {
             disabled_by_countdown: vec![true, false], // First one disabled by countdown
             chapter_title: "時間壓力".to_string(),
         };
-        
+
         let html = render_story_content_ui(props);
         assert!(html.contains("時限選項"), "應顯示時限選項");
         assert!(html.contains("普通選項"), "應顯示普通選項");
-        
+
         // Check mixed states
         assert!(html.contains("opacity-50"));
         assert!(html.contains("cursor-not-allowed"));
@@ -238,19 +286,30 @@ mod choice_tests {
     fn test_choice_display_format() {
         let choices = vec![
             create_test_choice("", "empty_caption", "goto"), // Empty caption
-            create_test_choice("很長的選項標題，包含中文、English和123數字", "long_caption", "goto"),
+            create_test_choice(
+                "很長的選項標題，包含中文、English和123數字",
+                "long_caption",
+                "goto",
+            ),
             create_test_choice("<test>\"quote\"&amp;", "special_chars", "goto"),
         ];
         let props = StoryContentUIProps {
             paragraph: "測試各種標題格式".to_string(),
             choices: choices.clone(),
-            enabled_choices: hs!("", "很長的選項標題，包含中文、English和123數字", "<test>\"quote\"&amp;"),
+            enabled_choices: hs!(
+                "",
+                "很長的選項標題，包含中文、English和123數字",
+                "<test>\"quote\"&amp;"
+            ),
             disabled_by_countdown: vec![false, false, false],
             chapter_title: "標題測試".to_string(),
         };
-        
+
         let html = render_story_content_ui(props);
-        assert!(html.contains("很長的選項標題，包含中文、English和123數字"), "應正確顯示長標題");
+        assert!(
+            html.contains("很長的選項標題，包含中文、English和123數字"),
+            "應正確顯示長標題"
+        );
         // Special characters might be escaped, so we check the escaped version
         assert!(html.contains("&lt;test&gt;"));
         assert!(html.contains("&quot;quote&quot;"));
@@ -272,21 +331,21 @@ mod responsive_design_tests {
             disabled_by_countdown: vec![false],
             chapter_title: "響應式章節".to_string(),
         };
-        
+
         let html = render_story_content_ui(props);
-        
+
         // Check responsive text size
         assert!(html.contains("text-3xl"));
         assert!(html.contains("md:text-4xl"));
-        
+
         // Check responsive typography
         assert!(html.contains("prose-sm"));
         assert!(html.contains("lg:prose-base"));
-        
+
         // Check responsive width
         assert!(html.contains("w-full"));
         assert!(html.contains("md:w-fit"));
-        
+
         // Check max width
         assert!(html.contains("max-w-3xl"));
     }
@@ -300,14 +359,14 @@ mod responsive_design_tests {
             disabled_by_countdown: vec![false],
             chapter_title: "深色模式".to_string(),
         };
-        
+
         let html = render_story_content_ui(props);
-        
+
         // Check dark mode text color
         assert!(html.contains("dark:text-white"));
         assert!(html.contains("dark:hover:text-gray-300"));
-        
-        // Check dark mode hover effects - this class exists in the enabled choice
+
+        // Check dark mode hover impacts - this class exists in the enabled choice
         assert!(html.contains("cursor-pointer"));
     }
 
@@ -323,13 +382,13 @@ mod responsive_design_tests {
             disabled_by_countdown: vec![false, false],
             chapter_title: "間距測試".to_string(),
         };
-        
+
         let html = render_story_content_ui(props);
-        
+
         // Check spacing classes
         assert!(html.contains("space-y-8"));
         assert!(html.contains("mt-10"));
-        
+
         // Check indentation
         assert!(html.contains("indent-10"));
     }
@@ -353,9 +412,9 @@ mod accessibility_tests {
             disabled_by_countdown: vec![false, false, false],
             chapter_title: "無障礙".to_string(),
         };
-        
+
         let html = render_story_content_ui(props);
-        
+
         // Check semantic tags
         assert!(html.contains("<ol"));
         assert!(html.contains("<li"));
@@ -373,13 +432,13 @@ mod accessibility_tests {
             disabled_by_countdown: vec![false],
             chapter_title: "互動性".to_string(),
         };
-        
+
         let html = render_story_content_ui(props);
-        
+
         // Check interactive states
         assert!(html.contains("cursor-pointer"));
-        
-        // Check hover effects
+
+        // Check hover impacts
         assert!(html.contains("hover:text-gray-700"));
     }
 
@@ -393,9 +452,9 @@ mod accessibility_tests {
             disabled_by_countdown: vec![false],
             chapter_title: "禁用測試".to_string(),
         };
-        
+
         let html = render_story_content_ui(props);
-        
+
         // Check disabled state
         assert!(html.contains("opacity-50"));
         assert!(html.contains("cursor-not-allowed"));
@@ -417,7 +476,7 @@ mod edge_case_tests {
             disabled_by_countdown: vec![false],
             chapter_title: "空段落測試".to_string(),
         };
-        
+
         let html = render_story_content_ui(props);
         assert!(html.contains("唯一選項"), "即使段落為空也應顯示選項");
         assert!(html.contains("空段落測試"), "應顯示章節標題");
@@ -428,7 +487,7 @@ mod edge_case_tests {
         let long_paragraph = "這是一個很長的段落，".repeat(100);
         let long_title = "這是一個很長的標題，".repeat(20);
         let long_choice = "這是一個很長的選項，".repeat(15);
-        
+
         let choices = vec![create_test_choice(&long_choice, "long_choice", "goto")];
         let props = StoryContentUIProps {
             paragraph: long_paragraph.clone(),
@@ -437,7 +496,7 @@ mod edge_case_tests {
             disabled_by_countdown: vec![false],
             chapter_title: long_title.clone(),
         };
-        
+
         let html = render_story_content_ui(props);
         assert!(html.contains("這是一個很長的段落，"), "應包含長段落的開頭");
         assert!(html.contains("這是一個很長的標題，"), "應包含長標題的開頭");
@@ -449,7 +508,7 @@ mod edge_case_tests {
         let special_paragraph = "包含特殊字符：\n\n\"引號\"、'單引號'、<標籤>、&符號、換行\n測試";
         let special_title = "特殊字符標題：<>&\"'";
         let special_choice = "特殊選項：<script>alert('test')</script>";
-        
+
         let choices = vec![create_test_choice(&special_choice, "special", "goto")];
         let props = StoryContentUIProps {
             paragraph: special_paragraph.to_string(),
@@ -458,9 +517,9 @@ mod edge_case_tests {
             disabled_by_countdown: vec![false],
             chapter_title: special_title.to_string(),
         };
-        
+
         let html = render_story_content_ui(props);
-        
+
         // HTML should correctly escape special characters
         assert!(!html.contains("<script>"), "不應包含未轉義的腳本標籤");
         assert!(html.contains("&lt;"), "應正確轉義小於號");
@@ -469,10 +528,11 @@ mod edge_case_tests {
 
     #[test]
     fn test_unicode_and_emoji_content() {
-        let unicode_paragraph = "包含各種文字：中文、English、日本語、한국어、العربية\n\n還有表情符號：😀🎮🌟⭐💫";
+        let unicode_paragraph =
+            "包含各種文字：中文、English、日本語、한국어、العربية\n\n還有表情符號：😀🎮🌟⭐💫";
         let emoji_title = "🎯 Unicode 測試 🚀";
         let emoji_choice = "🎪 選擇這個 🎨";
-        
+
         let choices = vec![create_test_choice(&emoji_choice, "unicode_choice", "goto")];
         let props = StoryContentUIProps {
             paragraph: unicode_paragraph.to_string(),
@@ -481,7 +541,7 @@ mod edge_case_tests {
             disabled_by_countdown: vec![false],
             chapter_title: emoji_title.to_string(),
         };
-        
+
         let html = render_story_content_ui(props);
         assert!(html.contains("😀"), "應正確顯示表情符號");
         assert!(html.contains("🎯"), "標題應包含表情符號");
@@ -505,7 +565,7 @@ mod edge_case_tests {
             disabled_by_countdown: vec![false, true], // Only two states
             chapter_title: "不匹配測試".to_string(),
         };
-        
+
         let html = render_story_content_ui(props);
         // Should handle safely without crashing
         assert!(html.contains("選項1"), "應顯示第一個選項");
@@ -525,30 +585,41 @@ mod integration_style_tests {
             create_test_choice("返回村莊", "return", "goto"),
             create_test_choice("查看背包", "inventory", "goto"),
         ];
-        
+
         let props = StoryContentUIProps {
-            paragraph: "你站在十字路口前，夕陽西下。\n\n遠方傳來狼嚎聲，你必須做出選擇。\n\n時間不多了。".to_string(),
+            paragraph:
+                "你站在十字路口前，夕陽西下。\n\n遠方傳來狼嚎聲，你必須做出選擇。\n\n時間不多了。"
+                    .to_string(),
             choices: choices.clone(),
             enabled_choices: hs!("繼續冒險", "返回村莊"),
             disabled_by_countdown: vec![false, false, true], // Backpack disabled
             chapter_title: "第三章：命運的十字路口".to_string(),
         };
-        
+
         let html = render_story_content_ui(props);
-        
+
         // Verify complete structure
         assert!(html.contains("第三章：命運的十字路口"), "應顯示章節標題");
         assert!(html.contains("你站在十字路口前"), "應顯示故事內容");
         assert!(html.contains("繼續冒險"), "應顯示選項");
         assert!(html.contains("返回村莊"), "應顯示選項");
         assert!(html.contains("查看背包"), "應顯示選項");
-        
+
         // Verify style structure
-        assert!(html.contains("min-h-[calc(100vh-56px)]"), "應有正確的標題容器高度");
-        assert!(html.contains("prose-sm dark:prose-invert lg:prose-base"), "應有正確的文章樣式");
-        assert!(html.contains("whitespace-pre-wrap space-y-8"), "應有正確的段落格式");
+        assert!(
+            html.contains("min-h-[calc(100vh-56px)]"),
+            "應有正確的標題容器高度"
+        );
+        assert!(
+            html.contains("prose-sm dark:prose-invert lg:prose-base"),
+            "應有正確的文章樣式"
+        );
+        assert!(
+            html.contains("whitespace-pre-wrap space-y-8"),
+            "應有正確的段落格式"
+        );
         assert!(html.contains("list-decimal"), "應有正確的列表樣式");
-        
+
         // Verify interactive states
         let enabled_count = html.matches("cursor-pointer").count();
         let disabled_count = html.matches("opacity-50").count();
@@ -565,21 +636,44 @@ mod integration_style_tests {
             disabled_by_countdown: vec![false],
             chapter_title: "樣式測試".to_string(),
         };
-        
+
         let html = render_story_content_ui(props);
-        
+
         // Check all necessary CSS classes
         let expected_classes = vec![
-            "w-full", "flex", "items-center", "justify-center",
-            "text-3xl", "md:text-4xl", "text-gray-900", "dark:text-white",
-            "prose-sm", "dark:prose-invert", "lg:prose-base", "mx-auto",
-            "max-w-3xl", "p-8", "bg-white", "dark:bg-transparent",
-            "whitespace-pre-wrap", "space-y-8", "indent-10", "tracking-wide",
-            "leading-relaxed", "text-justify", "mt-10", "md:w-fit",
-            "list-decimal", "rounded-lg", "transition", "duration-200",
-            "relative", "cursor-pointer", "mr-2",
+            "w-full",
+            "flex",
+            "items-center",
+            "justify-center",
+            "text-3xl",
+            "md:text-4xl",
+            "text-gray-900",
+            "dark:text-white",
+            "prose-sm",
+            "dark:prose-invert",
+            "lg:prose-base",
+            "mx-auto",
+            "max-w-3xl",
+            "p-8",
+            "bg-white",
+            "dark:bg-transparent",
+            "whitespace-pre-wrap",
+            "space-y-8",
+            "indent-10",
+            "tracking-wide",
+            "leading-relaxed",
+            "text-justify",
+            "mt-10",
+            "md:w-fit",
+            "list-decimal",
+            "rounded-lg",
+            "transition",
+            "duration-200",
+            "relative",
+            "cursor-pointer",
+            "mr-2",
         ];
-        
+
         for class in expected_classes {
             assert!(html.contains(class), "應包含 CSS 類別: {}", class);
         }
@@ -596,14 +690,18 @@ mod performance_tests {
         let mut choices = Vec::new();
         let mut enabled_choices = Vec::new();
         let mut disabled_by_countdown = Vec::new();
-        
+
         for i in 1..=50 {
             let caption = format!("選項 {}", i);
-            choices.push(create_test_choice(&caption, &format!("choice_{}", i), "goto"));
+            choices.push(create_test_choice(
+                &caption,
+                &format!("choice_{}", i),
+                "goto",
+            ));
             enabled_choices.push(caption);
             disabled_by_countdown.push(i % 3 == 0); // Every third one disabled
         }
-        
+
         let props = StoryContentUIProps {
             paragraph: "大量選項測試".to_string(),
             choices,
@@ -611,15 +709,19 @@ mod performance_tests {
             disabled_by_countdown,
             chapter_title: "性能測試".to_string(),
         };
-        
+
         let start = std::time::Instant::now();
         let html = render_story_content_ui(props);
         let duration = start.elapsed();
-        
+
         // Verify render succeeds and completes within reasonable time
         assert!(html.contains("選項 1"), "應包含第一個選項");
         assert!(html.contains("選項 50"), "應包含最後一個選項");
-        assert!(duration.as_millis() < 1000, "渲染時間應少於1秒，實際：{:?}", duration);
+        assert!(
+            duration.as_millis() < 1000,
+            "渲染時間應少於1秒，實際：{:?}",
+            duration
+        );
     }
 
     #[test]
@@ -632,7 +734,7 @@ mod performance_tests {
                 complex_paragraph.push_str("\n\n");
             }
         }
-        
+
         let props = StoryContentUIProps {
             paragraph: complex_paragraph,
             choices: vec![create_test_choice("完成", "finish", "goto")],
@@ -640,15 +742,19 @@ mod performance_tests {
             disabled_by_countdown: vec![false],
             chapter_title: "複雜結構測試".to_string(),
         };
-        
+
         let start = std::time::Instant::now();
         let html = render_story_content_ui(props);
         let duration = start.elapsed();
-        
+
         assert!(html.contains("這是第1段"), "應包含第一段");
         assert!(html.contains("這是第20段"), "應包含最後一段");
-        assert!(duration.as_millis() < 500, "複雜段落渲染時間應少於500ms，實際：{:?}", duration);
-        
+        assert!(
+            duration.as_millis() < 500,
+            "複雜段落渲染時間應少於500ms，實際：{:?}",
+            duration
+        );
+
         // Verify paragraph count
         let paragraph_count = html.matches("<p").count();
         assert!(paragraph_count >= 20, "應至少有20個段落標籤");
@@ -662,18 +768,16 @@ mod regression_tests {
     #[test]
     fn test_caption_vs_id_display_bug() {
         // Regression test: Ensure displayed is caption not action.to
-        let choices = vec![
-            Choice {
-                caption: "友好的問候".into(),
-                action: Action {
-                    type_: "greeting".into(),
-                    key: None,
-                    value: None,
-                    to: "unfriendly_id_12345".into(),
-                },
+        let choices = vec![Choice {
+            caption: "友好的問候".into(),
+            action: Action {
+                type_: "greeting".into(),
+                key: None,
+                value: None,
+                to: "unfriendly_id_12345".into(),
             },
-        ];
-        
+        }];
+
         let props = StoryContentUIProps {
             paragraph: "測試標題顯示".to_string(),
             choices: choices.clone(),
@@ -681,7 +785,7 @@ mod regression_tests {
             disabled_by_countdown: vec![false],
             chapter_title: "顯示測試".to_string(),
         };
-        
+
         let html = render_story_content_ui(props);
         assert!(html.contains("友好的問候"), "應顯示友好的標題");
         assert!(!html.contains("unfriendly_id_12345"), "不應顯示內部ID");
@@ -694,7 +798,7 @@ mod regression_tests {
             create_test_choice("Option A", "choice_a", "goto"),
             create_test_choice("Option B", "choice_b", "goto"),
         ];
-        
+
         let props = StoryContentUIProps {
             paragraph: "Matching logic test".to_string(),
             choices: choices.clone(),
@@ -702,14 +806,14 @@ mod regression_tests {
             disabled_by_countdown: vec![false, false],
             chapter_title: "Logic Test".to_string(),
         };
-        
+
         let html = render_story_content_ui(props);
-        
+
         // choice_a should be enabled (has cursor-pointer and doesn't have opacity-50)
         // choice_b should be disabled (has opacity-50)
         let choice_a_enabled = html.contains("Option A") && html.contains("cursor-pointer");
         let choice_b_disabled = html.contains("Option B") && html.contains("opacity-50");
-        
+
         assert!(choice_a_enabled);
         assert!(choice_b_disabled);
     }
@@ -717,7 +821,11 @@ mod regression_tests {
     #[test]
     fn test_countdown_disabled_priority() {
         // Regression test: Countdown disable should override enabled state
-        let choices = vec![create_test_choice("Countdown Option", "countdown_choice", "goto")];
+        let choices = vec![create_test_choice(
+            "Countdown Option",
+            "countdown_choice",
+            "goto",
+        )];
 
         let props = StoryContentUIProps {
             paragraph: "Countdown priority test".to_string(),
@@ -726,12 +834,12 @@ mod regression_tests {
             disabled_by_countdown: vec![true],
             chapter_title: "Priority Test".to_string(),
         };
-        
+
         let html = render_story_content_ui(props);
-        
+
         // Should display as disabled state, even though in enabled list
         assert!(html.contains("Countdown Option"));
         assert!(html.contains("opacity-50"));
         assert!(html.contains("cursor-not-allowed"));
     }
-} 
+}

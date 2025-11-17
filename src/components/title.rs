@@ -3,7 +3,7 @@ use dioxus_i18n::t;
 
 #[derive(Props, Clone, PartialEq)]
 pub struct TitleProps {
-    title: &'static str
+    title: &'static str,
 }
 
 #[component]

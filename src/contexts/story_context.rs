@@ -1,6 +1,6 @@
-use dioxus::prelude::*;
 use crate::components::story_content::Choice;
 use crate::pages::story::Paragraph;
+use dioxus::prelude::*;
 
 #[derive(Debug)]
 #[allow(dead_code)]
@@ -43,4 +43,4 @@ pub fn use_story_context() -> Signal<StoryContext> {
 
 pub fn provide_story_context() {
     provide_context(Signal::new(StoryContext::new()));
-} 
+}

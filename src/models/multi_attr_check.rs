@@ -1,4 +1,4 @@
-use crate::models::effects::{CharacterAttributes, CharacterStateSnapshot};
+use crate::models::impacts::{CharacterAttributes, CharacterStateSnapshot};
 use crate::services::indexeddb::{
     get_latest_character_state_from_indexeddb, set_latest_character_state_to_indexeddb,
 };

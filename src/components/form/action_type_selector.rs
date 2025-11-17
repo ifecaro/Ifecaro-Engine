@@ -1,5 +1,5 @@
-use dioxus::prelude::*;
 use crate::components::dropdown::Dropdown;
+use dioxus::prelude::*;
 use dioxus_i18n::t;
 
 #[derive(Debug, Clone, PartialEq)]
@@ -32,12 +32,19 @@ pub struct ActionTypeSelectorProps {
 pub fn ActionTypeSelector(props: ActionTypeSelectorProps) -> Element {
     // Define available action types
     let action_types = vec![
-        ActionType { value: "".to_string(), label: t!("none") },
-        ActionType { value: "setting".to_string(), label: t!("setting") },
+        ActionType {
+            value: "".to_string(),
+            label: t!("none"),
+        },
+        ActionType {
+            value: "setting".to_string(),
+            label: t!("setting"),
+        },
     ];
-    
+
     // Find currently selected action type
-    let selected_label = action_types.iter()
+    let selected_label = action_types
+        .iter()
         .find(|t| t.value == props.value)
         .map(|t| t.label.clone())
         .unwrap_or_else(|| t!("none"));
@@ -66,4 +73,4 @@ pub fn ActionTypeSelector(props: ActionTypeSelectorProps) -> Element {
             required: props.required,
         }
     }
-} 
+}

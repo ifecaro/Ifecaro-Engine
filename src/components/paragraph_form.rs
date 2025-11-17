@@ -1,9 +1,9 @@
-use dioxus::prelude::*;
-use dioxus_i18n::t;
-use crate::components::form::{TextareaField, ChoiceOptions};
+use crate::components::form::{ChoiceOptions, TextareaField};
 use crate::components::paragraph_list::Paragraph;
 use crate::contexts::chapter_context::Chapter;
-use crate::models::effects::Effect;
+use crate::models::impacts::Impact;
+use dioxus::prelude::*;
+use dioxus_i18n::t;
 use std::sync::Arc;
 
 #[derive(Props, Clone, PartialEq)]
@@ -26,7 +26,19 @@ pub struct ParagraphFormProps {
     on_add_choice: EventHandler<()>,
     on_remove_choice: EventHandler<usize>,
     on_submit: EventHandler<()>,
-    choices: Vec<(String, Vec<String>, String, Option<String>, Option<serde_json::Value>, String, bool, Option<u32>, Option<String>, String, Vec<Effect>)>,
+    choices: Vec<(
+        String,
+        Vec<String>,
+        String,
+        Option<String>,
+        Option<serde_json::Value>,
+        String,
+        bool,
+        Option<u32>,
+        Option<String>,
+        String,
+        Vec<Impact>,
+    )>,
     available_chapters: Vec<Chapter>,
     selected_language: String,
     choice_paragraphs: Vec<Paragraph>,
@@ -44,7 +56,21 @@ pub struct ParagraphFormProps {
 
 #[component]
 pub fn ParagraphForm(props: ParagraphFormProps) -> Element {
-    let mut choices = use_signal(|| Vec::<(String, Vec<String>, String, Option<String>, Option<serde_json::Value>, String, bool, Option<u32>, Option<String>, String, Vec<Effect>)>::new());
+    let mut choices = use_signal(|| {
+        Vec::<(
+            String,
+            Vec<String>,
+            String,
+            Option<String>,
+            Option<serde_json::Value>,
+            String,
+            bool,
+            Option<u32>,
+            Option<String>,
+            String,
+            Vec<Impact>,
+        )>::new()
+    });
     let available_chapters = use_signal(|| Vec::<Chapter>::new());
     let selected_language = use_signal(|| String::new());
     let choice_paragraphs = use_signal(|| Vec::<Paragraph>::new());
@@ -66,9 +92,9 @@ pub fn ParagraphForm(props: ParagraphFormProps) -> Element {
         let new_caption = new_caption.clone();
         let new_goto = new_goto.clone();
         use_memo(move || {
-            !paragraphs.trim().is_empty() &&
-            !new_caption.trim().is_empty() &&
-            !new_goto.trim().is_empty()
+            !paragraphs.trim().is_empty()
+                && !new_caption.trim().is_empty()
+                && !new_goto.trim().is_empty()
         })
     };
 
@@ -142,9 +168,9 @@ pub fn ParagraphForm(props: ParagraphFormProps) -> Element {
                 },
                 characters: Vec::new(),
                 relationships: Vec::new(),
-                on_effects_change: move |(index, effects): (usize, Vec<Effect>)| {
+                on_impacts_change: move |(index, impacts): (usize, Vec<Impact>)| {
                     if let Some(choice) = choices.write().get_mut(index) {
-                        choice.10 = effects.clone();
+                        choice.10 = impacts.clone();
                     }
                 },
                 available_chapters: available_chapters.read().clone(),
@@ -186,4 +212,4 @@ pub fn ParagraphForm(props: ParagraphFormProps) -> Element {
             }
         }
     }
-} 
+}

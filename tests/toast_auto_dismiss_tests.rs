@@ -1,11 +1,11 @@
 //! Tests for toast auto-dismiss functionality
 #![cfg(target_arch = "wasm32")]
 
-use wasm_bindgen_test::{wasm_bindgen_test_configure, wasm_bindgen_test};
-use std::cell::RefCell;
-use std::rc::Rc;
 use gloo_timers::callback::Timeout;
 use gloo_timers::future::TimeoutFuture;
+use std::cell::RefCell;
+use std::rc::Rc;
+use wasm_bindgen_test::{wasm_bindgen_test, wasm_bindgen_test_configure};
 
 wasm_bindgen_test_configure!(run_in_browser);
 
@@ -29,5 +29,8 @@ async fn test_toast_auto_dismiss_triggers() {
     TimeoutFuture::new(75).await;
 
     // Verify the callback executed.
-    assert!(*flag.borrow(), "The timeout callback should have executed, indicating auto-dismiss works");
-} 
+    assert!(
+        *flag.borrow(),
+        "The timeout callback should have executed, indicating auto-dismiss works"
+    );
+}

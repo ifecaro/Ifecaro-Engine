@@ -1,11 +1,11 @@
 #[cfg(not(target_arch = "wasm32"))]
 mod integration_tests {
-    use dioxus::prelude::*;
-    use dioxus_ssr::render;
-    use dioxus_core::NoOpMutations;
+    use crate::components::story_content::{Action, Choice, StoryContentUI, StoryContentUIProps};
+    use crate::contexts::paragraph_context::{Paragraph, ParagraphChoice, Text};
     use crate::services::api::*;
-    use crate::contexts::paragraph_context::{Paragraph, Text, ParagraphChoice};
-    use crate::components::story_content::{StoryContentUI, StoryContentUIProps, Choice, Action};
+    use dioxus::prelude::*;
+    use dioxus_core::NoOpMutations;
+    use dioxus_ssr::render;
     use std::collections::HashSet;
 
     // Macro for HashSet conversion
@@ -21,14 +21,20 @@ mod integration_tests {
 
     /// Helper function: Convert API paragraph to component choices
     fn paragraph_to_choices(paragraph: &Paragraph, lang: &str) -> Vec<Choice> {
-        let text = paragraph.texts.iter()
+        let text = paragraph
+            .texts
+            .iter()
             .find(|t| t.lang == lang)
             .unwrap_or(&paragraph.texts[0]);
 
-        paragraph.choices.iter()
+        paragraph
+            .choices
+            .iter()
             .enumerate()
             .map(|(i, choice)| {
-                let caption = text.choices.get(i)
+                let caption = text
+                    .choices
+                    .get(i)
                     .cloned()
                     .unwrap_or_else(|| format!("Option {}", i + 1));
 
@@ -38,7 +44,12 @@ mod integration_tests {
                         type_: choice.get_type().into(),
                         key: choice.get_key(),
                         value: choice.get_value(),
-                        to: choice.get_to().into_iter().next().unwrap_or_default().into(),
+                        to: choice
+                            .get_to()
+                            .into_iter()
+                            .next()
+                            .unwrap_or_default()
+                            .into(),
                     },
                 }
             })
@@ -47,10 +58,18 @@ mod integration_tests {
 
     /// Helper function: Get paragraph text content
     fn get_paragraph_text(paragraph: &Paragraph, lang: &str) -> String {
-        paragraph.texts.iter()
+        paragraph
+            .texts
+            .iter()
             .find(|t| t.lang == lang || (lang == "zh-TW" && t.lang == "zh"))
             .map(|t| t.paragraphs.clone())
-            .unwrap_or_else(|| paragraph.texts.first().map(|t| t.paragraphs.clone()).unwrap_or_default())
+            .unwrap_or_else(|| {
+                paragraph
+                    .texts
+                    .first()
+                    .map(|t| t.paragraphs.clone())
+                    .unwrap_or_default()
+            })
     }
 
     #[tokio::test]
@@ -88,7 +107,7 @@ mod integration_tests {
                     same_page: Some(false),
                     time_limit: Some(45), // 45 second time limit
                     timeout_to: None,
-                    effects: None,
+                    impacts: None,
                 },
                 ParagraphChoice::Simple(vec!["corridor_ahead".to_string()]),
                 ParagraphChoice::Complex {
@@ -99,14 +118,13 @@ mod integration_tests {
                     same_page: Some(false),
                     time_limit: None,
                     timeout_to: None,
-                    effects: None,
+                    impacts: None,
                 },
             ],
         };
 
         // 2. Create Mock API client
-        let mock_client = MockApiClient::new()
-            .with_paragraphs(vec![test_paragraph.clone()]);
+        let mock_client = MockApiClient::new().with_paragraphs(vec![test_paragraph.clone()]);
 
         // 3. Simulate API call
         let api_result = mock_client.get_paragraph_by_id("story_p1").await;
@@ -116,14 +134,14 @@ mod integration_tests {
         // 4. Convert API data to format needed for component
         let choices = paragraph_to_choices(&paragraph, "zh");
         let paragraph_text = get_paragraph_text(&paragraph, "zh");
-        
+
         // 5. Simulate enabled state (time limit options may be disabled)
         let enabled_choices = hs!(
             "Investigate the source of the sound",
             "Continue forward",
             "Return to exit",
         );
-        
+
         // 6. Simulate disabled countdown state (first option has time limit)
         let disabled_by_countdown = vec![false, false, false];
 
@@ -143,16 +161,34 @@ mod integration_tests {
         let html = render(&vdom);
 
         // 9. Verify render result
-        assert!(html.contains("You walked into an ancient castle"), "Should contain story content");
-        assert!(html.contains("Investigate the source of the sound"), "Should contain first option");
-        assert!(html.contains("Continue forward"), "Should contain second option");
-        assert!(html.contains("Return to exit"), "Should contain third option");
-        assert!(html.contains("Chapter 1: Castle Adventure"), "Should contain chapter title");
-        
+        assert!(
+            html.contains("You walked into an ancient castle"),
+            "Should contain story content"
+        );
+        assert!(
+            html.contains("Investigate the source of the sound"),
+            "Should contain first option"
+        );
+        assert!(
+            html.contains("Continue forward"),
+            "Should contain second option"
+        );
+        assert!(
+            html.contains("Return to exit"),
+            "Should contain third option"
+        );
+        assert!(
+            html.contains("Chapter 1: Castle Adventure"),
+            "Should contain chapter title"
+        );
+
         // 10. Check HTML structure
         assert!(html.contains("<ol"), "Options should use ordered list");
         assert!(html.contains("list-decimal"), "Should have list style");
-        assert!(html.contains("cursor-pointer"), "Should have clickable options");
+        assert!(
+            html.contains("cursor-pointer"),
+            "Should have clickable options"
+        );
     }
 
     #[tokio::test]
@@ -177,7 +213,10 @@ mod integration_tests {
         vdom.rebuild(&mut mutations);
         let html = render(&vdom);
 
-        assert!(html.contains("Loading failed"), "Should display error message");
+        assert!(
+            html.contains("Loading failed"),
+            "Should display error message"
+        );
         assert!(html.contains("Loading Error"), "Should display error title");
     }
 
@@ -189,13 +228,13 @@ mod integration_tests {
             paragraphs: "A mysterious atmosphere permeates the magical forest".to_string(),
             choices: vec!["Use magic".to_string(), "Observe quietly".to_string()],
         };
-        
+
         let en_text = Text {
             lang: "en".to_string(),
             paragraphs: "A mysterious atmosphere permeates the magical forest".to_string(),
             choices: vec!["Use magic".to_string(), "Observe quietly".to_string()],
         };
-        
+
         let ja_text = Text {
             lang: "ja".to_string(),
             paragraphs: "魔法の森には神秘的な雰囲気が漂っている".to_string(),
@@ -215,16 +254,18 @@ mod integration_tests {
                     same_page: Some(false),
                     time_limit: None,
                     timeout_to: None,
-                    effects: None,
+                    impacts: None,
                 },
                 ParagraphChoice::Simple(vec!["observation_scene".to_string()]),
             ],
         };
 
-        let mock_client = MockApiClient::new()
-            .with_paragraphs(vec![multilingual_paragraph]);
+        let mock_client = MockApiClient::new().with_paragraphs(vec![multilingual_paragraph]);
 
-        let paragraph = mock_client.get_paragraph_by_id("multi_story").await.unwrap();
+        let paragraph = mock_client
+            .get_paragraph_by_id("multi_story")
+            .await
+            .unwrap();
 
         // Test different languages
         let test_cases = vec![
@@ -232,7 +273,7 @@ mod integration_tests {
             ("zh-TW", "magical forest", "Use magic"),
             ("ja", "魔法の森", "魔法を使う"),
         ];
-        
+
         for (lang, expected_text, expected_choice) in test_cases {
             let choices = paragraph_to_choices(&paragraph, lang);
             let text = get_paragraph_text(&paragraph, lang);
@@ -250,8 +291,18 @@ mod integration_tests {
             vdom.rebuild(&mut mutations);
             let html = render(&vdom);
 
-            assert!(html.contains(expected_text), "Should contain {} text: {}", lang, expected_text);
-            assert!(html.contains(expected_choice), "Should contain {} choice: {}", lang, expected_choice);
+            assert!(
+                html.contains(expected_text),
+                "Should contain {} text: {}",
+                lang,
+                expected_text
+            );
+            assert!(
+                html.contains(expected_choice),
+                "Should contain {} choice: {}",
+                lang,
+                expected_choice
+            );
         }
     }
 
@@ -280,7 +331,7 @@ mod integration_tests {
                     same_page: Some(false),
                     time_limit: Some(30),
                     timeout_to: None,
-                    effects: None,
+                    impacts: None,
                 },
                 ParagraphChoice::Complex {
                     to: vec!["cover_scene".to_string()],
@@ -290,7 +341,7 @@ mod integration_tests {
                     same_page: Some(false),
                     time_limit: Some(15),
                     timeout_to: None,
-                    effects: None,
+                    impacts: None,
                 },
                 ParagraphChoice::Complex {
                     to: vec!["spell_scene".to_string()],
@@ -300,16 +351,18 @@ mod integration_tests {
                     same_page: Some(false),
                     time_limit: None, // No time limit
                     timeout_to: None,
-                    effects: None,
+                    impacts: None,
                 },
                 ParagraphChoice::Simple(vec!["escape_scene".to_string()]),
             ],
         };
 
-        let mock_client = MockApiClient::new()
-            .with_paragraphs(vec![time_limit_paragraph]);
+        let mock_client = MockApiClient::new().with_paragraphs(vec![time_limit_paragraph]);
 
-        let paragraph = mock_client.get_paragraph_by_id("urgent_story").await.unwrap();
+        let paragraph = mock_client
+            .get_paragraph_by_id("urgent_story")
+            .await
+            .unwrap();
         let choices = paragraph_to_choices(&paragraph, "zh-TW");
 
         // Simulate partially disabled options due to time limit expiration
@@ -335,15 +388,36 @@ mod integration_tests {
         let html = render(&vdom);
 
         // Verify time limit options are correctly disabled
-        assert!(html.contains("The enemy is approaching"), "Should contain urgent situation text");
-        assert!(html.contains("Attack immediately (30 seconds)"), "Should display attack option");
-        assert!(html.contains("opacity-50"), "Should have disabled option styles");
-        assert!(html.contains("cursor-not-allowed"), "Disabled options should not be clickable");
-        
+        assert!(
+            html.contains("The enemy is approaching"),
+            "Should contain urgent situation text"
+        );
+        assert!(
+            html.contains("Attack immediately (30 seconds)"),
+            "Should display attack option"
+        );
+        assert!(
+            html.contains("opacity-50"),
+            "Should have disabled option styles"
+        );
+        assert!(
+            html.contains("cursor-not-allowed"),
+            "Disabled options should not be clickable"
+        );
+
         // Check enabled options
-        assert!(html.contains("Attack immediately (30 seconds)"), "Attack option should be available");
-        assert!(html.contains("Find cover (15 seconds)"), "Find cover option should be available");
-        assert!(html.contains("Cast spell"), "Spell option should be available");
+        assert!(
+            html.contains("Attack immediately (30 seconds)"),
+            "Attack option should be available"
+        );
+        assert!(
+            html.contains("Find cover (15 seconds)"),
+            "Find cover option should be available"
+        );
+        assert!(
+            html.contains("Cast spell"),
+            "Spell option should be available"
+        );
         assert!(html.contains("Escape"), "Escape option should be available");
     }
 
@@ -353,13 +427,11 @@ mod integration_tests {
         let edge_case_paragraph = Paragraph {
             id: "edge_case".to_string(),
             chapter_id: "edge".to_string(),
-            texts: vec![
-                Text {
-                    lang: "zh-TW".to_string(),
-                    paragraphs: "Edge case test".to_string(),
-                    choices: vec![], // Empty choice text
-                },
-            ],
+            texts: vec![Text {
+                lang: "zh-TW".to_string(),
+                paragraphs: "Edge case test".to_string(),
+                choices: vec![], // Empty choice text
+            }],
             choices: vec![
                 ParagraphChoice::Simple(vec![]), // Empty target
                 ParagraphChoice::Complex {
@@ -370,13 +442,13 @@ mod integration_tests {
                     same_page: None,
                     time_limit: None,
                     timeout_to: None,
-                    effects: None,
+                    impacts: None,
                 },
             ],
         };
 
         let choices = paragraph_to_choices(&edge_case_paragraph, "zh-TW");
-        
+
         // Verify edge case handling
         assert_eq!(choices.len(), 2);
         assert_eq!(choices[0].caption, "Option 1"); // Auto-generated title
@@ -385,4 +457,4 @@ mod integration_tests {
         assert_eq!(choices[1].action.to, "target1"); // Take first target
         assert_eq!(choices[1].action.type_, "multi_goto");
     }
-} 
+}

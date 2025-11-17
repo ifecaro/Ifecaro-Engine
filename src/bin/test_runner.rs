@@ -95,12 +95,15 @@ impl TestRunner {
 
         println!("\n{}", format!("📋 Running {}...", name).yellow().bold());
         println!("Command: {}", cmd_str.cyan());
-        println!("{}", "------------------------------------------------".dimmed());
+        println!(
+            "{}",
+            "------------------------------------------------".dimmed()
+        );
 
         let start_time = Instant::now();
-        
+
         let should_skip_tailwind = cmd_str.contains("test") || cmd_str.contains("check");
-        
+
         let (program, args) = if self.is_internal {
             // Execute directly inside container
             self.parse_internal_command(&cmd_str)
@@ -110,7 +113,7 @@ impl TestRunner {
         };
 
         let mut cmd = Command::new(&program);
-        
+
         // For external commands (docker compose exec), add -e flag for environment variable
         if !self.is_internal && should_skip_tailwind {
             // Insert environment variable flag before 'app'
@@ -153,11 +156,20 @@ impl TestRunner {
             passed,
             duration,
             command: cmd_str.clone(),
-            error_message: if passed { None } else { Some("Test failed".to_string()) },
+            error_message: if passed {
+                None
+            } else {
+                Some("Test failed".to_string())
+            },
         };
 
         if passed {
-            println!("{}", format!("✅ {} completed ({}ms)", name, duration.as_millis()).green().bold());
+            println!(
+                "{}",
+                format!("✅ {} completed ({}ms)", name, duration.as_millis())
+                    .green()
+                    .bold()
+            );
             self.passed_tests.fetch_add(1, Ordering::SeqCst);
         } else {
             println!("{}", format!("❌ {} failed", name).red().bold());
@@ -173,7 +185,7 @@ impl TestRunner {
     fn parse_internal_command(&self, command: &str) -> (String, Vec<String>) {
         // Remove docker compose exec app prefix
         let clean_command = command.replace("docker compose exec app ", "");
-        
+
         let parts: Vec<&str> = clean_command.split_whitespace().collect();
         if parts.is_empty() {
             return ("echo".to_string(), vec!["No command".to_string()]);
@@ -200,9 +212,15 @@ impl TestRunner {
         let passed = self.passed_tests.load(Ordering::SeqCst);
         let failed = self.failed_tests.load(Ordering::SeqCst);
 
-        println!("\n{}", "================================================".blue());
+        println!(
+            "\n{}",
+            "================================================".blue()
+        );
         println!("{}", "📊 Test Results Summary".blue().bold());
-        println!("{}", "================================================".blue());
+        println!(
+            "{}",
+            "================================================".blue()
+        );
         println!("Total tests: {}", total);
         println!("{}", format!("Passed: {}", passed).green());
         println!("{}", format!("Failed: {}", failed).red());
@@ -225,12 +243,22 @@ impl TestRunner {
 
     fn run_full_test_suite(&mut self) -> Result<()> {
         println!("{}", "🧪 Running Complete Test Suite".blue().bold());
-        println!("{}", "================================================".blue());
+        println!(
+            "{}",
+            "================================================".blue()
+        );
 
-        // Clear build cache to ensure environment variables take effect
+        // Clear build cache to ensure environment variables take impact
         if !self.is_internal {
             let _ = Command::new("docker")
-                .args(["compose", "exec", "app", "rm", "-rf", "target/debug/build/ifecaro-*"])
+                .args([
+                    "compose",
+                    "exec",
+                    "app",
+                    "rm",
+                    "-rf",
+                    "target/debug/build/ifecaro-*",
+                ])
                 .status();
         } else {
             let _ = Command::new("rm")
@@ -239,15 +267,78 @@ impl TestRunner {
         }
 
         let tests = [
-            ("Compile Check", if self.is_internal { "cargo check" } else { "docker compose exec app cargo check" }),
-            ("Unit Tests (All Modules)", if self.is_internal { "cargo test --lib" } else { "docker compose exec app cargo test --lib" }),
-            ("Story Module Tests", if self.is_internal { "cargo test story_tests" } else { "docker compose exec app cargo test story_tests" }),
-            ("Core Integration Tests", if self.is_internal { "cargo test --test integration_tests" } else { "docker compose exec app cargo test --test integration_tests" }),
-            ("Code Usage Examples", if self.is_internal { "cargo test --test main_code_usage_example" } else { "docker compose exec app cargo test --test main_code_usage_example" }),
-            ("Story Flow Tests", if self.is_internal { "cargo test --test story_flow_tests" } else { "docker compose exec app cargo test --test story_flow_tests" }),
-            ("Dashboard Core Tests", if self.is_internal { "cargo test --test dashboard_tests" } else { "docker compose exec app cargo test --test dashboard_tests" }),
-            ("Dashboard Interaction Tests", if self.is_internal { "cargo test --test dashboard_interaction_tests" } else { "docker compose exec app cargo test --test dashboard_interaction_tests" }),
-            ("Dashboard Benchmark Tests", if self.is_internal { "cargo test --test dashboard_benchmark_tests" } else { "docker compose exec app cargo test --test dashboard_benchmark_tests" }),
+            (
+                "Compile Check",
+                if self.is_internal {
+                    "cargo check"
+                } else {
+                    "docker compose exec app cargo check"
+                },
+            ),
+            (
+                "Unit Tests (All Modules)",
+                if self.is_internal {
+                    "cargo test --lib"
+                } else {
+                    "docker compose exec app cargo test --lib"
+                },
+            ),
+            (
+                "Story Module Tests",
+                if self.is_internal {
+                    "cargo test story_tests"
+                } else {
+                    "docker compose exec app cargo test story_tests"
+                },
+            ),
+            (
+                "Core Integration Tests",
+                if self.is_internal {
+                    "cargo test --test integration_tests"
+                } else {
+                    "docker compose exec app cargo test --test integration_tests"
+                },
+            ),
+            (
+                "Code Usage Examples",
+                if self.is_internal {
+                    "cargo test --test main_code_usage_example"
+                } else {
+                    "docker compose exec app cargo test --test main_code_usage_example"
+                },
+            ),
+            (
+                "Story Flow Tests",
+                if self.is_internal {
+                    "cargo test --test story_flow_tests"
+                } else {
+                    "docker compose exec app cargo test --test story_flow_tests"
+                },
+            ),
+            (
+                "Dashboard Core Tests",
+                if self.is_internal {
+                    "cargo test --test dashboard_tests"
+                } else {
+                    "docker compose exec app cargo test --test dashboard_tests"
+                },
+            ),
+            (
+                "Dashboard Interaction Tests",
+                if self.is_internal {
+                    "cargo test --test dashboard_interaction_tests"
+                } else {
+                    "docker compose exec app cargo test --test dashboard_interaction_tests"
+                },
+            ),
+            (
+                "Dashboard Benchmark Tests",
+                if self.is_internal {
+                    "cargo test --test dashboard_benchmark_tests"
+                } else {
+                    "docker compose exec app cargo test --test dashboard_benchmark_tests"
+                },
+            ),
         ];
 
         for (name, command) in tests {
@@ -268,13 +359,28 @@ impl TestRunner {
     }
 
     fn run_internal_test_suite(&mut self) -> Result<()> {
-        println!("{}", "🚀 Starting optimized test suite in container".blue().bold());
-        println!("{}", "================================================".blue());
+        println!(
+            "{}",
+            "🚀 Starting optimized test suite in container"
+                .blue()
+                .bold()
+        );
+        println!(
+            "{}",
+            "================================================".blue()
+        );
 
-        // Clear build cache to ensure environment variables take effect
+        // Clear build cache to ensure environment variables take impact
         if !self.is_internal {
             let _ = Command::new("docker")
-                .args(["compose", "exec", "app", "rm", "-rf", "target/debug/build/ifecaro-*"])
+                .args([
+                    "compose",
+                    "exec",
+                    "app",
+                    "rm",
+                    "-rf",
+                    "target/debug/build/ifecaro-*",
+                ])
                 .status();
         } else {
             let _ = Command::new("rm")
@@ -288,14 +394,15 @@ impl TestRunner {
             "cargo test --lib",
             "cargo test story_tests",
             "cargo test --test integration_tests",
-            "cargo test --test main_code_usage_example", 
+            "cargo test --test main_code_usage_example",
             "cargo test --test story_flow_tests",
             "cargo test --test dashboard_tests",
             "cargo test --test dashboard_interaction_tests",
             "cargo test --test dashboard_benchmark_tests",
         ];
 
-        let clean_commands: Vec<String> = commands.iter()
+        let clean_commands: Vec<String> = commands
+            .iter()
             .map(|command| command.replace("docker compose exec app ", ""))
             .collect();
 
@@ -308,12 +415,22 @@ impl TestRunner {
 
     fn run_quick_tests(&mut self) -> Result<()> {
         println!("{}", "⚡ Starting quick test suite".yellow().bold());
-        println!("{}", "================================================".yellow());
+        println!(
+            "{}",
+            "================================================".yellow()
+        );
 
-        // Clear build cache to ensure environment variables take effect
+        // Clear build cache to ensure environment variables take impact
         if !self.is_internal {
             let _ = Command::new("docker")
-                .args(["compose", "exec", "app", "rm", "-rf", "target/debug/build/ifecaro-*"])
+                .args([
+                    "compose",
+                    "exec",
+                    "app",
+                    "rm",
+                    "-rf",
+                    "target/debug/build/ifecaro-*",
+                ])
                 .status();
         } else {
             let _ = Command::new("rm")
@@ -321,25 +438,50 @@ impl TestRunner {
                 .status();
         }
 
-        let prefix = if self.is_internal { "" } else { "docker compose exec app " };
+        let prefix = if self.is_internal {
+            ""
+        } else {
+            "docker compose exec app "
+        };
 
         self.run_test("Compile check", &format!("{}cargo check", prefix))?;
         self.run_test("Unit tests", &format!("{}cargo test --lib", prefix))?;
         self.run_test("Story tests", &format!("{}cargo test story_tests", prefix))?;
-        self.run_test("Integration tests", &format!("{}cargo test --test integration_tests", prefix))?;
-        self.run_test("Dashboard core tests", &format!("{}cargo test --test dashboard_tests", prefix))?;
+        self.run_test(
+            "Integration tests",
+            &format!("{}cargo test --test integration_tests", prefix),
+        )?;
+        self.run_test(
+            "Dashboard core tests",
+            &format!("{}cargo test --test dashboard_tests", prefix),
+        )?;
 
         Ok(())
     }
 
     fn run_category_test(&mut self, category: TestCategory) -> Result<()> {
-        println!("{}", format!("🎯 Running {:?} test category", category).cyan().bold());
-        println!("{}", "================================================".cyan());
+        println!(
+            "{}",
+            format!("🎯 Running {:?} test category", category)
+                .cyan()
+                .bold()
+        );
+        println!(
+            "{}",
+            "================================================".cyan()
+        );
 
-        // Clear build cache to ensure environment variables take effect
+        // Clear build cache to ensure environment variables take impact
         if !self.is_internal {
             let _ = Command::new("docker")
-                .args(["compose", "exec", "app", "rm", "-rf", "target/debug/build/ifecaro-*"])
+                .args([
+                    "compose",
+                    "exec",
+                    "app",
+                    "rm",
+                    "-rf",
+                    "target/debug/build/ifecaro-*",
+                ])
                 .status();
         } else {
             let _ = Command::new("rm")
@@ -348,33 +490,78 @@ impl TestRunner {
         }
 
         let (test_name, command) = match category {
-            TestCategory::Compile => {
-                ("Compile check", if self.is_internal { "cargo check" } else { "docker compose exec app cargo check" })
-            },
-            TestCategory::UI => {
-                ("UI component tests", if self.is_internal { "cargo test --lib components::story_content_tests" } else { "docker compose exec app cargo test --lib components::story_content_tests" })
-            },
-            TestCategory::Advanced => {
-                ("Advanced feature tests", if self.is_internal { "cargo test --lib components::story_content_advanced_tests" } else { "docker compose exec app cargo test --lib components::story_content_advanced_tests" })
-            },
-            TestCategory::MockApi => {
-                ("API Mock tests", if self.is_internal { "cargo test --lib services::api_tests" } else { "docker compose exec app cargo test --lib services::api_tests" })
-            },
-            TestCategory::Integration => {
-                ("Integration tests", if self.is_internal { "cargo test --test integration_tests" } else { "docker compose exec app cargo test --test integration_tests" })
-            },
-            TestCategory::Unit => {
-                ("Unit tests", if self.is_internal { "cargo test --lib" } else { "docker compose exec app cargo test --lib" })
-            },
-            TestCategory::External => {
-                ("External integration tests", if self.is_internal { "cargo test --test integration_tests --test main_code_usage_example --test story_flow_tests" } else { "docker compose exec app cargo test --test integration_tests --test main_code_usage_example --test story_flow_tests" })
-            },
-            TestCategory::Story => {
-                ("Story module tests", if self.is_internal { "cargo test story_tests" } else { "docker compose exec app cargo test story_tests" })
-            },
-            TestCategory::Dashboard => {
-                ("Dashboard tests", if self.is_internal { "cargo test --test dashboard_tests --test dashboard_interaction_tests --test dashboard_benchmark_tests" } else { "docker compose exec app cargo test --test dashboard_tests --test dashboard_interaction_tests --test dashboard_benchmark_tests" })
-            },
+            TestCategory::Compile => (
+                "Compile check",
+                if self.is_internal {
+                    "cargo check"
+                } else {
+                    "docker compose exec app cargo check"
+                },
+            ),
+            TestCategory::UI => (
+                "UI component tests",
+                if self.is_internal {
+                    "cargo test --lib components::story_content_tests"
+                } else {
+                    "docker compose exec app cargo test --lib components::story_content_tests"
+                },
+            ),
+            TestCategory::Advanced => (
+                "Advanced feature tests",
+                if self.is_internal {
+                    "cargo test --lib components::story_content_advanced_tests"
+                } else {
+                    "docker compose exec app cargo test --lib components::story_content_advanced_tests"
+                },
+            ),
+            TestCategory::MockApi => (
+                "API Mock tests",
+                if self.is_internal {
+                    "cargo test --lib services::api_tests"
+                } else {
+                    "docker compose exec app cargo test --lib services::api_tests"
+                },
+            ),
+            TestCategory::Integration => (
+                "Integration tests",
+                if self.is_internal {
+                    "cargo test --test integration_tests"
+                } else {
+                    "docker compose exec app cargo test --test integration_tests"
+                },
+            ),
+            TestCategory::Unit => (
+                "Unit tests",
+                if self.is_internal {
+                    "cargo test --lib"
+                } else {
+                    "docker compose exec app cargo test --lib"
+                },
+            ),
+            TestCategory::External => (
+                "External integration tests",
+                if self.is_internal {
+                    "cargo test --test integration_tests --test main_code_usage_example --test story_flow_tests"
+                } else {
+                    "docker compose exec app cargo test --test integration_tests --test main_code_usage_example --test story_flow_tests"
+                },
+            ),
+            TestCategory::Story => (
+                "Story module tests",
+                if self.is_internal {
+                    "cargo test story_tests"
+                } else {
+                    "docker compose exec app cargo test story_tests"
+                },
+            ),
+            TestCategory::Dashboard => (
+                "Dashboard tests",
+                if self.is_internal {
+                    "cargo test --test dashboard_tests --test dashboard_interaction_tests --test dashboard_benchmark_tests"
+                } else {
+                    "docker compose exec app cargo test --test dashboard_tests --test dashboard_interaction_tests --test dashboard_benchmark_tests"
+                },
+            ),
         };
 
         self.run_test(test_name, command)?;
@@ -382,13 +569,26 @@ impl TestRunner {
     }
 
     fn run_benchmark(&mut self) -> Result<()> {
-        println!("{}", "🏃 Starting performance benchmark tests".magenta().bold());
-        println!("{}", "================================================".magenta());
+        println!(
+            "{}",
+            "🏃 Starting performance benchmark tests".magenta().bold()
+        );
+        println!(
+            "{}",
+            "================================================".magenta()
+        );
 
-        // Clear build cache to ensure environment variables take effect
+        // Clear build cache to ensure environment variables take impact
         if !self.is_internal {
             let _ = Command::new("docker")
-                .args(["compose", "exec", "app", "rm", "-rf", "target/debug/build/ifecaro-*"])
+                .args([
+                    "compose",
+                    "exec",
+                    "app",
+                    "rm",
+                    "-rf",
+                    "target/debug/build/ifecaro-*",
+                ])
                 .status();
         } else {
             let _ = Command::new("rm")
@@ -396,8 +596,16 @@ impl TestRunner {
                 .status();
         }
 
-        let perf_cmd = if self.is_internal { "cargo test --release performance_tests" } else { "docker compose exec app cargo test --release performance_tests" };
-        let bench_cmd = if self.is_internal { "cargo bench" } else { "docker compose exec app cargo bench" };
+        let perf_cmd = if self.is_internal {
+            "cargo test --release performance_tests"
+        } else {
+            "docker compose exec app cargo test --release performance_tests"
+        };
+        let bench_cmd = if self.is_internal {
+            "cargo bench"
+        } else {
+            "docker compose exec app cargo bench"
+        };
 
         self.run_test("Performance tests", perf_cmd)?;
         self.run_test("Benchmark tests", bench_cmd)?;
@@ -435,60 +643,64 @@ fn main() -> Result<()> {
             let mut runner = TestRunner::new(is_container);
             runner.run_full_test_suite()?;
             runner.print_summary();
-            
+
             let failed = runner.failed_tests.load(Ordering::SeqCst);
             if failed > 0 {
                 std::process::exit(1);
             }
-        },
+        }
         TestCommands::Quick => {
             let mut runner = TestRunner::new(is_container);
             runner.run_quick_tests()?;
             runner.print_summary();
-            
+
             let failed = runner.failed_tests.load(Ordering::SeqCst);
             if failed > 0 {
                 std::process::exit(1);
             }
-        },
+        }
         TestCommands::Category { category } => {
             let mut runner = TestRunner::new(is_container);
             runner.run_category_test(category.clone())?;
             runner.print_summary();
-            
+
             let failed = runner.failed_tests.load(Ordering::SeqCst);
             if failed > 0 {
                 std::process::exit(1);
             }
-        },
+        }
         TestCommands::Internal => {
             // Internal mode forces container mode
             let mut runner = TestRunner::new(true);
             runner.run_internal_test_suite()?;
             runner.print_summary();
-            
+
             let failed = runner.failed_tests.load(Ordering::SeqCst);
             if failed > 0 {
                 std::process::exit(1);
             }
-        },
+        }
         TestCommands::Check => {
             let mut runner = TestRunner::new(is_container);
-            let prefix = if is_container { "" } else { "docker compose exec app " };
+            let prefix = if is_container {
+                ""
+            } else {
+                "docker compose exec app "
+            };
             runner.run_test("Compile check", &format!("{}cargo check", prefix))?;
             runner.print_summary();
-            
+
             let failed = runner.failed_tests.load(Ordering::SeqCst);
             if failed > 0 {
                 std::process::exit(1);
             }
-        },
+        }
         TestCommands::Bench => {
             let mut runner = TestRunner::new(is_container);
             runner.run_benchmark()?;
             runner.print_summary();
-        },
+        }
     }
 
     Ok(())
-} 
+}

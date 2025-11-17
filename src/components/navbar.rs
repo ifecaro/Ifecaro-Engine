@@ -1,17 +1,17 @@
-use dioxus::prelude::*;
+use crate::components::dropdown::Dropdown;
+use crate::components::language_selector::{display_language, Language, AVAILABLE_LANGUAGES};
+use crate::components::settings::Settings;
+use crate::contexts::language_context::LanguageState;
 use crate::enums::route::Route;
 use crate::enums::style::NavbarStyle;
+use dioxus::prelude::*;
 use dioxus_core::use_drop;
 use dioxus_i18n::t;
-use wasm_bindgen::{closure::Closure, JsCast};
-use wasm_bindgen::JsValue;
 use gloo_timers::callback::Timeout;
-use web_sys::Event;
-use crate::contexts::language_context::LanguageState;
-use crate::components::dropdown::Dropdown;
-use crate::components::language_selector::{AVAILABLE_LANGUAGES, Language, display_language};
-use crate::components::settings::Settings;
+use wasm_bindgen::JsValue;
+use wasm_bindgen::{closure::Closure, JsCast};
 use web_sys::window;
+use web_sys::Event;
 
 #[component]
 pub fn Navbar(closure_signal: Signal<Option<Closure<dyn FnMut(Event)>>>) -> Element {
@@ -35,7 +35,10 @@ pub fn Navbar(closure_signal: Signal<Option<Closure<dyn FnMut(Event)>>>) -> Elem
             let win = window().unwrap();
             let path = win.location().pathname().unwrap_or_default();
             let new_url = format!("{}?debugmode=true", path);
-            let _ = win.history().unwrap().replace_state_with_url(&JsValue::NULL, "", Some(&new_url));
+            let _ =
+                win.history()
+                    .unwrap()
+                    .replace_state_with_url(&JsValue::NULL, "", Some(&new_url));
         }
     });
     let mut state = use_context::<Signal<LanguageState>>();
@@ -62,33 +65,34 @@ pub fn Navbar(closure_signal: Signal<Option<Closure<dyn FnMut(Event)>>>) -> Elem
             is_desktop.set(is_desktop_mode);
         }) as Box<dyn FnMut(Event)>);
 
-        win
-            .add_event_listener_with_callback("resize", closure.as_ref().unchecked_ref())
+        win.add_event_listener_with_callback("resize", closure.as_ref().unchecked_ref())
             .unwrap();
-        
+
         resize_closure.set(Some(closure));
     });
 
     use_drop(move || {
         if let Some(closure) = resize_closure.take() {
             let win = window().unwrap();
-            win.remove_event_listener_with_callback("resize", closure.as_ref().unchecked_ref()).unwrap();
+            win.remove_event_listener_with_callback("resize", closure.as_ref().unchecked_ref())
+                .unwrap();
         }
     });
 
     let filtered_languages = use_memo(move || {
         let query = search_query.read().to_lowercase();
-        AVAILABLE_LANGUAGES.iter()
+        AVAILABLE_LANGUAGES
+            .iter()
             .filter(|l| {
-                l.name.to_lowercase().contains(&query) || 
-                l.code.to_lowercase().contains(&query)
+                l.name.to_lowercase().contains(&query) || l.code.to_lowercase().contains(&query)
             })
             .collect::<Vec<_>>()
     });
 
     let current_language = {
         let lang_code = state.read().current_language.clone();
-        AVAILABLE_LANGUAGES.iter()
+        AVAILABLE_LANGUAGES
+            .iter()
             .find(|l| l.code == lang_code)
             .map(|l| l.name)
             .unwrap_or("English")
@@ -114,11 +118,11 @@ pub fn Navbar(closure_signal: Signal<Option<Closure<dyn FnMut(Event)>>>) -> Elem
     });
 
     rsx! {
-        div { 
+        div {
             class: "fixed bottom-0 sm:top-0 sm:bottom-auto left-0 right-0 w-full bg-white dark:bg-gray-900 z-[9999] h-14 sm:h-auto",
-            div { 
+            div {
                 class: "container mx-auto px-0 sm:px-6 h-full flex items-center",
-                div { 
+                div {
                     class: "flex items-center sm:justify-end sm:space-x-6 w-full",
                     Link {
                         to: Route::Story { lang: story_lang.clone() },

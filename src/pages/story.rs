@@ -1,34 +1,36 @@
 #![allow(unused_mut)]
-use dioxus::prelude::*;
-use crate::models::effects::{CharacterStateSnapshot, Effect};
-use dioxus_core::fc_to_builder;
-use wasm_bindgen_futures::spawn_local;
-use serde::Deserialize;
-use crate::components::story_content::{StoryContent, Choice, Action};
-use crate::contexts::story_context::use_story_context;
+use crate::components::story_content::{Action, Choice, StoryContent};
+use crate::constants::config::{BASE_API_URL, CHAPTERS, PARAGRAPHS};
 use crate::contexts::language_context::LanguageState;
-use crate::constants::config::{BASE_API_URL, PARAGRAPHS, CHAPTERS};
-use crate::services::indexeddb::set_setting_to_indexeddb;
 use crate::contexts::settings_context::use_settings_context;
-use crate::services::indexeddb::get_settings_from_indexeddb;
-use wasm_bindgen::closure::Closure;
-use wasm_bindgen::JsCast;
-use wasm_bindgen::JsValue;
+use crate::contexts::story_context::use_story_context;
+use crate::contexts::story_merged_context::{
+    provide_story_merged_context, use_story_merged_context,
+};
+use crate::models::impacts::{CharacterStateSnapshot, Impact};
 use crate::services::indexeddb::get_choice_from_indexeddb;
+use crate::services::indexeddb::get_settings_from_indexeddb;
+use crate::services::indexeddb::set_setting_to_indexeddb;
 use crate::services::indexeddb::{
     get_latest_character_state_from_indexeddb, set_latest_character_state_to_indexeddb,
     set_random_choice_to_indexeddb,
 };
-use rand::prelude::IteratorRandom;
-use std::rc::Rc;
-use std::cell::RefCell;
-use crate::contexts::story_merged_context::{use_story_merged_context, provide_story_merged_context};
-use js_sys;
+use dioxus::prelude::*;
+use dioxus_core::fc_to_builder;
 use futures_util::future::join_all;
-use std::borrow::Cow;
-use std::collections::HashSet;
 use gloo_timers::callback::Timeout;
+use js_sys;
+use rand::prelude::IteratorRandom;
+use serde::Deserialize;
 use serde_json;
+use std::borrow::Cow;
+use std::cell::RefCell;
+use std::collections::HashSet;
+use std::rc::Rc;
+use wasm_bindgen::closure::Closure;
+use wasm_bindgen::JsCast;
+use wasm_bindgen::JsValue;
+use wasm_bindgen_futures::spawn_local;
 
 #[derive(Deserialize, Clone, Debug)]
 #[allow(dead_code)]
@@ -77,7 +79,7 @@ pub struct ComplexChoice {
     pub same_page: Option<bool>,
     pub time_limit: Option<u32>,
     pub timeout_to: Option<String>,
-    pub effects: Option<Vec<Effect>>,
+    pub impacts: Option<Vec<Impact>>,
 }
 
 impl<'de> serde::Deserialize<'de> for ComplexChoice {
@@ -91,13 +93,13 @@ impl<'de> serde::Deserialize<'de> for ComplexChoice {
             Multiple(Vec<String>),
             Single(String),
         }
-        
+
         impl Default for ToField {
             fn default() -> Self {
                 ToField::Multiple(Vec::new())
             }
         }
-        
+
         #[derive(Deserialize)]
         struct Helper {
             #[serde(default)]
@@ -115,15 +117,21 @@ impl<'de> serde::Deserialize<'de> for ComplexChoice {
             #[serde(default, rename = "timeout_to")]
             timeout_to: Option<String>,
             #[serde(default)]
-            effects: Option<Vec<Effect>>,
+            impacts: Option<Vec<Impact>>,
         }
-        
+
         let helper = Helper::deserialize(deserializer)?;
         let to = match helper.to {
             ToField::Multiple(vec) => vec,
-            ToField::Single(s) => if s.is_empty() { Vec::new() } else { vec![s] },
+            ToField::Single(s) => {
+                if s.is_empty() {
+                    Vec::new()
+                } else {
+                    vec![s]
+                }
+            }
         };
-        
+
         Ok(ComplexChoice {
             to,
             type_: helper.type_,
@@ -132,7 +140,7 @@ impl<'de> serde::Deserialize<'de> for ComplexChoice {
             same_page: helper.same_page,
             time_limit: helper.time_limit,
             timeout_to: helper.timeout_to,
-            effects: helper.effects,
+            impacts: helper.impacts,
         })
     }
 }
@@ -209,7 +217,12 @@ pub fn merge_paragraphs_for_lang(
 
     let estimated_capacity: usize = paragraphs_to_process
         .iter()
-        .filter_map(|p| p.texts.iter().find(|t| t.lang == current_language).map(|t| t.paragraphs.len() + 2))
+        .filter_map(|p| {
+            p.texts
+                .iter()
+                .find(|t| t.lang == current_language)
+                .map(|t| t.paragraphs.len() + 2)
+        })
         .sum();
     let mut merged_paragraph_str = String::with_capacity(estimated_capacity);
 
@@ -228,7 +241,10 @@ pub fn merge_paragraphs_for_lang(
 }
 
 // Add helper function after merge_paragraphs_for_lang
-pub fn update_choice_history(mut current_history: Vec<String>, new_paragraph_id: &str) -> Vec<String> {
+pub fn update_choice_history(
+    mut current_history: Vec<String>,
+    new_paragraph_id: &str,
+) -> Vec<String> {
     if !current_history.contains(&new_paragraph_id.to_string()) {
         current_history.push(new_paragraph_id.to_string());
     }
@@ -281,7 +297,7 @@ pub fn Story(props: StoryProps) -> Element {
         let choice_ids = ctx.choice_ids.read();
 
         // If we already have a stored history, rebuild the full path immediately so that
-        // the UI is consistent even before the async auto-restore effect runs.
+        // the UI is consistent even before the async auto-restore impact runs.
         if !choice_ids.is_empty() {
             let mut path = Vec::new();
             for id in choice_ids.iter() {
@@ -314,7 +330,7 @@ pub fn Story(props: StoryProps) -> Element {
     let _settings_context = settings_context.clone();
     let _selected_targets: Vec<String> = Vec::new();
     let story_context = story_context.clone(); // 不需要 mut
-    
+
     // Only responsible for background data fetching, update context after fetching
     {
         let mut _paragraph_data = paragraph_data.clone();
@@ -329,16 +345,21 @@ pub fn Story(props: StoryProps) -> Element {
             fetch_initialized.set(true);
             spawn_local(async move {
                 // 1. First read settings (indexedDB)
-                let settings = wasm_bindgen_futures::JsFuture::from(js_sys::Promise::new(&mut |resolve, _reject| {
-                    let cb = Closure::wrap(Box::new(move |js_value: wasm_bindgen::JsValue| {
-                        resolve.call1(&JsValue::NULL, &js_value).unwrap_or_else(|e| {
-                            tracing::error!("Failed to resolve JS callback: {:?}", e);
-                            e
-                        });
-                    }) as Box<dyn FnMut(wasm_bindgen::JsValue)>);
-                    get_settings_from_indexeddb(cb.as_ref().unchecked_ref());
-                    cb.forget();
-                }));
+                let settings = wasm_bindgen_futures::JsFuture::from(js_sys::Promise::new(
+                    &mut |resolve, _reject| {
+                        let cb = Closure::wrap(Box::new(move |js_value: wasm_bindgen::JsValue| {
+                            resolve
+                                .call1(&JsValue::NULL, &js_value)
+                                .unwrap_or_else(|e| {
+                                    tracing::error!("Failed to resolve JS callback: {:?}", e);
+                                    e
+                                });
+                        })
+                            as Box<dyn FnMut(wasm_bindgen::JsValue)>);
+                        get_settings_from_indexeddb(cb.as_ref().unchecked_ref());
+                        cb.forget();
+                    },
+                ));
                 let js_value = match settings.await {
                     Ok(val) => val,
                     Err(_e) => {
@@ -351,8 +372,12 @@ pub fn Story(props: StoryProps) -> Element {
                     let keys = js_sys::Object::keys(&obj);
                     for i in 0..keys.length() {
                         let key = keys.get(i);
-                        let value = js_sys::Reflect::get(&obj, &key).unwrap_or(js_sys::JsString::from("").into());
-                        map.insert(key.as_string().unwrap_or_default(), value.as_string().unwrap_or_default());
+                        let value = js_sys::Reflect::get(&obj, &key)
+                            .unwrap_or(js_sys::JsString::from("").into());
+                        map.insert(
+                            key.as_string().unwrap_or_default(),
+                            value.as_string().unwrap_or_default(),
+                        );
                     }
                 }
                 {
@@ -371,9 +396,16 @@ pub fn Story(props: StoryProps) -> Element {
                                     match serde_json::from_str::<Data>(&text) {
                                         Ok(data) => {
                                             let target_id = "storystartpoint";
-                                            let skip_setting = settings_context.read().settings.get("settings_done").map(|v| v == "true").unwrap_or(false);
+                                            let skip_setting = settings_context
+                                                .read()
+                                                .settings
+                                                .get("settings_done")
+                                                .map(|v| v == "true")
+                                                .unwrap_or(false);
                                             let first_paragraph = if skip_setting {
-                                                data.items.iter().find(|p| p.id.trim() == target_id)
+                                                data.items
+                                                    .iter()
+                                                    .find(|p| p.id.trim() == target_id)
                                                     .or_else(|| data.items.first())
                                             } else {
                                                 data.items.first()
@@ -381,33 +413,42 @@ pub fn Story(props: StoryProps) -> Element {
                                             if let Some(first_paragraph) = first_paragraph {
                                                 // Only reset the expanded path when we don't already have a
                                                 // reconstructed history (i.e. no stored choice_ids).
-                                                let has_history = !story_context.read().choice_ids.read().is_empty();
+                                                let has_history = !story_context
+                                                    .read()
+                                                    .choice_ids
+                                                    .read()
+                                                    .is_empty();
                                                 if !has_history {
                                                     {
                                                         let mut ctx = story_context.write();
-                                                        ctx.target_paragraph_id = Some(first_paragraph.id.clone());
+                                                        ctx.target_paragraph_id =
+                                                            Some(first_paragraph.id.clone());
                                                     }
-                                                    _expanded_paragraphs.set(vec![first_paragraph.clone()]);
+                                                    _expanded_paragraphs
+                                                        .set(vec![first_paragraph.clone()]);
                                                 }
                                             }
                                             // Here first set to paragraph_data (signal), then set to context
                                             _paragraph_data.set(data.items.clone());
-                                            story_context.write().paragraphs.set(data.items.clone());
-                                        },
+                                            story_context
+                                                .write()
+                                                .paragraphs
+                                                .set(data.items.clone());
+                                        }
                                         Err(_e) => {}
                                     }
-                                },
+                                }
                                 Err(_e) => {}
                             }
                         }
-                    },
+                    }
                     Err(_e) => {}
                 }
             });
             ()
         });
     }
-    
+
     // Load chapter list
     {
         let mut story_context = story_context.clone();
@@ -426,19 +467,39 @@ pub fn Story(props: StoryProps) -> Element {
                                 if let Some(items) = json.get("items").and_then(|i| i.as_array()) {
                                     let mut result = Vec::new();
                                     for item in items {
-                                        let id = item.get("id").and_then(|v| v.as_str()).unwrap_or("").to_string();
-                                        let order = item.get("order").and_then(|v| v.as_i64()).unwrap_or(0) as i32;
-                                        let titles = item.get("titles").and_then(|v| v.as_array()).map(|arr| {
-                                            arr.iter().filter_map(|title_obj| {
-                                                let lang = title_obj.get("lang").and_then(|v| v.as_str()).unwrap_or("").to_string();
-                                                let title = title_obj.get("title").and_then(|v| v.as_str()).unwrap_or("").to_string();
-                                                if !lang.is_empty() && !title.is_empty() {
-                                                    Some(ChapterTitle { lang, title })
-                                                } else {
-                                                    None
-                                                }
-                                            }).collect::<Vec<_>>()
-                                        }).unwrap_or_default();
+                                        let id = item
+                                            .get("id")
+                                            .and_then(|v| v.as_str())
+                                            .unwrap_or("")
+                                            .to_string();
+                                        let order =
+                                            item.get("order").and_then(|v| v.as_i64()).unwrap_or(0)
+                                                as i32;
+                                        let titles = item
+                                            .get("titles")
+                                            .and_then(|v| v.as_array())
+                                            .map(|arr| {
+                                                arr.iter()
+                                                    .filter_map(|title_obj| {
+                                                        let lang = title_obj
+                                                            .get("lang")
+                                                            .and_then(|v| v.as_str())
+                                                            .unwrap_or("")
+                                                            .to_string();
+                                                        let title = title_obj
+                                                            .get("title")
+                                                            .and_then(|v| v.as_str())
+                                                            .unwrap_or("")
+                                                            .to_string();
+                                                        if !lang.is_empty() && !title.is_empty() {
+                                                            Some(ChapterTitle { lang, title })
+                                                        } else {
+                                                            None
+                                                        }
+                                                    })
+                                                    .collect::<Vec<_>>()
+                                            })
+                                            .unwrap_or_default();
                                         result.push(Chapter { id, titles, order });
                                     }
                                     story_context.write().chapters.set(result);
@@ -452,7 +513,7 @@ pub fn Story(props: StoryProps) -> Element {
             ()
         });
     }
-    
+
     // When target paragraph ID changes, update current paragraph
     {
         let mut current_paragraph = current_paragraph.clone();
@@ -472,57 +533,75 @@ pub fn Story(props: StoryProps) -> Element {
             let paragraph = expanded_vec.last();
             if let Some(paragraph) = paragraph {
                 current_paragraph.set(Some(paragraph.clone()));
-                if let Some(text) = paragraph.texts.iter().find(|t| t.lang == state().current_language) {
+                if let Some(text) = paragraph
+                    .texts
+                    .iter()
+                    .find(|t| t.lang == state().current_language)
+                {
                     current_text.set(Some(text.clone()));
-                    let choices: Vec<Choice> = paragraph.choices.iter().enumerate().map(|(index, c)| {
-                        let choice: StoryChoice = StoryChoice::Complex(c.clone());
-                        let mut choice_obj: Choice = choice.into();
-                        if let Some(text) = paragraph.texts.iter().find(|t| t.lang == state().current_language) {
-                            if let Some(caption) = text.choices.get(index) {
-                                choice_obj.caption = caption.clone().into();
-                            }
-                        }
-                        // Check if there are multiple targets, if so perform random selection
-                        if c.to.len() > 1 {
-                            // Randomly select one target from multi-target choice, but avoid staying on the
-                            // same paragraph (i.e. target id == current paragraph id). If after filtering there
-                            // are no valid candidates, fall back to the original list.
-                            let mut rng = rand::thread_rng();
-                            let mut candidates: Vec<String> = c
-                                .to
+                    let choices: Vec<Choice> = paragraph
+                        .choices
+                        .iter()
+                        .enumerate()
+                        .map(|(index, c)| {
+                            let choice: StoryChoice = StoryChoice::Complex(c.clone());
+                            let mut choice_obj: Choice = choice.into();
+                            if let Some(text) = paragraph
+                                .texts
                                 .iter()
-                                .filter(|id| *id != &paragraph.id)
-                                .cloned()
-                                .collect();
-
-                            if candidates.is_empty() {
-                                candidates = c.to.clone();
-                            }
-
-                            let selected_target = candidates
-                                .iter()
-                                .choose(&mut rng)
-                                .cloned()
-                                .unwrap_or_default();
-                            choice_obj.action.to = Cow::Owned(selected_target.clone());
-                            
-                            // Asynchronously record choice to IndexedDB
-                            let paragraph_id = paragraph.id.clone();
-                            let choice_index = index as u32;
-                            let original_choices = c.to.clone();
-                            let selected = selected_target.clone();
-                            spawn_local(async move {
-                                let js_array = js_sys::Array::new();
-                                for choice in &original_choices {
-                                    js_array.push(&JsValue::from_str(choice));
+                                .find(|t| t.lang == state().current_language)
+                            {
+                                if let Some(caption) = text.choices.get(index) {
+                                    choice_obj.caption = caption.clone().into();
                                 }
-                                set_random_choice_to_indexeddb(&paragraph_id, choice_index, &js_array, &selected);
-                            });
-                        } else if !c.to.is_empty() {
-                            choice_obj.action.to = Cow::Owned(c.to.first().cloned().unwrap_or_default());
-                        }
-                        choice_obj
-                    }).collect();
+                            }
+                            // Check if there are multiple targets, if so perform random selection
+                            if c.to.len() > 1 {
+                                // Randomly select one target from multi-target choice, but avoid staying on the
+                                // same paragraph (i.e. target id == current paragraph id). If after filtering there
+                                // are no valid candidates, fall back to the original list.
+                                let mut rng = rand::thread_rng();
+                                let mut candidates: Vec<String> =
+                                    c.to.iter()
+                                        .filter(|id| *id != &paragraph.id)
+                                        .cloned()
+                                        .collect();
+
+                                if candidates.is_empty() {
+                                    candidates = c.to.clone();
+                                }
+
+                                let selected_target = candidates
+                                    .iter()
+                                    .choose(&mut rng)
+                                    .cloned()
+                                    .unwrap_or_default();
+                                choice_obj.action.to = Cow::Owned(selected_target.clone());
+
+                                // Asynchronously record choice to IndexedDB
+                                let paragraph_id = paragraph.id.clone();
+                                let choice_index = index as u32;
+                                let original_choices = c.to.clone();
+                                let selected = selected_target.clone();
+                                spawn_local(async move {
+                                    let js_array = js_sys::Array::new();
+                                    for choice in &original_choices {
+                                        js_array.push(&JsValue::from_str(choice));
+                                    }
+                                    set_random_choice_to_indexeddb(
+                                        &paragraph_id,
+                                        choice_index,
+                                        &js_array,
+                                        &selected,
+                                    );
+                                });
+                            } else if !c.to.is_empty() {
+                                choice_obj.action.to =
+                                    Cow::Owned(c.to.first().cloned().unwrap_or_default());
+                            }
+                            choice_obj
+                        })
+                        .collect();
                     current_choices.set(choices.clone());
                     // Compute enabled targets using the relaxed rule.
                     let enabled = compute_enabled_choices(&choices);
@@ -531,8 +610,8 @@ pub fn Story(props: StoryProps) -> Element {
             }
         });
     }
-    
-    // Separate effect for reader mode auto-expansion
+
+    // Separate impact for reader mode auto-expansion
     {
         let _paragraph_data = paragraph_data.clone();
         let mut _expanded_paragraphs = _expanded_paragraphs.clone();
@@ -553,13 +632,26 @@ pub fn Story(props: StoryProps) -> Element {
                 return;
             }
             let settings = settings_context.read().settings.clone();
-            let _reader_mode_enabled = settings.get("reader_mode").map(|v| v == "true").unwrap_or(false);
-            let settings_done = settings.get("settings_done").map(|v| v == "true").unwrap_or(false);
+            let _reader_mode_enabled = settings
+                .get("reader_mode")
+                .map(|v| v == "true")
+                .unwrap_or(false);
+            let settings_done = settings
+                .get("settings_done")
+                .map(|v| v == "true")
+                .unwrap_or(false);
             if let Some(target_id) = target_id {
                 if let Ok(_paragraph_data_guard) = _paragraph_data.try_read() {
                     if let Some(paragraph) = _paragraph_data.iter().find(|p| &p.id == &target_id) {
-                        if settings_done && _reader_mode_enabled && paragraph.chapter_id != "settingschapter" {
-                            if let Some(text) = paragraph.texts.iter().find(|t| t.lang == state().current_language) {
+                        if settings_done
+                            && _reader_mode_enabled
+                            && paragraph.chapter_id != "settingschapter"
+                        {
+                            if let Some(text) = paragraph
+                                .texts
+                                .iter()
+                                .find(|t| t.lang == state().current_language)
+                            {
                                 if !text.choices.is_empty() {
                                     *last_expansion_id.borrow_mut() = target_id_str;
                                     if let Ok(_paragraph_data_clone) = _paragraph_data.try_read() {
@@ -575,38 +667,63 @@ pub fn Story(props: StoryProps) -> Element {
                                             let mut random_choice_indices = Vec::new();
                                             let mut random_choice_paragraph_ids = Vec::new();
                                             let mut random_choice_originals = Vec::new();
-                                            let mut random_choice_targets: Vec<(String, u32)> = Vec::new();
+                                            let mut random_choice_targets: Vec<(String, u32)> =
+                                                Vec::new();
                                             // 預先組出所有要查詢 random_choices 的 (paragraph_id, choice_index, original_choices)
                                             loop {
-                                                let text = match current.texts.iter().find(|t| t.lang == state().current_language) {
-                                                    Some(t) => t,
-                                                    None => { break; }
-                                                };
-                                                if text.choices.is_empty() { break; }
-                                                
+                                                let text =
+                                                    match current.texts.iter().find(|t| {
+                                                        t.lang == state().current_language
+                                                    }) {
+                                                        Some(t) => t,
+                                                        None => {
+                                                            break;
+                                                        }
+                                                    };
+                                                if text.choices.is_empty() {
+                                                    break;
+                                                }
+
                                                 let mut available_choices = Vec::new();
                                                 for (i, _c) in text.choices.iter().enumerate() {
-                                                    if let Some(complex_choice) = current.choices.get(i) {
+                                                    if let Some(complex_choice) =
+                                                        current.choices.get(i)
+                                                    {
                                                         if !complex_choice.to.is_empty() {
-                                                            available_choices.push((i, complex_choice.clone()));
+                                                            available_choices
+                                                                .push((i, complex_choice.clone()));
                                                         }
                                                     }
                                                 }
 
-                                                if available_choices.is_empty() { break; }
+                                                if available_choices.is_empty() {
+                                                    break;
+                                                }
 
-                                                let (choice_index, choice) = available_choices.into_iter().choose(&mut rand::thread_rng()).unwrap();
-                                                
+                                                let (choice_index, choice) = available_choices
+                                                    .into_iter()
+                                                    .choose(&mut rand::thread_rng())
+                                                    .unwrap();
+
                                                 if choice.to.len() > 1 {
-                                                    random_choice_paragraph_ids.push(current.id.clone());
+                                                    random_choice_paragraph_ids
+                                                        .push(current.id.clone());
                                                     random_choice_indices.push(choice_index as u32);
                                                     random_choice_originals.push(choice.to.clone());
-                                                    random_choice_targets.push((current.id.clone(), choice_index as u32));
+                                                    random_choice_targets.push((
+                                                        current.id.clone(),
+                                                        choice_index as u32,
+                                                    ));
                                                     break; // Only handle one multi-choice for now, then reconstruct path
                                                 } else {
                                                     let next_id = &choice.to[0];
-                                                    if let Some(next) = _paragraph_data.iter().find(|p| p.id == *next_id) {
-                                                        if visited.contains(&next.id) { break; }
+                                                    if let Some(next) = _paragraph_data
+                                                        .iter()
+                                                        .find(|p| p.id == *next_id)
+                                                    {
+                                                        if visited.contains(&next.id) {
+                                                            break;
+                                                        }
                                                         path.push(next.clone());
                                                         visited.push(next.id.clone());
                                                         current = next.clone();
@@ -618,16 +735,20 @@ pub fn Story(props: StoryProps) -> Element {
                                             // 查詢所有 random_choices
                                             let _selected_targets: Vec<String> = Vec::new();
                                             for (pid, idx) in random_choice_targets.iter() {
-                                                let fut = wasm_bindgen_futures::JsFuture::from(js_sys::Promise::new(&mut |resolve, _reject| {
-                                                    let cb = Closure::wrap(Box::new(move |js_value: wasm_bindgen::JsValue| {
+                                                let fut = wasm_bindgen_futures::JsFuture::from(
+                                                    js_sys::Promise::new(
+                                                        &mut |resolve, _reject| {
+                                                            let cb = Closure::wrap(Box::new(move |js_value: wasm_bindgen::JsValue| {
                                                         resolve.call1(&JsValue::NULL, &js_value).unwrap_or_else(|e| {
                                                             tracing::error!("Failed to resolve JS callback: {:?}", e);
                                                             e
                                                         });
                                                     }) as Box<dyn FnMut(wasm_bindgen::JsValue)>);
-                                                    crate::services::indexeddb::get_random_choice_from_indexeddb(pid, *idx as u32, cb.as_ref().unchecked_ref());
-                                                    cb.forget();
-                                                }));
+                                                            crate::services::indexeddb::get_random_choice_from_indexeddb(pid, *idx as u32, cb.as_ref().unchecked_ref());
+                                                            cb.forget();
+                                                        },
+                                                    ),
+                                                );
                                                 random_choice_futures.push(fut);
                                             }
                                             let results = join_all(random_choice_futures).await;
@@ -641,17 +762,26 @@ pub fn Story(props: StoryProps) -> Element {
                                                         s
                                                     } else {
                                                         // 沒有紀錄才隨機
-                                                        let chosen = original_choices.iter().choose(&mut rand::thread_rng()).cloned().unwrap_or_default();
+                                                        let chosen = original_choices
+                                                            .iter()
+                                                            .choose(&mut rand::thread_rng())
+                                                            .cloned()
+                                                            .unwrap_or_default();
                                                         // 寫入 random_choices
                                                         let js_array = js_sys::Array::new();
                                                         for choice in original_choices {
-                                                            js_array.push(&JsValue::from_str(choice));
+                                                            js_array
+                                                                .push(&JsValue::from_str(choice));
                                                         }
                                                         crate::services::indexeddb::set_random_choice_to_indexeddb(paragraph_id, idx, &js_array, &chosen);
                                                         chosen
                                                     }
                                                 } else {
-                                                    let chosen = original_choices.iter().choose(&mut rand::thread_rng()).cloned().unwrap_or_default();
+                                                    let chosen = original_choices
+                                                        .iter()
+                                                        .choose(&mut rand::thread_rng())
+                                                        .cloned()
+                                                        .unwrap_or_default();
                                                     let js_array = js_sys::Array::new();
                                                     for choice in original_choices {
                                                         js_array.push(&JsValue::from_str(choice));
@@ -660,8 +790,13 @@ pub fn Story(props: StoryProps) -> Element {
                                                     chosen
                                                 };
                                                 // 找到下一個段落
-                                                if let Some(next) = _paragraph_data.iter().find(|p| p.id == chosen_target) {
-                                                    if visited.contains(&next.id) { break; }
+                                                if let Some(next) = _paragraph_data
+                                                    .iter()
+                                                    .find(|p| p.id == chosen_target)
+                                                {
+                                                    if visited.contains(&next.id) {
+                                                        break;
+                                                    }
                                                     path.push(next.clone());
                                                     visited.push(next.id.clone());
                                                 } else {
@@ -673,13 +808,15 @@ pub fn Story(props: StoryProps) -> Element {
                                                 let path_clone = path.clone();
                                                 Timeout::new(0, move || {
                                                     ap.set(path_clone);
-                                                }).forget();
+                                                })
+                                                .forget();
                                             }
                                             // 新增：讀者模式自動寫入 indexedDB（先比對再寫入）
                                             if _reader_mode_enabled {
                                                 if let Some(first) = path.first() {
                                                     let chapter_id = &first.chapter_id;
-                                                    let ids: Vec<String> = path.iter().map(|p| p.id.clone()).collect();
+                                                    let ids: Vec<String> =
+                                                        path.iter().map(|p| p.id.clone()).collect();
                                                     let js_array = js_sys::Array::new();
                                                     for id in &ids {
                                                         js_array.push(&JsValue::from_str(id));
@@ -688,50 +825,83 @@ pub fn Story(props: StoryProps) -> Element {
                                                     let ids_clone = ids.clone();
                                                     let chapter_id_clone = chapter_id.clone();
                                                     wasm_bindgen_futures::spawn_local(async move {
-                                                        if let Ok(js_value) = get_choice_from_indexeddb(&chapter_id_clone).await {
-                                                            let arr = js_sys::Array::from(&js_value);
-                                                            let existing: Vec<String> = arr.iter().filter_map(|v| v.as_string()).collect();
+                                                        if let Ok(js_value) =
+                                                            get_choice_from_indexeddb(
+                                                                &chapter_id_clone,
+                                                            )
+                                                            .await
+                                                        {
+                                                            let arr =
+                                                                js_sys::Array::from(&js_value);
+                                                            let existing: Vec<String> = arr
+                                                                .iter()
+                                                                .filter_map(|v| v.as_string())
+                                                                .collect();
 
                                                             if existing.is_empty() {
                                                                 // Skip persisting for settings chapter
-                                                                if chapter_id_clone != "settingschapter" {
+                                                                if chapter_id_clone
+                                                                    != "settingschapter"
+                                                                {
                                                                     crate::services::indexeddb::set_choices_to_indexeddb(&chapter_id_clone, &js_array).await.unwrap();
                                                                 }
                                                                 // 使用新的選擇
-                                                                let mut story_context = story_context.clone();
+                                                                let mut story_context =
+                                                                    story_context.clone();
                                                                 let ids = ids_clone.clone();
-                                                                story_context.write().choice_ids.set(ids.clone());
+                                                                story_context
+                                                                    .write()
+                                                                    .choice_ids
+                                                                    .set(ids.clone());
                                                                 // 展開新的選擇
                                                                 let mut expanded = Vec::new();
                                                                 for id in &ids {
-                                                                    if let Some(p) = _paragraph_data.iter().find(|p| p.id == *id) {
+                                                                    if let Some(p) = _paragraph_data
+                                                                        .iter()
+                                                                        .find(|p| p.id == *id)
+                                                                    {
                                                                         expanded.push(p.clone());
                                                                     }
                                                                 }
                                                                 {
-                                                                    let mut ap = _expanded_paragraphs.clone();
-                                                                    let expanded_clone = expanded.clone();
+                                                                    let mut ap =
+                                                                        _expanded_paragraphs
+                                                                            .clone();
+                                                                    let expanded_clone =
+                                                                        expanded.clone();
                                                                     Timeout::new(0, move || {
                                                                         ap.set(expanded_clone);
-                                                                    }).forget();
+                                                                    })
+                                                                    .forget();
                                                                 }
                                                             } else {
                                                                 // 使用 IndexedDB 中的選擇
-                                                                let mut story_context = story_context.clone();
-                                                                story_context.write().choice_ids.set(existing.clone());
+                                                                let mut story_context =
+                                                                    story_context.clone();
+                                                                story_context
+                                                                    .write()
+                                                                    .choice_ids
+                                                                    .set(existing.clone());
                                                                 // 展開 IndexedDB 中的選擇
                                                                 let mut expanded = Vec::new();
                                                                 for id in &existing {
-                                                                    if let Some(p) = _paragraph_data.iter().find(|p| p.id == *id) {
+                                                                    if let Some(p) = _paragraph_data
+                                                                        .iter()
+                                                                        .find(|p| p.id == *id)
+                                                                    {
                                                                         expanded.push(p.clone());
                                                                     }
                                                                 }
                                                                 {
-                                                                    let mut ap = _expanded_paragraphs.clone();
-                                                                    let expanded_clone = expanded.clone();
+                                                                    let mut ap =
+                                                                        _expanded_paragraphs
+                                                                            .clone();
+                                                                    let expanded_clone =
+                                                                        expanded.clone();
                                                                     Timeout::new(0, move || {
                                                                         ap.set(expanded_clone);
-                                                                    }).forget();
+                                                                    })
+                                                                    .forget();
                                                                 }
                                                             }
                                                         }
@@ -751,7 +921,7 @@ pub fn Story(props: StoryProps) -> Element {
             ()
         });
     }
-    
+
     // Set initial language
     {
         let state = state.clone();
@@ -762,7 +932,7 @@ pub fn Story(props: StoryProps) -> Element {
             }
         });
     }
-    
+
     // Initialize all chapters' choice_ids at the start
     {
         let mut choice_ids_initialized = use_signal(|| false);
@@ -803,7 +973,7 @@ pub fn Story(props: StoryProps) -> Element {
             ()
         });
     }
-    
+
     // Automatically jump to the stored paragraph when reloading the page.
     // In reader-mode we still expand the entire stored path, but in normal mode
     // we should *only* jump to the last paragraph to avoid the accidental
@@ -825,7 +995,7 @@ pub fn Story(props: StoryProps) -> Element {
                 return;
             }
 
-            // 讀取 reader_mode 設定（僅在 effect 執行時）
+            // 讀取 reader_mode 設定（僅在 impact 執行時）
             let _reader_mode_enabled = settings_context
                 .read()
                 .settings
@@ -843,7 +1013,7 @@ pub fn Story(props: StoryProps) -> Element {
                 let ctx = story_context.read();
                 let choice_ids_vec = ctx.choice_ids.read().clone();
 
-                // 若 choice_ids 尚未載入，先返回，等待下次 effect 觸發
+                // 若 choice_ids 尚未載入，先返回，等待下次 impact 觸發
                 if choice_ids_vec.is_empty() {
                     return;
                 }
@@ -854,7 +1024,9 @@ pub fn Story(props: StoryProps) -> Element {
                 wasm_bindgen_futures::spawn_local(async move {
                     let mut expanded: Vec<Paragraph> = Vec::new();
                     for paragraph_id in &choice_ids_vec {
-                        if let Some(target) = _paragraph_data_vec.iter().find(|p| p.id == *paragraph_id) {
+                        if let Some(target) =
+                            _paragraph_data_vec.iter().find(|p| p.id == *paragraph_id)
+                        {
                             if !expanded.iter().any(|p: &Paragraph| p.id == *paragraph_id) {
                                 expanded.push(target.clone());
                             }
@@ -867,7 +1039,8 @@ pub fn Story(props: StoryProps) -> Element {
                             let vec_clone = expanded.clone();
                             Timeout::new(0, move || {
                                 ap.set(vec_clone);
-                            }).forget();
+                            })
+                            .forget();
                         }
                         initialized_clone.set(true);
                         auto_restored_inner.set(true);
@@ -876,8 +1049,8 @@ pub fn Story(props: StoryProps) -> Element {
             }
         });
     }
-    
-    // ===== New effect: Append timeout_to paragraph when countdown expires =====
+
+    // ===== New impact: Append timeout_to paragraph when countdown expires =====
     {
         let disabled_by_countdown = disabled_by_countdown.clone();
         let mut _expanded_paragraphs = _expanded_paragraphs.clone();
@@ -913,58 +1086,82 @@ pub fn Story(props: StoryProps) -> Element {
                                 .find(|id| !expanded_vec.iter().any(|p| &p.id == id));
 
                             if let Some(timeout_id) = candidate {
-                            // First, try cached paragraphs
-                            if let Some(target_para) = paragraph_data.read().iter().find(|p| p.id == timeout_id).cloned() {
-                                let mut expanded_vec = expanded_vec.clone();
-                                expanded_vec.push(target_para.clone());
-                                let mut ap = _expanded_paragraphs.clone();
-                                Timeout::new(0, move || {
-                                    ap.set(expanded_vec);
-                                }).forget();
-                                continue;
-                            }
+                                // First, try cached paragraphs
+                                if let Some(target_para) = paragraph_data
+                                    .read()
+                                    .iter()
+                                    .find(|p| p.id == timeout_id)
+                                    .cloned()
+                                {
+                                    let mut expanded_vec = expanded_vec.clone();
+                                    expanded_vec.push(target_para.clone());
+                                    let mut ap = _expanded_paragraphs.clone();
+                                    Timeout::new(0, move || {
+                                        ap.set(expanded_vec);
+                                    })
+                                    .forget();
+                                    continue;
+                                }
 
-                            // Otherwise, fetch from API asynchronously
-                            let timeout_id_clone = timeout_id.clone();
-                            let mut paragraph_data_sig = paragraph_data.clone();
-                            let mut expanded_sig = _expanded_paragraphs.clone();
-                            let mut story_ctx_clone = story_context.clone();
+                                // Otherwise, fetch from API asynchronously
+                                let timeout_id_clone = timeout_id.clone();
+                                let mut paragraph_data_sig = paragraph_data.clone();
+                                let mut expanded_sig = _expanded_paragraphs.clone();
+                                let mut story_ctx_clone = story_context.clone();
 
-                            spawn_local(async move {
-                                let fetch_url = format!("{}{}{}{}", BASE_API_URL, PARAGRAPHS, "/", timeout_id_clone);
-                                let client = reqwest::Client::new();
-                                if let Ok(resp) = client.get(&fetch_url).send().await {
-                                    if resp.status().is_success() {
-                                        if let Ok(txt) = resp.text().await {
-                                            if let Ok(paragraph) = serde_json::from_str::<Paragraph>(&txt) {
-                                                // Update global dataset
-                                                let mut data_vec = paragraph_data_sig.read().clone();
-                                                if !data_vec.iter().any(|p| p.id == paragraph.id) {
-                                                    data_vec.push(paragraph.clone());
+                                spawn_local(async move {
+                                    let fetch_url = format!(
+                                        "{}{}{}{}",
+                                        BASE_API_URL, PARAGRAPHS, "/", timeout_id_clone
+                                    );
+                                    let client = reqwest::Client::new();
+                                    if let Ok(resp) = client.get(&fetch_url).send().await {
+                                        if resp.status().is_success() {
+                                            if let Ok(txt) = resp.text().await {
+                                                if let Ok(paragraph) =
+                                                    serde_json::from_str::<Paragraph>(&txt)
+                                                {
+                                                    // Update global dataset
+                                                    let mut data_vec =
+                                                        paragraph_data_sig.read().clone();
+                                                    if !data_vec
+                                                        .iter()
+                                                        .any(|p| p.id == paragraph.id)
                                                     {
-                                                        let mut pd = paragraph_data_sig.clone();
-                                                        let data_clone = data_vec.clone();
-                                                        Timeout::new(0, move || {
-                                                            pd.set(data_clone);
-                                                        }).forget();
+                                                        data_vec.push(paragraph.clone());
+                                                        {
+                                                            let mut pd = paragraph_data_sig.clone();
+                                                            let data_clone = data_vec.clone();
+                                                            Timeout::new(0, move || {
+                                                                pd.set(data_clone);
+                                                            })
+                                                            .forget();
+                                                        }
+                                                        story_ctx_clone
+                                                            .write()
+                                                            .paragraphs
+                                                            .set(data_vec);
                                                     }
-                                                    story_ctx_clone.write().paragraphs.set(data_vec);
-                                                }
 
-                                                // Append to expanded path
-                                                let mut expanded_now = expanded_sig.read().clone();
-                                                if !expanded_now.iter().any(|p| p.id == paragraph.id) {
-                                                    expanded_now.push(paragraph);
-                                                    let mut es = expanded_sig.clone();
-                                                    Timeout::new(0, move || {
-                                                        es.set(expanded_now);
-                                                    }).forget();
+                                                    // Append to expanded path
+                                                    let mut expanded_now =
+                                                        expanded_sig.read().clone();
+                                                    if !expanded_now
+                                                        .iter()
+                                                        .any(|p| p.id == paragraph.id)
+                                                    {
+                                                        expanded_now.push(paragraph);
+                                                        let mut es = expanded_sig.clone();
+                                                        Timeout::new(0, move || {
+                                                            es.set(expanded_now);
+                                                        })
+                                                        .forget();
+                                                    }
                                                 }
                                             }
                                         }
                                     }
-                                }
-                            });
+                                });
                             }
                         }
                     }
@@ -977,12 +1174,13 @@ pub fn Story(props: StoryProps) -> Element {
                 let vec_clone = expanded_vec.clone();
                 Timeout::new(0, move || {
                     ap.set(vec_clone);
-                }).forget();
+                })
+                .forget();
             }
             ()
         });
     }
-    
+
     let on_choice_click = {
         let mut _expanded_paragraphs = _expanded_paragraphs.clone();
         let mut story_context = story_context.clone();
@@ -990,7 +1188,7 @@ pub fn Story(props: StoryProps) -> Element {
         let mut show_chapter_title = show_chapter_title.clone();
         let mut auto_restored_click = auto_restored.clone();
         move |(goto, choice_index): (String, usize)| {
-            // 一旦使用者點擊，就禁止自動還原 effect 再次跑
+            // 一旦使用者點擊，就禁止自動還原 impact 再次跑
             auto_restored_click.set(true);
 
             let expanded_vec = _expanded_paragraphs.read().clone();
@@ -998,26 +1196,33 @@ pub fn Story(props: StoryProps) -> Element {
 
             if let Some(ref last) = last_paragraph {
                 if let Some(choice) = last.choices.get(choice_index) {
-                    if let Some(effects) = &choice.effects {
-                        let relevant: Vec<Effect> = effects
+                    if let Some(impacts) = &choice.impacts {
+                        let relevant: Vec<Impact> = impacts
                             .iter()
-                            .filter(|effect| matches!(effect, Effect::CharacterAttribute { .. } | Effect::Relationship { .. }))
+                            .filter(|impact| {
+                                matches!(
+                                    impact,
+                                    Impact::CharacterAttribute { .. } | Impact::Relationship { .. }
+                                )
+                            })
                             .cloned()
                             .collect();
 
                         if !relevant.is_empty() {
                             spawn_local(async move {
-                                let base_state: CharacterStateSnapshot = get_latest_character_state_from_indexeddb()
-                                    .await
-                                    .ok()
-                                    .and_then(|val| val.as_string())
-                                    .and_then(|raw| serde_json::from_str(&raw).ok())
-                                    .unwrap_or_default();
+                                let base_state: CharacterStateSnapshot =
+                                    get_latest_character_state_from_indexeddb()
+                                        .await
+                                        .ok()
+                                        .and_then(|val| val.as_string())
+                                        .and_then(|raw| serde_json::from_str(&raw).ok())
+                                        .unwrap_or_default();
 
-                                let updated = base_state.apply_effects(&relevant);
+                                let updated = base_state.apply_impacts(&relevant);
 
                                 if let Ok(serialized) = serde_json::to_string(&updated) {
-                                    let _ = set_latest_character_state_to_indexeddb(&serialized).await;
+                                    let _ =
+                                        set_latest_character_state_to_indexeddb(&serialized).await;
                                 }
                             });
                         }
@@ -1028,7 +1233,11 @@ pub fn Story(props: StoryProps) -> Element {
             if let Some(ref last) = last_paragraph {
                 if !last.chapter_id.is_empty() {
                     // 判斷是否多目標選項
-                    let is_multi_target = last.choices.get(choice_index).map(|c| c.to.len() > 1).unwrap_or(false);
+                    let is_multi_target = last
+                        .choices
+                        .get(choice_index)
+                        .map(|c| c.to.len() > 1)
+                        .unwrap_or(false);
                     if is_multi_target {
                         // 多目標只寫入 random_choices，不寫入 choices
                         let paragraph_id = last.id.clone();
@@ -1040,7 +1249,12 @@ pub fn Story(props: StoryProps) -> Element {
                             js_array.push(&JsValue::from_str(choice));
                         }
 
-                        set_random_choice_to_indexeddb(&paragraph_id, choice_index as u32, &js_array, &selected);
+                        set_random_choice_to_indexeddb(
+                            &paragraph_id,
+                            choice_index as u32,
+                            &js_array,
+                            &selected,
+                        );
                     } else {
                         // Always build history from existing stored choice_ids to preserve the full
                         // navigation path even after page reloads.  Fallback to currently expanded
@@ -1053,7 +1267,7 @@ pub fn Story(props: StoryProps) -> Element {
                         };
 
                         ids = update_choice_history(ids, &goto);
-                        // 更新 context 內的 choice_ids，避免其他 effect 將 expanded 還原
+                        // 更新 context 內的 choice_ids，避免其他 impact 將 expanded 還原
                         story_context.write().choice_ids.set(ids.clone());
                         let js_array = js_sys::Array::new();
                         for id in &ids {
@@ -1062,7 +1276,11 @@ pub fn Story(props: StoryProps) -> Element {
                         let chapter_id = last.chapter_id.clone();
                         if chapter_id != "settingschapter" {
                             spawn_local(async move {
-                                let _ = crate::services::indexeddb::set_choices_to_indexeddb(&chapter_id, &js_array).await;
+                                let _ = crate::services::indexeddb::set_choices_to_indexeddb(
+                                    &chapter_id,
+                                    &js_array,
+                                )
+                                .await;
                             });
                         }
                     }
@@ -1076,7 +1294,9 @@ pub fn Story(props: StoryProps) -> Element {
                 if let Some(ref current_paragraph) = last_paragraph {
                     if let Some(choice) = current_paragraph.choices.get(choice_index) {
                         if choice.type_ == "settings" || choice.type_ == "setting" {
-                            if let (Some(key), Some(value)) = (choice.key.as_ref(), choice.value.as_ref()) {
+                            if let (Some(key), Some(value)) =
+                                (choice.key.as_ref(), choice.value.as_ref())
+                            {
                                 let value_str = match value {
                                     serde_json::Value::String(s) => s.clone(),
                                     _ => value.to_string(),
@@ -1101,16 +1321,26 @@ pub fn Story(props: StoryProps) -> Element {
                         if let (Some(key), Some(value)) = (setting_key, setting_value) {
                             set_setting_to_indexeddb(&key, &value);
                             // Get latest settings
-                            let settings = wasm_bindgen_futures::JsFuture::from(js_sys::Promise::new(&mut |resolve, _reject| {
-                                let cb = Closure::wrap(Box::new(move |js_value: wasm_bindgen::JsValue| {
-                                    resolve.call1(&JsValue::NULL, &js_value).unwrap_or_else(|e| {
-                                        tracing::error!("Failed to resolve JS callback: {:?}", e);
-                                        e
-                                    });
-                                }) as Box<dyn FnMut(wasm_bindgen::JsValue)>);
-                                get_settings_from_indexeddb(cb.as_ref().unchecked_ref());
-                                cb.forget();
-                            }));
+                            let settings = wasm_bindgen_futures::JsFuture::from(
+                                js_sys::Promise::new(&mut |resolve, _reject| {
+                                    let cb = Closure::wrap(Box::new(
+                                        move |js_value: wasm_bindgen::JsValue| {
+                                            resolve
+                                                .call1(&JsValue::NULL, &js_value)
+                                                .unwrap_or_else(|e| {
+                                                    tracing::error!(
+                                                        "Failed to resolve JS callback: {:?}",
+                                                        e
+                                                    );
+                                                    e
+                                                });
+                                        },
+                                    )
+                                        as Box<dyn FnMut(wasm_bindgen::JsValue)>);
+                                    get_settings_from_indexeddb(cb.as_ref().unchecked_ref());
+                                    cb.forget();
+                                }),
+                            );
 
                             let js_value = match settings.await {
                                 Ok(val) => val,
@@ -1125,8 +1355,12 @@ pub fn Story(props: StoryProps) -> Element {
                                 let keys = js_sys::Object::keys(&obj);
                                 for i in 0..keys.length() {
                                     let key = keys.get(i);
-                                    let value = js_sys::Reflect::get(&obj, &key).unwrap_or(js_sys::JsString::from("").into());
-                                    map.insert(key.as_string().unwrap_or_default(), value.as_string().unwrap_or_default());
+                                    let value = js_sys::Reflect::get(&obj, &key)
+                                        .unwrap_or(js_sys::JsString::from("").into());
+                                    map.insert(
+                                        key.as_string().unwrap_or_default(),
+                                        value.as_string().unwrap_or_default(),
+                                    );
                                 }
                             }
 
@@ -1169,14 +1403,19 @@ pub fn Story(props: StoryProps) -> Element {
                     if same_page {
                         let mut expanded = _expanded_paragraphs.read().clone();
                         // Avoid pushing duplicate paragraph if it is already the last item
-                        if expanded.last().map(|p| p.id != target_paragraph.id).unwrap_or(true) {
+                        if expanded
+                            .last()
+                            .map(|p| p.id != target_paragraph.id)
+                            .unwrap_or(true)
+                        {
                             expanded.push((*target_paragraph).clone());
                         }
                         let mut ap = _expanded_paragraphs.clone();
                         let expanded_clone = expanded.clone();
                         Timeout::new(0, move || {
                             ap.set(expanded_clone);
-                        }).forget();
+                        })
+                        .forget();
                         show_chapter_title.set(true);
                     } else {
                         // Auto scroll to top when switching new page
@@ -1188,7 +1427,8 @@ pub fn Story(props: StoryProps) -> Element {
                             let target_clone = (*target_paragraph).clone();
                             Timeout::new(0, move || {
                                 ap.set(vec![target_clone]);
-                            }).forget();
+                            })
+                            .forget();
                         }
                         show_chapter_title.set(false);
                     }
@@ -1207,7 +1447,8 @@ pub fn Story(props: StoryProps) -> Element {
                             if response.status().is_success() {
                                 if let Ok(text) = response.text().await {
                                     // Attempt to deserialize directly into a `Paragraph` record.
-                                    if let Ok(paragraph) = serde_json::from_str::<Paragraph>(&text) {
+                                    if let Ok(paragraph) = serde_json::from_str::<Paragraph>(&text)
+                                    {
                                         // Append to the global paragraph dataset.
                                         let mut pd_signal = paragraph_data_signal;
                                         let mut current_pd = pd_signal.read().clone();
@@ -1215,12 +1456,16 @@ pub fn Story(props: StoryProps) -> Element {
                                         if !current_pd.iter().any(|p| p.id == paragraph.id) {
                                             current_pd.push(paragraph.clone());
                                             pd_signal.set(current_pd.clone());
-                                            story_context.write().paragraphs.set(current_pd.clone());
+                                            story_context
+                                                .write()
+                                                .paragraphs
+                                                .set(current_pd.clone());
                                         }
 
                                         // Update expanded paragraph path – mimic normal navigation (new page).
                                         _expanded_paragraphs.set(vec![paragraph.clone()]);
-                                        story_context.write().target_paragraph_id = Some(paragraph.id.clone());
+                                        story_context.write().target_paragraph_id =
+                                            Some(paragraph.id.clone());
                                         show_chapter_title.set(false);
                                     }
                                 }
@@ -1244,8 +1489,16 @@ pub fn Story(props: StoryProps) -> Element {
             let expanded_vec = _expanded_paragraphs.read();
             let expanded = expanded_vec.as_slice();
             if let Ok(_paragraph_data_read) = _paragraph_data.try_read() {
-                let reader_mode = settings_context.read().settings.get("reader_mode").map(|v| v == "true").unwrap_or(false);
-                let chapter_id = expanded.last().map(|p| p.chapter_id.clone()).unwrap_or_default();
+                let reader_mode = settings_context
+                    .read()
+                    .settings
+                    .get("reader_mode")
+                    .map(|v| v == "true")
+                    .unwrap_or(false);
+                let chapter_id = expanded
+                    .last()
+                    .map(|p| p.chapter_id.clone())
+                    .unwrap_or_default();
                 let _is_settings_chapter = chapter_id == "settingschapter";
                 let choice_ids = story_context.read().choice_ids.read().clone();
                 let merged_paragraph_str = merge_paragraphs_for_lang(
@@ -1255,14 +1508,15 @@ pub fn Story(props: StoryProps) -> Element {
                     _is_settings_chapter,
                     &choice_ids,
                 );
-                let mut merged_paragraph_signal = story_merged_context.read().merged_paragraph.clone();
+                let mut merged_paragraph_signal =
+                    story_merged_context.read().merged_paragraph.clone();
                 merged_paragraph_signal.set(merged_paragraph_str.clone());
             }
             ()
         });
     }
-    
-    // Main effect: Set settings, update paragraph_id, initialize countdown
+
+    // Main impact: Set settings, update paragraph_id, initialize countdown
     use_effect(move || {
         let mut story_context = story_context.clone();
         let expanded = _expanded_paragraphs.read();
@@ -1271,12 +1525,23 @@ pub fn Story(props: StoryProps) -> Element {
         let expanded = expanded.as_slice();
         if let Some(paragraph) = expanded.last() {
             let _is_settings_chapter = paragraph.chapter_id == "settingschapter";
-            story_context.write().is_settings_chapter.set(_is_settings_chapter);
+            story_context
+                .write()
+                .is_settings_chapter
+                .set(_is_settings_chapter);
             if *last_paragraph_id.borrow() != paragraph.id {
                 *last_paragraph_id.borrow_mut() = paragraph.id.clone();
                 // Initialize countdown only when paragraph ID changes
-                if let Some(_text) = paragraph.texts.iter().find(|t| t.lang == state().current_language) {
-                    let countdowns_vec = paragraph.choices.iter().map(|c| c.time_limit.unwrap_or(0)).collect::<Vec<u32>>();
+                if let Some(_text) = paragraph
+                    .texts
+                    .iter()
+                    .find(|t| t.lang == state().current_language)
+                {
+                    let countdowns_vec = paragraph
+                        .choices
+                        .iter()
+                        .map(|c| c.time_limit.unwrap_or(0))
+                        .collect::<Vec<u32>>();
                     // Logs cleared
                     story_context.write().countdowns.set(countdowns_vec);
                 }
@@ -1284,7 +1549,7 @@ pub fn Story(props: StoryProps) -> Element {
         }
         ()
     });
-    
+
     // Listen for page visibility change, hide overlay when losing focus
     {
         use_effect(move || {
@@ -1296,19 +1561,33 @@ pub fn Story(props: StoryProps) -> Element {
             let closure = wasm_bindgen::closure::Closure::wrap(Box::new(move || {
                 let hidden = doc_cloned.hidden();
                 if hidden {
-                    if let Some(container) = doc_cloned.query_selector(".story-content-container").ok().flatten() {
+                    if let Some(container) = doc_cloned
+                        .query_selector(".story-content-container")
+                        .ok()
+                        .flatten()
+                    {
                         let event = web_sys::CustomEvent::new("show_filter").unwrap();
                         let _ = container.dispatch_event(&event);
                     }
                 }
             }) as Box<dyn FnMut()>);
-            document.add_event_listener_with_callback("visibilitychange", closure.as_ref().unchecked_ref()).unwrap();
+            document
+                .add_event_listener_with_callback(
+                    "visibilitychange",
+                    closure.as_ref().unchecked_ref(),
+                )
+                .unwrap();
             closure.forget();
             (|| {})()
         });
     }
-    
-    let reader_mode = settings_context.read().settings.get("reader_mode").map(|v| v == "true").unwrap_or(false);
+
+    let reader_mode = settings_context
+        .read()
+        .settings
+        .get("reader_mode")
+        .map(|v| v == "true")
+        .unwrap_or(false);
     // Get current chapter title
     let chapter_title = {
         if !*show_chapter_title.read() {
@@ -1319,16 +1598,27 @@ pub fn Story(props: StoryProps) -> Element {
             let chapters = ctx.chapters.read();
             let state = state.read();
             let current_lang = &state.current_language;
-            let chapter_id = expanded.last().map(|p| p.chapter_id.clone()).unwrap_or_default();
+            let chapter_id = expanded
+                .last()
+                .map(|p| p.chapter_id.clone())
+                .unwrap_or_default();
             if chapter_id.is_empty() {
                 String::new()
             } else {
-                chapters.iter()
+                chapters
+                    .iter()
                     .find(|c| c.id == chapter_id)
                     .and_then(|chapter| {
-                        chapter.titles.iter()
+                        chapter
+                            .titles
+                            .iter()
                             .find(|t| &t.lang == current_lang)
-                            .or_else(|| chapter.titles.iter().find(|t| t.lang == "en-US" || t.lang == "en-GB"))
+                            .or_else(|| {
+                                chapter
+                                    .titles
+                                    .iter()
+                                    .find(|t| t.lang == "en-US" || t.lang == "en-GB")
+                            })
                             .or_else(|| chapter.titles.first())
                             .map(|t| t.title.clone())
                     })
@@ -1337,7 +1627,7 @@ pub fn Story(props: StoryProps) -> Element {
         }
     };
     let current_paragraph_id = use_signal(|| String::new());
-    
+
     // Listen for _expanded_paragraphs changes and update current_paragraph_id
     {
         let mut current_paragraph_id = current_paragraph_id.clone();
@@ -1348,7 +1638,7 @@ pub fn Story(props: StoryProps) -> Element {
             current_paragraph_id.set(new_id);
         });
     }
-    
+
     rsx! {
         StoryContent {
             paragraph: story_merged_context.read().merged_paragraph.clone(),

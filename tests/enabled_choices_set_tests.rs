@@ -1,6 +1,6 @@
-use std::collections::HashSet;
 use ifecaro::components::story_content::{Action, Choice};
 use ifecaro::pages::story::compute_enabled_choices;
+use std::collections::HashSet;
 
 #[test]
 fn test_compute_enabled_choices_unique_and_fast_lookup() {
@@ -46,4 +46,4 @@ fn test_compute_enabled_choices_unique_and_fast_lookup() {
     // assert that contains works as expected.
     assert!(set.contains("p1"));
     assert!(!set.contains("p2"));
-} 
+}

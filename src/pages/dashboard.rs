@@ -1,25 +1,28 @@
+use crate::components::chapter_selector::ChapterSelector;
+use crate::components::choice_impacts_editor::{CharacterOption, RelationshipOption};
+use crate::components::dropdown::Dropdown;
+use crate::components::form::{ChoiceOptions, TextareaField};
+use crate::components::language_selector::{Language, AVAILABLE_LANGUAGES};
+use crate::components::paragraph_list::Paragraph as ParagraphListParagraph;
+use crate::components::toast::ToastType;
+use crate::constants::config::{BASE_API_URL, CHARACTERS, PARAGRAPHS, RELATIONSHIPS};
+use crate::contexts::chapter_context::Chapter;
+use crate::contexts::chapter_context::ChapterState;
+use crate::contexts::language_context::LanguageState;
+use crate::contexts::paragraph_context::{
+    Paragraph as ContextParagraph, ParagraphChoice as ContextParagraphChoice, ParagraphState,
+    Text as ContextText,
+};
+use crate::contexts::toast_context::use_toast;
+use crate::hooks::choices_reducer::{use_choices, Action as CAct, Choice as ChoiceStruct};
+use crate::models::impacts::Impact;
+use dioxus::events::FormEvent;
+use dioxus::hooks::use_context;
 use dioxus::prelude::*;
+use dioxus_i18n::t;
+use gloo_timers::callback::Timeout;
 use serde::{Deserialize, Serialize};
 use wasm_bindgen_futures::spawn_local;
-use dioxus::events::FormEvent;
-use crate::components::dropdown::Dropdown;
-use crate::components::chapter_selector::ChapterSelector;
-use dioxus::hooks::use_context;
-use crate::contexts::language_context::LanguageState;
-use crate::contexts::chapter_context::ChapterState;
-use crate::contexts::paragraph_context::{ParagraphState, Paragraph as ContextParagraph, Text as ContextText, ParagraphChoice as ContextParagraphChoice};
-use crate::components::language_selector::{Language, AVAILABLE_LANGUAGES};
-use crate::constants::config::{BASE_API_URL, PARAGRAPHS, CHARACTERS, RELATIONSHIPS};
-use crate::components::paragraph_list::Paragraph as ParagraphListParagraph;
-use dioxus_i18n::t;
-use crate::components::form::{TextareaField, ChoiceOptions};
-use gloo_timers::callback::Timeout;
-use crate::contexts::chapter_context::Chapter;
-use crate::hooks::choices_reducer::{use_choices, Action as CAct, Choice as ChoiceStruct};
-use crate::contexts::toast_context::use_toast;
-use crate::components::toast::ToastType;
-use crate::components::choice_effects_editor::{CharacterOption, RelationshipOption};
-use crate::models::effects::Effect;
 
 #[derive(Props, Clone, PartialEq)]
 pub struct DashboardProps {
@@ -37,7 +40,7 @@ type ChoiceTuple = (
     Option<u32>,
     Option<String>,
     String,
-    Vec<Effect>,
+    Vec<Impact>,
 );
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -138,7 +141,7 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
     let chapter_state = use_context::<Signal<ChapterState>>();
     let paragraph_state = use_context::<Signal<ParagraphState>>();
     let current_lang = language_state.read().current_language.clone();
-    
+
     // Initialize paragraph_language to current interface language
     let mut paragraph_language = use_signal(|| current_lang.clone());
 
@@ -150,7 +153,8 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
         let mut paragraph_lang_ref2 = paragraph_lang_ref.clone();
         Timeout::new(0, move || {
             paragraph_lang_ref2.set(_current_lang);
-        }).forget();
+        })
+        .forget();
 
         // No cleanup necessary
     });
@@ -164,8 +168,10 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
     let mut search_query = use_signal(|| String::new());
     let mut is_paragraph_open = use_signal(|| false);
     let mut paragraph_search_query = use_signal(|| String::new());
-    let available_paragraphs = use_signal(|| Vec::<crate::components::paragraph_list::Paragraph>::new());
-    let _target_chapter_paragraphs = use_signal(|| Vec::<crate::components::paragraph_list::Paragraph>::new());
+    let available_paragraphs =
+        use_signal(|| Vec::<crate::components::paragraph_list::Paragraph>::new());
+    let _target_chapter_paragraphs =
+        use_signal(|| Vec::<crate::components::paragraph_list::Paragraph>::new());
     let mut selected_chapter = use_signal(|| String::new());
     let mut is_chapter_open = use_signal(|| false);
     let mut chapter_search_query = use_signal(|| String::new());
@@ -179,11 +185,11 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
     let _header_chapter = use_signal(|| String::new());
     let _header_chapter_open = use_signal(|| false);
     let _header_chapter_search = use_signal(|| String::new());
-    
+
     let _first_choice_chapter = use_signal(|| String::new());
     let _first_choice_chapter_open = use_signal(|| false);
     let _first_choice_chapter_search = use_signal(|| String::new());
-    
+
     let _extra_choice_chapter = use_signal(|| String::new());
     let _extra_choice_chapter_open = use_signal(|| false);
     let _extra_choice_chapter_search = use_signal(|| String::new());
@@ -198,7 +204,8 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
     let _extra_action_keys = use_signal(|| Vec::<Option<String>>::new());
     let _extra_action_values = use_signal(|| Vec::<Option<serde_json::Value>>::new());
 
-    let _paragraph_previews = use_signal(|| Vec::<crate::components::paragraph_list::Paragraph>::new());
+    let _paragraph_previews =
+        use_signal(|| Vec::<crate::components::paragraph_list::Paragraph>::new());
 
     let mut character_options = use_signal(|| Vec::<CharacterOption>::new());
     let mut relationship_options = use_signal(|| Vec::<RelationshipOption>::new());
@@ -212,21 +219,37 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
                 let client = reqwest::Client::new();
 
                 if character_options.read().is_empty() {
-                    if let Ok(response) = client.get(format!("{}{}", BASE_API_URL, CHARACTERS)).send().await {
+                    if let Ok(response) = client
+                        .get(format!("{}{}", BASE_API_URL, CHARACTERS))
+                        .send()
+                        .await
+                    {
                         if let Ok(data) = response.json::<CharacterResponse>().await {
                             character_options.set(data.items);
                         }
                     }
                     if character_options.read().is_empty() {
                         character_options.set(vec![
-                            CharacterOption { id: "Spain".into(), char_id: "Spain".into(), role: Some("Leader".into()) },
-                            CharacterOption { id: "AhCheng".into(), char_id: "AhCheng".into(), role: Some("Scout".into()) },
+                            CharacterOption {
+                                id: "Spain".into(),
+                                char_id: "Spain".into(),
+                                role: Some("Leader".into()),
+                            },
+                            CharacterOption {
+                                id: "AhCheng".into(),
+                                char_id: "AhCheng".into(),
+                                role: Some("Scout".into()),
+                            },
                         ]);
                     }
                 }
 
                 if relationship_options.read().is_empty() {
-                    if let Ok(response) = client.get(format!("{}{}", BASE_API_URL, RELATIONSHIPS)).send().await {
+                    if let Ok(response) = client
+                        .get(format!("{}{}", BASE_API_URL, RELATIONSHIPS))
+                        .send()
+                        .await
+                    {
                         if let Ok(data) = response.json::<RelationshipResponse>().await {
                             let opts = data
                                 .items
@@ -242,7 +265,11 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
                     }
 
                     if relationship_options.read().is_empty() {
-                        relationship_options.set(vec![RelationshipOption { id: "Spain-AhCheng".into(), from_id: "Spain".into(), to_id: "AhCheng".into() }]);
+                        relationship_options.set(vec![RelationshipOption {
+                            id: "Spain-AhCheng".into(),
+                            from_id: "Spain".into(),
+                            to_id: "AhCheng".into(),
+                        }]);
                     }
                 }
             });
@@ -267,8 +294,11 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
             let selected_chapter_id = selected_chapter.read().clone();
             let interface_language = language_state.read().current_language.clone();
 
-            // 讀取 paragraph_state signal，以便 effect 於資料變動時重新觸發
-            let chapter_paragraphs_snapshot = paragraph_state.read().get_by_chapter(&selected_chapter_id).clone();
+            // 讀取 paragraph_state signal，以便 impact 於資料變動時重新觸發
+            let chapter_paragraphs_snapshot = paragraph_state
+                .read()
+                .get_by_chapter(&selected_chapter_id)
+                .clone();
 
             if selected_language.is_empty() || selected_chapter_id.is_empty() {
                 available_paragraphs.write().clear();
@@ -279,15 +309,27 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
                 .iter()
                 .map(|p| {
                     let has_translation = p.texts.iter().any(|text| text.lang == selected_language);
-                    let preview = p.texts
+                    let preview = p
+                        .texts
                         .iter()
                         .find(|text| text.lang == selected_language)
                         .or_else(|| p.texts.iter().find(|text| text.lang == interface_language))
-                        .or_else(|| p.texts.iter().find(|text| text.lang == "en-US" || text.lang == "en-GB"))
+                        .or_else(|| {
+                            p.texts
+                                .iter()
+                                .find(|text| text.lang == "en-US" || text.lang == "en-GB")
+                        })
                         .or_else(|| p.texts.first())
                         .map(|text| text.paragraphs.lines().next().unwrap_or("").to_string())
                         .unwrap_or_default();
-                    (crate::components::paragraph_list::Paragraph { id: p.id.clone(), preview, has_translation }, has_translation)
+                    (
+                        crate::components::paragraph_list::Paragraph {
+                            id: p.id.clone(),
+                            preview,
+                            has_translation,
+                        },
+                        has_translation,
+                    )
                 })
                 .partition(|(_, has_tr)| *has_tr);
 
@@ -304,8 +346,7 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
         AVAILABLE_LANGUAGES
             .iter()
             .filter(|l| {
-                l.name.to_lowercase().contains(&query)
-                    || l.code.to_lowercase().contains(&query)
+                l.name.to_lowercase().contains(&query) || l.code.to_lowercase().contains(&query)
             })
             .collect::<Vec<_>>()
     });
@@ -331,25 +372,28 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
     });
 
     let is_form_valid = use_memo(move || {
-        let main_fields_valid = if let (Ok(p), Ok(c)) = (paragraphs.try_read(), selected_chapter.try_read()) {
-            !p.trim().is_empty() && !c.is_empty()
-        } else {
-            false
-        };
+        let main_fields_valid =
+            if let (Ok(p), Ok(c)) = (paragraphs.try_read(), selected_chapter.try_read()) {
+                !p.trim().is_empty() && !c.is_empty()
+            } else {
+                false
+            };
         let has_any_choices = if let Ok(choices) = choices.try_read() {
             !choices.is_empty()
         } else {
             false
         };
         let choices_valid = if let Ok(choices) = choices.try_read() {
-            choices.iter().all(|(choice_text, _, _, _, _, _, _, _, _, _, _): &ChoiceTuple| {
-                let has_content = !choice_text.is_empty();
-                if has_content {
-                    !choice_text.is_empty()
-                } else {
-                    true
-                }
-            })
+            choices.iter().all(
+                |(choice_text, _, _, _, _, _, _, _, _, _, _): &ChoiceTuple| {
+                    let has_content = !choice_text.is_empty();
+                    if has_content {
+                        !choice_text.is_empty()
+                    } else {
+                        true
+                    }
+                },
+            )
         } else {
             false
         };
@@ -359,57 +403,147 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
     let has_changes = use_memo(move || {
         if let Ok(edit_mode) = is_edit_mode.try_read() {
             if *edit_mode {
-                let paragraphs_changed = if let (Ok(p), Ok(sel_para), Ok(lang)) = (paragraphs.try_read(), selected_paragraph.try_read(), paragraph_language.try_read()) {
-                    p.to_string() != sel_para.as_ref()
-                        .map(|p| p.texts.iter().find(|t| t.lang == *lang)
-                            .map(|t| t.paragraphs.clone())
-                            .unwrap_or_default())
-                        .unwrap_or_default()
+                let paragraphs_changed = if let (Ok(p), Ok(sel_para), Ok(lang)) = (
+                    paragraphs.try_read(),
+                    selected_paragraph.try_read(),
+                    paragraph_language.try_read(),
+                ) {
+                    p.to_string()
+                        != sel_para
+                            .as_ref()
+                            .map(|p| {
+                                p.texts
+                                    .iter()
+                                    .find(|t| t.lang == *lang)
+                                    .map(|t| t.paragraphs.clone())
+                                    .unwrap_or_default()
+                            })
+                            .unwrap_or_default()
                 } else {
                     false
                 };
-                let has_option_changes = if let (Ok(sel_para), Ok(lang), Ok(new_choices)) = (selected_paragraph.try_read(), paragraph_language.try_read(), choices.try_read()) {
+                let has_option_changes = if let (Ok(sel_para), Ok(lang), Ok(new_choices)) = (
+                    selected_paragraph.try_read(),
+                    paragraph_language.try_read(),
+                    choices.try_read(),
+                ) {
                     if let Some(paragraph) = sel_para.as_ref() {
-                        let current_text_choices = &paragraph.texts.iter().find(|t| t.lang == *lang)
+                        let current_text_choices = &paragraph
+                            .texts
+                            .iter()
+                            .find(|t| t.lang == *lang)
                             .map(|t| t.choices.clone())
                             .unwrap_or_default();
                         let current_paragraph_choices = &paragraph.choices;
-                        
+
                         // Check if option quantity changes
-                        if current_text_choices.len() != new_choices.len() || current_paragraph_choices.len() != new_choices.len() {
+                        if current_text_choices.len() != new_choices.len()
+                            || current_paragraph_choices.len() != new_choices.len()
+                        {
                             return true;
                         }
-                        
+
                         // Check each option's detailed changes
-                        for (i, (new_choice_text, new_to, new_type, new_key, new_value, _new_target_chapter, new_same_page, new_time_limit, new_timeout_to, _new_timeout_target_chapter, _new_effects)) in new_choices.iter().enumerate() {
+                        for (
+                            i,
+                            (
+                                new_choice_text,
+                                new_to,
+                                new_type,
+                                new_key,
+                                new_value,
+                                _new_target_chapter,
+                                new_same_page,
+                                new_time_limit,
+                                new_timeout_to,
+                                _new_timeout_target_chapter,
+                                _new_impacts,
+                            ),
+                        ) in new_choices.iter().enumerate()
+                        {
                             // Check if option text changes
                             if let Some(old_choice_text) = current_text_choices.get(i) {
                                 if old_choice_text != new_choice_text {
                                     return true;
                                 }
                             }
-                            
+
                             // Check if option data changes
                             if let Some(old_choice) = current_paragraph_choices.get(i) {
-                                let (old_to, old_type, old_key, old_value, old_same_page, old_time_limit, old_choice_timeout) = match old_choice {
-                                    ContextParagraphChoice::Simple(texts) => (texts.clone(), "goto".to_string(), None, None, false, None, None),
-                                    ContextParagraphChoice::SimpleOld(text) => (vec![text.clone()], "goto".to_string(), None, None, false, None, None),
-                                    ContextParagraphChoice::Complex { to, type_, key, value, same_page, time_limit, timeout_to, .. } => {
-                                        (to.clone(), type_.clone(), key.clone(), value.clone(), same_page.unwrap_or(false), time_limit.clone(), timeout_to.clone())
-                                    },
-                                    ContextParagraphChoice::ComplexOld { to, type_, key, value, same_page, time_limit, timeout_to, .. } => {
-                                        (vec![to.clone()], type_.clone(), key.clone(), value.clone(), same_page.unwrap_or(false), time_limit.clone(), timeout_to.clone())
-                                    },
+                                let (
+                                    old_to,
+                                    old_type,
+                                    old_key,
+                                    old_value,
+                                    old_same_page,
+                                    old_time_limit,
+                                    old_choice_timeout,
+                                ) = match old_choice {
+                                    ContextParagraphChoice::Simple(texts) => (
+                                        texts.clone(),
+                                        "goto".to_string(),
+                                        None,
+                                        None,
+                                        false,
+                                        None,
+                                        None,
+                                    ),
+                                    ContextParagraphChoice::SimpleOld(text) => (
+                                        vec![text.clone()],
+                                        "goto".to_string(),
+                                        None,
+                                        None,
+                                        false,
+                                        None,
+                                        None,
+                                    ),
+                                    ContextParagraphChoice::Complex {
+                                        to,
+                                        type_,
+                                        key,
+                                        value,
+                                        same_page,
+                                        time_limit,
+                                        timeout_to,
+                                        ..
+                                    } => (
+                                        to.clone(),
+                                        type_.clone(),
+                                        key.clone(),
+                                        value.clone(),
+                                        same_page.unwrap_or(false),
+                                        time_limit.clone(),
+                                        timeout_to.clone(),
+                                    ),
+                                    ContextParagraphChoice::ComplexOld {
+                                        to,
+                                        type_,
+                                        key,
+                                        value,
+                                        same_page,
+                                        time_limit,
+                                        timeout_to,
+                                        ..
+                                    } => (
+                                        vec![to.clone()],
+                                        type_.clone(),
+                                        key.clone(),
+                                        value.clone(),
+                                        same_page.unwrap_or(false),
+                                        time_limit.clone(),
+                                        timeout_to.clone(),
+                                    ),
                                 };
-                                
+
                                 // Compare all attributes
-                                if old_to != *new_to || 
-                                   old_type != *new_type || 
-                                   old_key != *new_key || 
-                                   old_value != *new_value || 
-                                   old_same_page != *new_same_page || 
-                                   old_time_limit != *new_time_limit ||
-                                   old_choice_timeout != *new_timeout_to {
+                                if old_to != *new_to
+                                    || old_type != *new_type
+                                    || old_key != *new_key
+                                    || old_value != *new_value
+                                    || old_same_page != *new_same_page
+                                    || old_time_limit != *new_time_limit
+                                    || old_choice_timeout != *new_timeout_to
+                                {
                                     return true;
                                 }
                             }
@@ -423,20 +557,23 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
                 };
                 paragraphs_changed || has_option_changes
             } else {
-                let has_paragraph = if let (Ok(p), Ok(c)) = (paragraphs.try_read(), selected_chapter.try_read()) {
-                    !p.trim().is_empty() && !c.is_empty()
-                } else {
-                    false
-                };
+                let has_paragraph =
+                    if let (Ok(p), Ok(c)) = (paragraphs.try_read(), selected_chapter.try_read()) {
+                        !p.trim().is_empty() && !c.is_empty()
+                    } else {
+                        false
+                    };
                 let has_valid_choices = if let Ok(choices) = choices.try_read() {
-                    choices.iter().any(|(choice_text, _, _, _, _, _, _, _, _, _, _)| {
-                        let has_content = !choice_text.is_empty();
-                        if has_content {
-                            !choice_text.is_empty()
-                        } else {
-                            false
-                        }
-                    })
+                    choices
+                        .iter()
+                        .any(|(choice_text, _, _, _, _, _, _, _, _, _, _)| {
+                            let has_content = !choice_text.is_empty();
+                            if has_content {
+                                !choice_text.is_empty()
+                            } else {
+                                false
+                            }
+                        })
                 } else {
                     false
                 };
@@ -464,18 +601,58 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
         // 1. send field update into reducer as the single source-of-truth
         let dispatch = dispatch_choice_handle.clone();
         match field.as_str() {
-            "caption" => (dispatch.clone())(CAct::SetField { idx: index, field: "caption", value: value.clone() }),
-            "goto" => (dispatch.clone())(CAct::SetField { idx: index, field: "goto", value: value.clone() }),
-            "action_type" => (dispatch.clone())(CAct::SetField { idx: index, field: "action_type", value: value.clone() }),
-            "action_key" => (dispatch.clone())(CAct::SetField { idx: index, field: "action_key", value: value.clone() }),
-            "action_value" => (dispatch.clone())(CAct::SetField { idx: index, field: "action_value", value: value.clone() }),
-            "target_chapter" => (dispatch.clone())(CAct::SetField { idx: index, field: "target_chapter", value: value.clone() }),
-            "same_page" => (dispatch.clone())(CAct::SetField { idx: index, field: "same_page", value: value.clone() }),
-            "time_limit" => (dispatch.clone())(CAct::SetField { idx: index, field: "time_limit", value: value.clone() }),
-            "timeout_to" => (dispatch.clone())(CAct::SetField { idx: index, field: "timeout_to", value: value.clone() }),
+            "caption" => (dispatch.clone())(CAct::SetField {
+                idx: index,
+                field: "caption",
+                value: value.clone(),
+            }),
+            "goto" => (dispatch.clone())(CAct::SetField {
+                idx: index,
+                field: "goto",
+                value: value.clone(),
+            }),
+            "action_type" => (dispatch.clone())(CAct::SetField {
+                idx: index,
+                field: "action_type",
+                value: value.clone(),
+            }),
+            "action_key" => (dispatch.clone())(CAct::SetField {
+                idx: index,
+                field: "action_key",
+                value: value.clone(),
+            }),
+            "action_value" => (dispatch.clone())(CAct::SetField {
+                idx: index,
+                field: "action_value",
+                value: value.clone(),
+            }),
+            "target_chapter" => (dispatch.clone())(CAct::SetField {
+                idx: index,
+                field: "target_chapter",
+                value: value.clone(),
+            }),
+            "same_page" => (dispatch.clone())(CAct::SetField {
+                idx: index,
+                field: "same_page",
+                value: value.clone(),
+            }),
+            "time_limit" => (dispatch.clone())(CAct::SetField {
+                idx: index,
+                field: "time_limit",
+                value: value.clone(),
+            }),
+            "timeout_to" => (dispatch.clone())(CAct::SetField {
+                idx: index,
+                field: "timeout_to",
+                value: value.clone(),
+            }),
             "timeout_target_chapter" => {
                 // Update chosen timeout chapter
-                (dispatch.clone())(CAct::SetField { idx: index, field: "timeout_target_chapter", value: value.clone() });
+                (dispatch.clone())(CAct::SetField {
+                    idx: index,
+                    field: "timeout_target_chapter",
+                    value: value.clone(),
+                });
 
                 // Ensure dropdown closed
                 (dispatch.clone())(CAct::ToggleTimeoutChapter(index));
@@ -489,23 +666,41 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
                     let filtered = chapter_paragraphs
                         .iter()
                         .map(|item| {
-                            let has_translation = item.texts.iter().any(|t| t.lang == selected_lang);
-                            let preview = item.texts
+                            let has_translation =
+                                item.texts.iter().any(|t| t.lang == selected_lang);
+                            let preview = item
+                                .texts
                                 .iter()
                                 .find(|t| t.lang == selected_lang)
-                                .or_else(|| item.texts.iter().find(|t| t.lang == interface_language))
-                                .or_else(|| item.texts.iter().find(|t| t.lang == "en-US" || t.lang == "en-GB"))
+                                .or_else(|| {
+                                    item.texts.iter().find(|t| t.lang == interface_language)
+                                })
+                                .or_else(|| {
+                                    item.texts
+                                        .iter()
+                                        .find(|t| t.lang == "en-US" || t.lang == "en-GB")
+                                })
                                 .or_else(|| item.texts.first())
                                 .map(|t| t.paragraphs.lines().next().unwrap_or("").to_string())
                                 .unwrap_or_default();
-                            crate::components::paragraph_list::Paragraph { id: item.id.clone(), preview, has_translation }
+                            crate::components::paragraph_list::Paragraph {
+                                id: item.id.clone(),
+                                preview,
+                                has_translation,
+                            }
                         })
                         .collect::<Vec<_>>();
-                    (dispatch.clone())(CAct::SetTimeoutParaList { idx: index, list: filtered });
+                    (dispatch.clone())(CAct::SetTimeoutParaList {
+                        idx: index,
+                        list: filtered,
+                    });
                 } else {
-                    (dispatch.clone())(CAct::SetTimeoutParaList { idx: index, list: Vec::new() });
+                    (dispatch.clone())(CAct::SetTimeoutParaList {
+                        idx: index,
+                        list: Vec::new(),
+                    });
                 }
-            },
+            }
             _ => {}
         }
 
@@ -524,20 +719,35 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
                     .iter()
                     .map(|item| {
                         let has_translation = item.texts.iter().any(|t| t.lang == selected_lang);
-                        let preview = item.texts
+                        let preview = item
+                            .texts
                             .iter()
                             .find(|t| t.lang == selected_lang)
                             .or_else(|| item.texts.iter().find(|t| t.lang == interface_language))
-                            .or_else(|| item.texts.iter().find(|t| t.lang == "en-US" || t.lang == "en-GB"))
+                            .or_else(|| {
+                                item.texts
+                                    .iter()
+                                    .find(|t| t.lang == "en-US" || t.lang == "en-GB")
+                            })
                             .or_else(|| item.texts.first())
                             .map(|t| t.paragraphs.lines().next().unwrap_or("").to_string())
                             .unwrap_or_default();
-                        crate::components::paragraph_list::Paragraph { id: item.id.clone(), preview, has_translation }
+                        crate::components::paragraph_list::Paragraph {
+                            id: item.id.clone(),
+                            preview,
+                            has_translation,
+                        }
                     })
                     .collect::<Vec<_>>();
-                (dispatch.clone())(CAct::SetParaList { idx: index, list: filtered });
+                (dispatch.clone())(CAct::SetParaList {
+                    idx: index,
+                    list: filtered,
+                });
             } else {
-                (dispatch.clone())(CAct::SetParaList { idx: index, list: Vec::new() });
+                (dispatch.clone())(CAct::SetParaList {
+                    idx: index,
+                    list: Vec::new(),
+                });
             }
         }
     };
@@ -551,7 +761,11 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
                 if !new_goto.contains(&paragraph_id) {
                     new_goto.push(paragraph_id);
                     let joined = new_goto.join(",");
-                    (dispatch.clone())(CAct::SetField { idx: index, field: "goto", value: joined });
+                    (dispatch.clone())(CAct::SetField {
+                        idx: index,
+                        field: "goto",
+                        value: joined,
+                    });
                 }
             }
         }
@@ -562,9 +776,18 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
         let choices_state = choices_state.clone();
         move |(index, paragraph_id): (usize, String)| {
             if let Some(choice) = choices_state.read().list.get(index) {
-                let new_goto: Vec<String> = choice.goto.iter().cloned().filter(|id| id != &paragraph_id).collect();
+                let new_goto: Vec<String> = choice
+                    .goto
+                    .iter()
+                    .cloned()
+                    .filter(|id| id != &paragraph_id)
+                    .collect();
                 let joined = new_goto.join(",");
-                (dispatch.clone())(CAct::SetField { idx: index, field: "goto", value: joined });
+                (dispatch.clone())(CAct::SetField {
+                    idx: index,
+                    field: "goto",
+                    value: joined,
+                });
             }
         }
     };
@@ -670,14 +893,18 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
         let dispatch_choice_outer = dispatch_choice.clone();
         let selected_chapter = selected_chapter.clone();
         move |_| {
-            if *is_submitting.read() { return; }
+            if *is_submitting.read() {
+                return;
+            }
             is_submitting.set(true);
             let text = ContextText {
                 lang: paragraph_language.read().clone(),
                 paragraphs: paragraphs_signal.read().clone(),
-                choices: choices_signal.read().iter().map(|(choice_text, _, _, _, _, _, _, _, _, _, _)| {
-                    choice_text.clone()
-                }).collect(),
+                choices: choices_signal
+                    .read()
+                    .iter()
+                    .map(|(choice_text, _, _, _, _, _, _, _, _, _, _)| choice_text.clone())
+                    .collect(),
             };
 
             // Optimistically keep local paragraph data in sync so that
@@ -687,49 +914,73 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
                 let text_for_state = text.clone();
                 let maybe_current_paragraph = { selected_paragraph.read().clone() };
                 if let Some(mut current_paragraph) = maybe_current_paragraph {
-                    current_paragraph.texts.retain(|t| t.lang != text_for_state.lang);
+                    current_paragraph
+                        .texts
+                        .retain(|t| t.lang != text_for_state.lang);
                     current_paragraph.texts.push(text_for_state);
                     selected_paragraph.set(Some(current_paragraph));
                 }
             }
 
             // Build option data
-            let paragraph_choices: Vec<ContextParagraphChoice> = choices_signal.read().iter().map(|(choice_text, to_list, type_, key, value, _target_chapter, same_page, time_limit, timeout_to, _timeout_target_chapter, effects)| {
-                let mut complex = ContextParagraphChoice::Complex {
-                    to: to_list.clone(),
-                    type_: type_.clone(),
-                    key: None,
-                    value: None,
-                    same_page: Some(*same_page),
-                    time_limit: *time_limit,
-                    timeout_to: timeout_to.clone(),
-                    effects: if effects.is_empty() { None } else { Some(effects.clone()) },
-                };
-                if let Some(k) = key {
-                    if !k.is_empty() {
-                        if let ContextParagraphChoice::Complex { key, .. } = &mut complex {
-                            *key = Some(k.to_string());
+            let paragraph_choices: Vec<ContextParagraphChoice> = choices_signal
+                .read()
+                .iter()
+                .map(
+                    |(
+                        choice_text,
+                        to_list,
+                        type_,
+                        key,
+                        value,
+                        _target_chapter,
+                        same_page,
+                        time_limit,
+                        timeout_to,
+                        _timeout_target_chapter,
+                        impacts,
+                    )| {
+                        let mut complex = ContextParagraphChoice::Complex {
+                            to: to_list.clone(),
+                            type_: type_.clone(),
+                            key: None,
+                            value: None,
+                            same_page: Some(*same_page),
+                            time_limit: *time_limit,
+                            timeout_to: timeout_to.clone(),
+                            impacts: if impacts.is_empty() {
+                                None
+                            } else {
+                                Some(impacts.clone())
+                            },
+                        };
+                        if let Some(k) = key {
+                            if !k.is_empty() {
+                                if let ContextParagraphChoice::Complex { key, .. } = &mut complex {
+                                    *key = Some(k.to_string());
+                                }
+                            }
                         }
-                    }
-                }
-                if let Some(v) = value {
-                    if let ContextParagraphChoice::Complex { value, .. } = &mut complex {
-                        *value = Some(v.clone());
-                    }
-                }
-                complex
-            }).collect();
+                        if let Some(v) = value {
+                            if let ContextParagraphChoice::Complex { value, .. } = &mut complex {
+                                *value = Some(v.clone());
+                            }
+                        }
+                        complex
+                    },
+                )
+                .collect();
 
             // Pre-fetch translation strings inside component scope where `I18n` context is available
             let submit_success_text = t!("submit_success").to_string();
-            let submit_failed_text  = t!("submit_failed").to_string();
+            let submit_failed_text = t!("submit_failed").to_string();
 
             spawn_local({
                 let mut is_submitting = is_submitting.clone();
                 let mut paragraph_state = paragraph_state.clone();
                 let mut toast = toast.clone();
                 let submit_success_text = submit_success_text.clone();
-                let submit_failed_text  = submit_failed_text.clone();
+                let submit_failed_text = submit_failed_text.clone();
                 // Capture signals for UI sync
                 let mut selected_paragraph = selected_paragraph.clone();
                 let paragraph_language = paragraph_language.clone();
@@ -741,10 +992,10 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
                 let is_edit_mode_flag = *is_edit_mode_signal.read();
                 async move {
                     let client = reqwest::Client::new();
-                    
+
                     // Build new paragraph data
                     let chapter_id = selected_chapter.read().clone();
-                    
+
                     // Build new paragraph data
                     let new_paragraph = if chapter_id.is_empty() {
                         serde_json::json!({
@@ -778,24 +1029,23 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
                             "choices": paragraph_choices
                         })
                     };
-                    
+
                     // Publish to paragraph collection
                     let paragraphs_url = format!("{}{}", BASE_API_URL, PARAGRAPHS);
-                    
+
                     let response = if is_edit_mode_flag {
                         // Edit mode: Use PATCH method to update existing paragraph
                         if let Some(paragraph) = selected_paragraph.read().as_ref() {
-                            let update_url = format!("{}{}/{}", BASE_API_URL, PARAGRAPHS, paragraph.id);
-                            client.patch(&update_url)
-                                .json(&new_paragraph)
-                                .send()
-                                .await
+                            let update_url =
+                                format!("{}{}/{}", BASE_API_URL, PARAGRAPHS, paragraph.id);
+                            client.patch(&update_url).json(&new_paragraph).send().await
                         } else {
                             return;
                         }
                     } else {
                         // New mode: Use POST method to create new paragraph
-                        client.post(&paragraphs_url)
+                        client
+                            .post(&paragraphs_url)
                             .json(&new_paragraph)
                             .send()
                             .await
@@ -807,55 +1057,81 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
                             if status.is_success() {
                                 // Reload paragraph data
                                 let paragraphs_url = format!("{}{}", BASE_API_URL, PARAGRAPHS);
-                                match client.get(&paragraphs_url)
-                                    .send()
-                                    .await {
+                                match client.get(&paragraphs_url).send().await {
                                     Ok(response) => {
                                         if response.status().is_success() {
                                             match response.json::<Data>().await {
                                                 Ok(data) => {
                                                     // Update paragraph data in context
-                                                    paragraph_state.write().set_paragraphs(data.items.clone());
+                                                    paragraph_state
+                                                        .write()
+                                                        .set_paragraphs(data.items.clone());
 
                                                     // --- NEW: keep local UI state in sync ---
                                                     if is_edit_mode_flag {
                                                         // Refresh `selected_paragraph` and associated UI signals
                                                         let updated_para_opt = {
-                                                            if let Some(curr_id) = selected_paragraph.read().as_ref().map(|p| p.id.clone()) {
-                                                                paragraph_state.read().get_by_id(&curr_id)
+                                                            if let Some(curr_id) =
+                                                                selected_paragraph
+                                                                    .read()
+                                                                    .as_ref()
+                                                                    .map(|p| p.id.clone())
+                                                            {
+                                                                paragraph_state
+                                                                    .read()
+                                                                    .get_by_id(&curr_id)
                                                             } else {
                                                                 None
                                                             }
                                                         };
 
-                                                        if let Some(updated_para) = updated_para_opt {
+                                                        if let Some(updated_para) = updated_para_opt
+                                                        {
                                                             // Update the selected paragraph signal
-                                                            selected_paragraph.set(Some(updated_para.clone()));
+                                                            selected_paragraph
+                                                                .set(Some(updated_para.clone()));
 
                                                             // Update paragraph content and choices for the current editing language
-                                                            if let Some(text) = updated_para.texts.iter().find(|t| t.lang == *paragraph_language.read()) {
+                                                            if let Some(text) = updated_para
+                                                                .texts
+                                                                .iter()
+                                                                .find(|t| {
+                                                                    t.lang
+                                                                        == *paragraph_language
+                                                                            .read()
+                                                                })
+                                                            {
                                                                 // Update paragraph body text
-                                                                paragraphs_signal.set(text.paragraphs.clone());
+                                                                paragraphs_signal
+                                                                    .set(text.paragraphs.clone());
 
                                                                 // Re-generate choices and related caches using existing helper
-                                                                let (new_choices, _new_paragraphs) = process_paragraph_select(
-                                                                    text,
-                                                                    &updated_para,
-                                                                    &paragraph_state,
-                                                                    &paragraph_language,
-                                                                    &language_state.read().current_language.clone(),
-                                                                );
+                                                                let (new_choices, _new_paragraphs) =
+                                                                    process_paragraph_select(
+                                                                        text,
+                                                                        &updated_para,
+                                                                        &paragraph_state,
+                                                                        &paragraph_language,
+                                                                        &language_state
+                                                                            .read()
+                                                                            .current_language
+                                                                            .clone(),
+                                                                    );
 
-                                                                choices_signal.set(new_choices.clone());
+                                                                choices_signal
+                                                                    .set(new_choices.clone());
 
                                                                 // Sync reducer state so UI reflects latest data
-                                                                let dispatch = dispatch_choice.clone();
+                                                                let dispatch =
+                                                                    dispatch_choice.clone();
                                                                 let converted = new_choices
                                                                     .iter()
                                                                     .cloned()
                                                                     .map(ChoiceStruct::from_tuple)
                                                                     .collect::<Vec<_>>();
-                                                                (dispatch.clone())(CAct::SetList(converted));
+                                                                (dispatch.clone())(CAct::SetList(
+                                                                    converted,
+                                                                ));
                                                             }
                                                         }
                                                     } else {
@@ -864,37 +1140,71 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
                                                         choices_signal.set(Vec::new());
                                                         // Clear reducer list as well
                                                         let dispatch = dispatch_choice.clone();
-                                                        (dispatch.clone())(CAct::SetList(Vec::new()));
+                                                        (dispatch.clone())(CAct::SetList(
+                                                            Vec::new(),
+                                                        ));
 
                                                         // Reset selected chapter so that user explicitly selects again
                                                         selected_chapter.set(String::new());
                                                     }
 
-                                                    toast.write().show(submit_success_text.clone(), ToastType::Success, 3000);
+                                                    toast.write().show(
+                                                        submit_success_text.clone(),
+                                                        ToastType::Success,
+                                                        3000,
+                                                    );
                                                     is_submitting.set(false);
-                                                },
+                                                }
                                                 Err(e) => {
-                                                    toast.write().show(format!("{}: {}", submit_failed_text.clone(), e), ToastType::Error, 3000);
+                                                    toast.write().show(
+                                                        format!(
+                                                            "{}: {}",
+                                                            submit_failed_text.clone(),
+                                                            e
+                                                        ),
+                                                        ToastType::Error,
+                                                        3000,
+                                                    );
                                                     is_submitting.set(false);
                                                 }
                                             }
                                         } else {
-                                            toast.write().show(format!("{}: {}", submit_failed_text.clone(), response.status()), ToastType::Error, 3000);
+                                            toast.write().show(
+                                                format!(
+                                                    "{}: {}",
+                                                    submit_failed_text.clone(),
+                                                    response.status()
+                                                ),
+                                                ToastType::Error,
+                                                3000,
+                                            );
                                             is_submitting.set(false);
                                         }
-                                    },
+                                    }
                                     Err(e) => {
-                                        toast.write().show(format!("{}: {}", submit_failed_text.clone(), e), ToastType::Error, 3000);
+                                        toast.write().show(
+                                            format!("{}: {}", submit_failed_text.clone(), e),
+                                            ToastType::Error,
+                                            3000,
+                                        );
                                         is_submitting.set(false);
                                     }
                                 }
                             } else {
-                                toast.write().show(format!("{}: {}", submit_failed_text.clone(), status), ToastType::Error, 3000);
+                                toast.write().show(
+                                    format!("{}: {}", submit_failed_text.clone(), status),
+                                    ToastType::Error,
+                                    3000,
+                                );
                                 is_submitting.set(false);
                             }
-                        },
+                        }
                         Err(e) => {
-                            toast.write().show(format!("{}: {}", submit_failed_text.clone(), e), ToastType::Error, 3000);
+                            toast.write().show(
+                                format!("{}: {}", submit_failed_text.clone(), e),
+                                ToastType::Error,
+                                3000,
+                            );
                             is_submitting.set(false);
                         }
                     }
@@ -910,14 +1220,17 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
         }
     };
 
-    let handle_effects_change = {
+    let handle_impacts_change = {
         let dispatch = dispatch_choice.clone();
         let mut choices = choices.clone();
-        move |(index, new_effects): (usize, Vec<Effect>)| {
+        move |(index, new_impacts): (usize, Vec<Impact>)| {
             if let Some(choice) = choices.write().get_mut(index) {
-                choice.10 = new_effects.clone();
+                choice.10 = new_impacts.clone();
             }
-            (dispatch.clone())(CAct::SetEffects { idx: index, effects: new_effects });
+            (dispatch.clone())(CAct::SetEffects {
+                idx: index,
+                impacts: new_impacts,
+            });
         }
     };
 
@@ -940,7 +1253,11 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
                     selected_paragraph.set(Some(full_paragraph.clone()));
 
                     // Fill paragraph content
-                    if let Some(text) = full_paragraph.texts.iter().find(|t| t.lang == *paragraph_language.read()) {
+                    if let Some(text) = full_paragraph
+                        .texts
+                        .iter()
+                        .find(|t| t.lang == *paragraph_language.read())
+                    {
                         paragraphs.set(text.paragraphs.clone());
 
                         // Fill options
@@ -957,7 +1274,11 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
 
                         // sync to reducer
                         let dispatch = dispatch_ps.clone();
-                        let converted = new_choices.iter().cloned().map(ChoiceStruct::from_tuple).collect::<Vec<_>>();
+                        let converted = new_choices
+                            .iter()
+                            .cloned()
+                            .map(ChoiceStruct::from_tuple)
+                            .collect::<Vec<_>>();
                         (dispatch.clone())(CAct::SetList(converted));
 
                         // Set paragraph cache for each option
@@ -972,23 +1293,46 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
                                 let selected_lang = paragraph_language.read().clone();
                                 let interface_lang = language_state.read().current_language.clone();
 
-                                let timeout_paragraphs_list = paragraph_state.read().get_by_chapter(timeout_target_chapter_id)
+                                let timeout_paragraphs_list = paragraph_state
+                                    .read()
+                                    .get_by_chapter(timeout_target_chapter_id)
                                     .iter()
                                     .map(|item| {
-                                        let has_translation = item.texts.iter().any(|t| t.lang == selected_lang);
-                                        let preview = item.texts
+                                        let has_translation =
+                                            item.texts.iter().any(|t| t.lang == selected_lang);
+                                        let preview = item
+                                            .texts
                                             .iter()
                                             .find(|t| t.lang == selected_lang)
-                                            .or_else(|| item.texts.iter().find(|t| t.lang == interface_lang))
-                                            .or_else(|| item.texts.iter().find(|t| t.lang == "en-US" || t.lang == "en-GB"))
+                                            .or_else(|| {
+                                                item.texts.iter().find(|t| t.lang == interface_lang)
+                                            })
+                                            .or_else(|| {
+                                                item.texts.iter().find(|t| {
+                                                    t.lang == "en-US" || t.lang == "en-GB"
+                                                })
+                                            })
                                             .or_else(|| item.texts.first())
-                                            .map(|t| t.paragraphs.lines().next().unwrap_or("").to_string())
+                                            .map(|t| {
+                                                t.paragraphs
+                                                    .lines()
+                                                    .next()
+                                                    .unwrap_or("")
+                                                    .to_string()
+                                            })
                                             .unwrap_or_default();
-                                        crate::components::paragraph_list::Paragraph { id: item.id.clone(), preview, has_translation }
+                                        crate::components::paragraph_list::Paragraph {
+                                            id: item.id.clone(),
+                                            preview,
+                                            has_translation,
+                                        }
                                     })
                                     .collect::<Vec<_>>();
 
-                                (dispatch.clone())(CAct::SetTimeoutParaList { idx, list: timeout_paragraphs_list });
+                                (dispatch.clone())(CAct::SetTimeoutParaList {
+                                    idx,
+                                    list: timeout_paragraphs_list,
+                                });
                             }
                         }
                     } else {
@@ -1004,12 +1348,22 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
                         };
 
                         // Re-use existing helper to derive the full choice tuples
-                        let (new_choices, _new_paragraphs) = process_paragraph_select(&placeholder_text, &full_paragraph, &paragraph_state, &paragraph_language, &language_state.read().current_language.clone());
+                        let (new_choices, _new_paragraphs) = process_paragraph_select(
+                            &placeholder_text,
+                            &full_paragraph,
+                            &paragraph_state,
+                            &paragraph_language,
+                            &language_state.read().current_language.clone(),
+                        );
                         choices.set(new_choices.clone());
 
                         // Sync reducer state so UI components reflect the updated choices list
                         let dispatch = dispatch_ps.clone();
-                        let converted = new_choices.iter().cloned().map(ChoiceStruct::from_tuple).collect::<Vec<_>>();
+                        let converted = new_choices
+                            .iter()
+                            .cloned()
+                            .map(ChoiceStruct::from_tuple)
+                            .collect::<Vec<_>>();
                         (dispatch.clone())(CAct::SetList(converted));
                     }
                 }
@@ -1029,7 +1383,8 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
                 let mut choices_ref = choices.clone();
                 Timeout::new(0, move || {
                     choices_ref.set(tuple_list);
-                }).forget();
+                })
+                .forget();
             }
             // No cleanup necessary
         });
@@ -1057,21 +1412,61 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
                         paragraphs_ref.set(text.paragraphs.clone());
 
                         let interface_lang = language_state_ref.read().current_language.clone();
-                        let (new_choices, _new_paragraphs) = process_paragraph_select(text, &paragraph, &paragraph_state_ref, &paragraph_lang_ref, &interface_lang);
+                        let (new_choices, _new_paragraphs) = process_paragraph_select(
+                            text,
+                            &paragraph,
+                            &paragraph_state_ref,
+                            &paragraph_lang_ref,
+                            &interface_lang,
+                        );
                         choices_ref.set(new_choices.clone());
 
-                        let converted = new_choices.iter().cloned().map(ChoiceStruct::from_tuple).collect::<Vec<_>>();
+                        let converted = new_choices
+                            .iter()
+                            .cloned()
+                            .map(ChoiceStruct::from_tuple)
+                            .collect::<Vec<_>>();
                         (dispatch_ref.clone())(CAct::SetList(converted));
                     } else {
                         paragraphs_ref.set(String::new());
 
                         let current_choices = choices_ref.read().clone();
-                        let new_choices = current_choices.iter().map(|(_, to, type_, key, value, target_chapter, same_page, time_limit, timeout_to, timeout_target_chapter, effects)| {
-                            (String::new(), to.clone(), type_.clone(), key.clone(), value.clone(), target_chapter.clone(), *same_page, *time_limit, timeout_to.clone(), timeout_target_chapter.clone(), effects.clone())
-                        }).collect();
+                        let new_choices = current_choices
+                            .iter()
+                            .map(
+                                |(
+                                    _,
+                                    to,
+                                    type_,
+                                    key,
+                                    value,
+                                    target_chapter,
+                                    same_page,
+                                    time_limit,
+                                    timeout_to,
+                                    timeout_target_chapter,
+                                    impacts,
+                                )| {
+                                    (
+                                        String::new(),
+                                        to.clone(),
+                                        type_.clone(),
+                                        key.clone(),
+                                        value.clone(),
+                                        target_chapter.clone(),
+                                        *same_page,
+                                        *time_limit,
+                                        timeout_to.clone(),
+                                        timeout_target_chapter.clone(),
+                                        impacts.clone(),
+                                    )
+                                },
+                            )
+                            .collect();
                         choices_ref.set(new_choices);
                     }
-                }).forget();
+                })
+                .forget();
             }
         }
 
@@ -1079,14 +1474,14 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
     });
 
     rsx! {
-        crate::pages::layout::Layout { 
+        crate::pages::layout::Layout {
             title: Some("Dashboard"),
-            div { 
+            div {
                 class: "min-h-screen bg-gray-50 dark:bg-gray-900",
                 div {
                     class: "w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 lg:py-8",
                     // Main content area
-                    div { 
+                    div {
                         class: "bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700",
                         // Form area
                         div {
@@ -1122,13 +1517,13 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
                                                     paragraph_language.set(current_lang.clone());
                                                     is_open.set(false);
                                                     search_query.set(String::new());
-                                                    
+
                                                     // Check if there is already existing translation, use exact match
                                                     if let Some(paragraph) = selected_paragraph.read().as_ref() {
                                                         // Fill paragraph content
                                                         if let Some(text) = paragraph.texts.iter().find(|text| text.lang == current_lang) {
                                                             paragraphs.set(text.paragraphs.clone());
-                                                            
+
                                                             // Fill options
                                                             let (new_choices, _new_paragraphs) = process_paragraph_select(text, paragraph, &paragraph_state, &paragraph_language, &language_state.read().current_language.clone());
                                                             let _choices_len = new_choices.len();
@@ -1196,7 +1591,7 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
 
                                     // Paragraph selector (only show in edit mode)
                                     if *is_edit_mode.read() {
-                                        div { 
+                                        div {
                                             class: "w-full",
                                             crate::components::paragraph_list::ParagraphList {
                                                 label: t!("select_paragraph"),
@@ -1251,14 +1646,14 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
                                                 }
                                             },
                                             disabled: selected_chapter.read().is_empty(),
-                                            svg { 
+                                            svg {
                                                 xmlns: "http://www.w3.org/2000/svg",
                                                 class: "h-5 w-5 mr-2",
                                                 fill: "none",
                                                 view_box: "0 0 24 24",
                                                 stroke: "currentColor",
                                                 stroke_width: "2",
-                                                path { 
+                                                path {
                                                     stroke_linecap: "round",
                                                     stroke_linejoin: "round",
                                                     d: if *is_edit_mode.read() {
@@ -1353,7 +1748,7 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
                                             on_action_type_toggle: handle_action_type_toggle,
                                             characters: character_options.read().clone(),
                                             relationships: relationship_options.read().clone(),
-                                            on_effects_change: handle_effects_change,
+                                            on_impacts_change: handle_impacts_change,
                                         }
                                     }
                                 }
@@ -1397,30 +1792,89 @@ fn process_paragraph_select(
     paragraph_state: &Signal<ParagraphState>,
     paragraph_language: &Signal<String>,
     interface_language: &str,
-) -> (
-    Vec<ChoiceTuple>,
-    Vec<Vec<ParagraphListParagraph>>,
-) {
+) -> (Vec<ChoiceTuple>, Vec<Vec<ParagraphListParagraph>>) {
     let mut new_choices = Vec::new();
     let mut new_paragraphs = Vec::new();
     let text_choices = &text.choices;
     let paragraph_choices = &full_paragraph.choices;
     for (i, choice_text) in text_choices.iter().enumerate() {
-        let (target_ids, type_, key, value, same_page, time_limit, timeout_to_opt, effects) = if let Some(choice) = paragraph_choices.get(i) {
-            match choice {
-                ContextParagraphChoice::Simple(texts) => (texts.clone(), "goto".to_string(), None, None, false, None, None, Vec::new()),
-                ContextParagraphChoice::SimpleOld(text) => (vec![text.clone()], "goto".to_string(), None, None, false, None, None, Vec::new()),
-                ContextParagraphChoice::Complex { to, type_, key, value, same_page, time_limit, timeout_to, effects, .. } => {
-                    (to.clone(), type_.clone(), key.clone(), value.clone(), same_page.unwrap_or(false), *time_limit, timeout_to.clone(), effects.clone().unwrap_or_default())
-                },
-                ContextParagraphChoice::ComplexOld { to, type_, key, value, same_page, time_limit, timeout_to, effects, .. } => {
-                    (vec![to.clone()], type_.clone(), key.clone(), value.clone(), same_page.unwrap_or(false), *time_limit, timeout_to.clone(), effects.clone().unwrap_or_default())
-                },
-            }
-        } else {
-            (Vec::new(), String::new(), None, None, false, None, None, Vec::new())
-        };
-        
+        let (target_ids, type_, key, value, same_page, time_limit, timeout_to_opt, impacts) =
+            if let Some(choice) = paragraph_choices.get(i) {
+                match choice {
+                    ContextParagraphChoice::Simple(texts) => (
+                        texts.clone(),
+                        "goto".to_string(),
+                        None,
+                        None,
+                        false,
+                        None,
+                        None,
+                        Vec::new(),
+                    ),
+                    ContextParagraphChoice::SimpleOld(text) => (
+                        vec![text.clone()],
+                        "goto".to_string(),
+                        None,
+                        None,
+                        false,
+                        None,
+                        None,
+                        Vec::new(),
+                    ),
+                    ContextParagraphChoice::Complex {
+                        to,
+                        type_,
+                        key,
+                        value,
+                        same_page,
+                        time_limit,
+                        timeout_to,
+                        impacts,
+                        ..
+                    } => (
+                        to.clone(),
+                        type_.clone(),
+                        key.clone(),
+                        value.clone(),
+                        same_page.unwrap_or(false),
+                        *time_limit,
+                        timeout_to.clone(),
+                        impacts.clone().unwrap_or_default(),
+                    ),
+                    ContextParagraphChoice::ComplexOld {
+                        to,
+                        type_,
+                        key,
+                        value,
+                        same_page,
+                        time_limit,
+                        timeout_to,
+                        impacts,
+                        ..
+                    } => (
+                        vec![to.clone()],
+                        type_.clone(),
+                        key.clone(),
+                        value.clone(),
+                        same_page.unwrap_or(false),
+                        *time_limit,
+                        timeout_to.clone(),
+                        impacts.clone().unwrap_or_default(),
+                    ),
+                }
+            } else {
+                (
+                    Vec::new(),
+                    String::new(),
+                    None,
+                    None,
+                    false,
+                    None,
+                    None,
+                    Vec::new(),
+                )
+            };
+
         // Get all target paragraph chapter IDs (should be in the same chapter)
         let target_chapter_id = if !target_ids.is_empty() {
             if let Some(first_paragraph) = paragraph_state.read().get_by_id(&target_ids[0]) {
@@ -1431,7 +1885,7 @@ fn process_paragraph_select(
         } else {
             String::new()
         };
-        
+
         // Determine timeout target chapter (if any)
         let timeout_target_chapter_id = if let Some(ref timeout_para_id) = timeout_to_opt {
             if let Some(timeout_para) = paragraph_state.read().get_by_id(timeout_para_id) {
@@ -1442,38 +1896,59 @@ fn process_paragraph_select(
         } else {
             String::new()
         };
-        
+
         new_choices.push((
             choice_text.clone(),
-            if target_chapter_id.is_empty() { Vec::new() } else { target_ids.clone() },
-            if target_chapter_id.is_empty() { String::new() } else { type_ },
-            if target_chapter_id.is_empty() { None } else { key },
-            if target_chapter_id.is_empty() { None } else { value },
+            if target_chapter_id.is_empty() {
+                Vec::new()
+            } else {
+                target_ids.clone()
+            },
+            if target_chapter_id.is_empty() {
+                String::new()
+            } else {
+                type_
+            },
+            if target_chapter_id.is_empty() {
+                None
+            } else {
+                key
+            },
+            if target_chapter_id.is_empty() {
+                None
+            } else {
+                value
+            },
             target_chapter_id.clone(),
             same_page,
             time_limit,
             timeout_to_opt.clone(),
             timeout_target_chapter_id.clone(),
-            effects,
+            impacts,
         ));
-        
+
         if !target_chapter_id.is_empty() {
             let selected_lang = paragraph_language.read().clone();
-            let filtered_paragraphs = paragraph_state.read().get_by_chapter(&target_chapter_id)
+            let filtered_paragraphs = paragraph_state
+                .read()
+                .get_by_chapter(&target_chapter_id)
                 .iter()
                 .map(|item| {
                     let has_translation = item.texts.iter().any(|text| text.lang == selected_lang);
-                    let preview = item.texts
+                    let preview = item
+                        .texts
                         .iter()
                         .find(|t| t.lang == selected_lang)
                         .or_else(|| item.texts.iter().find(|t| t.lang == interface_language))
-                        .or_else(|| item.texts.iter().find(|t| t.lang == "en-US" || t.lang == "en-GB"))
+                        .or_else(|| {
+                            item.texts
+                                .iter()
+                                .find(|t| t.lang == "en-US" || t.lang == "en-GB")
+                        })
                         .or_else(|| item.texts.first())
-                        .map(|text| {
-                            match text.paragraphs.lines().next() {
-                                Some(line) => line.to_string(),
-                                None => String::new(),
-                            }
+                        .map(|text| match text.paragraphs.lines().next() {
+                            Some(line) => line.to_string(),
+                            None => String::new(),
                         })
                         .unwrap_or_else(|| format!("[{}]", item.id));
                     ParagraphListParagraph {

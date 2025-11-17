@@ -1,17 +1,29 @@
-use dioxus::prelude::*;
-use dioxus_i18n::t;
 use crate::{
-    components::choice_effects_editor::{CharacterOption, ChoiceEffectsEditor, RelationshipOption},
+    components::choice_impacts_editor::{CharacterOption, ChoiceImpactsEditor, RelationshipOption},
     components::form::{ActionTypeSelector, InputField},
     components::paragraph_list::{MultiSelectParagraphList, Paragraph},
     contexts::chapter_context::Chapter,
-    models::effects::{Effect, EffectList},
+    models::impacts::{Impact, ImpactList},
 };
+use dioxus::prelude::*;
+use dioxus_i18n::t;
 
 #[derive(Props, Clone, PartialEq)]
 pub struct ChoiceOptionsProps {
-    // (caption, goto, action_type, action_key, action_value, target_chapter, same_page, time_limit, timeout_to, timeout_target_chapter, effects)
-    pub choices: Vec<(String, Vec<String>, String, Option<String>, Option<serde_json::Value>, String, bool, Option<u32>, Option<String>, String, Vec<Effect>)>,
+    // (caption, goto, action_type, action_key, action_value, target_chapter, same_page, time_limit, timeout_to, timeout_target_chapter, impacts)
+    pub choices: Vec<(
+        String,
+        Vec<String>,
+        String,
+        Option<String>,
+        Option<serde_json::Value>,
+        String,
+        bool,
+        Option<u32>,
+        Option<String>,
+        String,
+        Vec<Impact>,
+    )>,
     pub on_choice_change: EventHandler<(usize, String, String)>,
     pub on_choice_add_paragraph: EventHandler<(usize, String)>,
     pub on_choice_remove_paragraph: EventHandler<(usize, String)>,
@@ -42,7 +54,7 @@ pub struct ChoiceOptionsProps {
     pub on_action_type_toggle: EventHandler<usize>,
     pub characters: Vec<CharacterOption>,
     pub relationships: Vec<RelationshipOption>,
-    pub on_effects_change: EventHandler<(usize, Vec<Effect>)>,
+    pub on_impacts_change: EventHandler<(usize, Vec<Impact>)>,
 }
 
 #[component]
@@ -75,12 +87,12 @@ pub fn ChoiceOptions(props: ChoiceOptionsProps) -> Element {
                 {t!("add_option")}
             }
         }
-        
+
         // Render all options
-        {props.choices.iter().enumerate().map(|(index, (caption, goto_list, action_type, action_key, action_value, target_chapter, same_page, time_limit, timeout_to, timeout_target_chapter, effects))| {
+        {props.choices.iter().enumerate().map(|(index, (caption, goto_list, action_type, action_key, action_value, target_chapter, same_page, time_limit, timeout_to, timeout_target_chapter, impacts))| {
             // Check if action type is empty (None)
             let is_action_disabled = action_type.is_empty();
-            
+
             // Compute currently selected timeout paragraph IDs (comma-separated string → Vec<String>)
             let timeout_selected_ids: Vec<String> = timeout_to
                 .clone()
@@ -89,10 +101,10 @@ pub fn ChoiceOptions(props: ChoiceOptionsProps) -> Element {
                 .map(|s| s.trim().to_string())
                 .filter(|s| !s.is_empty())
                 .collect();
-            
+
             let timeout_ids_for_add = timeout_selected_ids.clone();
             let timeout_ids_for_remove = timeout_selected_ids.clone();
-            
+
             rsx! {
                 div {
                     key: "{index}",
@@ -114,7 +126,7 @@ pub fn ChoiceOptions(props: ChoiceOptionsProps) -> Element {
                                     {t!("delete_option")}
                                 }
                             }
-                            
+
                             // First row: title, target chapter, target paragraph (desktop: side by side, mobile: vertical)
                             div {
                                 class: "grid grid-cols-1 lg:grid-cols-3 gap-4",
@@ -176,7 +188,7 @@ pub fn ChoiceOptions(props: ChoiceOptionsProps) -> Element {
                                     selected_language: props.selected_language.clone(),
                                 }
                             }
-                            
+
                             // Action related fields
                             div {
                                 class: "border-t border-gray-200 dark:border-gray-700 mt-4 pt-4",
@@ -341,17 +353,17 @@ pub fn ChoiceOptions(props: ChoiceOptionsProps) -> Element {
                             // Effects editor
                             div {
                                 class: "border-t border-gray-200 dark:border-gray-700 mt-4 pt-4 space-y-2",
-                                    ChoiceEffectsEditor {
+                                    ChoiceImpactsEditor {
                                         choice_id: format!("choice-{}", index),
-                                        initial_effects_json: EffectList(effects.clone()).to_json().ok(),
+                                        initial_impacts_json: ImpactList(impacts.clone()).to_json().ok(),
                                         characters: props.characters.clone(),
                                         relationships: props.relationships.clone(),
-                                        on_save: move |new_effects| {
-                                            props.on_effects_change.call((index, new_effects));
+                                        on_save: move |new_impacts| {
+                                            props.on_impacts_change.call((index, new_impacts));
                                         },
                                     }
                                 }
-                            
+
                             // Delete button (mobile: shown at the end, desktop: hidden)
                             button {
                                 class: "lg:hidden w-full mt-2 px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 transition-colors duration-200",

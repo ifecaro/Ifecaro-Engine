@@ -1,5 +1,5 @@
-pub mod indexeddb; 
 pub mod api;
+pub mod indexeddb;
 
 #[cfg(test)]
-mod api_tests; 
+mod api_tests;

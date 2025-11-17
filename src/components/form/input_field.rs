@@ -17,12 +17,20 @@ pub struct InputFieldProps {
 
 #[component]
 pub fn InputField(props: InputFieldProps) -> Element {
-    let error_class = if props.has_error { "border-red-500" } else { "" };
-    let disabled_class = if props.disabled { "bg-gray-100 dark:bg-gray-600 cursor-not-allowed" } else { "" };
-    
+    let error_class = if props.has_error {
+        "border-red-500"
+    } else {
+        ""
+    };
+    let disabled_class = if props.disabled {
+        "bg-gray-100 dark:bg-gray-600 cursor-not-allowed"
+    } else {
+        ""
+    };
+
     rsx! {
         div { class: "space-y-2",
-            label { 
+            label {
                 class: "block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2",
                 span { "{props.label}" }
                 {if props.required {
@@ -66,4 +74,4 @@ pub fn InputField(props: InputFieldProps) -> Element {
             }
         })}
     }
-} 
+}
