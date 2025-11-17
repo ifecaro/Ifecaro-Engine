@@ -102,6 +102,7 @@ mod benchmark_tests {
                             same_page: Some(i % 2 == 0),
                             time_limit: if i % 5 == 0 { Some(60) } else { None },
                             timeout_to: None,
+                            effects: None,
                         },
                         ParagraphChoice::Simple(vec![format!("para{}", i + 4)]),
                     ]
@@ -395,6 +396,7 @@ mod stress_tests {
                         same_page: Some(false),
                         time_limit: Some(30),
                         timeout_to: None,
+                        effects: None,
                     },
                 ],
             });

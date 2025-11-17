@@ -74,6 +74,7 @@ mod interaction_tests {
                             same_page: Some(false),
                             time_limit: Some(60),
                             timeout_to: None,
+                            effects: None,
                         },
                     ],
                 },
@@ -121,6 +122,7 @@ mod interaction_tests {
                             same_page: Some(false),
                             time_limit: None,
                             timeout_to: None,
+                            effects: None,
                         },
                         ParagraphChoice::Simple(vec!["para7".to_string()]),
                     ],
@@ -333,7 +335,7 @@ mod interaction_tests {
                                     None,
                                 ));
                             },
-                            ParagraphChoice::Complex { to, type_, key, value, same_page, time_limit, timeout_to } => {
+                            ParagraphChoice::Complex { to, type_, key, value, same_page, time_limit, timeout_to, .. } => {
                                 choices.push((
                                     choice_text.clone(),
                                     to.clone(),
@@ -423,7 +425,7 @@ mod interaction_tests {
         
         // Test complex choice structure
         match &paragraph.choices[1] {
-            ParagraphChoice::Complex { to, type_, key, value, same_page, time_limit, timeout_to } => {
+            ParagraphChoice::Complex { to, type_, key, value, same_page, time_limit, timeout_to, .. } => {
                 assert_eq!(to, &vec!["para3".to_string()]);
                 assert_eq!(type_, "conditional");
                 assert_eq!(key.as_ref().unwrap(), "forest_knowledge");
@@ -437,7 +439,7 @@ mod interaction_tests {
         
         let paragraph3 = &paragraph_state.paragraphs[2]; // para3
         match &paragraph3.choices[0] {
-            ParagraphChoice::Complex { to, type_, key, value, same_page, time_limit, timeout_to } => {
+            ParagraphChoice::Complex { to, type_, key, value, same_page, time_limit, timeout_to, .. } => {
                 assert_eq!(to, &vec!["para6".to_string()]);
                 assert_eq!(type_, "gain_item");
                 assert_eq!(key.as_ref().unwrap(), "ancient_key");
@@ -928,6 +930,7 @@ mod edge_case_tests {
             same_page: Some(false),
             time_limit: None,
             timeout_to: None,
+            effects: None,
         };
         
         match valid_choice {
@@ -953,6 +956,7 @@ mod edge_case_tests {
             same_page: Some(true),
             time_limit: Some(120),
             timeout_to: None,
+            effects: None,
         };
         
         match complex_choice {

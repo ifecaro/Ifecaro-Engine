@@ -35,6 +35,7 @@ mod reader_mode_tests {
                 same_page: None,
                 time_limit: None,
                 timeout_to: None,
+                effects: None,
             }
         }).collect();
         
