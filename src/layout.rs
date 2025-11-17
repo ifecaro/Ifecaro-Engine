@@ -42,7 +42,12 @@ pub fn Layout() -> Element {
     use_effect(move || {
         let lang = match &route {
             Route::Home {} => "zh-TW",
-            Route::Story { lang } | Route::Dashboard { lang } => lang,
+            Route::Story { lang }
+            | Route::Dashboard { lang }
+            | Route::InviteRequest { lang }
+            | Route::InviteCheckEmail { lang }
+            | Route::Register { lang }
+            | Route::Login { lang } => lang,
             Route::PageNotFound { .. } => "zh-TW",
         };
         state.write().set_language(lang);
