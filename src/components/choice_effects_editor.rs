@@ -129,12 +129,13 @@ pub fn ChoiceEffectsEditor(props: ChoiceEffectsEditorProps) -> Element {
         }
     };
 
-    let on_save_click = {
+    {
+        let effects = effects.clone();
         let on_save = props.on_save.clone();
-        move |_| {
+        use_effect(move || {
             on_save.call(effects.read().clone());
-        }
-    };
+        });
+    }
 
     rsx! {
         div { class: "choice-effects-editor space-y-4",
@@ -144,9 +145,6 @@ pub fn ChoiceEffectsEditor(props: ChoiceEffectsEditorProps) -> Element {
                 for (index, effect) in effects.read().iter().cloned().enumerate() {
                     { render_effect_row(index, effect, effects.clone(), &props.characters, &props.relationships) }
                 }
-            }
-            div { class: "pt-1 flex justify-end",
-                button { class: "inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 dark:focus:ring-offset-gray-800", onclick: on_save_click, {t!("save_effects")} }
             }
         }
     }
