@@ -2,6 +2,7 @@ use crate::{
     components::{navbar::Navbar, story_content::Choice},
     contexts::{
         language_context::LanguageState,
+        settings_context::use_settings_context,
         story_context::{use_story_context, StoryContext},
     },
     enums::route::Route,
@@ -11,6 +12,50 @@ use std::collections::HashSet;
 use std::{rc::Rc, sync::Arc};
 use wasm_bindgen::closure::Closure;
 use web_sys::Event as WebEvent;
+
+#[cfg(target_arch = "wasm32")]
+fn prefers_dark_mode() -> bool {
+    web_sys::window()
+        .and_then(|w| w.match_media("(prefers-color-scheme: dark)").ok().flatten())
+        .map(|mql| mql.matches())
+        .unwrap_or(false)
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+fn prefers_dark_mode() -> bool {
+    false
+}
+
+#[cfg(target_arch = "wasm32")]
+fn apply_theme_class(mode: &str) {
+    use wasm_bindgen::JsCast;
+
+    if let Some(document) = web_sys::window().and_then(|w| w.document()) {
+        if let Some(element) = document.document_element() {
+            let class_list = element.class_list();
+            let _ = class_list.remove_1("dark");
+            let _ = class_list.remove_1("paper");
+
+            match mode {
+                "dark" => {
+                    let _ = class_list.add_1("dark");
+                }
+                "paper" => {
+                    let _ = class_list.add_1("paper");
+                }
+                "light" => {}
+                _ => {
+                    if prefers_dark_mode() {
+                        let _ = class_list.add_1("dark");
+                    }
+                }
+            }
+        }
+    }
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+fn apply_theme_class(_mode: &str) {}
 
 #[derive(Debug, Clone)]
 pub struct KeyboardState {
@@ -37,6 +82,7 @@ pub fn Layout() -> Element {
     let mut state = use_context::<Signal<LanguageState>>();
     let mut keyboard_state = use_signal(KeyboardState::default);
     let mut story_context = use_story_context();
+    let settings_context = use_settings_context();
     let closure_signal = use_signal(|| None::<Closure<dyn FnMut(WebEvent)>>);
 
     use_effect(move || {
@@ -52,6 +98,40 @@ pub fn Layout() -> Element {
         };
         state.write().set_language(lang);
     });
+
+    {
+        let settings_context = settings_context.clone();
+        use_effect(move || {
+            let mode = settings_context
+                .read()
+                .settings
+                .get("theme_mode")
+                .cloned()
+                .unwrap_or_else(|| "auto".to_string());
+            apply_theme_class(&mode);
+            (|| {})()
+        });
+    }
+
+    let theme_mode = settings_context
+        .read()
+        .settings
+        .get("theme_mode")
+        .cloned()
+        .unwrap_or_else(|| "auto".to_string());
+
+    let is_dark_theme = match theme_mode.as_str() {
+        "dark" => true,
+        "light" => false,
+        "paper" => false,
+        _ => prefers_dark_mode(),
+    };
+
+    let main_theme_class = match theme_mode.as_str() {
+        "paper" => "bg-[#fdf6e3] text-[#2f2417]",
+        _ if is_dark_theme => "bg-gray-900 text-gray-100",
+        _ => "bg-gray-100 text-gray-900",
+    };
 
     provide_context(keyboard_state);
 
@@ -129,7 +209,7 @@ pub fn Layout() -> Element {
 
     rsx! {
         main {
-            class: "min-h-screen bg-gray-100 dark:bg-gray-900",
+            class: format!("min-h-screen {}", main_theme_class),
             tabindex: "0",
             onkeydown: handle_key_press,
             Navbar { closure_signal: closure_signal }

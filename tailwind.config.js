@@ -10,6 +10,7 @@ module.exports = {
   safelist: [
     'bg-current',
   ],
+  darkMode: "class",
   theme: {
     extend: {
       keyframes: {

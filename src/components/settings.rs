@@ -29,6 +29,12 @@ pub fn Settings(props: SettingsProps) -> Element {
         .get("reader_mode")
         .map(|v| v == "true")
         .unwrap_or(false);
+    let theme_mode = settings_context
+        .read()
+        .settings
+        .get("theme_mode")
+        .cloned()
+        .unwrap_or_else(|| "auto".to_string());
 
     let animation_class = if *is_open.read() {
         "translate-y-0 opacity-100"
@@ -83,11 +89,11 @@ pub fn Settings(props: SettingsProps) -> Element {
                 class: format!("{position_class} w-full sm:min-w-[16rem] sm:max-w-[60vw] shadow-lg bg-white dark:bg-gray-800 ring-1 ring-black ring-opacity-5 z-[1000] transition duration-200 ease-in-out transform {animation_class} will-change-transform will-change-opacity"),
                 div {
                     class: "py-1",
-                    button {
-                        class: "w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700",
-                        onclick: move |_| {
-                            let mut settings_context = settings_context.clone();
-                            let new_reader_mode = !reader_mode;
+                        button {
+                            class: "w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700",
+                            onclick: move |_| {
+                                let mut settings_context = settings_context.clone();
+                                let new_reader_mode = !reader_mode;
                             settings_context.write().settings.insert("reader_mode".to_string(), new_reader_mode.to_string());
                             #[cfg(target_arch = "wasm32")]
                             {
@@ -99,6 +105,51 @@ pub fn Settings(props: SettingsProps) -> Element {
                             span { class: "font-medium", "{t!(\"reader_mode\")}" }
                             br {}
                             span { class: "text-xs text-gray-500 dark:text-gray-400 ml-2", "{reader_mode_status}" }
+                        }
+                    }
+                    div { class: "border-t border-gray-200 dark:border-gray-700 my-1" }
+                    div {
+                        class: "px-4 py-2",
+                        div { class: "text-sm font-medium text-gray-800 dark:text-gray-100 mb-2", "{t!(\"theme_mode\")}" }
+                        div {
+                            class: "grid grid-cols-2 gap-2",
+                            {["auto", "light", "dark", "paper"].iter().map(|mode| {
+                                let label = match *mode {
+                                    "auto" => t!("theme_mode_auto"),
+                                    "light" => t!("theme_mode_light"),
+                                    "dark" => t!("theme_mode_dark"),
+                                    "paper" => t!("theme_mode_paper"),
+                                    _ => String::new(),
+                                };
+                                let is_active = theme_mode == *mode;
+                                let mode_value = mode.to_string();
+                                let mut settings_context = settings_context.clone();
+
+                                rsx! {
+                                    button {
+                                        key: "{mode}",
+                                        class: format!(
+                                            "w-full px-3 py-2 text-sm rounded-md border transition-colors duration-150 {}",
+                                            if is_active {
+                                                "border-blue-500 text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-900/30"
+                                            } else {
+                                                "border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+                                            }
+                                        ),
+                                        onclick: move |_| {
+                                            settings_context
+                                                .write()
+                                                .settings
+                                                .insert("theme_mode".to_string(), mode_value.clone());
+                                            #[cfg(target_arch = "wasm32")]
+                                            {
+                                                set_setting_to_indexeddb("theme_mode", &mode_value);
+                                            }
+                                        },
+                                        "{label}"
+                                    }
+                                }
+                            })}
                         }
                     }
                     if show_clear {
