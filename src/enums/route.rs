@@ -49,7 +49,10 @@ impl Route {
             // Use navigator.language property to get browser language
             if let Some(language) = navigator.language() {
                 // Check if it's in the list of supported languages
-                let supported_languages = ["zh-TW", "zh-CN", "en-US", "en-GB", "es-ES", "es-CL"];
+                let supported_languages = crate::components::language_selector::AVAILABLE_LANGUAGES
+                    .iter()
+                    .map(|lang| lang.code)
+                    .collect::<Vec<_>>();
 
                 // Check complete language code
                 if supported_languages.contains(&language.as_str()) {
