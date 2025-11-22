@@ -368,9 +368,9 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
                 .iter()
                 .find(|l| l.code == *lang_code)
                 .map(|l| l.name)
-                .unwrap_or("繁體中文")
+                .unwrap_or("中文（台灣）")
         } else {
-            "繁體中文"
+            "中文（台灣）"
         }
     });
 

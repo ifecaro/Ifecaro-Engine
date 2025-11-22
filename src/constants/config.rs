@@ -43,11 +43,11 @@ pub static LANGUAGES: [Language; 7] = [
         code: "fr-FR",
     },
     Language {
-        name: "正體中文",
+        name: "中文（台灣）",
         code: "zh-TW",
     },
     Language {
-        name: "简体中文",
+        name: "中文（中国）",
         code: "zh-CN",
     },
 ];

@@ -174,7 +174,7 @@ cargo test dashboard_tests::form_validation_tests --verbose
 ## 測試資料
 
 ### 測試語言
-- 繁體中文 (zh-TW)
+- 中文（台灣） (zh-TW)
 - 英文 (en-US)
 - 日文 (ja-JP)
 - 韓文 (ko-KR)
