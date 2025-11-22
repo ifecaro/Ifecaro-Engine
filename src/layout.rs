@@ -6,113 +6,13 @@ use crate::{
         story_context::{use_story_context, StoryContext},
     },
     enums::route::Route,
+    utils::theme::{apply_theme_class, ThemeMode},
 };
 use dioxus::prelude::*;
 use std::collections::HashSet;
 use std::{rc::Rc, sync::Arc};
 use wasm_bindgen::closure::Closure;
 use web_sys::Event as WebEvent;
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum ThemeMode {
-    Auto,
-    Light,
-    Dark,
-    Paper,
-}
-
-impl ThemeMode {
-    fn from_value(value: &str) -> Self {
-        match value {
-            "light" => Self::Light,
-            "dark" => Self::Dark,
-            "paper" => Self::Paper,
-            _ => Self::Auto,
-        }
-    }
-
-    fn resolve(self) -> ResolvedTheme {
-        let prefers_dark = prefers_dark_mode();
-
-        match self {
-            Self::Auto => {
-                if prefers_dark {
-                    ResolvedTheme::dark()
-                } else {
-                    ResolvedTheme::light()
-                }
-            }
-            Self::Light => ResolvedTheme::light(),
-            Self::Dark => ResolvedTheme::dark(),
-            Self::Paper => ResolvedTheme::paper(),
-        }
-    }
-}
-
-#[derive(Debug, Clone, Copy)]
-struct ResolvedTheme {
-    data_value: &'static str,
-    is_dark: bool,
-}
-
-impl ResolvedTheme {
-    const fn light() -> Self {
-        Self {
-            data_value: "light",
-            is_dark: false,
-        }
-    }
-
-    const fn dark() -> Self {
-        Self {
-            data_value: "dark",
-            is_dark: true,
-        }
-    }
-
-    const fn paper() -> Self {
-        Self {
-            data_value: "paper",
-            is_dark: false,
-        }
-    }
-}
-
-#[cfg(target_arch = "wasm32")]
-fn prefers_dark_mode() -> bool {
-    web_sys::window()
-        .and_then(|w| w.match_media("(prefers-color-scheme: dark)").ok().flatten())
-        .map(|mql| mql.matches())
-        .unwrap_or(false)
-}
-
-#[cfg(not(target_arch = "wasm32"))]
-fn prefers_dark_mode() -> bool {
-    false
-}
-
-#[cfg(target_arch = "wasm32")]
-fn apply_theme_class(mode: ThemeMode) {
-    use wasm_bindgen::JsCast;
-
-    let resolved = mode.resolve();
-
-    if let Some(document) = web_sys::window().and_then(|w| w.document()) {
-        if let Some(element) = document.document_element() {
-            let class_list = element.class_list();
-            let _ = class_list.remove_1("dark");
-
-            if resolved.is_dark {
-                let _ = class_list.add_1("dark");
-            }
-
-            let _ = element.set_attribute("data-theme", resolved.data_value);
-        }
-    }
-}
-
-#[cfg(not(target_arch = "wasm32"))]
-fn apply_theme_class(_mode: ThemeMode) {}
 
 #[derive(Debug, Clone)]
 pub struct KeyboardState {
@@ -254,6 +154,10 @@ pub fn Layout() -> Element {
             Navbar { closure_signal: closure_signal }
             div {
                 class: "container mx-auto px-4 py-8",
+                div {
+                    class: "mb-4 rounded-lg p-4 bg-slate-50 text-slate-900 dark:bg-slate-900 dark:text-slate-50 paper:bg-[#f6f1e3] paper:text-[#3f3422] transition-colors duration-200",
+                    "Theme test",
+                }
                 Outlet::<Route> {}
             }
         }

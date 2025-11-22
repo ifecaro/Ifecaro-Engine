@@ -2,6 +2,8 @@
 
 use crate::contexts::paragraph_context::Paragraph;
 
+pub mod theme;
+
 /// Find a paragraph in the provided list by its id.
 ///
 /// This is a small helper that centralises the lookup logic so that multiple

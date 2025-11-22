@@ -7,6 +7,7 @@ use crate::services::indexeddb::clear_all_disabled_choices_from_indexeddb;
 use crate::services::indexeddb::clear_choices_and_random_choices;
 #[cfg(target_arch = "wasm32")]
 use crate::services::indexeddb::set_setting_to_indexeddb;
+use crate::utils::theme::{apply_theme_class, ThemeMode};
 use dioxus::prelude::*;
 use dioxus_i18n::t;
 use wasm_bindgen_futures::spawn_local;
@@ -150,6 +151,7 @@ pub fn Settings(props: SettingsProps) -> Element {
                                             {
                                                 set_setting_to_indexeddb("theme_mode", &mode_value);
                                             }
+                                            apply_theme_class(ThemeMode::from_value(&mode_value));
                                         },
                                         "{label}"
                                     }
