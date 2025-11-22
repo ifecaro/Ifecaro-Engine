@@ -70,6 +70,11 @@ pub fn Settings(props: SettingsProps) -> Element {
     #[cfg(not(target_arch = "wasm32"))]
     let debugmode_signal = use_signal(|| false);
     let show_clear = cfg!(debug_assertions) || *debugmode_signal.read();
+    let theme_layout_class = if *props.is_desktop.read() {
+        "grid grid-cols-2 gap-2"
+    } else {
+        "grid grid-cols-1 gap-2"
+    };
 
     rsx! {
         div {
@@ -112,7 +117,7 @@ pub fn Settings(props: SettingsProps) -> Element {
                         class: "px-4 py-2",
                         div { class: "text-sm font-medium text-gray-800 dark:text-gray-100 mb-2", "{t!(\"theme_mode\")}" }
                         div {
-                            class: "grid grid-cols-2 gap-2",
+                            class: theme_layout_class,
                             {["auto", "light", "dark", "paper"].iter().map(|mode| {
                                 let label = match *mode {
                                     "auto" => t!("theme_mode_auto"),
