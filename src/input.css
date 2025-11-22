@@ -30,6 +30,18 @@ li {
     }
 }
 
+@layer base {
+    [data-theme="paper"] {
+        background-color: #fdf6e3;
+        color: #2f2417;
+    }
+
+    [data-theme="paper"] body {
+        background-color: #fdf6e3;
+        color: #2f2417;
+    }
+}
+
 @layer utilities {
     @keyframes toast-in {
         from {

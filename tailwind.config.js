@@ -1,3 +1,5 @@
+const plugin = require('tailwindcss/plugin');
+
 /** @type {import('tailwindcss').Config} */
 module.exports = {
   mode: "all",
@@ -21,4 +23,9 @@ module.exports = {
       }
     },
   },
+  plugins: [
+    plugin(function ({ addVariant }) {
+      addVariant('paper', '[data-theme="paper"] &');
+    }),
+  ],
 }

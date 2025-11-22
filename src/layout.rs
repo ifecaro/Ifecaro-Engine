@@ -13,6 +13,71 @@ use std::{rc::Rc, sync::Arc};
 use wasm_bindgen::closure::Closure;
 use web_sys::Event as WebEvent;
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum ThemeMode {
+    Auto,
+    Light,
+    Dark,
+    Paper,
+}
+
+impl ThemeMode {
+    fn from_value(value: &str) -> Self {
+        match value {
+            "light" => Self::Light,
+            "dark" => Self::Dark,
+            "paper" => Self::Paper,
+            _ => Self::Auto,
+        }
+    }
+
+    fn resolve(self) -> ResolvedTheme {
+        let prefers_dark = prefers_dark_mode();
+
+        match self {
+            Self::Auto => {
+                if prefers_dark {
+                    ResolvedTheme::dark()
+                } else {
+                    ResolvedTheme::light()
+                }
+            }
+            Self::Light => ResolvedTheme::light(),
+            Self::Dark => ResolvedTheme::dark(),
+            Self::Paper => ResolvedTheme::paper(),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
+struct ResolvedTheme {
+    data_value: &'static str,
+    is_dark: bool,
+}
+
+impl ResolvedTheme {
+    const fn light() -> Self {
+        Self {
+            data_value: "light",
+            is_dark: false,
+        }
+    }
+
+    const fn dark() -> Self {
+        Self {
+            data_value: "dark",
+            is_dark: true,
+        }
+    }
+
+    const fn paper() -> Self {
+        Self {
+            data_value: "paper",
+            is_dark: false,
+        }
+    }
+}
+
 #[cfg(target_arch = "wasm32")]
 fn prefers_dark_mode() -> bool {
     web_sys::window()
@@ -27,35 +92,27 @@ fn prefers_dark_mode() -> bool {
 }
 
 #[cfg(target_arch = "wasm32")]
-fn apply_theme_class(mode: &str) {
+fn apply_theme_class(mode: ThemeMode) {
     use wasm_bindgen::JsCast;
+
+    let resolved = mode.resolve();
 
     if let Some(document) = web_sys::window().and_then(|w| w.document()) {
         if let Some(element) = document.document_element() {
             let class_list = element.class_list();
             let _ = class_list.remove_1("dark");
-            let _ = class_list.remove_1("paper");
 
-            match mode {
-                "dark" => {
-                    let _ = class_list.add_1("dark");
-                }
-                "paper" => {
-                    let _ = class_list.add_1("paper");
-                }
-                "light" => {}
-                _ => {
-                    if prefers_dark_mode() {
-                        let _ = class_list.add_1("dark");
-                    }
-                }
+            if resolved.is_dark {
+                let _ = class_list.add_1("dark");
             }
+
+            let _ = element.set_attribute("data-theme", resolved.data_value);
         }
     }
 }
 
 #[cfg(not(target_arch = "wasm32"))]
-fn apply_theme_class(_mode: &str) {}
+fn apply_theme_class(_mode: ThemeMode) {}
 
 #[derive(Debug, Clone)]
 pub struct KeyboardState {
@@ -108,30 +165,12 @@ pub fn Layout() -> Element {
                 .get("theme_mode")
                 .cloned()
                 .unwrap_or_else(|| "auto".to_string());
-            apply_theme_class(&mode);
+            apply_theme_class(ThemeMode::from_value(&mode));
             (|| {})()
         });
     }
 
-    let theme_mode = settings_context
-        .read()
-        .settings
-        .get("theme_mode")
-        .cloned()
-        .unwrap_or_else(|| "auto".to_string());
-
-    let is_dark_theme = match theme_mode.as_str() {
-        "dark" => true,
-        "light" => false,
-        "paper" => false,
-        _ => prefers_dark_mode(),
-    };
-
-    let main_theme_class = match theme_mode.as_str() {
-        "paper" => "bg-[#fdf6e3] text-[#2f2417]",
-        _ if is_dark_theme => "bg-gray-900 text-gray-100",
-        _ => "bg-gray-100 text-gray-900",
-    };
+    let main_theme_class = "bg-gray-100 text-gray-900 dark:bg-gray-900 dark:text-gray-100 paper:bg-[#fdf6e3] paper:text-[#2f2417] transition-colors duration-200";
 
     provide_context(keyboard_state);
 
