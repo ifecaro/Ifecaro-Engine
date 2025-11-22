@@ -174,6 +174,7 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
     let mut selected_chapter = use_signal(|| String::new());
     let mut is_chapter_open = use_signal(|| false);
     let mut chapter_search_query = use_signal(|| String::new());
+    let mut is_chapter_add_mode = use_signal(|| false);
     let mut selected_paragraph = use_signal(|| None::<ContextParagraph>);
     let mut is_edit_mode = use_signal(|| false);
     let _has_loaded = use_signal(|| paragraph_state.read().loaded);
@@ -1606,6 +1607,18 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
         // No cleanup necessary
     });
 
+    let selector_grid_class = if *is_edit_mode.read() {
+        if *is_chapter_add_mode.read() {
+            "grid grid-cols-1 lg:grid-cols-4 gap-4 lg:gap-6 flex-1"
+        } else {
+            "grid grid-cols-1 lg:grid-cols-3 gap-4 lg:gap-6 flex-1"
+        }
+    } else if *is_chapter_add_mode.read() {
+        "grid grid-cols-1 lg:grid-cols-3 gap-4 lg:gap-6 flex-1"
+    } else {
+        "grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6 flex-1"
+    };
+
     rsx! {
         crate::pages::layout::Layout {
             title: Some("Dashboard"),
@@ -1624,11 +1637,7 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
                                 class: "flex flex-col lg:flex-row lg:items-end gap-4 lg:gap-6 mb-6",
                                 // Selector grid area
                                 div {
-                                    class: if *is_edit_mode.read() {
-                                        "grid grid-cols-1 lg:grid-cols-3 gap-4 lg:gap-6 flex-1"
-                                    } else {
-                                        "grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6 flex-1"
-                                    },
+                                    class: selector_grid_class,
                                     // Language selector
                                     div {
                                         class: "w-full",
@@ -1694,53 +1703,55 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
                                         }
                                     }
 
-                                    div {
-                                        class: "w-full p-4 sm:p-5 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-sm",
-                                        div { class: "flex flex-col gap-3 md:flex-row md:items-end",
-                                            div { class: "flex-1",
-                                                label {
-                                                    class: "block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1",
-                                                    for: "new-chapter-title",
-                                                    {t!("chapter_title")}
-                                                }
-                                                input {
-                                                    id: "new-chapter-title",
-                                                    class: "w-full px-3 py-2 rounded-md border focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-100",
-                                                    value: new_chapter_title.read().clone(),
-                                                    oninput: move |event| {
-                                                        let value = event.value().to_string();
-                                                        new_chapter_title.set(value);
-                                                        new_chapter_title_error.set(false);
-                                                    },
-                                                    placeholder: t!("chapter_title"),
-                                                }
-                                                if *new_chapter_title_error.read() {
-                                                    p {
-                                                        class: "mt-1 text-sm text-red-600",
-                                                        {t!("this_field_is_required")}
+                                    if *is_chapter_add_mode.read() {
+                                        div {
+                                            class: "w-full p-4 sm:p-5 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-sm",
+                                            div { class: "flex flex-col gap-3 md:flex-row md:items-end",
+                                                div { class: "flex-1",
+                                                    label {
+                                                        class: "block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1",
+                                                        for: "new-chapter-title",
+                                                        {t!("chapter_title")}
+                                                    }
+                                                    input {
+                                                        id: "new-chapter-title",
+                                                        class: "w-full px-3 py-2 rounded-md border focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-100",
+                                                        value: new_chapter_title.read().clone(),
+                                                        oninput: move |event| {
+                                                            let value = event.value().to_string();
+                                                            new_chapter_title.set(value);
+                                                            new_chapter_title_error.set(false);
+                                                        },
+                                                        placeholder: t!("chapter_title"),
+                                                    }
+                                                    if *new_chapter_title_error.read() {
+                                                        p {
+                                                            class: "mt-1 text-sm text-red-600",
+                                                            {t!("this_field_is_required")}
+                                                        }
                                                     }
                                                 }
-                                            }
-                                            div { class: "w-full md:w-40",
-                                                label {
-                                                    class: "block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1",
-                                                    for: "new-chapter-order",
-                                                    {t!("chapter_order")}
+                                                div { class: "w-full md:w-40",
+                                                    label {
+                                                        class: "block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1",
+                                                        for: "new-chapter-order",
+                                                        {t!("chapter_order")}
+                                                    }
+                                                    input {
+                                                        id: "new-chapter-order",
+                                                        r#type: "number",
+                                                        class: "w-full px-3 py-2 rounded-md border focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-100",
+                                                        value: new_chapter_order.read().clone(),
+                                                        oninput: move |event| new_chapter_order.set(event.value().to_string()),
+                                                        placeholder: t!("chapter_order"),
+                                                    }
                                                 }
-                                                input {
-                                                    id: "new-chapter-order",
-                                                    r#type: "number",
-                                                    class: "w-full px-3 py-2 rounded-md border focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-100",
-                                                    value: new_chapter_order.read().clone(),
-                                                    oninput: move |event| new_chapter_order.set(event.value().to_string()),
-                                                    placeholder: t!("chapter_order"),
+                                                button {
+                                                    class: "inline-flex items-center justify-center px-4 py-2 rounded-md bg-indigo-600 text-white font-medium hover:bg-indigo-700 disabled:opacity-60 disabled:cursor-not-allowed",
+                                                    disabled: *is_creating_chapter.read(),
+                                                    onclick: move |_| handle_create_chapter(()),
+                                                    {if *is_creating_chapter.read() { t!("loading") } else { t!("add_chapter") }}
                                                 }
-                                            }
-                                            button {
-                                                class: "inline-flex items-center justify-center px-4 py-2 rounded-md bg-indigo-600 text-white font-medium hover:bg-indigo-700 disabled:opacity-60 disabled:cursor-not-allowed",
-                                                disabled: *is_creating_chapter.read(),
-                                                onclick: move |_| handle_create_chapter(()),
-                                                {if *is_creating_chapter.read() { t!("loading") } else { t!("add_chapter") }}
                                             }
                                         }
                                     }
@@ -1813,10 +1824,43 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
                                     }
                                 }
 
-                                // Edit mode control button (right)
-                                if !selected_chapter.read().is_empty() {
-                                    div {
-                                        class: "flex-shrink-0",
+                                // Mode control buttons (right)
+                                div {
+                                    class: "flex-shrink-0 flex flex-col gap-3 w-full lg:w-auto",
+                                    button {
+                                        class: "w-full lg:w-auto h-10 px-4 inline-flex items-center justify-center rounded-lg text-indigo-600 border border-indigo-200 bg-indigo-50 hover:bg-indigo-100 dark:text-indigo-100 dark:border-indigo-500/60 dark:bg-indigo-900/40 dark:hover:bg-indigo-900/60 focus:ring-4 focus:outline-none focus:ring-indigo-200 dark:focus:ring-indigo-800",
+                                        onclick: move |_| {
+                                            let current_mode = *is_chapter_add_mode.read();
+                                            is_chapter_add_mode.set(!current_mode);
+                                            new_chapter_title.set(String::new());
+                                            new_chapter_order.set(String::new());
+                                            new_chapter_title_error.set(false);
+                                        },
+                                        svg {
+                                            xmlns: "http://www.w3.org/2000/svg",
+                                            class: "h-5 w-5 mr-2",
+                                            fill: "none",
+                                            view_box: "0 0 24 24",
+                                            stroke: "currentColor",
+                                            stroke_width: "2",
+                                            path {
+                                                stroke_linecap: "round",
+                                                stroke_linejoin: "round",
+                                                d: if *is_chapter_add_mode.read() {
+                                                    "M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"
+                                                } else {
+                                                    "M12 4v16m8-8H4"
+                                                }
+                                            }
+                                        }
+                                        if *is_chapter_add_mode.read() {
+                                            {t!("edit_mode")}
+                                        } else {
+                                            {t!("add_chapter")}
+                                        }
+                                    }
+
+                                    if !selected_chapter.read().is_empty() {
                                         button {
                                             class: "w-full lg:w-auto h-10 px-4 inline-flex items-center justify-center rounded-lg text-white bg-blue-600 hover:bg-blue-700 focus:ring-4 focus:outline-none focus:ring-blue-300 dark:bg-blue-500 dark:hover:bg-blue-600 dark:focus:ring-blue-800 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-blue-600 dark:disabled:hover:bg-blue-500",
                                             onclick: move |_| {
