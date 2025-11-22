@@ -382,10 +382,6 @@ pub const AVAILABLE_LANGUAGES: &[Language] = &[
         name: "Tiếng Việt (Việt Nam)",
     },
     Language {
-        code: "zh",
-        name: "中文",
-    },
-    Language {
         code: "zh-CN",
         name: "简体中文",
     },
