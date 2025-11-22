@@ -20,7 +20,7 @@ pub fn create_i18n_store() -> I18nConfig {
             continue;
         };
 
-        config = config.with_locale(Locale::new(langid, contents.to_string()));
+        config = config.with_locale(Locale::new_static(langid, contents));
     }
 
     config
