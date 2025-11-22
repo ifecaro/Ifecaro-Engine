@@ -390,14 +390,6 @@ pub const AVAILABLE_LANGUAGES: &[Language] = &[
         name: "简体中文",
     },
     Language {
-        code: "zh-Hans",
-        name: "简体中文",
-    },
-    Language {
-        code: "zh-Hant",
-        name: "繁體中文",
-    },
-    Language {
         code: "zh-HK",
         name: "中文（香港）",
     },
