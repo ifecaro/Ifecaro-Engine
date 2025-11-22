@@ -93,3 +93,6 @@ remove_impact = 影響を削除
 numeric_op_add = 加算
 numeric_op_set = 設定
 numeric_op_scale = 乗算 (%)
+
+invite_request = Invite code request
+login = Log in

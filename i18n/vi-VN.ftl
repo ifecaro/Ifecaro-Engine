@@ -93,3 +93,6 @@ remove_impact = Xóa ảnh hưởng
 numeric_op_add = Cộng
 numeric_op_set = Đặt
 numeric_op_scale = Tỷ lệ (%)
+
+invite_request = Invite code request
+login = Log in

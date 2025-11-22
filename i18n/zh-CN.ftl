@@ -93,3 +93,5 @@ remove_impact = 移除影响
 numeric_op_add = 增加
 numeric_op_set = 设定
 numeric_op_scale = 乘以（%）
+invite_request = 邀请码申请
+login = 登录

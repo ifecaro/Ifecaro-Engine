@@ -93,3 +93,6 @@ remove_impact = प्रभाव हटाएं
 numeric_op_add = जोड़ें
 numeric_op_set = सेट करें
 numeric_op_scale = गुणा (%)
+
+invite_request = Invite code request
+login = Log in

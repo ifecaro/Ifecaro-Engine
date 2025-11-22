@@ -38,7 +38,7 @@ delete_option = Seçeneği sil
 paragraph_title = Paragraf başlığı
 paragraph_content = Paragraf içeriği
 continue_reading = Devam etmek için ekranda herhangi bir yere dokunun
-start_reading = Click anywhere on the screen to start
+start_reading = Başlamak için ekranın herhangi bir yerine tıklayın
 target_chapter = Target Chapter
 untranslated = Untranslated
 loading = Loading...
@@ -93,3 +93,6 @@ remove_impact = Remove impact
 numeric_op_add = Add
 numeric_op_set = Set
 numeric_op_scale = Scale (%)
+
+invite_request = Davet kodu başvurusu
+login = Giriş yap

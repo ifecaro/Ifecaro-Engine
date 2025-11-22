@@ -93,3 +93,6 @@ remove_impact = 영향 제거
 numeric_op_add = 더하기
 numeric_op_set = 설정
 numeric_op_scale = 배율 (%)
+
+invite_request = Invite code request
+login = Log in

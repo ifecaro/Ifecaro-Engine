@@ -93,3 +93,5 @@ remove_impact = 移除影響
 numeric_op_add = 增加
 numeric_op_set = 設定
 numeric_op_scale = 乘以（%）
+invite_request = 邀請碼申請
+login = 登入

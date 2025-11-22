@@ -93,3 +93,6 @@ remove_impact = Ta bort påverkan
 numeric_op_add = Lägg till
 numeric_op_set = Ange
 numeric_op_scale = Skala (%)
+
+invite_request = Invite code request
+login = Log in

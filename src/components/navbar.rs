@@ -175,7 +175,7 @@ pub fn Navbar(closure_signal: Signal<Option<Closure<dyn FnMut(Event)>>>) -> Elem
                                 }).forget();
                             }
                         },
-                        "邀請碼申請" 
+                        "{t!(\"invite_request\")}" 
                     }
                     Link {
                         to: Route::Login { lang: login_lang.clone() },
@@ -192,7 +192,7 @@ pub fn Navbar(closure_signal: Signal<Option<Closure<dyn FnMut(Event)>>>) -> Elem
                                 }).forget();
                             }
                         },
-                        "登入"
+                        "{t!(\"login\")}" 
                     }
                     Dropdown {
                         label: String::new(),

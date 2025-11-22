@@ -93,3 +93,6 @@ remove_impact = Elimină impactul
 numeric_op_add = Adaugă
 numeric_op_set = Setează
 numeric_op_scale = Scalare (%)
+
+invite_request = Invite code request
+login = Log in

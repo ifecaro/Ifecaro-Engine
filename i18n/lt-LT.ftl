@@ -93,3 +93,6 @@ remove_impact = Pašalinti poveikį
 numeric_op_add = Pridėti
 numeric_op_set = Nustatyti
 numeric_op_scale = Mastelis (%)
+
+invite_request = Invite code request
+login = Log in

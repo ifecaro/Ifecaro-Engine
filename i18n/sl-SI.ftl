@@ -93,3 +93,6 @@ remove_impact = Odstrani vpliv
 numeric_op_add = Dodaj
 numeric_op_set = Nastavi
 numeric_op_scale = Merilo (%)
+
+invite_request = Invite code request
+login = Log in

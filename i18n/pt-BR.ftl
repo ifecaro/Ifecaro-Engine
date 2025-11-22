@@ -93,3 +93,6 @@ remove_impact = Remover impacto
 numeric_op_add = Somar
 numeric_op_set = Definir
 numeric_op_scale = Escalar (%)
+
+invite_request = Invite code request
+login = Log in

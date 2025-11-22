@@ -93,3 +93,6 @@ remove_impact = Удалить воздействие
 numeric_op_add = Добавить
 numeric_op_set = Установить
 numeric_op_scale = Масштабировать (%)
+
+invite_request = Invite code request
+login = Log in
