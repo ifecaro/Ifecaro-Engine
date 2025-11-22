@@ -1,6 +1,12 @@
 @import "tailwindcss";
 @plugin "@tailwindcss/typography";
 
+@custom-variant paper {
+    &:where([data-theme="paper"] *) {
+        @slot;
+    }
+}
+
 /* Add paragraph spacing styles */
 .whitespace-pre-line {
     white-space: pre-line;

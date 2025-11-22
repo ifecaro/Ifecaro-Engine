@@ -155,8 +155,8 @@ pub fn Layout() -> Element {
             div {
                 class: "container mx-auto px-4 py-8",
                 div {
-                    class: "mb-4 rounded-lg p-4 bg-slate-50 text-slate-900 dark:bg-slate-900 dark:text-slate-50 paper:bg-[#f6f1e3] paper:text-[#3f3422] transition-colors duration-200",
-                    "Theme test",
+                    class: "mb-4 rounded p-4 bg-slate-50 text-slate-900 dark:bg-slate-900 dark:text-slate-50 paper:bg-[#f6f1e3] paper:text-[#3f3422] transition-colors duration-200",
+                    "Theme Test Block",
                 }
                 Outlet::<Route> {}
             }
