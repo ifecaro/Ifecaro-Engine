@@ -26,36 +26,41 @@ fn prefers_dark_mode() -> bool {
     false
 }
 
+fn resolve_theme_flags(mode: &str) -> (bool, bool) {
+    match mode {
+        "dark" => (true, false),
+        "light" => (false, false),
+        "paper" => (false, true),
+        _ => (prefers_dark_mode(), false),
+    }
+}
+
 #[cfg(target_arch = "wasm32")]
-fn apply_theme_class(mode: &str) {
+fn apply_theme_class(mode: &str) -> bool {
     use wasm_bindgen::JsCast;
+
+    let (is_dark, is_paper) = resolve_theme_flags(mode);
 
     if let Some(document) = web_sys::window().and_then(|w| w.document()) {
         if let Some(element) = document.document_element() {
             let class_list = element.class_list();
-            let _ = class_list.remove_1("dark");
-            let _ = class_list.remove_1("paper");
+            let _ = class_list.toggle_with_force("dark", is_dark);
+            let _ = class_list.toggle_with_force("paper", is_paper);
 
-            match mode {
-                "dark" => {
-                    let _ = class_list.add_1("dark");
-                }
-                "paper" => {
-                    let _ = class_list.add_1("paper");
-                }
-                "light" => {}
-                _ => {
-                    if prefers_dark_mode() {
-                        let _ = class_list.add_1("dark");
-                    }
-                }
+            if let Some(html) = element.dyn_ref::<web_sys::HtmlElement>() {
+                let color_scheme = if is_dark { "dark" } else { "light" };
+                let _ = html.style().set_property("color-scheme", color_scheme);
             }
         }
     }
+
+    is_dark
 }
 
 #[cfg(not(target_arch = "wasm32"))]
-fn apply_theme_class(_mode: &str) {}
+fn apply_theme_class(mode: &str) -> bool {
+    resolve_theme_flags(mode).0
+}
 
 #[derive(Debug, Clone)]
 pub struct KeyboardState {
@@ -106,14 +111,7 @@ pub fn Layout() -> Element {
         .cloned()
         .unwrap_or_else(|| "auto".to_string());
 
-    apply_theme_class(&theme_mode);
-
-    let is_dark_theme = match theme_mode.as_str() {
-        "dark" => true,
-        "light" => false,
-        "paper" => false,
-        _ => prefers_dark_mode(),
-    };
+    let is_dark_theme = apply_theme_class(&theme_mode);
 
     let main_theme_class = match theme_mode.as_str() {
         "paper" => "bg-[#fdf6e3] text-[#2f2417]",
