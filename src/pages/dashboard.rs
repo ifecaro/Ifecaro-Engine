@@ -1695,7 +1695,7 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
                                     }
 
                                     div {
-                                        class: "w-full p-4 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900",
+                                        class: "w-full p-4 sm:p-5 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-sm",
                                         div { class: "flex flex-col gap-3 md:flex-row md:items-end",
                                             div { class: "flex-1",
                                                 label {
