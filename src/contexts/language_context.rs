@@ -1,6 +1,6 @@
 use dioxus::prelude::*;
 use dioxus_i18n::prelude::*;
-use unic_langid::langid;
+use unic_langid::{langid, LanguageIdentifier};
 
 #[derive(Clone)]
 pub struct LanguageState {
@@ -20,21 +20,8 @@ impl LanguageState {
         self.current_language = lang.to_string();
 
         // Set i18n based on language code
-        match lang {
-            "zh-TW" => self.i18n.set_language(langid!("zh-TW")),
-            "zh-CN" => self.i18n.set_language(langid!("zh-CN")),
-            "en-US" | "en-GB" | "en" => self.i18n.set_language(langid!("en-US")),
-            "es-ES" | "es-CL" | "es" => self.i18n.set_language(langid!("es-ES")),
-            "ja" => self.i18n.set_language(langid!("ja")),
-            "ko" => self.i18n.set_language(langid!("ko")),
-            "fr-FR" | "fr" => self.i18n.set_language(langid!("fr-FR")),
-            "de" => self.i18n.set_language(langid!("de")),
-            "it" => self.i18n.set_language(langid!("it")),
-            "pt" => self.i18n.set_language(langid!("pt")),
-            "ru" => self.i18n.set_language(langid!("ru")),
-            // If no matching language is found, default to English
-            _ => self.i18n.set_language(langid!("en-US")),
-        }
+        let parsed_lang = lang.parse::<LanguageIdentifier>().unwrap_or(langid!("en-US"));
+        self.i18n.set_language(parsed_lang);
     }
 }
 
