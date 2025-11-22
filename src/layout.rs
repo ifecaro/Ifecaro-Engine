@@ -99,26 +99,14 @@ pub fn Layout() -> Element {
         state.write().set_language(lang);
     });
 
-    {
-        let settings_context = settings_context.clone();
-        use_effect(move || {
-            let mode = settings_context
-                .read()
-                .settings
-                .get("theme_mode")
-                .cloned()
-                .unwrap_or_else(|| "auto".to_string());
-            apply_theme_class(&mode);
-            (|| {})()
-        });
-    }
-
     let theme_mode = settings_context
         .read()
         .settings
         .get("theme_mode")
         .cloned()
         .unwrap_or_else(|| "auto".to_string());
+
+    apply_theme_class(&theme_mode);
 
     let is_dark_theme = match theme_mode.as_str() {
         "dark" => true,
