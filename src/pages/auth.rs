@@ -1,6 +1,7 @@
 use crate::enums::route::Route;
 use dioxus::events::FormEvent;
 use dioxus::prelude::*;
+use dioxus_i18n::t;
 
 const CARD_CLASS: &str = "max-w-xl mx-auto bg-white dark:bg-gray-800 rounded-xl shadow-lg p-8 space-y-6 border border-gray-100 dark:border-gray-700";
 const INPUT_CLASS: &str = "w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 transition";
@@ -24,7 +25,7 @@ pub fn InviteRequest(props: InviteRequestProps) -> Element {
         evt.prevent_default();
         let has_missing = name.read().is_empty() || email.read().is_empty();
         if has_missing {
-            error.set("請填寫姓名與Email，我們才能寄送邀請碼。".to_string());
+            error.set(t!("invite_request_error_required"));
             return;
         }
 
@@ -35,49 +36,49 @@ pub fn InviteRequest(props: InviteRequestProps) -> Element {
     };
 
     rsx! {
-        section { class: "py-10", 
+        section { class: "py-10",
             div { class: CARD_CLASS,
                 div { class: "space-y-2",
-                    p { class: "text-sm font-semibold text-indigo-600", "邀請碼申請" }
-                    h1 { class: "text-2xl font-bold text-gray-900 dark:text-gray-100", "取得你的邀請碼" }
-                    p { class: "text-gray-600 dark:text-gray-300", "填寫聯絡資訊，我們會將邀請碼寄送到你的信箱。" }
+                    p { class: "text-sm font-semibold text-indigo-600", "{t!(\"invite_request\")}" }
+                    h1 { class: "text-2xl font-bold text-gray-900 dark:text-gray-100", "{t!(\"invite_request_title\")}" }
+                    p { class: "text-gray-600 dark:text-gray-300", "{t!(\"invite_request_description\")}" }
                 }
                 form { class: "space-y-6", onsubmit: handle_submit,
                     div { class: "space-y-1",
-                        label { class: LABEL_CLASS, "姓名" }
+                        label { class: LABEL_CLASS, "{t!(\"invite_request_name_label\")}" }
                         input {
                             class: INPUT_CLASS,
                             r#type: "text",
-                            placeholder: "你的名字",
+                            placeholder: "{t!(\"invite_request_name_placeholder\")}",
                             value: "{name}",
                             oninput: move |evt| name.set(evt.value()),
                         }
                     }
                     div { class: "space-y-1",
-                        label { class: LABEL_CLASS, "Email" }
+                        label { class: LABEL_CLASS, "{t!(\"invite_request_email_label\")}" }
                         input {
                             class: INPUT_CLASS,
                             r#type: "email",
-                            placeholder: "name@example.com",
+                            placeholder: "{t!(\"invite_request_email_placeholder\")}",
                             value: "{email}",
                             oninput: move |evt| email.set(evt.value()),
                         }
                     }
                     div { class: "space-y-1",
-                        label { class: LABEL_CLASS, "邀請理由" }
+                        label { class: LABEL_CLASS, "{t!(\"invite_request_reason_label\")}" }
                         textarea {
                             class: INPUT_CLASS,
                             rows: "4",
-                            placeholder: "分享你想加入的原因，以及希望在平台完成的目標。",
+                            placeholder: "{t!(\"invite_request_reason_placeholder\")}",
                             value: "{message}",
                             oninput: move |evt| message.set(evt.value()),
                         }
-                        p { class: "text-xs text-gray-500 dark:text-gray-400", "我們會優先處理清楚描述需求的申請。" }
+                        p { class: "text-xs text-gray-500 dark:text-gray-400", "{t!(\"invite_request_reason_helper\")}" }
                     }
                     if !error.read().is_empty() {
                         p { class: "text-sm text-red-500", "{error}" }
                     }
-                    button { class: BUTTON_CLASS, r#type: "submit", "寄出邀請碼申請" }
+                    button { class: BUTTON_CLASS, r#type: "submit", "{t!(\"invite_request_submit\")}" }
                 }
                 div { class: "flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300",
                     svg {
@@ -88,7 +89,7 @@ pub fn InviteRequest(props: InviteRequestProps) -> Element {
                         view_box: "0 0 24 24",
                         path { d: "M12 6v6l3 2", stroke_linecap: "round", stroke_linejoin: "round" }
                     }
-                    span { "提交後請於24小時內留意你的Email信箱。" }
+                    span { "{t!(\"invite_request_notice\")}" }
                 }
             }
         }
@@ -123,8 +124,8 @@ pub fn InviteCheckEmail(props: InviteCheckEmailProps) -> Element {
                             path { d: "M5 6h14a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2z", stroke_linecap: "round", stroke_linejoin: "round" }
                         }
                     }
-                    h1 { class: "text-2xl font-bold text-gray-900 dark:text-gray-100", "已寄出邀請碼" }
-                    p { class: "text-gray-600 dark:text-gray-300", "邀請碼已寄送至你的Email信箱，請前往收信並依照指引完成註冊。" }
+                    h1 { class: "text-2xl font-bold text-gray-900 dark:text-gray-100", "{t!(\"invite_check_email_title\")}" }
+                    p { class: "text-gray-600 dark:text-gray-300", "{t!(\"invite_check_email_description\")}" }
                 }
                 div { class: "grid sm:grid-cols-2 gap-3 mt-4",
                     button {
@@ -134,7 +135,7 @@ pub fn InviteCheckEmail(props: InviteCheckEmailProps) -> Element {
                             let _ = navigator_retry
                                 .push(Route::InviteRequest { lang: retry_lang.clone() });
                         },
-                        "重新填寫"
+                        "{t!(\"invite_check_email_retry\")}" 
                     }
                     button {
                         class: BUTTON_CLASS,
@@ -143,10 +144,10 @@ pub fn InviteCheckEmail(props: InviteCheckEmailProps) -> Element {
                             let _ = navigator_register
                                 .push(Route::Register { lang: register_lang.clone() });
                         },
-                        "前往註冊"
+                        "{t!(\"invite_check_email_register\")}" 
                     }
                 }
-                p { class: "text-sm text-gray-500 dark:text-gray-400 text-center", "沒有收到信件？請確認垃圾郵件或稍後再試。" }
+                p { class: "text-sm text-gray-500 dark:text-gray-400 text-center", "{t!(\"invite_check_email_helper\")}" }
             }
         }
     }
@@ -174,15 +175,15 @@ pub fn Register(props: RegisterProps) -> Element {
     let handle_submit = move |evt: FormEvent| {
         evt.prevent_default();
         if code.read().is_empty() || name.read().is_empty() || email.read().is_empty() {
-            error.set("請輸入邀請碼、姓名與Email。".to_string());
+            error.set(t!("register_error_missing"));
             return;
         }
         if password.read().len() < 8 {
-            error.set("密碼長度至少8個字元。".to_string());
+            error.set(t!("register_error_password_length"));
             return;
         }
         if password.read().ne(&*confirm.read()) {
-            error.set("兩次密碼輸入不一致。".to_string());
+            error.set(t!("register_error_password_match"));
             return;
         }
         error.set(String::new());
@@ -194,50 +195,50 @@ pub fn Register(props: RegisterProps) -> Element {
         section { class: "py-10",
             div { class: CARD_CLASS,
                 div { class: "space-y-2 text-center",
-                    p { class: "text-sm font-semibold text-indigo-600", "註冊帳號" }
-                    h1 { class: "text-2xl font-bold text-gray-900 dark:text-gray-100", "使用邀請碼開啟帳戶" }
-                    p { class: "text-gray-600 dark:text-gray-300", "輸入邀請碼並設定登入資訊，即可建立專屬帳號。" }
+                    p { class: "text-sm font-semibold text-indigo-600", "{t!(\"register_badge\")}" }
+                    h1 { class: "text-2xl font-bold text-gray-900 dark:text-gray-100", "{t!(\"register_title\")}" }
+                    p { class: "text-gray-600 dark:text-gray-300", "{t!(\"register_description\")}" }
                 }
                 form { class: "space-y-5", onsubmit: handle_submit,
                     div { class: "space-y-1",
-                        label { class: LABEL_CLASS, "邀請碼" }
-                        input { class: INPUT_CLASS, r#type: "text", placeholder: "INVITE-XXXX", value: "{code}", oninput: move |evt| code.set(evt.value()) }
-                        p { class: "text-xs text-gray-500 dark:text-gray-400", "邀請碼與Email需與信件內容一致。" }
+                        label { class: LABEL_CLASS, "{t!(\"register_code_label\")}" }
+                        input { class: INPUT_CLASS, r#type: "text", placeholder: "{t!(\"register_code_placeholder\")}", value: "{code}", oninput: move |evt| code.set(evt.value()) }
+                        p { class: "text-xs text-gray-500 dark:text-gray-400", "{t!(\"register_code_helper\")}" }
                     }
                     div { class: "grid sm:grid-cols-2 gap-4",
                         div { class: "space-y-1",
-                            label { class: LABEL_CLASS, "姓名" }
-                            input { class: INPUT_CLASS, r#type: "text", placeholder: "你的名字", value: "{name}", oninput: move |evt| name.set(evt.value()) }
+                            label { class: LABEL_CLASS, "{t!(\"register_name_label\")}" }
+                            input { class: INPUT_CLASS, r#type: "text", placeholder: "{t!(\"register_name_placeholder\")}", value: "{name}", oninput: move |evt| name.set(evt.value()) }
                         }
                         div { class: "space-y-1",
-                            label { class: LABEL_CLASS, "Email" }
-                            input { class: INPUT_CLASS, r#type: "email", placeholder: "name@example.com", value: "{email}", oninput: move |evt| email.set(evt.value()) }
+                            label { class: LABEL_CLASS, "{t!(\"register_email_label\")}" }
+                            input { class: INPUT_CLASS, r#type: "email", placeholder: "{t!(\"register_email_placeholder\")}", value: "{email}", oninput: move |evt| email.set(evt.value()) }
                         }
                     }
                     div { class: "grid sm:grid-cols-2 gap-4",
                         div { class: "space-y-1",
-                            label { class: LABEL_CLASS, "設定密碼" }
-                            input { class: INPUT_CLASS, r#type: "password", placeholder: "至少8個字元", value: "{password}", oninput: move |evt| password.set(evt.value()) }
+                            label { class: LABEL_CLASS, "{t!(\"register_password_label\")}" }
+                            input { class: INPUT_CLASS, r#type: "password", placeholder: "{t!(\"register_password_placeholder\")}", value: "{password}", oninput: move |evt| password.set(evt.value()) }
                         }
                         div { class: "space-y-1",
-                            label { class: LABEL_CLASS, "再次輸入密碼" }
-                            input { class: INPUT_CLASS, r#type: "password", placeholder: "請再次輸入", value: "{confirm}", oninput: move |evt| confirm.set(evt.value()) }
+                            label { class: LABEL_CLASS, "{t!(\"register_confirm_label\")}" }
+                            input { class: INPUT_CLASS, r#type: "password", placeholder: "{t!(\"register_confirm_placeholder\")}", value: "{confirm}", oninput: move |evt| confirm.set(evt.value()) }
                         }
                     }
                     if !error.read().is_empty() {
                         p { class: "text-sm text-red-500", "{error}" }
                     }
-                    button { class: BUTTON_CLASS, r#type: "submit", "建立帳號" }
+                    button { class: BUTTON_CLASS, r#type: "submit", "{t!(\"register_submit\")}" }
                 }
                 div { class: "flex items-center justify-between text-sm text-gray-600 dark:text-gray-300",
-                    span { "已經有帳號？" }
+                    span { "{t!(\"register_login_prompt\")}" }
                     button {
                         class: "text-indigo-600 hover:text-indigo-700 font-semibold",
                         r#type: "button",
                         onclick: move |_| {
                             let _ = login_link_nav.push(Route::Login { lang: login_link_lang.clone() });
                         },
-                        "立即登入"
+                        "{t!(\"register_login_link\")}" 
                     }
                 }
             }
@@ -268,7 +269,7 @@ pub fn Login(props: LoginProps) -> Element {
     let handle_submit = move |evt: FormEvent| {
         evt.prevent_default();
         if email.read().is_empty() || password.read().is_empty() {
-            error.set("請輸入Email與密碼。".to_string());
+            error.set(t!("login_error_missing"));
             return;
         }
         error.set(String::new());
@@ -280,28 +281,28 @@ pub fn Login(props: LoginProps) -> Element {
         section { class: "py-10",
             div { class: CARD_CLASS,
                 div { class: "space-y-2 text-center",
-                    p { class: "text-sm font-semibold text-indigo-600", "登入" }
-                    h1 { class: "text-2xl font-bold text-gray-900 dark:text-gray-100", "使用邀請碼登入" }
-                    p { class: "text-gray-600 dark:text-gray-300", "輸入Email、密碼與邀請碼即可登入，未申請邀請碼請先填寫申請表。" }
+                    p { class: "text-sm font-semibold text-indigo-600", "{t!(\"login_badge\")}" }
+                    h1 { class: "text-2xl font-bold text-gray-900 dark:text-gray-100", "{t!(\"login_title\")}" }
+                    p { class: "text-gray-600 dark:text-gray-300", "{t!(\"login_description\")}" }
                 }
                 form { class: "space-y-5", onsubmit: handle_submit,
                     div { class: "space-y-1",
-                        label { class: LABEL_CLASS, "Email" }
-                        input { class: INPUT_CLASS, r#type: "email", placeholder: "name@example.com", value: "{email}", oninput: move |evt| email.set(evt.value()) }
+                        label { class: LABEL_CLASS, "{t!(\"login_email_label\")}" }
+                        input { class: INPUT_CLASS, r#type: "email", placeholder: "{t!(\"login_email_placeholder\")}", value: "{email}", oninput: move |evt| email.set(evt.value()) }
                     }
                     div { class: "space-y-1",
-                        label { class: LABEL_CLASS, "密碼" }
-                        input { class: INPUT_CLASS, r#type: "password", placeholder: "你的密碼", value: "{password}", oninput: move |evt| password.set(evt.value()) }
+                        label { class: LABEL_CLASS, "{t!(\"login_password_label\")}" }
+                        input { class: INPUT_CLASS, r#type: "password", placeholder: "{t!(\"login_password_placeholder\")}", value: "{password}", oninput: move |evt| password.set(evt.value()) }
                     }
                     div { class: "space-y-1",
-                        label { class: LABEL_CLASS, "邀請碼 (可選)" }
-                        input { class: INPUT_CLASS, r#type: "text", placeholder: "INVITE-XXXX", value: "{code}", oninput: move |evt| code.set(evt.value()) }
-                        p { class: "text-xs text-gray-500 dark:text-gray-400", "若帳號綁定邀請碼，請一併輸入以便快速驗證。" }
+                        label { class: LABEL_CLASS, "{t!(\"login_code_label\")}" }
+                        input { class: INPUT_CLASS, r#type: "text", placeholder: "{t!(\"login_code_placeholder\")}", value: "{code}", oninput: move |evt| code.set(evt.value()) }
+                        p { class: "text-xs text-gray-500 dark:text-gray-400", "{t!(\"login_code_helper\")}" }
                     }
                     if !error.read().is_empty() {
                         p { class: "text-sm text-red-500", "{error}" }
                     }
-                    button { class: BUTTON_CLASS, r#type: "submit", "登入" }
+                    button { class: BUTTON_CLASS, r#type: "submit", "{t!(\"login_submit\")}" }
                 }
                 div { class: "grid sm:grid-cols-2 gap-3 text-sm text-gray-600 dark:text-gray-300",
                     button {
@@ -310,7 +311,7 @@ pub fn Login(props: LoginProps) -> Element {
                         onclick: move |_| {
                             let _ = invite_nav.push(Route::InviteRequest { lang: invite_lang.clone() });
                         },
-                        "尚未申請邀請碼"
+                        "{t!(\"login_invite_link\")}" 
                     }
                     button {
                         class: "py-2 text-right text-indigo-600 hover:text-indigo-700 font-semibold",
@@ -318,7 +319,7 @@ pub fn Login(props: LoginProps) -> Element {
                         onclick: move |_| {
                             let _ = register_nav.push(Route::Register { lang: register_lang.clone() });
                         },
-                        "沒有帳號？立即註冊"
+                        "{t!(\"login_register_link\")}" 
                     }
                 }
             }
