@@ -383,7 +383,7 @@ pub const AVAILABLE_LANGUAGES: &[Language] = &[
     },
     Language {
         code: "zh-CN",
-        name: "简体中文",
+        name: "中文（中国）",
     },
     Language {
         code: "zh-HK",
@@ -399,7 +399,7 @@ pub const AVAILABLE_LANGUAGES: &[Language] = &[
     },
     Language {
         code: "zh-TW",
-        name: "繁體中文",
+        name: "中文（台灣）",
     },
 ];
 
@@ -443,7 +443,7 @@ pub fn LanguageSelector(props: LanguageSelectorProps) -> Element {
             .iter()
             .find(|l| l.code == props.selected_lang)
             .map(|l| l.name)
-            .unwrap_or("繁體中文")
+            .unwrap_or("中文（台灣）")
     });
 
     rsx! {
