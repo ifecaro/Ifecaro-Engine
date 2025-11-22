@@ -33,18 +33,16 @@ fn apply_theme_class(mode: &str) {
         let _ = class_list.remove_1("paper");
 
         match mode {
-            "dark" => {
-                let _ = class_list.add_1("dark");
-            }
             "paper" => {
                 let _ = class_list.add_1("paper");
             }
-            "light" => {}
-            _ => {
+            "light" | "dark" => {}
+            "auto" => {
                 if prefers_dark_mode() {
                     let _ = class_list.add_1("dark");
                 }
             }
+            _ => {}
         }
     }
 
