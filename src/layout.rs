@@ -28,28 +28,33 @@ fn prefers_dark_mode() -> bool {
 
 #[cfg(target_arch = "wasm32")]
 fn apply_theme_class(mode: &str) {
-    use wasm_bindgen::JsCast;
+    fn update_class_list(class_list: web_sys::DomTokenList, mode: &str) {
+        let _ = class_list.remove_1("dark");
+        let _ = class_list.remove_1("paper");
+
+        match mode {
+            "dark" => {
+                let _ = class_list.add_1("dark");
+            }
+            "paper" => {
+                let _ = class_list.add_1("paper");
+            }
+            "light" => {}
+            _ => {
+                if prefers_dark_mode() {
+                    let _ = class_list.add_1("dark");
+                }
+            }
+        }
+    }
 
     if let Some(document) = web_sys::window().and_then(|w| w.document()) {
         if let Some(element) = document.document_element() {
-            let class_list = element.class_list();
-            let _ = class_list.remove_1("dark");
-            let _ = class_list.remove_1("paper");
+            update_class_list(element.class_list(), mode);
+        }
 
-            match mode {
-                "dark" => {
-                    let _ = class_list.add_1("dark");
-                }
-                "paper" => {
-                    let _ = class_list.add_1("paper");
-                }
-                "light" => {}
-                _ => {
-                    if prefers_dark_mode() {
-                        let _ = class_list.add_1("dark");
-                    }
-                }
-            }
+        if let Some(body) = document.body() {
+            update_class_list(body.class_list(), mode);
         }
     }
 }
@@ -99,26 +104,19 @@ pub fn Layout() -> Element {
         state.write().set_language(lang);
     });
 
-    {
-        let settings_context = settings_context.clone();
-        use_effect(move || {
-            let mode = settings_context
-                .read()
-                .settings
-                .get("theme_mode")
-                .cloned()
-                .unwrap_or_else(|| "auto".to_string());
-            apply_theme_class(&mode);
-            (|| {})()
-        });
-    }
-
     let theme_mode = settings_context
         .read()
         .settings
         .get("theme_mode")
         .cloned()
         .unwrap_or_else(|| "auto".to_string());
+
+    {
+        let theme_mode = theme_mode.clone();
+        use_effect(move || {
+            apply_theme_class(&theme_mode);
+        });
+    }
 
     let is_dark_theme = match theme_mode.as_str() {
         "dark" => true,
