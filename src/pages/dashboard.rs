@@ -1695,7 +1695,7 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
                                     }
 
                                     div {
-                                        class: "w-full p-4 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900",
+                                        class: "w-full p-4 rounded-lg border border-gray-200 dark:border-gray-700 paper:border-[#e4d5b2] bg-gray-50 dark:bg-gray-900 paper:bg-[#f9f1db] paper:text-[#2f2417]",
                                         div { class: "flex flex-col gap-3 md:flex-row md:items-end",
                                             div { class: "flex-1",
                                                 label {
@@ -1705,7 +1705,7 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
                                                 }
                                                 input {
                                                     id: "new-chapter-title",
-                                                    class: "w-full px-3 py-2 rounded-md border focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-100",
+                                                    class: "w-full px-3 py-2 rounded-md border focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-100 paper:bg-[#fef8e7] paper:border-[#e4d5b2] paper:text-[#2f2417]",
                                                     value: new_chapter_title.read().clone(),
                                                     oninput: move |event| {
                                                         let value = event.value().to_string();
@@ -1730,7 +1730,7 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
                                                 input {
                                                     id: "new-chapter-order",
                                                     r#type: "number",
-                                                    class: "w-full px-3 py-2 rounded-md border focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-100",
+                                                    class: "w-full px-3 py-2 rounded-md border focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-100 paper:bg-[#fef8e7] paper:border-[#e4d5b2] paper:text-[#2f2417]",
                                                     value: new_chapter_order.read().clone(),
                                                     oninput: move |event| new_chapter_order.set(event.value().to_string()),
                                                     placeholder: t!("chapter_order"),
@@ -1942,7 +1942,7 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
                         // Submit button area
                         if !selected_chapter.read().is_empty() {
                             div {
-                                class: "px-4 sm:px-6 lg:px-8 py-4 bg-gray-50 dark:bg-gray-700/50 border-t border-gray-200 dark:border-gray-700",
+                                class: "px-4 sm:px-6 lg:px-8 py-4 bg-gray-50 dark:bg-gray-700/50 paper:bg-[#f6edda] border-t border-gray-200 dark:border-gray-700 paper:border-[#e4d5b2] paper:text-[#2f2417]",
                                 div {
                                     class: "max-w-md mx-auto",
                                     button {
