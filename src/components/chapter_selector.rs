@@ -26,6 +26,8 @@ pub struct ChapterSelectorProps {
     pub has_error: bool,
     #[props(default = String::new())]
     pub class: String,
+    #[props(default = None)]
+    pub label_class: Option<String>,
     #[props(default = String::new())]
     pub selected_language: String,
 }
@@ -160,7 +162,7 @@ pub fn ChapterSelector(props: ChapterSelectorProps) -> Element {
             class: props.class,
             search_placeholder: t!("search_chapter"),
             button_class: None,
-            label_class: None,
+            label_class: props.label_class,
             dropdown_class: "",
             search_input_class: "",
             option_class: "",
