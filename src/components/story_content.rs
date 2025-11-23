@@ -761,7 +761,7 @@ pub fn StoryContent(props: StoryContentProps) -> Element {
                     }
                 },
                 div {
-                    class: "text-white text-xl font-bold",
+                    class: "text-gray-900 dark:text-white paper:text-[#2f2417] text-xl font-bold",
                     {
                         if *is_focused.read() {
                             t!("continue_reading")
@@ -774,15 +774,15 @@ pub fn StoryContent(props: StoryContentProps) -> Element {
             if !is_settings_chapter && !props.chapter_title.is_empty() {
                 div {
                     class: "w-full flex items-center justify-center min-h-[calc(100vh_-_56px)]",
-                    div {
-                        class: "relative text-3xl md:text-4xl text-gray-900 dark:text-white text-center w-full select-none flex items-center justify-center",
+                div {
+                    class: "relative text-3xl md:text-4xl text-gray-900 dark:text-white paper:text-[#2f2417] text-center w-full select-none flex items-center justify-center",
                         style: "letter-spacing: 0.1em;",
                         {props.chapter_title.clone()},
                     }
                 }
             }
             article {
-                class: "prose-sm dark:prose-invert lg:prose-base mx-auto max-w-3xl p-8 text-gray-900 dark:text-white bg-white dark:bg-transparent",
+                class: "prose-sm dark:prose-invert lg:prose-base mx-auto max-w-3xl p-8 text-gray-900 dark:text-white paper:text-[#2f2417] paper:prose paper:prose-base paper:bg-[#fef8e7] paper:border paper:border-[#e4d5b2] paper:shadow-sm bg-white dark:bg-transparent",
                 div {
                     class: "whitespace-pre-wrap space-y-8",
                     {props.paragraph.read().split('\n')
