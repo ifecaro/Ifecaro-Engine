@@ -121,7 +121,7 @@ pub fn Navbar(closure_signal: Signal<Option<Closure<dyn FnMut(Event)>>>) -> Elem
 
     rsx! {
         div {
-            class: "fixed bottom-0 sm:top-0 sm:bottom-auto left-0 right-0 w-full bg-white dark:bg-gray-900 paper:bg-[#f6f1e1] paper:text-[#2f2417] z-[9999] h-14 sm:h-auto transition-colors duration-200",
+            class: "fixed bottom-0 sm:top-0 sm:bottom-auto left-0 right-0 w-full bg-white dark:bg-gray-900 paper:bg-transparent paper:text-[#2f2417] z-[9999] h-14 sm:h-auto transition-colors duration-200",
             div {
                 class: "container mx-auto px-0 sm:px-6 h-full flex items-center",
                 div {
