@@ -122,7 +122,7 @@ pub fn StoryContentUI(props: StoryContentUIProps) -> Element {
             }
         }
         article {
-            class: "prose-sm dark:prose-invert lg:prose-base mx-auto max-w-3xl p-8 text-gray-900 dark:text-white paper:text-[#2f2417] paper:prose paper:prose-base paper:bg-[#fef8e7] paper:border paper:border-[#e4d5b2] paper:shadow-sm",
+            class: "prose-sm dark:prose-invert lg:prose-base mx-auto max-w-3xl p-8 text-gray-900 dark:text-white paper:text-[#2f2417] paper:prose paper:prose-base paper:bg-[#fef8e7] paper:shadow-sm",
             div {
                 class: "whitespace-pre-wrap space-y-8",
                 {props.paragraph.split('\n')
@@ -144,8 +144,8 @@ pub fn StoryContentUI(props: StoryContentUIProps) -> Element {
                     rsx! {
                         li {
                             class: {{
-                                let base = "p-4 rounded-lg transition duration-200 relative border border-transparent paper:border-[#e4d5b2] paper:bg-[#f6edda]";
-                                let enabled = "cursor-pointer text-gray-900 hover:text-gray-700 dark:text-white dark:hover:text-gray-300 paper:text-[#2f2417] paper:hover:text-[#1f160e] transition-opacity transition-transform";
+                                let base = "p-4 rounded-lg transition duration-200 relative border border-transparent paper:bg-[#f6edda] text-gray-900 dark:text-white paper:text-[#2f2417]";
+                                let enabled = "cursor-pointer hover:text-gray-700 dark:hover:text-gray-300 paper:hover:text-[#1f160e] transition-opacity transition-transform";
                                 let disabled = "opacity-50 cursor-not-allowed text-gray-400 dark:text-gray-400 paper:text-[#b19d7a]";
                                 format!("{base} {}", if is_enabled { enabled } else { disabled })
                             }},
