@@ -7,6 +7,7 @@ use crate::services::indexeddb::clear_all_disabled_choices_from_indexeddb;
 use crate::services::indexeddb::clear_choices_and_random_choices;
 #[cfg(target_arch = "wasm32")]
 use crate::services::indexeddb::set_setting_to_indexeddb;
+use crate::utils::theme::{apply_theme_class, ThemeMode};
 use dioxus::prelude::*;
 use dioxus_i18n::t;
 use wasm_bindgen_futures::spawn_local;
@@ -91,11 +92,11 @@ pub fn Settings(props: SettingsProps) -> Element {
                 }
             }
             div {
-                class: format!("{position_class} w-full sm:min-w-[16rem] sm:max-w-[60vw] shadow-lg bg-white dark:bg-gray-800 ring-1 ring-black ring-opacity-5 z-[1000] transition duration-200 ease-in-out transform {animation_class} will-change-transform will-change-opacity"),
+                class: format!("{position_class} w-full sm:min-w-[16rem] sm:max-w-[60vw] shadow-lg bg-white dark:bg-gray-800 paper:bg-[#fef8e7] paper:text-[#2f2417] ring-1 ring-black ring-opacity-5 paper:ring-[#d4c29a] paper:ring-opacity-60 z-[1000] transition duration-200 ease-in-out transform {animation_class} will-change-transform will-change-opacity"),
                 div {
                     class: "py-1",
                         button {
-                            class: "w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700",
+                            class: "w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 paper:text-[#3f3422] hover:bg-gray-100 dark:hover:bg-gray-700 paper:hover:bg-[#f0e6cf]",
                             onclick: move |_| {
                                 let mut settings_context = settings_context.clone();
                                 let new_reader_mode = !reader_mode;
@@ -136,9 +137,9 @@ pub fn Settings(props: SettingsProps) -> Element {
                                         class: format!(
                                             "w-full px-3 py-2 text-sm rounded-md border transition-colors duration-150 {}",
                                             if is_active {
-                                                "border-blue-500 text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-900/30"
+                                                "border-blue-500 text-blue-700 dark:text-blue-300 paper:text-[#2f2417] bg-blue-50 dark:bg-blue-900/30 paper:bg-[#eae0c9] paper:border-[#c6b17e]"
                                             } else {
-                                                "border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+                                                "border-gray-200 dark:border-gray-700 paper:border-[#e4d5b2] text-gray-700 dark:text-gray-300 paper:text-[#3f3422] hover:bg-gray-100 dark:hover:bg-gray-700 paper:hover:bg-[#f0e6cf]"
                                             }
                                         ),
                                         onclick: move |_| {
@@ -150,6 +151,7 @@ pub fn Settings(props: SettingsProps) -> Element {
                                             {
                                                 set_setting_to_indexeddb("theme_mode", &mode_value);
                                             }
+                                            apply_theme_class(ThemeMode::from_value(&mode_value));
                                         },
                                         "{label}"
                                     }

@@ -15,6 +15,7 @@ use crate::services::indexeddb::{
     get_latest_character_state_from_indexeddb, set_latest_character_state_to_indexeddb,
     set_random_choice_to_indexeddb,
 };
+use crate::utils::theme::{apply_theme_class, ThemeMode};
 use dioxus::prelude::*;
 use dioxus_core::fc_to_builder;
 use futures_util::future::join_all;
@@ -380,11 +381,16 @@ pub fn Story(props: StoryProps) -> Element {
                         );
                     }
                 }
+                let theme_mode = map
+                    .get("theme_mode")
+                    .cloned()
+                    .unwrap_or_else(|| "auto".to_string());
                 {
                     let mut ctx = settings_context.write();
                     ctx.settings = map;
                     ctx.loaded = true;
                 }
+                apply_theme_class(ThemeMode::from_value(&theme_mode));
                 // 2. Then load paragraph data
                 let paragraphs_url = format!("{}{}", BASE_API_URL, PARAGRAPHS);
                 let client = reqwest::Client::new();
@@ -1364,11 +1370,18 @@ pub fn Story(props: StoryProps) -> Element {
                                 }
                             }
 
+                            let theme_mode = map
+                                .get("theme_mode")
+                                .cloned()
+                                .unwrap_or_else(|| "auto".to_string());
+
                             {
                                 let mut ctx = settings_context.write();
                                 ctx.settings = map;
                                 ctx.loaded = true;
                             }
+
+                            apply_theme_class(ThemeMode::from_value(&theme_mode));
                         }
 
                         // Jump to first chapter

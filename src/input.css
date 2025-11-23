@@ -1,6 +1,12 @@
 @import "tailwindcss";
 @plugin "@tailwindcss/typography";
 
+@custom-variant paper {
+    &:where([data-theme="paper"] *) {
+        @slot;
+    }
+}
+
 /* Add paragraph spacing styles */
 .whitespace-pre-line {
     white-space: pre-line;
@@ -27,6 +33,35 @@ li {
     body {
         --tw-bg-opacity: 1;
         background-color: rgb(0 0 0 / var(--tw-bg-opacity));
+    }
+}
+
+@layer base {
+    [data-theme="paper"] {
+        background-color: #fdf6e3;
+        color: #2f2417;
+    }
+
+    [data-theme="paper"] body {
+        background-color: #fdf6e3;
+        color: #2f2417;
+    }
+
+    [data-theme="paper"] .prose,
+    [data-theme="paper"] .paper\:prose {
+        --tw-prose-body: #2f2417;
+        --tw-prose-headings: #1f160e;
+        --tw-prose-links: #1f160e;
+        --tw-prose-bold: #1f160e;
+        --tw-prose-counters: #5a503f;
+        --tw-prose-bullets: #5a503f;
+        --tw-prose-hr: #e4d5b2;
+        --tw-prose-quotes: #2f2417;
+        --tw-prose-quote-borders: #d4c29a;
+        --tw-prose-captions: #5a503f;
+        --tw-prose-code: #1f160e;
+        --tw-prose-pre-code: #1f160e;
+        --tw-prose-pre-bg: #f0e6cf;
     }
 }
 

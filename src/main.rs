@@ -13,6 +13,7 @@ mod layout;
 mod models;
 mod pages;
 mod services;
+mod utils;
 
 use crate::{
     components::toast::ToastContainer,

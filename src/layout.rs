@@ -6,56 +6,13 @@ use crate::{
         story_context::{use_story_context, StoryContext},
     },
     enums::route::Route,
+    utils::theme::{apply_theme_class, ThemeMode},
 };
 use dioxus::prelude::*;
 use std::collections::HashSet;
 use std::{rc::Rc, sync::Arc};
 use wasm_bindgen::closure::Closure;
 use web_sys::Event as WebEvent;
-
-#[cfg(target_arch = "wasm32")]
-fn prefers_dark_mode() -> bool {
-    web_sys::window()
-        .and_then(|w| w.match_media("(prefers-color-scheme: dark)").ok().flatten())
-        .map(|mql| mql.matches())
-        .unwrap_or(false)
-}
-
-#[cfg(not(target_arch = "wasm32"))]
-fn prefers_dark_mode() -> bool {
-    false
-}
-
-#[cfg(target_arch = "wasm32")]
-fn apply_theme_class(mode: &str) {
-    use wasm_bindgen::JsCast;
-
-    if let Some(document) = web_sys::window().and_then(|w| w.document()) {
-        if let Some(element) = document.document_element() {
-            let class_list = element.class_list();
-            let _ = class_list.remove_1("dark");
-            let _ = class_list.remove_1("paper");
-
-            match mode {
-                "dark" => {
-                    let _ = class_list.add_1("dark");
-                }
-                "paper" => {
-                    let _ = class_list.add_1("paper");
-                }
-                "light" => {}
-                _ => {
-                    if prefers_dark_mode() {
-                        let _ = class_list.add_1("dark");
-                    }
-                }
-            }
-        }
-    }
-}
-
-#[cfg(not(target_arch = "wasm32"))]
-fn apply_theme_class(_mode: &str) {}
 
 #[derive(Debug, Clone)]
 pub struct KeyboardState {
@@ -108,30 +65,12 @@ pub fn Layout() -> Element {
                 .get("theme_mode")
                 .cloned()
                 .unwrap_or_else(|| "auto".to_string());
-            apply_theme_class(&mode);
+            apply_theme_class(ThemeMode::from_value(&mode));
             (|| {})()
         });
     }
 
-    let theme_mode = settings_context
-        .read()
-        .settings
-        .get("theme_mode")
-        .cloned()
-        .unwrap_or_else(|| "auto".to_string());
-
-    let is_dark_theme = match theme_mode.as_str() {
-        "dark" => true,
-        "light" => false,
-        "paper" => false,
-        _ => prefers_dark_mode(),
-    };
-
-    let main_theme_class = match theme_mode.as_str() {
-        "paper" => "bg-[#fdf6e3] text-[#2f2417]",
-        _ if is_dark_theme => "bg-gray-900 text-gray-100",
-        _ => "bg-gray-100 text-gray-900",
-    };
+    let main_theme_class = "bg-gray-100 text-gray-900 dark:bg-gray-900 dark:text-gray-100 paper:bg-[#fdf6e3] paper:text-[#2f2417] transition-colors duration-200";
 
     provide_context(keyboard_state);
 
