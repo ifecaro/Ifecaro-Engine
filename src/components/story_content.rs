@@ -845,7 +845,7 @@ pub fn StoryContent(props: StoryContentProps) -> Element {
                             rsx! {
                                 li {
                                     class: {{
-                                        let base = "p-4 rounded-lg transition duration-200 relative border border-transparent paper:bg-[#f6edda] text-gray-900 dark:text-white paper:!text-[#2f2417]";
+                                        let base = "p-4 transition duration-200 relative text-gray-900 dark:text-white paper:!text-[#2f2417]";
                                         let enabled = "cursor-pointer hover:text-gray-700 dark:hover:text-gray-300 paper:hover:!text-[#1f160e] transition-opacity transition-transform";
                                         let disabled = "opacity-50 cursor-not-allowed text-gray-400 dark:text-gray-400 paper:!text-[#b19d7a]";
                                         let selected = "text-gray-900 dark:text-gray-100 paper:!text-[#1f160e]";
