@@ -69,6 +69,12 @@ li {
         --tw-prose-pre-code: #1f160e;
         --tw-prose-pre-bg: #f0e6cf;
     }
+
+    [data-theme="paper"] button,
+    [data-theme="paper"] button:hover,
+    [data-theme="paper"] button:focus {
+        background-color: transparent !important;
+    }
 }
 
 @layer utilities {
