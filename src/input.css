@@ -1,6 +1,13 @@
 @import "tailwindcss";
 @plugin "@tailwindcss/typography";
 
+@custom-variant dark {
+    &:where(.dark *),
+    &:where([data-theme="dark"] *) {
+        @slot;
+    }
+}
+
 @custom-variant paper {
     &:where([data-theme="paper"] *) {
         @slot;
@@ -29,11 +36,10 @@ li {
     }
 }
 
-@media (prefers-color-scheme: dark) {
-    body {
-        --tw-bg-opacity: 1;
-        background-color: rgb(0 0 0 / var(--tw-bg-opacity));
-    }
+:where(.dark) body,
+:where([data-theme="dark"]) body {
+    --tw-bg-opacity: 1;
+    background-color: rgb(0 0 0 / var(--tw-bg-opacity));
 }
 
 @layer base {
