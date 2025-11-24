@@ -15,6 +15,6 @@ pub fn Title(props: TitleProps) -> Element {
     };
 
     rsx! {
-        h1 { class: "text-5xl pt-4 pb-8 text-gray-900 dark:text-white paper:text-[#2f2417]", "{title}" }
+        h1 { class: "text-5xl pt-4 pb-8 text-gray-900 dark:text-white paper:text-[#1f2937]", "{title}" }
     }
 }

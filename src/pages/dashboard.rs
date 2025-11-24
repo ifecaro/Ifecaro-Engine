@@ -1476,15 +1476,15 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
         crate::pages::layout::Layout {
             title: Some("Dashboard"),
             div {
-                class: "min-h-screen bg-gray-50 text-gray-900 dark:bg-gray-900 dark:text-gray-100 paper:bg-transparent paper:text-[#3f3422]",
+                class: "min-h-screen bg-gray-50 text-gray-900 dark:bg-gray-900 dark:text-gray-100 paper:bg-transparent paper:text-[#374151]",
                 div {
                     class: "w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 lg:py-8",
                     // Main content area
                     div {
-                        class: "bg-white dark:bg-gray-800 paper:bg-[#fef8e7] paper:text-[#2f2417] rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 paper:border-[#e4d5b2]",
+                        class: "bg-white dark:bg-gray-800 paper:bg-[#fef8e7] paper:text-[#1f2937] rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 paper:border-[#e4d5b2]",
                         // Form area
                         div {
-                            class: "p-4 sm:p-6 lg:p-8 paper:text-[#2f2417]",
+                            class: "p-4 sm:p-6 lg:p-8 paper:text-[#1f2937]",
                             // Language and chapter selector area
                             div {
                                 class: "flex flex-col lg:flex-row lg:items-end gap-4 lg:gap-6 mb-6",
@@ -1757,7 +1757,7 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
                         // Submit button area
                         if !selected_chapter.read().is_empty() {
                             div {
-                                class: "px-4 sm:px-6 lg:px-8 py-4 bg-gray-50 dark:bg-gray-700/50 paper:bg-[#f6edda] border-t border-gray-200 dark:border-gray-700 paper:border-[#e4d5b2] paper:text-[#2f2417]",
+                                class: "px-4 sm:px-6 lg:px-8 py-4 bg-gray-50 dark:bg-gray-700/50 paper:bg-[#f6edda] border-t border-gray-200 dark:border-gray-700 paper:border-[#e4d5b2] paper:text-[#1f2937]",
                                 div {
                                     class: "max-w-md mx-auto",
                                     button {
