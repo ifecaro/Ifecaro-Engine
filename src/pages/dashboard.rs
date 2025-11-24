@@ -1749,8 +1749,7 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
                                     div {
                                         class: "w-full lg:col-span-2",
                                         div { class: "flex flex-col gap-2",
-                                            div {
-                                                class: "flex flex-col sm:flex-row sm:items-center gap-3",
+                                            div { class: "flex flex-col sm:flex-row sm:items-stretch gap-3",
                                                 div { class: "flex-1",
                                                     ChapterSelector {
                                                         key: format!("chapter-dropdown-{}", paragraph_language.read()),
@@ -1778,42 +1777,40 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
                                                     }
                                                 }
 
-                                                if !selected_chapter.read().is_empty() {
-                                                    button {
-                                                        class: "w-full sm:w-auto h-10 px-4 inline-flex items-center justify-center rounded-lg text-white bg-blue-600 hover:bg-blue-700 focus:ring-4 focus:outline-none focus:ring-blue-300 dark:bg-blue-500 dark:hover:bg-blue-600 dark:focus:ring-blue-800 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-blue-600 dark:disabled:hover:bg-blue-500",
-                                                        onclick: move |_| {
-                                                            let current_mode = *is_edit_mode.read();
-                                                            is_edit_mode.set(!current_mode);
-                                                            if current_mode {
-                                                                // Exit edit mode and clear all fields
-                                                                paragraphs.set(String::new());
-                                                                reset_choices();
-                                                                selected_paragraph.set(None);
-                                                            }
-                                                        },
-                                                        disabled: selected_chapter.read().is_empty(),
-                                                        svg {
-                                                            xmlns: "http://www.w3.org/2000/svg",
-                                                            class: "h-5 w-5 mr-2",
-                                                            fill: "none",
-                                                            view_box: "0 0 24 24",
-                                                            stroke: "currentColor",
-                                                            stroke_width: "2",
-                                                            path {
-                                                                stroke_linecap: "round",
-                                                                stroke_linejoin: "round",
-                                                                d: if *is_edit_mode.read() {
-                                                                    "M12 4v16m8-8H4"
-                                                                } else {
-                                                                    "M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"
-                                                                },
-                                                            }
+                                                button {
+                                                    class: "w-full sm:w-44 h-full min-h-[40px] inline-flex items-center justify-center rounded-lg text-white bg-blue-600 hover:bg-blue-700 focus:ring-4 focus:outline-none focus:ring-blue-300 dark:bg-blue-500 dark:hover:bg-blue-600 dark:focus:ring-blue-800 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-blue-600 dark:disabled:hover:bg-blue-500",
+                                                    onclick: move |_| {
+                                                        let current_mode = *is_edit_mode.read();
+                                                        is_edit_mode.set(!current_mode);
+                                                        if current_mode {
+                                                            // Exit edit mode and clear all fields
+                                                            paragraphs.set(String::new());
+                                                            reset_choices();
+                                                            selected_paragraph.set(None);
                                                         }
-                                                        if *is_edit_mode.read() {
-                                                            {t!("new_paragraph")}
-                                                        } else {
-                                                            {t!("edit_mode")}
+                                                    },
+                                                    disabled: selected_chapter.read().is_empty(),
+                                                    svg {
+                                                        xmlns: "http://www.w3.org/2000/svg",
+                                                        class: "h-5 w-5 mr-2",
+                                                        fill: "none",
+                                                        view_box: "0 0 24 24",
+                                                        stroke: "currentColor",
+                                                        stroke_width: "2",
+                                                        path {
+                                                            stroke_linecap: "round",
+                                                            stroke_linejoin: "round",
+                                                            d: if *is_edit_mode.read() {
+                                                                "M12 4v16m8-8H4"
+                                                            } else {
+                                                                "M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"
+                                                            },
                                                         }
+                                                    }
+                                                    if *is_edit_mode.read() {
+                                                        {t!("new_paragraph")}
+                                                    } else {
+                                                        {t!("edit_mode")}
                                                     }
                                                 }
                                             }
