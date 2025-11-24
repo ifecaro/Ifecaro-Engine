@@ -45,8 +45,6 @@ pub fn Navbar(closure_signal: Signal<Option<Closure<dyn FnMut(Event)>>>) -> Elem
     let current_lang = state.read().current_language.clone();
     let story_lang = current_lang.clone();
     let dashboard_lang = current_lang.clone();
-    let invite_lang = current_lang.clone();
-    let login_lang = current_lang.clone();
     let mut is_open = use_signal(|| false);
     let mut search_query = use_signal(|| String::new());
     let mut is_desktop = use_signal(|| false);
@@ -159,40 +157,6 @@ pub fn Navbar(closure_signal: Signal<Option<Closure<dyn FnMut(Event)>>>) -> Elem
                             }
                         },
                         "{t!(\"dashboard\")}"
-                    }
-                    Link {
-                        to: Route::InviteRequest { lang: invite_lang.clone() },
-                        class: NavbarStyle::Link.class(),
-                        onclick: move |_| {
-                            let _ = navigator.push(Route::InviteRequest { lang: invite_lang.clone() });
-                            #[cfg(target_arch = "wasm32")]
-                            if debugmode {
-                                let win = window().unwrap();
-                                let path = win.location().pathname().unwrap_or_default();
-                                let new_url = format!("{}?debugmode=true", path);
-                                Timeout::new(0, move || {
-                                    let _ = window().unwrap().history().unwrap().replace_state_with_url(&JsValue::NULL, "", Some(&new_url));
-                                }).forget();
-                            }
-                        },
-                        "{t!(\"invite_request\")}"
-                    }
-                    Link {
-                        to: Route::Login { lang: login_lang.clone() },
-                        class: NavbarStyle::Link.class(),
-                        onclick: move |_| {
-                            let _ = navigator.push(Route::Login { lang: login_lang.clone() });
-                            #[cfg(target_arch = "wasm32")]
-                            if debugmode {
-                                let win = window().unwrap();
-                                let path = win.location().pathname().unwrap_or_default();
-                                let new_url = format!("{}?debugmode=true", path);
-                                Timeout::new(0, move || {
-                                    let _ = window().unwrap().history().unwrap().replace_state_with_url(&JsValue::NULL, "", Some(&new_url));
-                                }).forget();
-                            }
-                        },
-                        "{t!(\"login\")}"
                     }
                     Dropdown {
                         label: String::new(),
