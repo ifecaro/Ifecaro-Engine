@@ -208,10 +208,6 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
 
     let mut character_options = use_signal(|| Vec::<CharacterOption>::new());
     let mut relationship_options = use_signal(|| Vec::<RelationshipOption>::new());
-    let mut new_chapter_title = use_signal(|| String::new());
-    let mut new_chapter_order = use_signal(|| String::new());
-    let mut new_chapter_title_error = use_signal(|| false);
-    let mut is_creating_chapter = use_signal(|| false);
 
     {
         let mut character_options = character_options.clone();
@@ -882,136 +878,6 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
     };
 
     let toast = use_toast();
-
-    let mut handle_create_chapter = {
-        let paragraph_language = paragraph_language.clone();
-        let mut chapter_state = chapter_state.clone();
-        let mut selected_chapter = selected_chapter.clone();
-        let mut new_chapter_title = new_chapter_title.clone();
-        let mut new_chapter_order = new_chapter_order.clone();
-        let mut new_chapter_title_error = new_chapter_title_error.clone();
-        let mut is_creating_chapter = is_creating_chapter.clone();
-        let mut toast = toast.clone();
-
-        move |_| {
-            let title = new_chapter_title.read().trim().to_string();
-            if title.is_empty() {
-                new_chapter_title_error.set(true);
-                return;
-            }
-            new_chapter_title_error.set(false);
-
-            if *is_creating_chapter.read() {
-                return;
-            }
-
-            is_creating_chapter.set(true);
-
-            let target_lang = paragraph_language.read().clone();
-            let parsed_order = new_chapter_order.read().trim().parse::<i32>().ok();
-
-            let fallback_order = chapter_state
-                .read()
-                .chapters
-                .iter()
-                .map(|c| c.order)
-                .max()
-                .unwrap_or(0)
-                + 1;
-
-            let order_value = parsed_order.unwrap_or(fallback_order);
-
-            let success_text = t!("create_chapter_success").to_string();
-            let failed_text = t!("create_chapter_failed").to_string();
-            let title_for_match = title.clone();
-
-            spawn_local(async move {
-                let client = reqwest::Client::new();
-                let chapters_url = format!("{}{}", BASE_API_URL, CHAPTERS);
-
-                let payload = serde_json::json!({
-                    "titles": [
-                        {
-                            "lang": target_lang.clone(),
-                            "title": title,
-                        }
-                    ],
-                    "order": order_value,
-                });
-
-                match client.post(&chapters_url).json(&payload).send().await {
-                    Ok(response) if response.status().is_success() => {
-                        match client.get(&chapters_url).send().await {
-                            Ok(refresh_response) if refresh_response.status().is_success() => {
-                                match refresh_response.json::<serde_json::Value>().await {
-                                    Ok(data) => {
-                                        let mut chapters = parse_chapter_items(&data);
-                                        chapters.sort_by(|a, b| a.order.cmp(&b.order));
-                                        let mut chapter_state = chapter_state.write();
-                                        chapter_state.set_chapters(chapters.clone());
-
-                                        if let Some(new_id) = chapters.iter().find(|chapter| {
-                                            chapter.titles.iter().any(|title| {
-                                                title.lang == target_lang
-                                                    && title.title == title_for_match
-                                            })
-                                        }) {
-                                            selected_chapter.set(new_id.id.clone());
-                                        }
-
-                                        new_chapter_title.set(String::new());
-                                        new_chapter_order.set(String::new());
-                                        is_creating_chapter.set(false);
-                                        toast.write().show(success_text, ToastType::Success, 3000);
-                                    }
-                                    Err(e) => {
-                                        is_creating_chapter.set(false);
-                                        toast.write().show(
-                                            format!("{}: {}", failed_text, e),
-                                            ToastType::Error,
-                                            3000,
-                                        );
-                                    }
-                                }
-                            }
-                            Ok(refresh_response) => {
-                                is_creating_chapter.set(false);
-                                toast.write().show(
-                                    format!("{}: {}", failed_text, refresh_response.status()),
-                                    ToastType::Error,
-                                    3000,
-                                );
-                            }
-                            Err(e) => {
-                                is_creating_chapter.set(false);
-                                toast.write().show(
-                                    format!("{}: {}", failed_text, e),
-                                    ToastType::Error,
-                                    3000,
-                                );
-                            }
-                        }
-                    }
-                    Ok(response) => {
-                        is_creating_chapter.set(false);
-                        toast.write().show(
-                            format!("{}: {}", failed_text, response.status()),
-                            ToastType::Error,
-                            3000,
-                        );
-                    }
-                    Err(e) => {
-                        is_creating_chapter.set(false);
-                        toast.write().show(
-                            format!("{}: {}", failed_text, e),
-                            ToastType::Error,
-                            3000,
-                        );
-                    }
-                }
-            });
-        }
-    };
 
     let mut handle_submit = {
         let paragraph_state = paragraph_state.clone();
@@ -1691,57 +1557,6 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
                                             search_placeholder: Box::leak(t!("search_language").into_boxed_str()),
                                             button_class: None,
                                             label_class: None,
-                                        }
-                                    }
-
-                                    div {
-                                        class: "w-full p-4 rounded-lg border border-gray-200 dark:border-gray-700 paper:border-[#e4d5b2] bg-gray-50 dark:bg-gray-900 paper:bg-[#f9f1db] paper:text-[#2f2417]",
-                                        div { class: "flex flex-col gap-3 md:flex-row md:items-end",
-                                            div { class: "flex-1",
-                                                label {
-                                                    class: "block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1",
-                                                    for: "new-chapter-title",
-                                                    {t!("chapter_title")}
-                                                }
-                                                input {
-                                                    id: "new-chapter-title",
-                                                    class: "w-full px-3 py-2 rounded-md border focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-100 paper:bg-[#fef8e7] paper:border-[#e4d5b2] paper:text-[#2f2417]",
-                                                    value: new_chapter_title.read().clone(),
-                                                    oninput: move |event| {
-                                                        let value = event.value().to_string();
-                                                        new_chapter_title.set(value);
-                                                        new_chapter_title_error.set(false);
-                                                    },
-                                                    placeholder: t!("chapter_title"),
-                                                }
-                                                if *new_chapter_title_error.read() {
-                                                    p {
-                                                        class: "mt-1 text-sm text-red-600",
-                                                        {t!("this_field_is_required")}
-                                                    }
-                                                }
-                                            }
-                                            div { class: "w-full md:w-40",
-                                                label {
-                                                    class: "block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1",
-                                                    for: "new-chapter-order",
-                                                    {t!("chapter_order")}
-                                                }
-                                                input {
-                                                    id: "new-chapter-order",
-                                                    r#type: "number",
-                                                    class: "w-full px-3 py-2 rounded-md border focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-100 paper:bg-[#fef8e7] paper:border-[#e4d5b2] paper:text-[#2f2417]",
-                                                    value: new_chapter_order.read().clone(),
-                                                    oninput: move |event| new_chapter_order.set(event.value().to_string()),
-                                                    placeholder: t!("chapter_order"),
-                                                }
-                                            }
-                                            button {
-                                                class: "inline-flex items-center justify-center px-4 py-2 rounded-md bg-indigo-600 text-white font-medium hover:bg-indigo-700 disabled:opacity-60 disabled:cursor-not-allowed",
-                                                disabled: *is_creating_chapter.read(),
-                                                onclick: move |_| handle_create_chapter(()),
-                                                {if *is_creating_chapter.read() { t!("loading") } else { t!("add_chapter") }}
-                                            }
                                         }
                                     }
 
