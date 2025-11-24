@@ -39,7 +39,7 @@ pub fn InviteRequest(props: InviteRequestProps) -> Element {
         section { class: "py-10",
             div { class: CARD_CLASS,
                 div { class: "space-y-2",
-                    p { class: "text-sm font-semibold text-indigo-600", "{t!(\"invite_request\")}" }
+                    p { class: "text-sm font-semibold text-indigo-600 paper:text-[#1f2937]", "{t!(\"invite_request\")}" }
                     h1 { class: "text-2xl font-bold text-gray-900 dark:text-gray-100", "{t!(\"invite_request_title\")}" }
                     p { class: "text-gray-600 dark:text-gray-300 paper:text-[#374151]", "{t!(\"invite_request_description\")}" }
                 }
@@ -115,7 +115,7 @@ pub fn InviteCheckEmail(props: InviteCheckEmailProps) -> Element {
                 div { class: "space-y-3 text-center",
                     div { class: "mx-auto h-12 w-12 rounded-full bg-indigo-50 dark:bg-indigo-900/40 paper:bg-[#eae0c9] paper:text-[#1f2937] flex items-center justify-center",
                         svg {
-                            class: "w-6 h-6 text-indigo-600 dark:text-indigo-300",
+                            class: "w-6 h-6 text-indigo-600 dark:text-indigo-300 paper:text-[#1f2937]",
                             fill: "none",
                             stroke: "currentColor",
                             stroke_width: "1.5",
@@ -195,7 +195,7 @@ pub fn Register(props: RegisterProps) -> Element {
         section { class: "py-10",
             div { class: CARD_CLASS,
                 div { class: "space-y-2 text-center",
-                    p { class: "text-sm font-semibold text-indigo-600", "{t!(\"register_badge\")}" }
+                    p { class: "text-sm font-semibold text-indigo-600 paper:text-[#1f2937]", "{t!(\"register_badge\")}" }
                     h1 { class: "text-2xl font-bold text-gray-900 dark:text-gray-100", "{t!(\"register_title\")}" }
                     p { class: "text-gray-600 dark:text-gray-300 paper:text-[#374151]", "{t!(\"register_description\")}" }
                 }
@@ -233,7 +233,7 @@ pub fn Register(props: RegisterProps) -> Element {
                 div { class: "flex items-center justify-between text-sm text-gray-600 dark:text-gray-300 paper:text-[#374151]",
                     span { "{t!(\"register_login_prompt\")}" }
                     button {
-                        class: "text-indigo-600 hover:text-indigo-700 font-semibold",
+                        class: "text-indigo-600 hover:text-indigo-700 paper:text-[#1f2937] paper:hover:text-[#111827] font-semibold",
                         r#type: "button",
                         onclick: move |_| {
                             let _ = login_link_nav.push(Route::Login { lang: login_link_lang.clone() });
@@ -281,7 +281,7 @@ pub fn Login(props: LoginProps) -> Element {
         section { class: "py-10",
             div { class: CARD_CLASS,
                 div { class: "space-y-2 text-center",
-                    p { class: "text-sm font-semibold text-indigo-600", "{t!(\"login_badge\")}" }
+                    p { class: "text-sm font-semibold text-indigo-600 paper:text-[#1f2937]", "{t!(\"login_badge\")}" }
                     h1 { class: "text-2xl font-bold text-gray-900 dark:text-gray-100", "{t!(\"login_title\")}" }
                     p { class: "text-gray-600 dark:text-gray-300 paper:text-[#374151]", "{t!(\"login_description\")}" }
                 }
@@ -306,7 +306,7 @@ pub fn Login(props: LoginProps) -> Element {
                 }
                 div { class: "grid sm:grid-cols-2 gap-3 text-sm text-gray-600 dark:text-gray-300 paper:text-[#374151]",
                     button {
-                        class: "py-2 text-left text-indigo-600 hover:text-indigo-700 font-semibold",
+                        class: "py-2 text-left text-indigo-600 hover:text-indigo-700 paper:text-[#1f2937] paper:hover:text-[#111827] font-semibold",
                         r#type: "button",
                         onclick: move |_| {
                             let _ = invite_nav.push(Route::InviteRequest { lang: invite_lang.clone() });
@@ -314,7 +314,7 @@ pub fn Login(props: LoginProps) -> Element {
                         "{t!(\"login_invite_link\")}" 
                     }
                     button {
-                        class: "py-2 text-right text-indigo-600 hover:text-indigo-700 font-semibold",
+                        class: "py-2 text-right text-indigo-600 hover:text-indigo-700 paper:text-[#1f2937] paper:hover:text-[#111827] font-semibold",
                         r#type: "button",
                         onclick: move |_| {
                             let _ = register_nav.push(Route::Register { lang: register_lang.clone() });
