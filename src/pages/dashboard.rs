@@ -1747,29 +1747,76 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
 
                                     // Chapter selector
                                     div {
-                                        class: "w-full",
-                                        ChapterSelector {
-                                            key: format!("chapter-dropdown-{}", paragraph_language.read()),
-                                            label: Box::leak(t!("select_chapter").into_boxed_str()),
-                                            value: selected_chapter.read().clone(),
-                                            chapters: chapter_state.read().chapters.clone(),
-                                            is_open: *is_chapter_open.read(),
-                                            search_query: chapter_search_query.read().to_string(),
-                                            on_toggle: move |_| {
-                                                let current = *is_chapter_open.read();
-                                                is_chapter_open.set(!current);
-                                            },
-                                            on_search: move |query| chapter_search_query.set(query),
-                                            on_select: {
-                                                move |chapter: Chapter| {
-                                                    selected_chapter.set(chapter.id.clone());
-                                                    is_chapter_open.set(false);
-                                                    chapter_search_query.set(String::new());
-                                                    validate_field(&chapter.id, &mut chapter_error);
+                                        class: "w-full lg:col-span-2",
+                                        div { class: "flex flex-col gap-2",
+                                            div {
+                                                class: "flex flex-col sm:flex-row sm:items-center gap-3",
+                                                div { class: "flex-1",
+                                                    ChapterSelector {
+                                                        key: format!("chapter-dropdown-{}", paragraph_language.read()),
+                                                        label: Box::leak(t!("select_chapter").into_boxed_str()),
+                                                        value: selected_chapter.read().clone(),
+                                                        chapters: chapter_state.read().chapters.clone(),
+                                                        is_open: *is_chapter_open.read(),
+                                                        search_query: chapter_search_query.read().to_string(),
+                                                        on_toggle: move |_| {
+                                                            let current = *is_chapter_open.read();
+                                                            is_chapter_open.set(!current);
+                                                        },
+                                                        on_search: move |query| chapter_search_query.set(query),
+                                                        on_select: {
+                                                            move |chapter: Chapter| {
+                                                                selected_chapter.set(chapter.id.clone());
+                                                                is_chapter_open.set(false);
+                                                                chapter_search_query.set(String::new());
+                                                                validate_field(&chapter.id, &mut chapter_error);
+                                                            }
+                                                        },
+                                                        has_error: *chapter_error.read(),
+                                                        selected_language: paragraph_language.read().clone(),
+                                                        class: "w-full".to_string(),
+                                                    }
                                                 }
-                                            },
-                                            has_error: *chapter_error.read(),
-                                            selected_language: paragraph_language.read().clone(),
+
+                                                if !selected_chapter.read().is_empty() {
+                                                    button {
+                                                        class: "w-full sm:w-auto h-10 px-4 inline-flex items-center justify-center rounded-lg text-white bg-blue-600 hover:bg-blue-700 focus:ring-4 focus:outline-none focus:ring-blue-300 dark:bg-blue-500 dark:hover:bg-blue-600 dark:focus:ring-blue-800 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-blue-600 dark:disabled:hover:bg-blue-500",
+                                                        onclick: move |_| {
+                                                            let current_mode = *is_edit_mode.read();
+                                                            is_edit_mode.set(!current_mode);
+                                                            if current_mode {
+                                                                // Exit edit mode and clear all fields
+                                                                paragraphs.set(String::new());
+                                                                reset_choices();
+                                                                selected_paragraph.set(None);
+                                                            }
+                                                        },
+                                                        disabled: selected_chapter.read().is_empty(),
+                                                        svg {
+                                                            xmlns: "http://www.w3.org/2000/svg",
+                                                            class: "h-5 w-5 mr-2",
+                                                            fill: "none",
+                                                            view_box: "0 0 24 24",
+                                                            stroke: "currentColor",
+                                                            stroke_width: "2",
+                                                            path {
+                                                                stroke_linecap: "round",
+                                                                stroke_linejoin: "round",
+                                                                d: if *is_edit_mode.read() {
+                                                                    "M12 4v16m8-8H4"
+                                                                } else {
+                                                                    "M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"
+                                                                },
+                                                            }
+                                                        }
+                                                        if *is_edit_mode.read() {
+                                                            {t!("new_paragraph")}
+                                                        } else {
+                                                            {t!("edit_mode")}
+                                                        }
+                                                    }
+                                                }
+                                            }
                                         }
                                     }
 
@@ -1813,48 +1860,6 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
                                     }
                                 }
 
-                                // Edit mode control button (right)
-                                if !selected_chapter.read().is_empty() {
-                                    div {
-                                        class: "flex-shrink-0",
-                                        button {
-                                            class: "w-full lg:w-auto h-10 px-4 inline-flex items-center justify-center rounded-lg text-white bg-blue-600 hover:bg-blue-700 focus:ring-4 focus:outline-none focus:ring-blue-300 dark:bg-blue-500 dark:hover:bg-blue-600 dark:focus:ring-blue-800 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-blue-600 dark:disabled:hover:bg-blue-500",
-                                            onclick: move |_| {
-                                                let current_mode = *is_edit_mode.read();
-                                                is_edit_mode.set(!current_mode);
-                                                if current_mode {
-                                                    // Exit edit mode and clear all fields
-                                                    paragraphs.set(String::new());
-                                                    reset_choices();
-                                                    selected_paragraph.set(None);
-                                                }
-                                            },
-                                            disabled: selected_chapter.read().is_empty(),
-                                            svg {
-                                                xmlns: "http://www.w3.org/2000/svg",
-                                                class: "h-5 w-5 mr-2",
-                                                fill: "none",
-                                                view_box: "0 0 24 24",
-                                                stroke: "currentColor",
-                                                stroke_width: "2",
-                                                path {
-                                                    stroke_linecap: "round",
-                                                    stroke_linejoin: "round",
-                                                    d: if *is_edit_mode.read() {
-                                                        "M12 4v16m8-8H4"
-                                                    } else {
-                                                        "M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"
-                                                    }
-                                                }
-                                            }
-                                            if *is_edit_mode.read() {
-                                                {t!("new_paragraph")}
-                                            } else {
-                                                {t!("edit_mode")}
-                                            }
-                                        }
-                                    }
-                                }
                             }
 
                             // Paragraph selection and content editing area
