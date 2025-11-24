@@ -1476,7 +1476,7 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
         crate::pages::layout::Layout {
             title: Some("Dashboard"),
             div {
-                class: "min-h-screen bg-gray-50 text-gray-900 dark:bg-gray-900 dark:text-gray-100 paper:bg-[#f6f1e3] paper:text-[#3f3422]",
+                class: "min-h-screen bg-gray-50 text-gray-900 dark:bg-gray-900 dark:text-gray-100 paper:bg-transparent paper:text-[#3f3422]",
                 div {
                     class: "w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 lg:py-8",
                     // Main content area
