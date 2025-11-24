@@ -3,9 +3,9 @@ use dioxus::events::FormEvent;
 use dioxus::prelude::*;
 use dioxus_i18n::t;
 
-const CARD_CLASS: &str = "max-w-xl mx-auto bg-white dark:bg-gray-800 paper:bg-[#fef8e7] paper:text-[#2f2417] rounded-xl shadow-lg p-8 space-y-6 border border-gray-100 dark:border-gray-700 paper:border-[#e4d5b2]";
-const INPUT_CLASS: &str = "w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 paper:border-[#e4d5b2] focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white dark:bg-gray-900 paper:bg-[#fef8e7] text-gray-900 dark:text-gray-100 paper:text-[#2f2417] transition";
-const LABEL_CLASS: &str = "block text-sm font-semibold text-gray-700 dark:text-gray-200 paper:text-[#3f3422] mb-2";
+const CARD_CLASS: &str = "max-w-xl mx-auto bg-white dark:bg-gray-800 paper:bg-[#fef8e7] paper:text-[#1f2937] rounded-xl shadow-lg p-8 space-y-6 border border-gray-100 dark:border-gray-700 paper:border-[#e4d5b2]";
+const INPUT_CLASS: &str = "w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 paper:border-[#e4d5b2] focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white dark:bg-gray-900 paper:bg-[#fef8e7] text-gray-900 dark:text-gray-100 paper:text-[#1f2937] transition";
+const LABEL_CLASS: &str = "block text-sm font-semibold text-gray-700 dark:text-gray-200 paper:text-[#374151] mb-2";
 const BUTTON_CLASS: &str = "w-full py-3 px-4 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-lg shadow transition disabled:opacity-60 disabled:cursor-not-allowed";
 
 #[derive(Props, Clone, PartialEq)]
@@ -41,7 +41,7 @@ pub fn InviteRequest(props: InviteRequestProps) -> Element {
                 div { class: "space-y-2",
                     p { class: "text-sm font-semibold text-indigo-600", "{t!(\"invite_request\")}" }
                     h1 { class: "text-2xl font-bold text-gray-900 dark:text-gray-100", "{t!(\"invite_request_title\")}" }
-                    p { class: "text-gray-600 dark:text-gray-300 paper:text-[#3f3422]", "{t!(\"invite_request_description\")}" }
+                    p { class: "text-gray-600 dark:text-gray-300 paper:text-[#374151]", "{t!(\"invite_request_description\")}" }
                 }
                 form { class: "space-y-6", onsubmit: handle_submit,
                     div { class: "space-y-1",
@@ -73,16 +73,16 @@ pub fn InviteRequest(props: InviteRequestProps) -> Element {
                             value: "{message}",
                             oninput: move |evt| message.set(evt.value()),
                         }
-                        p { class: "text-xs text-gray-500 dark:text-gray-400 paper:text-[#5a503f]", "{t!(\"invite_request_reason_helper\")}" }
+                        p { class: "text-xs text-gray-500 dark:text-gray-400 paper:text-[#4b5563]", "{t!(\"invite_request_reason_helper\")}" }
                     }
                     if !error.read().is_empty() {
                         p { class: "text-sm text-red-500", "{error}" }
                     }
                     button { class: BUTTON_CLASS, r#type: "submit", "{t!(\"invite_request_submit\")}" }
                 }
-                div { class: "flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300 paper:text-[#3f3422]",
+                div { class: "flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300 paper:text-[#374151]",
                     svg {
-                        class: "w-5 h-5 text-indigo-500 paper:text-[#2f2417]",
+                        class: "w-5 h-5 text-indigo-500 paper:text-[#1f2937]",
                         fill: "none",
                         stroke: "currentColor",
                         stroke_width: "1.5",
@@ -113,7 +113,7 @@ pub fn InviteCheckEmail(props: InviteCheckEmailProps) -> Element {
         section { class: "py-10",
             div { class: CARD_CLASS,
                 div { class: "space-y-3 text-center",
-                    div { class: "mx-auto h-12 w-12 rounded-full bg-indigo-50 dark:bg-indigo-900/40 paper:bg-[#eae0c9] paper:text-[#2f2417] flex items-center justify-center",
+                    div { class: "mx-auto h-12 w-12 rounded-full bg-indigo-50 dark:bg-indigo-900/40 paper:bg-[#eae0c9] paper:text-[#1f2937] flex items-center justify-center",
                         svg {
                             class: "w-6 h-6 text-indigo-600 dark:text-indigo-300",
                             fill: "none",
@@ -125,7 +125,7 @@ pub fn InviteCheckEmail(props: InviteCheckEmailProps) -> Element {
                         }
                     }
                     h1 { class: "text-2xl font-bold text-gray-900 dark:text-gray-100", "{t!(\"invite_check_email_title\")}" }
-                    p { class: "text-gray-600 dark:text-gray-300 paper:text-[#3f3422]", "{t!(\"invite_check_email_description\")}" }
+                    p { class: "text-gray-600 dark:text-gray-300 paper:text-[#374151]", "{t!(\"invite_check_email_description\")}" }
                 }
                 div { class: "grid sm:grid-cols-2 gap-3 mt-4",
                     button {
@@ -147,7 +147,7 @@ pub fn InviteCheckEmail(props: InviteCheckEmailProps) -> Element {
                         "{t!(\"invite_check_email_register\")}" 
                     }
                 }
-                p { class: "text-sm text-gray-500 dark:text-gray-400 paper:text-[#5a503f] text-center", "{t!(\"invite_check_email_helper\")}" }
+                p { class: "text-sm text-gray-500 dark:text-gray-400 paper:text-[#4b5563] text-center", "{t!(\"invite_check_email_helper\")}" }
             }
         }
     }
@@ -197,13 +197,13 @@ pub fn Register(props: RegisterProps) -> Element {
                 div { class: "space-y-2 text-center",
                     p { class: "text-sm font-semibold text-indigo-600", "{t!(\"register_badge\")}" }
                     h1 { class: "text-2xl font-bold text-gray-900 dark:text-gray-100", "{t!(\"register_title\")}" }
-                    p { class: "text-gray-600 dark:text-gray-300 paper:text-[#3f3422]", "{t!(\"register_description\")}" }
+                    p { class: "text-gray-600 dark:text-gray-300 paper:text-[#374151]", "{t!(\"register_description\")}" }
                 }
                 form { class: "space-y-5", onsubmit: handle_submit,
                     div { class: "space-y-1",
                         label { class: LABEL_CLASS, "{t!(\"register_code_label\")}" }
                         input { class: INPUT_CLASS, r#type: "text", placeholder: "{t!(\"register_code_placeholder\")}", value: "{code}", oninput: move |evt| code.set(evt.value()) }
-                        p { class: "text-xs text-gray-500 dark:text-gray-400 paper:text-[#5a503f]", "{t!(\"register_code_helper\")}" }
+                        p { class: "text-xs text-gray-500 dark:text-gray-400 paper:text-[#4b5563]", "{t!(\"register_code_helper\")}" }
                     }
                     div { class: "grid sm:grid-cols-2 gap-4",
                         div { class: "space-y-1",
@@ -230,7 +230,7 @@ pub fn Register(props: RegisterProps) -> Element {
                     }
                     button { class: BUTTON_CLASS, r#type: "submit", "{t!(\"register_submit\")}" }
                 }
-                div { class: "flex items-center justify-between text-sm text-gray-600 dark:text-gray-300 paper:text-[#3f3422]",
+                div { class: "flex items-center justify-between text-sm text-gray-600 dark:text-gray-300 paper:text-[#374151]",
                     span { "{t!(\"register_login_prompt\")}" }
                     button {
                         class: "text-indigo-600 hover:text-indigo-700 font-semibold",
@@ -283,7 +283,7 @@ pub fn Login(props: LoginProps) -> Element {
                 div { class: "space-y-2 text-center",
                     p { class: "text-sm font-semibold text-indigo-600", "{t!(\"login_badge\")}" }
                     h1 { class: "text-2xl font-bold text-gray-900 dark:text-gray-100", "{t!(\"login_title\")}" }
-                    p { class: "text-gray-600 dark:text-gray-300 paper:text-[#3f3422]", "{t!(\"login_description\")}" }
+                    p { class: "text-gray-600 dark:text-gray-300 paper:text-[#374151]", "{t!(\"login_description\")}" }
                 }
                 form { class: "space-y-5", onsubmit: handle_submit,
                     div { class: "space-y-1",
@@ -297,14 +297,14 @@ pub fn Login(props: LoginProps) -> Element {
                     div { class: "space-y-1",
                         label { class: LABEL_CLASS, "{t!(\"login_code_label\")}" }
                         input { class: INPUT_CLASS, r#type: "text", placeholder: "{t!(\"login_code_placeholder\")}", value: "{code}", oninput: move |evt| code.set(evt.value()) }
-                        p { class: "text-xs text-gray-500 dark:text-gray-400 paper:text-[#5a503f]", "{t!(\"login_code_helper\")}" }
+                        p { class: "text-xs text-gray-500 dark:text-gray-400 paper:text-[#4b5563]", "{t!(\"login_code_helper\")}" }
                     }
                     if !error.read().is_empty() {
                         p { class: "text-sm text-red-500", "{error}" }
                     }
                     button { class: BUTTON_CLASS, r#type: "submit", "{t!(\"login_submit\")}" }
                 }
-                div { class: "grid sm:grid-cols-2 gap-3 text-sm text-gray-600 dark:text-gray-300 paper:text-[#3f3422]",
+                div { class: "grid sm:grid-cols-2 gap-3 text-sm text-gray-600 dark:text-gray-300 paper:text-[#374151]",
                     button {
                         class: "py-2 text-left text-indigo-600 hover:text-indigo-700 font-semibold",
                         r#type: "button",

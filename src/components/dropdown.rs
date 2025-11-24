@@ -86,14 +86,14 @@ pub fn Dropdown<T: Clone + PartialEq + 'static>(props: DropdownProps<T>) -> Elem
     let search_query = props.search_query.clone();
     let display_fn = props.display_fn;
 
-    let button_class = props.button_class.clone().unwrap_or_else(|| "w-full px-4 py-2.5 text-sm border border-gray-300 dark:border-gray-600 paper:border-[#e4d5b2] rounded-lg bg-white dark:bg-gray-700 paper:bg-[#fef8e7] text-gray-900 dark:text-white paper:text-[#2f2417] shadow-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition duration-200 ease-in-out hover:border-green-500 dark:hover:border-green-500 paper:hover:border-[#c6b17e] flex justify-between items-center relative will-change-transform will-change-opacity".to_string());
+    let button_class = props.button_class.clone().unwrap_or_else(|| "w-full px-4 py-2.5 text-sm border border-gray-300 dark:border-gray-600 paper:border-[#e4d5b2] rounded-lg bg-white dark:bg-gray-700 paper:bg-[#fef8e7] text-gray-900 dark:text-white paper:text-[#1f2937] shadow-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition duration-200 ease-in-out hover:border-green-500 dark:hover:border-green-500 paper:hover:border-[#c6b17e] flex justify-between items-center relative will-change-transform will-change-opacity".to_string());
     let button_class = if props.disabled {
         format!("{} opacity-50 cursor-not-allowed", button_class)
     } else {
         button_class
     };
     let label_class = props.label_class.clone().unwrap_or_else(|| {
-        "block text-sm font-medium text-gray-700 dark:text-gray-300 paper:text-[#3f3422] mb-2".to_string()
+        "block text-sm font-medium text-gray-700 dark:text-gray-300 paper:text-[#374151] mb-2".to_string()
     });
 
     let width_class = props
@@ -101,15 +101,15 @@ pub fn Dropdown<T: Clone + PartialEq + 'static>(props: DropdownProps<T>) -> Elem
         .clone()
         .unwrap_or_else(|| "w-full sm:min-w-[16rem] sm:max-w-[60vw]".to_string());
     let position_class = props.dropdown_position.clone().unwrap_or_else(|| "fixed bottom-14 left-0 right-0 rounded-t-lg sm:absolute sm:bottom-auto sm:right-0 sm:top-full sm:left-auto sm:rounded-md".to_string());
-    let base_panel_class = "z-[1000] transition duration-200 ease-in-out transform will-change-transform will-change-opacity shadow-lg bg-white dark:bg-gray-800 paper:bg-[#fef8e7] paper:text-[#2f2417] ring-1 ring-black ring-opacity-5 paper:ring-[#d4c29a] paper:ring-opacity-60";
+    let base_panel_class = "z-[1000] transition duration-200 ease-in-out transform will-change-transform will-change-opacity shadow-lg bg-white dark:bg-gray-800 paper:bg-[#fef8e7] paper:text-[#1f2937] ring-1 ring-black ring-opacity-5 paper:ring-[#d4c29a] paper:ring-opacity-60";
     let dropdown_container_class = format!(
         "{} {} {} {}",
         base_panel_class, position_class, dropdown_class, width_class
     );
 
-    let search_input_class = format!("w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 paper:border-[#e4d5b2] rounded-md bg-white dark:bg-gray-700 paper:bg-[#fef8e7] text-gray-900 dark:text-white paper:text-[#2f2417] focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent {}", props.search_input_class);
+    let search_input_class = format!("w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 paper:border-[#e4d5b2] rounded-md bg-white dark:bg-gray-700 paper:bg-[#fef8e7] text-gray-900 dark:text-white paper:text-[#1f2937] focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent {}", props.search_input_class);
 
-    let base_option_class = format!("block w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-200 paper:text-[#3f3422] hover:bg-gray-100 dark:hover:bg-gray-700 paper:hover:bg-[#f0e6cf] transition duration-150 truncate {}", props.option_class);
+    let base_option_class = format!("block w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-200 paper:text-[#374151] hover:bg-gray-100 dark:hover:bg-gray-700 paper:hover:bg-[#f0e6cf] transition duration-150 truncate {}", props.option_class);
 
     rsx! {
         div {

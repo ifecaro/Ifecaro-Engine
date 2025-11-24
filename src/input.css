@@ -45,28 +45,28 @@ li {
 @layer base {
     [data-theme="paper"] {
         background-color: #fdf6e3;
-        color: #2f2417;
+        color: #1f2937;
     }
 
     [data-theme="paper"] body {
         background-color: #fdf6e3;
-        color: #2f2417;
+        color: #1f2937;
     }
 
     [data-theme="paper"] .prose,
     [data-theme="paper"] .paper\:prose {
-        --tw-prose-body: #2f2417;
-        --tw-prose-headings: #1f160e;
-        --tw-prose-links: #1f160e;
-        --tw-prose-bold: #1f160e;
-        --tw-prose-counters: #5a503f;
-        --tw-prose-bullets: #5a503f;
+        --tw-prose-body: #1f2937;
+        --tw-prose-headings: #111827;
+        --tw-prose-links: #111827;
+        --tw-prose-bold: #111827;
+        --tw-prose-counters: #4b5563;
+        --tw-prose-bullets: #4b5563;
         --tw-prose-hr: #e4d5b2;
-        --tw-prose-quotes: #2f2417;
+        --tw-prose-quotes: #1f2937;
         --tw-prose-quote-borders: #d4c29a;
-        --tw-prose-captions: #5a503f;
-        --tw-prose-code: #1f160e;
-        --tw-prose-pre-code: #1f160e;
+        --tw-prose-captions: #4b5563;
+        --tw-prose-code: #111827;
+        --tw-prose-pre-code: #111827;
         --tw-prose-pre-bg: #f0e6cf;
     }
 
@@ -74,7 +74,7 @@ li {
     [data-theme="paper"] button:hover,
     [data-theme="paper"] button:focus {
         background-color: transparent !important;
-        color: #1f160e !important;
+        color: #111827 !important;
     }
 }
 
