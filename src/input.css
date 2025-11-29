@@ -128,3 +128,47 @@ li {
         will-change: opacity, transform;
     }
 }
+
+@layer components {
+    .journal-page {
+        @apply relative mx-auto max-w-2xl p-10 rounded-lg shadow-lg bg-[#f9f6ee]
+               bg-[radial-gradient(rgba(0,0,0,0.04)_1px,transparent_1px),radial-gradient(rgba(0,0,0,0.03)_1px,transparent_1px)]
+               bg-[length:3px_3px,6px_6px] text-stone-700;
+    }
+
+    .journal-page::before {
+        content: "";
+        @apply absolute top-6 bottom-6 left-8 w-px bg-red-400 opacity-80;
+    }
+
+    .journal-lines {
+        @apply relative pl-10 pr-3 py-2;
+        background-image: linear-gradient(to bottom, rgba(120,110,90,0.18) 1px, transparent 1px);
+        background-size: 100% 1.8rem;
+    }
+
+    .journal-choice {
+        @apply flex items-center gap-2 px-4 py-2 rounded-full cursor-pointer
+               bg-white/70 shadow-sm hover:shadow-md hover:bg-white transition;
+    }
+
+    .journal-choice-index {
+        @apply font-semibold text-sm text-orange-700;
+    }
+
+    /* 深色模式 */
+    .dark .journal-page {
+        @apply bg-[#26231f] text-[#f1e8d8];
+        background-image: radial-gradient(rgba(255,255,255,0.04)_1px,transparent_1px),
+                           radial-gradient(rgba(255,255,255,0.03)_1px,transparent_1px);
+        background-size: 3px 3px, 6px 6px;
+    }
+
+    .dark .journal-lines {
+        background-image: linear-gradient(to bottom, rgba(255,255,255,0.18) 1px, transparent 1px);
+    }
+
+    .dark .journal-choice {
+        @apply bg-neutral-800/80 text-[#f3e9db];
+    }
+}
