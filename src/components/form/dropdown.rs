@@ -1,5 +1,9 @@
 use dioxus::prelude::*;
 use dioxus_i18n::prelude::*;
+#[cfg(target_arch = "wasm32")]
+use wasm_bindgen::JsCast;
+#[cfg(target_arch = "wasm32")]
+use web_sys::{window, HtmlElement};
 
 #[derive(Props, Clone, PartialEq)]
 pub struct DropdownProps<T: Clone + PartialEq + 'static> {
@@ -61,6 +65,33 @@ pub struct DropdownProps<T: Clone + PartialEq + 'static> {
 }
 
 pub fn Dropdown<T: Clone + PartialEq + 'static>(props: DropdownProps<T>) -> Element {
+    let is_open = props.is_open;
+    let selected_value = props.value.clone();
+
+    use_effect(move || {
+        #[cfg(target_arch = "wasm32")]
+        {
+            if is_open && !selected_value.is_empty() {
+                if let Some(document) = window().and_then(|w| w.document()) {
+                    if let Ok(Some(container)) =
+                        document.query_selector(".dropdown-options[data-open='true']")
+                    {
+                        if let Ok(Some(selected_button)) =
+                            container.query_selector("button[data-selected='true']")
+                        {
+                            if let (Some(container_el), Some(selected_el)) = (
+                                container.dyn_into::<HtmlElement>().ok(),
+                                selected_button.dyn_into::<HtmlElement>().ok(),
+                            ) {
+                                container_el.set_scroll_top(selected_el.offset_top());
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    });
+
     let t = use_translation();
 
     let dropdown_class = if props.is_open {
@@ -156,14 +187,16 @@ pub fn Dropdown<T: Clone + PartialEq + 'static>(props: DropdownProps<T>) -> Elem
                                     oninput: move |e| props.on_search.call(e.value().clone())
                                 }
                             }
-                            div { 
-                                class: "max-h-[clamp(12rem,calc(100vh_-_16rem),24rem)] overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-600 scrollbar-track-transparent",
+                            div {
+                                class: "max-h-[clamp(12rem,calc(100vh_-_16rem),24rem)] overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-600 scrollbar-track-transparent dropdown-options",
+                                "data-open": props.is_open.to_string(),
                                 {props.options.iter().map(|option| {
                                     let display_value = display_fn(option);
                                     let option_clone = option.clone();
                                     let is_selected = display_value == props.value;
                                     rsx! {
                                         button {
+                                            "data-selected": is_selected.to_string(),
                                             class: format!("{} {}", base_option_class.clone(), if is_selected { "bg-blue-50 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300" } else { "" }),
                                             onclick: move |_| props.on_select.call(option_clone.clone()),
                                             {display_value}
