@@ -25,6 +25,8 @@ use crate::{
     enums::route::Route,
 };
 use dioxus::prelude::*;
+use dioxus::web;
+use dioxus::web::launch::launch_cfg;
 
 #[cfg(target_arch = "wasm32")]                       fn append_log_line(msg: &str) {
     use web_sys::window;
@@ -58,8 +60,8 @@ fn main() {
     }
 
     // 這裡一定要指定 root id = "app-root"
-    let cfg = web::Config::new().with_root_id("app-root".to_string());
-    web::launch_cfg(App, cfg);
+    let cfg = web::Config::new().rootname("app-root");
+    launch_cfg(App, cfg);
 }
 
 #[component]

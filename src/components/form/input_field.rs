@@ -10,7 +10,8 @@ pub struct InputFieldProps {
     has_error: bool,
     on_input: EventHandler<String>,
     on_blur: EventHandler<()>,
-    children: Option<Element>,
+    #[props(optional)]
+    children: Element,
     #[props(default = false)]
     disabled: bool,
 }
@@ -63,9 +64,7 @@ pub fn InputField(props: InputFieldProps) -> Element {
                         }
                     }
                 }
-                if let Some(children) = &props.children {
-                    {children}
-                }
+                {props.children}
             }
         }
         {props.has_error.then(|| {
