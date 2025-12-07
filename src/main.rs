@@ -26,20 +26,50 @@ use crate::{
 };
 use dioxus::prelude::*;
 
+#[cfg(target_arch = "wasm32")]                       fn append_log_line(msg: &str) {
+    use web_sys::window;
+                                                         let Some(window) = window() else { return };
+    let Some(document) = window.document() else { return };                                                   let Some(el) = document.get_element_by_id("debug-
+log") else { return };
+
+    let current = el.inner_html();                                                                            // 很土法，但簡單：舊內容 + <br> + 新的一行文字
+                                                         let new_html = if current.is_empty() || current == "(DOM log)" {                                              format!("{msg}")                                 } else {
+        format!("{current}<br>{msg}")                    };
+                                                         el.set_inner_html(&new_html);                    }
+
+// 小小 macro，方便在任何地方呼叫
+macro_rules! log_dom {
+    ($($t:tt)*) => {{
+        #[cfg(target_arch = "wasm32")]
+        {
+            append_log_line(&format!($($t)*));
+        }
+    }};
+}
+
 fn main() {
     #[cfg(target_arch = "wasm32")]
     {
+        log_dom!("✅ WASM main started");
         console_error_panic_hook::set_once();
         tracing_wasm::set_as_global_default();
         wasm_logger::init(wasm_logger::Config::default());
+        log_dom!("✅ WASM main started 2");
     }
-    launch(App);
+
+    // 這裡一定要指定 root id = "app-root"
+    let cfg = web::Config::new().with_root_id("app-root".to_string());
+    web::launch_cfg(App, cfg);
 }
 
 #[component]
 fn App() -> Element {
     use_context_provider(|| Signal::new(ToastManager::new()));
     provide_context(Signal::new(SettingsContext::default()));
+
+    #[cfg(target_arch = "wasm32")]
+    log_dom!("✅ App component entered");
+
     rsx! {
         LanguageProvider {
             ChapterProvider {
