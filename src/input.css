@@ -43,6 +43,14 @@ li {
 }
 
 @layer base {
+    :root {
+        --pencil-lite-filter: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='pencil-lite'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='2' seed='11' result='noise'/%3E%3CfeGaussianBlur in='noise' stdDeviation='0.15' result='softNoise'/%3E%3CfeColorMatrix in='SourceGraphic' type='saturate' values='0.9' result='desat'/%3E%3CfeComposite in='desat' in2='softNoise' operator='arithmetic' k1='0.45' k2='0.55' k3='0' k4='0'/%3E%3C/filter%3E%3C/svg%3E#pencil-lite");
+    }
+
+    .pencil-lite {
+        filter: var(--pencil-lite-filter, contrast(1.02) saturate(0.96));
+    }
+
     [data-theme="paper"] {
         background-color: #fdf6e3;
         color: #1f2937;

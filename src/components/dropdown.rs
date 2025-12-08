@@ -48,6 +48,9 @@ pub struct DropdownProps<T: Clone + PartialEq + 'static> {
     /// Optional option class name
     #[props(default = String::new())]
     pub option_class: String,
+    /// Optional text wrapper class name
+    #[props(default = String::new())]
+    pub text_class: String,
     /// Whether to disable the dropdown
     #[props(default = false)]
     pub disabled: bool,
@@ -182,10 +185,7 @@ pub fn Dropdown<T: Clone + PartialEq + 'static>(props: DropdownProps<T>) -> Elem
                     },
                     disabled: props.disabled,
                     "aria-required": props.required.to_string(),
-                    span {
-                        class: "block truncate",
-                        "{props.value}"
-                    }
+                    span { class: format!("block truncate {}", props.text_class), "{props.value}" }
                     if props.show_arrow {
                         svg {
                             class: "flex-shrink-0 fill-current h-4 w-4 transition-transform duration-200 ease-in-out",
@@ -228,7 +228,7 @@ pub fn Dropdown<T: Clone + PartialEq + 'static>(props: DropdownProps<T>) -> Elem
                                             "data-selected": is_selected.to_string(),
                                             class: format!("{} {}", base_option_class.clone(), if is_selected { "bg-blue-50 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300" } else { "" }),
                                             onclick: move |_| props.on_select.call(option_clone.clone()),
-                                            {display_value}
+                                            span { class: format!("truncate {}", props.text_class), "{display_value}" }
                                         }
                                     }
                                 })}
@@ -269,6 +269,7 @@ mod tests {
             dropdown_class: String::new(),
             search_input_class: String::new(),
             option_class: String::new(),
+            text_class: String::new(),
             disabled: false,
             required: false,
             show_arrow: true,

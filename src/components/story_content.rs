@@ -116,7 +116,7 @@ pub fn StoryContentUI(props: StoryContentUIProps) -> Element {
         div {
             class: "w-full flex items-center justify-center min-h-[calc(100vh-56px)]",
             div {
-                class: "text-3xl md:text-4xl text-gray-900 dark:text-white paper:text-[#1f2937] text-center w-full select-none flex items-center justify-center",
+                class: "text-3xl md:text-4xl text-gray-900 dark:text-white paper:text-[#1f2937] text-center w-full select-none flex items-center justify-center pencil-lite",
                 style: "letter-spacing: 0.1em;",
                 dangerous_inner_html: escape_html(&props.chapter_title),
             }
@@ -124,7 +124,7 @@ pub fn StoryContentUI(props: StoryContentUIProps) -> Element {
         article {
             class: "prose-sm dark:prose-invert lg:prose-base mx-auto max-w-3xl p-8 text-gray-900 dark:text-white paper:text-[#1f2937] paper:prose paper:prose-base paper:bg-transparent bg-white dark:bg-transparent",
             div {
-                class: "whitespace-pre-wrap space-y-8",
+                class: "whitespace-pre-wrap space-y-8 pencil-lite",
                 {props.paragraph.split('\n')
                     .filter(|p| !p.trim().is_empty())
                     .map(|p| rsx! {
@@ -149,7 +149,7 @@ pub fn StoryContentUI(props: StoryContentUIProps) -> Element {
                                 let disabled = "opacity-50 cursor-not-allowed text-gray-400 dark:text-gray-400 paper:!text-[#9ca3af]";
                                 format!("{base} {}", if is_enabled { enabled } else { disabled })
                             }},
-                            span { class: "mr-2", dangerous_inner_html: escape_html(caption.as_ref()) }
+                            span { class: "mr-2 pencil-lite", dangerous_inner_html: escape_html(caption.as_ref()) }
                         }
                     }
                 })}

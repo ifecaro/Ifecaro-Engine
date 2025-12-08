@@ -139,7 +139,7 @@ pub fn Navbar(closure_signal: Signal<Option<Closure<dyn FnMut(Event)>>>) -> Elem
                                 }).forget();
                             }
                         },
-                        "{t!(\"story\")}"
+                        span { class: "pencil-lite", "{t!(\"story\")}" }
                     }
                     Link {
                         to: Route::Dashboard { lang: dashboard_lang.clone() },
@@ -156,7 +156,7 @@ pub fn Navbar(closure_signal: Signal<Option<Closure<dyn FnMut(Event)>>>) -> Elem
                                 }).forget();
                             }
                         },
-                        "{t!(\"dashboard\")}"
+                        span { class: "pencil-lite", "{t!(\"dashboard\")}" }
                     }
                     Dropdown {
                         label: String::new(),
@@ -209,6 +209,7 @@ pub fn Navbar(closure_signal: Signal<Option<Closure<dyn FnMut(Event)>>>) -> Elem
                         }.to_string()),
                         show_search: true,
                         option_class: NavbarStyle::DropdownOption.class().to_string(),
+                        text_class: "pencil-lite".to_string(),
                         is_desktop: *is_desktop.read(),
                     }
                     Settings {
