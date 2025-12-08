@@ -16,12 +16,22 @@
 
   </head>
   <body>
-	  <div id="app-root"></div>
-	  <div id="debug-log"
-		   style="padding:8px;margin:8px;border:1px solid #ccc;
-              border-radius:6px;font-family:monospace;font-size:12px;
-              max-height:160px;overflow:auto;background:#111;color:#0f0;position:fixed;z-index:99999;top:0;left:0">
-		  (DOM log)
-	  </div>
+          <div id="app-root"></div>
+          <div id="debug-log"
+                   style="padding:8px;margin:8px;border:1px solid #ccc;
+            border-radius:6px;font-family:monospace;font-size:12px;
+            max-height:160px;overflow:auto;background:#111;color:#0f0;position:fixed;z-index:99999;top:0;left:0">
+                  (DOM log)
+          </div>
+          <svg aria-hidden="true" width="0" height="0" focusable="false" style="position:absolute">
+            <defs>
+              <filter id="pencil-lite-filter">
+                <feTurbulence type="fractalNoise" baseFrequency="0.8" numOctaves="2" seed="11" result="noise" />
+                <feGaussianBlur in="noise" stdDeviation="0.15" result="softNoise" />
+                <feColorMatrix in="SourceGraphic" type="saturate" values="0.9" result="desat" />
+                <feComposite in="desat" in2="softNoise" operator="arithmetic" k1="0.45" k2="0.55" k3="0" k4="0" />
+              </filter>
+            </defs>
+          </svg>
   </body>
 </html>
