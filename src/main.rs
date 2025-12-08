@@ -99,11 +99,9 @@ fn init_dom_logger() {
 fn main() {
     #[cfg(target_arch = "wasm32")]
     {
-        log_dom!("✅ WASM main started");
         console_error_panic_hook::set_once();
         tracing_wasm::set_as_global_default();
         init_dom_logger();
-        log_dom!("✅ WASM main started 2");
     }
 
     // 這裡一定要指定 root id = "app-root"
@@ -117,7 +115,6 @@ fn App() -> Element {
     provide_context(Signal::new(SettingsContext::default()));
 
     #[cfg(target_arch = "wasm32")]
-    log_dom!("✅ App component entered");
 
     rsx! {
         LanguageProvider {
