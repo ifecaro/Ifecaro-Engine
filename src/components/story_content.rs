@@ -113,56 +113,10 @@ pub struct StoryContentUIProps {
 #[component]
 pub fn StoryContentUI(props: StoryContentUIProps) -> Element {
     rsx! {
-        svg {
+        div {
             class: "pointer-events-none absolute w-0 h-0 overflow-hidden",
-            xmlns: "http://www.w3.org/2000/svg",
-            width: "0",
-            height: "0",
-            style: "position: absolute;",
-            defs {
-                filter {
-                    id: "pen-texture",
-                    feTurbulence {
-                        base_frequency: "0.2",
-                        num_octaves: "2",
-                        result: "turbulence1",
-                        r#type: "fractalNoise",
-                    }
-                    feDisplacementMap {
-                        _in: "SourceGraphic",
-                        in2: "turbulence1",
-                        result: "JITTER",
-                        scale: "2",
-                    }
-                    feTurbulence {
-                        base_frequency: "0.01",
-                        num_octaves: "2",
-                        result: "turbulence2",
-                    }
-                    feColorMatrix {
-                        _in: "turbulence2",
-                        result: "colorized-turbo",
-                        r#type: "matrix",
-                        values: "0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 0 0 1 0",
-                    }
-                    feComposite {
-                        _in: "SourceGraphic",
-                        in2: "colorized-turbo",
-                        operator: "in",
-                        result: "GAPS",
-                    }
-                    feComposite {
-                        _in: "JITTER",
-                        in2: "GAPS",
-                        operator: "over",
-                        result: "G",
-                    }
-                    feMerge {
-                        feMergeNode { _in: "G" }
-                        feMergeNode { _in: "JITTER" }
-                    }
-                }
-            }
+            aria_hidden: true,
+            dangerous_inner_html: r#"<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"0\" height=\"0\" style=\"position: absolute;\"><defs><filter id=\"pen-texture\"><feTurbulence baseFrequency=\"0.2\" numOctaves=\"2\" result=\"turbulence1\" type=\"fractalNoise\" /><feDisplacementMap in=\"SourceGraphic\" in2=\"turbulence1\" result=\"JITTER\" scale=\"2\" /><feTurbulence baseFrequency=\"0.01\" numOctaves=\"2\" result=\"turbulence2\" /><feColorMatrix in=\"turbulence2\" result=\"colorized-turbo\" type=\"matrix\" values=\"0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 0 0 1 0\" /><feComposite in=\"SourceGraphic\" in2=\"colorized-turbo\" operator=\"in\" result=\"GAPS\" /><feComposite in=\"JITTER\" in2=\"GAPS\" operator=\"over\" result=\"G\" /><feMerge><feMergeNode in=\"G\" /><feMergeNode in=\"JITTER\" /></feMerge></filter></defs></svg>"#,
         }
         div {
             class: "w-full flex items-center justify-center min-h-[calc(100vh-56px)]",
