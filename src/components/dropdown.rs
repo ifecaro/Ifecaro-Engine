@@ -217,7 +217,7 @@ pub fn Dropdown<T: Clone + PartialEq + 'static>(props: DropdownProps<T>) -> Elem
                                 rsx! {}
                             }}
                             div {
-                                class: "max-h-[clamp(12rem,calc(100vh_-_16rem),24rem)] overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-600 scrollbar-track-transparent dropdown-options paper-surface",
+                                class: "max-h-[clamp(12rem,calc(100vh_-_16rem),24rem)] overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-600 scrollbar-track-transparent dropdown-options",
                                 "data-open": props.is_open.to_string(),
                                 {props.options.iter().map(|option| {
                                     let display_value = display_fn(option);
