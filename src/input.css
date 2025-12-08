@@ -131,14 +131,12 @@ li {
 
 @layer components {
     .journal-page {
-        @apply relative mx-auto max-w-2xl p-10 rounded-lg shadow-lg bg-[#f9f6ee]
-               bg-[radial-gradient(rgba(0,0,0,0.04)_1px,transparent_1px),radial-gradient(rgba(0,0,0,0.03)_1px,transparent_1px)]
-               bg-[length:3px_3px,6px_6px] text-stone-700;
-    }
-
-    .journal-page::before {
-        content: "";
-        @apply absolute top-6 bottom-6 left-8 w-px bg-red-400 opacity-80;
+        /* 只保留紙張底色＋噪點紋理 */
+        @apply bg-[#f9f6ee] text-stone-700;
+        background-image:
+            radial-gradient(rgba(0, 0, 0, 0.04) 1px, transparent 1px),
+            radial-gradient(rgba(0, 0, 0, 0.03) 1px, transparent 1px);
+        background-size: 3px 3px, 6px 6px;
     }
 
     .journal-lines {
@@ -159,8 +157,9 @@ li {
     /* 深色模式 */
     .dark .journal-page {
         @apply bg-[#26231f] text-[#f1e8d8];
-        background-image: radial-gradient(rgba(255,255,255,0.04)_1px,transparent_1px),
-                           radial-gradient(rgba(255,255,255,0.03)_1px,transparent_1px);
+        background-image:
+            radial-gradient(rgba(255, 255, 255, 0.04) 1px, transparent 1px),
+            radial-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px);
         background-size: 3px 3px, 6px 6px;
     }
 
