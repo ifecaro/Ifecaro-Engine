@@ -143,11 +143,11 @@ li {
     }
 
     .story-paragraph {
-        filter: none;
+        filter: var(--story-paragraph-filter, none);
     }
 
-    :where([data-theme="paper"] .story-paragraph) {
-        filter: url(#pen-texture);
+    :where([data-theme="paper"]) {
+        --story-paragraph-filter: url(#pen-texture);
     }
 }
 
