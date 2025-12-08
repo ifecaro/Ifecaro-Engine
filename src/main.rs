@@ -128,6 +128,9 @@ fn App() -> Element {
             }
         }
     }
+
+    #[cfg(not(target_arch = "wasm32"))]
+    rsx! { div {} }
 }
 
 #[derive(Props, Clone, PartialEq)]

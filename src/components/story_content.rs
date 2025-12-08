@@ -113,46 +113,50 @@ pub struct StoryContentUIProps {
 #[component]
 pub fn StoryContentUI(props: StoryContentUIProps) -> Element {
     rsx! {
-        div {
-            class: "w-full flex items-center justify-center min-h-[calc(100vh-56px)]",
+        div { class: "journal-page",
             div {
-                class: "text-3xl md:text-4xl text-gray-900 dark:text-white paper:text-[#1f2937] text-center w-full select-none flex items-center justify-center",
-                style: "letter-spacing: 0.1em;",
-                dangerous_inner_html: escape_html(&props.chapter_title),
-            }
-        }
-        article {
-            class: "prose-sm dark:prose-invert lg:prose-base mx-auto max-w-3xl p-8 text-gray-900 dark:text-white paper:text-[#1f2937] paper:prose paper:prose-base paper:bg-[#fef8e7] bg-white dark:bg-transparent",
-            div {
-                class: "whitespace-pre-wrap space-y-8",
-                {props.paragraph.split('\n')
-                    .filter(|p| !p.trim().is_empty())
-                    .map(|p| rsx! {
-                        p {
-                            class: "indent-10 tracking-wide leading-relaxed text-justify paper:text-[#1f2937]",
-                            dangerous_inner_html: escape_html(p),
-                        }
-                    })
+                class: "w-full flex items-center justify-center min-h-[calc(100vh-56px)]",
+                div {
+                    class: "text-3xl md:text-4xl text-gray-900 dark:text-white paper:text-[#1f2937] text-center w-full select-none flex items-center justify-center",
+                    style: "letter-spacing: 0.1em;",
+                    dangerous_inner_html: escape_html(&props.chapter_title),
                 }
             }
-            ol {
-                class: "mt-10 w-full md:w-fit list-decimal space-y-3",
-                {props.choices.iter().enumerate().map(|(index, choice)| {
-                    let caption = &choice.caption;
-                    let is_enabled = props.enabled_choices.contains(&caption.as_ref().to_string())
-                        && !props.disabled_by_countdown.get(index).copied().unwrap_or(false);
-                    rsx! {
-                        li {
-                            class: {{
-                                let base = "p-4 rounded-lg transition duration-200 relative border border-transparent paper:bg-[#f6edda] text-gray-900 dark:text-gray-100 paper:!text-[#1f2937]";
-                                let enabled = "cursor-pointer hover:text-gray-700 dark:hover:text-gray-300 paper:hover:!text-[#111827] transition-opacity transition-transform";
-                                let disabled = "opacity-50 cursor-not-allowed text-gray-400 dark:text-gray-400 paper:!text-[#9ca3af]";
-                                format!("{base} {}", if is_enabled { enabled } else { disabled })
-                            }},
-                            span { class: "mr-2", dangerous_inner_html: escape_html(caption.as_ref()) }
+            article {
+                class: "prose-sm dark:prose-invert lg:prose-base mx-auto max-w-3xl p-8 text-gray-900 dark:text-white paper:text-[#1f2937] paper:prose paper:prose-base paper:bg-[#fef8e7] bg-white dark:bg-transparent",
+                div { class: "journal-lines",
+                    div {
+                        class: "whitespace-pre-wrap space-y-8",
+                        {props.paragraph.split('\n')
+                            .filter(|p| !p.trim().is_empty())
+                            .map(|p| rsx! {
+                                p {
+                                    class: "indent-10 tracking-wide leading-relaxed text-justify paper:text-[#1f2937]",
+                                    dangerous_inner_html: escape_html(p),
+                                }
+                            })
                         }
                     }
-                })}
+                }
+                div { class: "journal-choices mt-10 w-full md:w-fit space-y-3",
+                    {props.choices.iter().enumerate().map(|(index, choice)| {
+                        let caption = &choice.caption;
+                        let is_enabled = props.enabled_choices.contains(&caption.as_ref().to_string())
+                            && !props.disabled_by_countdown.get(index).copied().unwrap_or(false);
+                        rsx! {
+                            button {
+                                class: {{
+                                    let base = "journal-choice p-4 rounded-lg transition duration-200 relative border border-transparent paper:bg-[#f6edda] text-left w-full text-gray-900 dark:text-gray-100 paper:!text-[#1f2937]";
+                                    let enabled = "cursor-pointer hover:text-gray-700 dark:hover:text-gray-300 paper:hover:!text-[#111827] transition-opacity transition-transform";
+                                    let disabled = "opacity-50 cursor-not-allowed text-gray-400 dark:text-gray-400 paper:!text-[#9ca3af]";
+                                    format!("{base} {}", if is_enabled { enabled } else { disabled })
+                                }},
+                                span { class: "journal-choice-index mr-3", {(index + 1).to_string()} }
+                                span { class: "align-middle", dangerous_inner_html: escape_html(caption.as_ref()) }
+                            }
+                        }
+                    })}
+                }
             }
         }
     }
@@ -688,6 +692,7 @@ pub fn StoryContent(props: StoryContentProps) -> Element {
     }
 
     rsx! {
+        div { class: "journal-page",
         div {
             class: "relative story-content-container",
             tabindex: "0",
@@ -797,8 +802,8 @@ pub fn StoryContent(props: StoryContentProps) -> Element {
                 }
                 if is_settings_chapter || !props.reader_mode {
                     // Always render choice container, only control visibility with opacity
-                    ol {
-                        class: format!("mt-10 w-full md:w-fit list-decimal transition-opacity transition-transform duration-500 {} {}", fadein_class, choices_opacity_class),
+                    div {
+                        class: format!("journal-choices mt-10 w-full md:w-fit space-y-3 transition-opacity transition-transform duration-500{} {}", fadein_class, choices_opacity_class),
                         {choices.iter().enumerate().map(|(index, choice)| {
                             let caption = choice.caption.clone();
                             let goto = choice.action.to.clone();
@@ -843,9 +848,9 @@ pub fn StoryContent(props: StoryContentProps) -> Element {
                             let current_paragraph_id_clone = current_paragraph_id_signal.read().clone();
                             let story_ctx_clone = story_ctx.clone();
                             rsx! {
-                                li {
+                                button {
                                     class: {{
-                                        let base = "p-4 transition duration-200 relative text-gray-900 dark:text-white paper:!text-[#1f2937]";
+                                        let base = "journal-choice p-4 transition duration-200 relative text-left w-full text-gray-900 dark:text-white paper:!text-[#1f2937]";
                                         let enabled = "cursor-pointer hover:text-gray-700 dark:hover:text-gray-300 paper:hover:!text-[#111827] transition-opacity transition-transform";
                                         let disabled = "opacity-50 cursor-not-allowed text-gray-400 dark:text-gray-400 paper:!text-[#9ca3af]";
                                         let selected = "text-gray-900 dark:text-gray-100 paper:!text-[#111827]";
@@ -856,7 +861,8 @@ pub fn StoryContent(props: StoryContentProps) -> Element {
                                         )
                                     }},
                                     onclick: on_click,
-                                    span { class: "mr-2", {caption.as_ref()} }
+                                    span { class: "journal-choice-index mr-3", {(index + 1).to_string()} }
+                                    span { class: "align-middle", {caption.as_ref()} }
                                     { ( *disabled_state_loaded.read() && countdown > 0 && !disabled_by_countdown.try_read()
                                         .map(|guard| guard.get(index).copied().unwrap_or(false))
                                         .unwrap_or(false)
@@ -894,6 +900,7 @@ pub fn StoryContent(props: StoryContentProps) -> Element {
                             }
                         })}
                     }
+                }
                 }
             }
         }
