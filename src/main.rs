@@ -115,16 +115,27 @@ fn App() -> Element {
     provide_context(Signal::new(SettingsContext::default()));
 
     #[cfg(target_arch = "wasm32")]
-
-    rsx! {
-        LanguageProvider {
-            ChapterProvider {
-                ParagraphProvider {
-                    StoryProvider {
-                        Router::<Route> {}
-                        ToastContainer {}
+    {
+        rsx! {
+            LanguageProvider {
+                ChapterProvider {
+                    ParagraphProvider {
+                        StoryProvider {
+                            Router::<Route> {}
+                            ToastContainer {}
+                        }
                     }
                 }
+            }
+        }
+    }
+
+    #[cfg(not(target_arch = "wasm32"))]
+    {
+        rsx! {
+            div {
+                class: "min-h-screen flex items-center justify-center bg-gray-100 text-gray-900 dark:bg-gray-900 dark:text-gray-100",
+                "Ifecaro is intended to run in a WebAssembly target."
             }
         }
     }

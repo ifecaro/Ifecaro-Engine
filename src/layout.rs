@@ -70,7 +70,7 @@ pub fn Layout() -> Element {
         });
     }
 
-    let main_theme_class = "bg-gray-100 text-gray-900 dark:bg-gray-900 dark:text-gray-100 paper:bg-[#fdf6e3] paper:text-[#1f2937] transition-colors duration-200";
+    let main_theme_class = "bg-gray-100 text-gray-900 dark:bg-gray-900 dark:text-gray-100 paper:bg-transparent paper:text-[#1f2937] transition-colors duration-200";
 
     provide_context(keyboard_state);
 
