@@ -775,7 +775,7 @@ pub fn StoryContent(props: StoryContentProps) -> Element {
                 div {
                     class: "w-full flex items-center justify-center min-h-[calc(100vh_-_56px)]",
                 div {
-                    class: "relative text-3xl md:text-4xl text-gray-900 dark:text-white paper:text-[#1f2937] text-center w-full select-none flex items-center justify-center",
+                    class: "relative text-3xl md:text-4xl text-gray-900 dark:text-white paper:text-[#1f2937] text-center w-full select-none flex items-center justify-center pen-texture-text",
                         style: "letter-spacing: 0.1em;",
                         {props.chapter_title.clone()},
                     }

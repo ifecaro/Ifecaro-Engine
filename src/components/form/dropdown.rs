@@ -117,7 +117,7 @@ pub fn Dropdown<T: Clone + PartialEq + 'static>(props: DropdownProps<T>) -> Elem
     
     let search_input_class = format!("w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent {}", props.search_input_class);
     
-    let base_option_class = format!("block w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 transition duration-150 truncate {}", props.option_class);
+    let base_option_class = format!("block w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 transition duration-150 truncate pen-texture-text {}", props.option_class);
 
     rsx! {
         div { 
@@ -159,9 +159,9 @@ pub fn Dropdown<T: Clone + PartialEq + 'static>(props: DropdownProps<T>) -> Elem
                     },
                     disabled: props.disabled,
                     "aria-required": props.required.to_string(),
-                    span { 
-                        class: "block truncate",
-                        "{props.value}" 
+                    span {
+                        class: "block truncate pen-texture-text",
+                        "{props.value}"
                     }
                     if props.show_arrow {
                         svg { 
