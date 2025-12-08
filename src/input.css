@@ -141,6 +141,14 @@ li {
         animation: fadein-choices 1s cubic-bezier(0.4, 0, 0.2, 1) forwards;
         will-change: opacity, transform;
     }
+
+    .story-paragraph {
+        filter: var(--story-paragraph-filter, none);
+    }
+
+    :where([data-theme="paper"]) {
+        --story-paragraph-filter: url(#pen-texture);
+    }
 }
 
 @layer components {

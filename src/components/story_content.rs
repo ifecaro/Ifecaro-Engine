@@ -129,7 +129,7 @@ pub fn StoryContentUI(props: StoryContentUIProps) -> Element {
                     .filter(|p| !p.trim().is_empty())
                     .map(|p| rsx! {
                         p {
-                            class: "indent-10 tracking-wide leading-relaxed text-justify paper:text-[#1f2937]",
+                            class: "story-paragraph indent-10 tracking-wide leading-relaxed text-justify paper:text-[#1f2937]",
                             dangerous_inner_html: escape_html(p),
                         }
                     })
@@ -789,7 +789,7 @@ pub fn StoryContent(props: StoryContentProps) -> Element {
                         .filter(|p| !p.trim().is_empty())
                         .map(|p| rsx! {
                             p {
-                                class: "indent-10 tracking-wide leading-relaxed text-justify",
+                                class: "story-paragraph indent-10 tracking-wide leading-relaxed text-justify",
                                 {p}
                             }
                         })

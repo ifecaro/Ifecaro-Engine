@@ -16,7 +16,27 @@
 
   </head>
   <body>
-	  <div id="app-root"></div>
+    <svg style="position:absolute; width:0; height:0; pointer-events:none; visibility:hidden;" aria-hidden="true">
+      <defs>
+        <filter id="pen-texture">
+          <feTurbulence baseFrequency="0.2" numOctaves="2" result="turbulence1" type="fractalNoise" />
+          <feDisplacementMap in="SourceGraphic" in2="turbulence1" result="JITTER" scale="2" />
+          <feTurbulence baseFrequency="0.01" numOctaves="2" result="turbulence2" />
+          <feColorMatrix in="turbulence2" result="colorized-turbo" type="matrix"
+            values="0 0 1 0 0
+                    0 0 1 0 0
+                    0 0 1 0 0
+                    0 0 0 1 0" />
+          <feComposite in="SourceGraphic" in2="colorized-turbo" operator="in" result="GAPS" />
+          <feComposite in="JITTER" in2="GAPS" operator="over" result="G" />
+          <feMerge>
+            <feMergeNode in="G"></feMergeNode>
+            <feMergeNode in="JITTER"></feMergeNode>
+          </feMerge>
+        </filter>
+      </defs>
+    </svg>
+          <div id="app-root"></div>
 	  <div id="debug-log"
 		   style="padding:8px;margin:8px;border:1px solid #ccc;
               border-radius:6px;font-family:monospace;font-size:12px;
