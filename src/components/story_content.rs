@@ -782,7 +782,7 @@ pub fn StoryContent(props: StoryContentProps) -> Element {
                 }
             }
             article {
-                class: "prose-sm dark:prose-invert lg:prose-base mx-auto max-w-3xl p-8 text-gray-900 dark:text-white paper:text-[#1f2937] paper:prose paper:prose-base paper:bg-[#fef8e7] bg-white dark:bg-transparent",
+                class: "prose-sm dark:prose-invert lg:prose-base mx-auto max-w-3xl p-8 text-gray-900 dark:text-white paper:text-[#1f2937] paper:prose paper:prose-base paper:bg-transparent bg-white dark:bg-transparent",
                 div {
                     class: "whitespace-pre-wrap space-y-8",
                     {props.paragraph.read().split('\n')
