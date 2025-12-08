@@ -96,10 +96,10 @@ pub fn Settings(props: SettingsProps) -> Element {
                     onclick: move |_| is_open.set(false),
                 }
             }
-            div {
-                class: format!("{position_class} w-full sm:min-w-[16rem] sm:max-w-[60vw] shadow-lg bg-white dark:bg-gray-800 paper:bg-[#fef8e7] paper:text-[#1f2937] ring-1 ring-black ring-opacity-5 paper:ring-[#d4c29a] paper:ring-opacity-60 paper-surface z-[1000] transition duration-200 ease-in-out transform {animation_class} will-change-transform will-change-opacity"),
                 div {
-                    class: "py-1",
+                    class: format!("{position_class} w-full sm:min-w-[16rem] sm:max-w-[60vw] shadow-lg bg-white dark:bg-gray-800 paper:bg-[#fef8e7] paper:text-[#1f2937] ring-1 ring-black ring-opacity-5 paper:ring-[#d4c29a] paper:ring-opacity-60 paper-surface z-[1000] transition duration-200 ease-in-out transform {animation_class} will-change-transform will-change-opacity"),
+                div {
+                    class: "py-1 paper-surface",
                         button {
                             class: "w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 paper:text-[#374151] hover:bg-gray-100 dark:hover:bg-gray-700 paper:hover:bg-[#f0e6cf] pen-texture-text",
                             onclick: move |_| {
