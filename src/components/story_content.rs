@@ -114,6 +114,30 @@ pub struct StoryContentUIProps {
 pub fn StoryContentUI(props: StoryContentUIProps) -> Element {
     rsx! {
         div {
+            class: "pointer-events-none absolute w-0 h-0 overflow-hidden",
+            dangerous_inner_html: r#"
+<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"0\" height=\"0\" style=\"position: absolute;\">
+    <defs>
+        <filter id=\"pen-texture\">
+            <feTurbulence baseFrequency=\"0.2\" numOctaves=\"2\" result=\"turbulence1\" type=\"fractalNoise\" />
+            <feDisplacementMap in=\"SourceGraphic\" in2=\"turbulence1\" result=\"JITTER\" scale=\"2\" />
+            <feTurbulence baseFrequency=\"0.01\" numOctaves=\"2\" result=\"turbulence2\" />
+            <feColorMatrix in=\"turbulence2\" result=\"colorized-turbo\" type=\"matrix\" values=\"0 0 1 0 0
+                   0 0 1 0 0
+                   0 0 1 0 0
+                   0 0 0 1 0\" />
+            <feComposite in=\"SourceGraphic\" in2=\"colorized-turbo\" operator=\"in\" result=\"GAPS\" />
+            <feComposite in=\"JITTER\" in2=\"GAPS\" operator=\"over\" result=\"G\" />
+            <feMerge>
+                <feMergeNode in=\"G\"></feMergeNode>
+                <feMergeNode in=\"JITTER\"></feMergeNode>
+            </feMerge>
+        </filter>
+    </defs>
+</svg>
+            "#,
+        }
+        div {
             class: "w-full flex items-center justify-center min-h-[calc(100vh-56px)]",
             div {
                 class: "text-3xl md:text-4xl text-gray-900 dark:text-white paper:text-[#1f2937] text-center w-full select-none flex items-center justify-center",
@@ -130,6 +154,7 @@ pub fn StoryContentUI(props: StoryContentUIProps) -> Element {
                     .map(|p| rsx! {
                         p {
                             class: "indent-10 tracking-wide leading-relaxed text-justify paper:text-[#1f2937]",
+                            style: "filter: url(#pen-texture);",
                             dangerous_inner_html: escape_html(p),
                         }
                     })
