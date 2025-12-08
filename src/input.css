@@ -149,6 +149,10 @@ li {
     :where([data-theme="paper"]) {
         --story-paragraph-filter: url(#pen-texture);
     }
+
+    .pen-texture-text {
+        filter: var(--story-paragraph-filter, none);
+    }
 }
 
 @layer components {

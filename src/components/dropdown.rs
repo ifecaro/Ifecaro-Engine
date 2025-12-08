@@ -138,9 +138,9 @@ pub fn Dropdown<T: Clone + PartialEq + 'static>(props: DropdownProps<T>) -> Elem
         base_panel_class, position_class, dropdown_class, width_class
     );
 
-    let search_input_class = format!("w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 paper:border-[#e4d5b2] rounded-md bg-white dark:bg-gray-700 paper:bg-[#fef8e7] text-gray-900 dark:text-white paper:text-[#1f2937] focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent {}", props.search_input_class);
+    let search_input_class = format!("w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 paper:border-[#e4d5b2] rounded-md bg-white dark:bg-gray-700 paper:bg-[#fef8e7] text-gray-900 dark:text-white paper:text-[#1f2937] focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent pen-texture-text {}", props.search_input_class);
 
-    let base_option_class = format!("block w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-200 paper:text-[#374151] hover:bg-gray-100 dark:hover:bg-gray-700 paper:hover:bg-[#f0e6cf] transition duration-150 truncate {}", props.option_class);
+    let base_option_class = format!("block w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-200 paper:text-[#374151] hover:bg-gray-100 dark:hover:bg-gray-700 paper:hover:bg-[#f0e6cf] transition duration-150 truncate pen-texture-text {}", props.option_class);
 
     rsx! {
         div {
@@ -183,7 +183,7 @@ pub fn Dropdown<T: Clone + PartialEq + 'static>(props: DropdownProps<T>) -> Elem
                     disabled: props.disabled,
                     "aria-required": props.required.to_string(),
                     span {
-                        class: "block truncate",
+                        class: "block truncate pen-texture-text",
                         "{props.value}"
                     }
                     if props.show_arrow {

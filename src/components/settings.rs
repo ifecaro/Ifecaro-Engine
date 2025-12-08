@@ -101,7 +101,7 @@ pub fn Settings(props: SettingsProps) -> Element {
                 div {
                     class: "py-1",
                         button {
-                            class: "w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 paper:text-[#374151] hover:bg-gray-100 dark:hover:bg-gray-700 paper:hover:bg-[#f0e6cf]",
+                            class: "w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 paper:text-[#374151] hover:bg-gray-100 dark:hover:bg-gray-700 paper:hover:bg-[#f0e6cf] pen-texture-text",
                             onclick: move |_| {
                                 let _ = navigator.push(Route::Login { lang: current_lang.clone() });
                                 is_open.set(false);
@@ -109,7 +109,7 @@ pub fn Settings(props: SettingsProps) -> Element {
                             "{t!(\"login\")}" 
                         }
                         button {
-                            class: "w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 paper:text-[#374151] hover:bg-gray-100 dark:hover:bg-gray-700 paper:hover:bg-[#f0e6cf]",
+                            class: "w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 paper:text-[#374151] hover:bg-gray-100 dark:hover:bg-gray-700 paper:hover:bg-[#f0e6cf] pen-texture-text",
                             onclick: move |_| {
                                 let mut settings_context = settings_context.clone();
                                 let new_reader_mode = !reader_mode;
@@ -129,7 +129,7 @@ pub fn Settings(props: SettingsProps) -> Element {
                     div { class: "border-t border-gray-200 dark:border-gray-700 my-1" }
                     div {
                         class: "px-4 py-2",
-                        div { class: "text-sm font-medium text-gray-800 dark:text-gray-100 mb-2", "{t!(\"theme_mode\")}" }
+                        div { class: "text-sm font-medium text-gray-800 dark:text-gray-100 mb-2 pen-texture-text", "{t!(\"theme_mode\")}" }
                         div {
                             class: theme_layout_class,
                             {["auto", "light", "dark", "paper"].iter().map(|mode| {
@@ -148,7 +148,7 @@ pub fn Settings(props: SettingsProps) -> Element {
                                     button {
                                         key: "{mode}",
                                         class: format!(
-                                            "w-full px-3 py-2 text-sm rounded-md border transition-colors duration-150 {}",
+                                            "w-full px-3 py-2 text-sm rounded-md border transition-colors duration-150 pen-texture-text {}",
                                             if is_active {
                                                 "border-blue-500 text-blue-700 dark:text-blue-300 paper:text-[#1f2937] bg-blue-50 dark:bg-blue-900/30 paper:bg-[#eae0c9] paper:border-[#c6b17e]"
                                             } else {
@@ -177,7 +177,7 @@ pub fn Settings(props: SettingsProps) -> Element {
                             class: "border-t border-gray-200 dark:border-gray-700 my-1",
                         }
                         button {
-                            class: "w-full text-left px-4 py-2 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 font-medium",
+                            class: "w-full text-left px-4 py-2 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 font-medium pen-texture-text",
                             onclick: move |_| {
                                 spawn_local(async move {
                                     let _ = clear_choices_and_random_choices().await;
