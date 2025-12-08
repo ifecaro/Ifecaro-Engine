@@ -582,7 +582,6 @@ pub fn StoryContent(props: StoryContentProps) -> Element {
                             let scroll_height = document_element.scroll_height();
                             let client_height = document_element.client_height();
                             // When the content cannot scroll (content height within tolerance of the viewport height), force showing the choices
-                            const NON_SCROLLABLE_TOLERANCE: i32 = 100;
                             if (scroll_height - client_height) <= NON_SCROLLABLE_TOLERANCE {
                                 should_show_choices = true;
                             }
@@ -900,6 +899,11 @@ pub fn StoryContent(props: StoryContentProps) -> Element {
     }
 }
 
+// Chromium on desktop can report noticeably larger scroll height deltas when the page
+// is effectively non-scrollable (e.g., extra spacing from injected styles). Use a
+// generous tolerance so countdown choices still appear after the overlay is dismissed.
+const NON_SCROLLABLE_TOLERANCE: i32 = 400;
+
 /// Determine if the choice list should be shown after the overlay has been dismissed.
 ///
 /// This is extracted from the in-component impact logic so that it can be unit-tested.
@@ -924,7 +928,6 @@ pub fn should_show_choices_on_overlay_hide(
         return true;
     }
 
-    const NON_SCROLLABLE_TOLERANCE: i32 = 100;
     if has_countdown && (scroll_height - client_height) <= NON_SCROLLABLE_TOLERANCE {
         return true;
     }
