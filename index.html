@@ -18,8 +18,8 @@
   <body>
     <svg style="position:absolute; width:0; height:0; pointer-events:none; visibility:hidden;" aria-hidden="true">
       <defs>
-        <filter id="pen-texture">
-          <feTurbulence baseFrequency="0.2" numOctaves="2" result="turbulence1" type="fractalNoise" />
+        <filter id="pen-texture" filterRes="120 120">
+          <feTurbulence baseFrequency="0.2" numOctaves="1" result="turbulence1" type="fractalNoise" />
           <feDisplacementMap in="SourceGraphic" in2="turbulence1" result="JITTER" scale="0.4" />
           <feTurbulence baseFrequency="0.01" numOctaves="2" result="turbulence2" />
           <feColorMatrix in="turbulence2" result="colorized-turbo" type="matrix"

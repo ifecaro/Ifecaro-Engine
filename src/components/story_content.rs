@@ -124,12 +124,12 @@ pub fn StoryContentUI(props: StoryContentUIProps) -> Element {
         article {
             class: "prose-sm dark:prose-invert lg:prose-base mx-auto max-w-3xl p-8 text-gray-900 dark:text-white paper:text-[#1f2937] paper:prose paper:prose-base paper:bg-transparent bg-white dark:bg-transparent",
             div {
-                class: "whitespace-pre-wrap space-y-8",
+                class: "whitespace-pre-wrap space-y-8 story-text-filter",
                 {props.paragraph.split('\n')
                     .filter(|p| !p.trim().is_empty())
                     .map(|p| rsx! {
                         p {
-                            class: "story-paragraph indent-10 tracking-wide leading-relaxed text-justify paper:text-[#1f2937]",
+                            class: "indent-10 tracking-wide leading-relaxed text-justify paper:text-[#1f2937]",
                             dangerous_inner_html: escape_html(p),
                         }
                     })
@@ -784,12 +784,12 @@ pub fn StoryContent(props: StoryContentProps) -> Element {
             article {
                 class: "prose-sm dark:prose-invert lg:prose-base mx-auto max-w-3xl p-8 text-gray-900 dark:text-white paper:text-[#1f2937] paper:prose paper:prose-base paper:bg-transparent bg-white dark:bg-transparent",
                 div {
-                    class: "whitespace-pre-wrap space-y-8",
+                    class: "whitespace-pre-wrap space-y-8 story-text-filter",
                     {props.paragraph.read().split('\n')
                         .filter(|p| !p.trim().is_empty())
                         .map(|p| rsx! {
                             p {
-                                class: "story-paragraph indent-10 tracking-wide leading-relaxed text-justify",
+                                class: "indent-10 tracking-wide leading-relaxed text-justify",
                                 {p}
                             }
                         })
