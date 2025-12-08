@@ -132,7 +132,7 @@ pub fn Dropdown<T: Clone + PartialEq + 'static>(props: DropdownProps<T>) -> Elem
         .clone()
         .unwrap_or_else(|| "w-full sm:min-w-[16rem] sm:max-w-[60vw]".to_string());
     let position_class = props.dropdown_position.clone().unwrap_or_else(|| "fixed bottom-14 left-0 right-0 rounded-t-lg sm:absolute sm:bottom-auto sm:right-0 sm:top-full sm:left-auto sm:rounded-md".to_string());
-    let base_panel_class = "z-[1000] transition duration-200 ease-in-out transform will-change-transform will-change-opacity shadow-lg bg-white dark:bg-gray-800 paper:bg-[#fef8e7] paper:text-[#1f2937] ring-1 ring-black ring-opacity-5 paper:ring-[#d4c29a] paper:ring-opacity-60";
+    let base_panel_class = "z-[1000] transition duration-200 ease-in-out transform will-change-transform will-change-opacity shadow-lg bg-white dark:bg-gray-800 paper:bg-[#fef8e7] paper:text-[#1f2937] ring-1 ring-black ring-opacity-5 paper:ring-[#d4c29a] paper:ring-opacity-60 paper-surface";
     let dropdown_container_class = format!(
         "{} {} {} {}",
         base_panel_class, position_class, dropdown_class, width_class
