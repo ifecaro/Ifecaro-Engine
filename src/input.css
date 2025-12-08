@@ -151,7 +151,7 @@ li {
     }
 
     .story-text-filter {
-        filter: url(#pen-texture);
+        filter: var(--story-paragraph-filter, none);
     }
 }
 
