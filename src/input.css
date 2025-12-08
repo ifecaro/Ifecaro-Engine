@@ -142,16 +142,16 @@ li {
         will-change: opacity, transform;
     }
 
-    .story-paragraph {
-        filter: var(--story-paragraph-filter, none);
-    }
-
     :where([data-theme="paper"]) {
         --story-paragraph-filter: url(#pen-texture);
     }
 
     .pen-texture-text {
         filter: var(--story-paragraph-filter, none);
+    }
+
+    .story-text-filter {
+        filter: url(#pen-texture);
     }
 }
 
