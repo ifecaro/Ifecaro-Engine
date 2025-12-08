@@ -899,7 +899,10 @@ pub fn StoryContent(props: StoryContentProps) -> Element {
     }
 }
 
-const NON_SCROLLABLE_TOLERANCE: i32 = 200;
+// Chromium on desktop can report noticeably larger scroll height deltas when the page
+// is effectively non-scrollable (e.g., extra spacing from injected styles). Use a
+// generous tolerance so countdown choices still appear after the overlay is dismissed.
+const NON_SCROLLABLE_TOLERANCE: i32 = 400;
 
 /// Determine if the choice list should be shown after the overlay has been dismissed.
 ///
