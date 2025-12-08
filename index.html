@@ -18,20 +18,18 @@
   <body>
     <svg style="position:absolute; width:0; height:0; pointer-events:none; visibility:hidden;" aria-hidden="true">
       <defs>
-        <filter id="pen-texture" filterRes="120 120">
-          <feTurbulence baseFrequency="0.2" numOctaves="1" result="turbulence1" type="fractalNoise" />
-          <feDisplacementMap in="SourceGraphic" in2="turbulence1" result="JITTER" scale="0.4" />
-          <feTurbulence baseFrequency="0.01" numOctaves="2" result="turbulence2" />
-          <feColorMatrix in="turbulence2" result="colorized-turbo" type="matrix"
-            values="0 0 1 0 0
-                    0 0 1 0 0
-                    0 0 1 0 0
-                    0 0 0 1 0" />
-          <feComposite in="SourceGraphic" in2="colorized-turbo" operator="in" result="GAPS" />
-          <feComposite in="JITTER" in2="GAPS" operator="over" result="G" />
-          <feMerge>
-            <feMergeNode in="G"></feMergeNode>
-          </feMerge>
+        <filter id="pen-texture" x="0%" y="0%" width="100%" height="100%">
+          <feTurbulence
+            type="fractalNoise"
+            baseFrequency="0.125 0.175"
+            result="noise"
+            numOctaves="3"
+            seed="20000"
+          />
+
+          <feDiffuseLighting in="noise" surfaceScale="0.65">
+            <feDistantLight azimuth="90" elevation="65" />
+          </feDiffuseLighting>
         </filter>
       </defs>
     </svg>
