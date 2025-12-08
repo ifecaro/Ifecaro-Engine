@@ -20,7 +20,7 @@
       <defs>
         <filter id="pen-texture">
           <feTurbulence baseFrequency="0.2" numOctaves="2" result="turbulence1" type="fractalNoise" />
-          <feDisplacementMap in="SourceGraphic" in2="turbulence1" result="JITTER" scale="2" />
+          <feDisplacementMap in="SourceGraphic" in2="turbulence1" result="JITTER" scale="0.4" />
           <feTurbulence baseFrequency="0.01" numOctaves="2" result="turbulence2" />
           <feColorMatrix in="turbulence2" result="colorized-turbo" type="matrix"
             values="0 0 1 0 0
@@ -31,7 +31,6 @@
           <feComposite in="JITTER" in2="GAPS" operator="over" result="G" />
           <feMerge>
             <feMergeNode in="G"></feMergeNode>
-            <feMergeNode in="JITTER"></feMergeNode>
           </feMerge>
         </filter>
       </defs>
