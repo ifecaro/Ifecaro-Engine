@@ -2,6 +2,8 @@
 use console_error_panic_hook;
 #[cfg(target_arch = "wasm32")]
 use tracing_wasm;
+#[cfg(target_arch = "wasm32")]
+use {log::Level, log::LevelFilter, log::Log, log::Metadata, log::Record, web_sys::console};
 
 mod components;
 mod constants;
@@ -57,13 +59,50 @@ macro_rules! log_dom {
     }};
 }
 
+#[cfg(target_arch = "wasm32")]
+struct DomLogger;
+
+#[cfg(target_arch = "wasm32")]
+static DOM_LOGGER: DomLogger = DomLogger;
+
+#[cfg(target_arch = "wasm32")]
+impl Log for DomLogger {
+    fn enabled(&self, _metadata: &Metadata) -> bool {
+        true
+    }
+
+    fn log(&self, record: &Record) {
+        if !self.enabled(record.metadata()) {
+            return;
+        }
+
+        let message = format!("[{}] {}", record.level(), record.args());
+
+        log_dom!("{message}");
+
+        match record.level() {
+            Level::Error => console::error_1(&message.into()),
+            Level::Warn => console::warn_1(&message.into()),
+            Level::Info => console::info_1(&message.into()),
+            _ => console::log_1(&message.into()),
+        }
+    }
+
+    fn flush(&self) {}
+}
+
+#[cfg(target_arch = "wasm32")]
+fn init_dom_logger() {
+    let _ = log::set_logger(&DOM_LOGGER).map(|()| log::set_max_level(LevelFilter::Trace));
+}
+
 fn main() {
     #[cfg(target_arch = "wasm32")]
     {
         log_dom!("✅ WASM main started");
         console_error_panic_hook::set_once();
         tracing_wasm::set_as_global_default();
-        wasm_logger::init(wasm_logger::Config::default());
+        init_dom_logger();
         log_dom!("✅ WASM main started 2");
     }
 
