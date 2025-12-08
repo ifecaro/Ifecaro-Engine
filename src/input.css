@@ -174,10 +174,12 @@ li {
     }
 
     .pen-texture-text {
+        -webkit-filter: var(--story-paragraph-filter, none);
         filter: var(--story-paragraph-filter, none);
     }
 
     .story-text-filter {
+        -webkit-filter: var(--story-paragraph-filter, none);
         filter: var(--story-paragraph-filter, none);
     }
 }
