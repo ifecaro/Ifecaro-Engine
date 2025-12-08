@@ -2825,7 +2825,7 @@ li {
   [data-theme="paper"] {
     background-color: #fdf6e3;
     color: #1f2937;
-    --paper-texture: url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA0MDAgNDAwIj4KICA8ZmlsdGVyIGlkPSJwYXBlciI+CiAgICA8ZmVUdXJidWxlbmNlIHR5cGU9ImZyYWN0YWxOb2lzZSIgYmFzZUZyZXF1ZW5jeT0iMC43NSIgbnVtT2N0YXZlcz0iNCIgc2VlZD0iMiIgc3RpdGNoVGlsZXM9InN0aXRjaCIgcmVzdWx0PSJiYXNlIi8+CiAgICA8ZmVEaWZmdXNlTGlnaHRpbmcgaW49ImJhc2UiIGxpZ2h0aW5nLWNvbG9yPSIjZmVmZGY4IiBzdXJmYWNlU2NhbGU9IjEuMiIgcmVzdWx0PSJsaWdodCI+CiAgICAgIDxmZURpc3RhbnRMaWdodCBhemltdXRoPSIxMzUiIGVsZXZhdGlvbj0iNTUiLz4KICAgIDwvZmVEaWZmdXNlTGlnaHRpbmc+CiAgICA8ZmVDb21wb3NpdGUgaW49ImxpZ2h0IiBpbjI9ImJhc2UiIG9wZXJhdG9yPSJhcml0aG1ldGljIiBrMT0iMC42IiBrMj0iMC44IiBrMz0iMC4yIiByZXN1bHQ9InBhcGVyIi8+CiAgICA8ZmVUdXJidWxlbmNlIHR5cGU9ImZyYWN0YWxOb2lzZSIgYmFzZUZyZXF1ZW5jeT0iMC4wNSIgbnVtT2N0YXZlcz0iMiIgc2VlZD0iOCIgc3RpdGNoVGlsZXM9InN0aXRjaCIgcmVzdWx0PSJmaWJlcnMiLz4KICAgIDxmZUNvbG9yTWF0cml4IGluPSJmaWJlcnMiIHR5cGU9Im1hdHJpeCIgdmFsdWVzPSIxIDAgMCAwIDAgIDAgMSAwIDAgMCAgMCAwIDEgMCAwICAwIDAgMCAwLjYgMCIgcmVzdWx0PSJmaWJlcnNUb25lIi8+CiAgICA8ZmVCbGVuZCBpbj0icGFwZXIiIGluMj0iZmliZXJzVG9uZSIgbW9kZT0ic29mdC1saWdodCIgcmVzdWx0PSJ0ZXh0dXJlIi8+CiAgPC9maWx0ZXI+CiAgPHJlY3Qgd2lkdGg9IjEwMCUiIGhlaWdodD0iMTAwJSIgZmlsdGVyPSJ1cmwoI3BhcGVyKSIgb3BhY2l0eT0iMC45Ii8+Cjwvc3ZnPgo=");
+    --paper-texture: url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA0MDAgNDAwIj4KICA8ZmlsdGVyIGlkPSJyb3VnaHBhcGVyIiB4PSIwJSIgeT0iMCUiIHdpZHRoPSIxMDAlIiBoZWlnaHQ9IjEwMCUiPgogICAgPGZlVHVyYnVsZW5jZSB0eXBlPSJmcmFjdGFsTm9pc2UiIGJhc2VGcmVxdWVuY3k9IjAuMTI1IDAuMTc1IiByZXN1bHQ9Im5vaXNlIiBudW1PY3RhdmVzPSIzIiBzZWVkPSIyMDAwMCIgLz4KICAgIDxmZURpZmZ1c2VMaWdodGluZyBpbj0ibm9pc2UiIHN1cmZhY2VTY2FsZT0iMC42NSI+CiAgICAgIDxmZURpc3RhbnRMaWdodCBhemltdXRoPSI5MCIgZWxldmF0aW9uPSI2NSIgLz4KICAgIDwvZmVEaWZmdXNlTGlnaHRpbmc+CiAgPC9maWx0ZXI+CiAgPHJlY3Qgd2lkdGg9IjEwMCUiIGhlaWdodD0iMTAwJSIgZmlsdGVyPSJ1cmwoI3JvdWdocGFwZXIpIiAvPgo8L3N2Zz4=");
   }
   [data-theme="paper"] body {
     background-color: #fdf6e3;
@@ -2895,6 +2895,15 @@ li {
     to {
       opacity: 1;
     }
+  }
+  :where([data-theme="paper"]) {
+    --story-paragraph-filter: url(#roughpaper);
+  }
+  .pen-texture-text {
+    filter: var(--story-paragraph-filter, none);
+  }
+  .story-text-filter {
+    filter: var(--story-paragraph-filter, none);
   }
   .animate-fadein-choices {
     animation: fadein-choices 1s cubic-bezier(0.4, 0, 0.2, 1) forwards;
