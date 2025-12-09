@@ -175,7 +175,8 @@ li {
 
     :where([data-theme="paper"] .pen-texture-text),
     :where([data-theme="paper"] .pen-texture-text *),
-    :where([data-theme="paper"] .pen-texture-text::marker) {
+    :where([data-theme="paper"] .pen-texture-text::marker),
+    :where([data-theme="paper"] .pen-texture-text *::marker) {
         -webkit-filter: var(--story-paragraph-filter, none) !important;
         filter: var(--story-paragraph-filter, none) !important;
     }
