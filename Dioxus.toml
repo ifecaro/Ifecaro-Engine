@@ -16,7 +16,7 @@ asset_dir = "public"
 [web.app]
 
 # HTML title tag content
-title = "Ifecaro"
+title = ""
 
 # Favicon settings
 favicon = "/favicon.ico"
@@ -35,7 +35,6 @@ head = """
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black">
     <meta name="apple-mobile-web-app-title" content="Ifecaro">
-    <link rel="stylesheet" href="/assets/tailwind.css">
 """
 
 [web.watcher]
