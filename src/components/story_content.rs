@@ -797,7 +797,7 @@ pub fn StoryContent(props: StoryContentProps) -> Element {
                 if is_settings_chapter || !props.reader_mode {
                     // Always render choice container, only control visibility with opacity
                     ol {
-                        class: format!("mt-10 w-full md:w-fit list-decimal transition-opacity transition-transform duration-500 {} {}", fadein_class, choices_opacity_class),
+                        class: format!("mt-10 w-full md:w-fit list-decimal transition-opacity transition-transform duration-500 story-text-filter {} {}", fadein_class, choices_opacity_class),
                         {choices.iter().enumerate().map(|(index, choice)| {
                             let caption = choice.caption.clone();
                             let goto = choice.action.to.clone();
