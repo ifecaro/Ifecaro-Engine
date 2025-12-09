@@ -136,7 +136,7 @@ pub fn StoryContentUI(props: StoryContentUIProps) -> Element {
                 }
             }
             ol {
-                class: "mt-10 w-full md:w-fit list-decimal space-y-3",
+                class: "mt-10 w-full md:w-fit list-decimal space-y-3 pen-texture-text",
                 {props.choices.iter().enumerate().map(|(index, choice)| {
                     let caption = &choice.caption;
                     let is_enabled = props.enabled_choices.contains(&caption.as_ref().to_string())
