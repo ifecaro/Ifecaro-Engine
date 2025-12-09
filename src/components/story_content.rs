@@ -144,7 +144,7 @@ pub fn StoryContentUI(props: StoryContentUIProps) -> Element {
                     rsx! {
                         li {
                             class: {{
-                                let base = "p-4 rounded-lg transition duration-200 relative border border-transparent paper:bg-transparent text-gray-900 dark:text-gray-100 paper:!text-[#1f2937]";
+                                let base = "p-4 rounded-lg transition duration-200 relative border border-transparent paper:bg-transparent text-gray-900 dark:text-gray-100 paper:!text-[#1f2937] pen-texture-text";
                                 let enabled = "cursor-pointer hover:text-gray-700 dark:hover:text-gray-300 paper:hover:!text-[#111827] transition-opacity transition-transform";
                                 let disabled = "opacity-50 cursor-not-allowed text-gray-400 dark:text-gray-400 paper:!text-[#9ca3af]";
                                 format!("{base} {}", if is_enabled { enabled } else { disabled })
