@@ -4,7 +4,6 @@ use crate::components::dropdown::Dropdown;
 use crate::components::form::{ChoiceOptions, TextareaField};
 use crate::components::language_selector::{Language, AVAILABLE_LANGUAGES};
 use crate::components::paragraph_list::Paragraph as ParagraphListParagraph;
-use crate::components::toast::ToastType;
 use crate::constants::config::{BASE_API_URL, CHAPTERS, CHARACTERS, PARAGRAPHS, RELATIONSHIPS};
 use crate::contexts::chapter_context::{Chapter, ChapterState, ChapterTitle};
 use crate::contexts::language_context::LanguageState;
@@ -12,15 +11,16 @@ use crate::contexts::paragraph_context::{
     Paragraph as ContextParagraph, ParagraphChoice as ContextParagraphChoice, ParagraphState,
     Text as ContextText,
 };
-use crate::contexts::toast_context::use_toast;
 use crate::hooks::choices_reducer::{use_choices, Action as CAct, Choice as ChoiceStruct};
 use crate::models::impacts::Impact;
 use dioxus::events::FormEvent;
 use dioxus::hooks::use_context;
 use dioxus::prelude::*;
 use dioxus_i18n::t;
+use dioxus_toastr::{use_toast, ToastHandle, ToastKind, ToastRequest};
 use gloo_timers::callback::Timeout;
 use serde::{Deserialize, Serialize};
+use std::time::Duration;
 use wasm_bindgen_futures::spawn_local;
 
 #[derive(Props, Clone, PartialEq)]
@@ -132,6 +132,17 @@ struct ChoiceOption {
 
 fn display_language(lang: &&Language) -> String {
     lang.name.to_string()
+}
+
+fn push_toast(
+    toast: &ToastHandle,
+    kind: ToastKind,
+    message: impl Into<String>,
+    timeout_ms: u64,
+) {
+    toast.push(
+        ToastRequest::new(kind, message).with_timeout(Duration::from_millis(timeout_ms)),
+    );
 }
 
 #[allow(non_snake_case)]
@@ -1147,61 +1158,67 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
                                                         selected_chapter.set(String::new());
                                                     }
 
-                                                    toast.write().show(
+                                                    push_toast(
+                                                        &toast,
+                                                        ToastKind::Success,
                                                         submit_success_text.clone(),
-                                                        ToastType::Success,
                                                         3000,
                                                     );
                                                     is_submitting.set(false);
                                                 }
                                                 Err(e) => {
-                                                    toast.write().show(
+                                                    push_toast(
+                                                        &toast,
+                                                        ToastKind::Error,
                                                         format!(
                                                             "{}: {}",
                                                             submit_failed_text.clone(),
                                                             e
                                                         ),
-                                                        ToastType::Error,
                                                         3000,
                                                     );
                                                     is_submitting.set(false);
                                                 }
                                             }
                                         } else {
-                                            toast.write().show(
+                                            push_toast(
+                                                &toast,
+                                                ToastKind::Error,
                                                 format!(
                                                     "{}: {}",
                                                     submit_failed_text.clone(),
                                                     response.status()
                                                 ),
-                                                ToastType::Error,
                                                 3000,
                                             );
                                             is_submitting.set(false);
                                         }
                                     }
                                     Err(e) => {
-                                        toast.write().show(
+                                        push_toast(
+                                            &toast,
+                                            ToastKind::Error,
                                             format!("{}: {}", submit_failed_text.clone(), e),
-                                            ToastType::Error,
                                             3000,
                                         );
                                         is_submitting.set(false);
                                     }
                                 }
                             } else {
-                                toast.write().show(
+                                push_toast(
+                                    &toast,
+                                    ToastKind::Error,
                                     format!("{}: {}", submit_failed_text.clone(), status),
-                                    ToastType::Error,
                                     3000,
                                 );
                                 is_submitting.set(false);
                             }
                         }
                         Err(e) => {
-                            toast.write().show(
+                            push_toast(
+                                &toast,
+                                ToastKind::Error,
                                 format!("{}: {}", submit_failed_text.clone(), e),
-                                ToastType::Error,
                                 3000,
                             );
                             is_submitting.set(false);

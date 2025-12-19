@@ -120,38 +120,90 @@ li {
 }
 
 @layer utilities {
-    @keyframes toast-in {
+    .toast-top-right {
+        position: fixed;
+        top: 1rem;
+        right: 1rem;
+        z-index: 9999;
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+        align-items: flex-end;
+    }
+
+    .toast-rtl {
+        direction: rtl;
+        text-align: right;
+    }
+
+    .toast {
+        position: relative;
+        min-width: 16rem;
+        max-width: 24rem;
+        padding: 0.75rem 1rem;
+        border-radius: 0.5rem;
+        color: #ffffff;
+        background-color: #111827;
+        box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.2), 0 4px 6px -4px rgb(0 0 0 / 0.2);
+        overflow: hidden;
+    }
+
+    .toast-success {
+        background-color: #16a34a;
+    }
+
+    .toast-error {
+        background-color: #dc2626;
+    }
+
+    .toast-warning {
+        background-color: #d97706;
+    }
+
+    .toast-info {
+        background-color: #2563eb;
+    }
+
+    .toast-title {
+        font-weight: 600;
+        margin-bottom: 0.25rem;
+    }
+
+    .toast-message {
+        font-size: 0.875rem;
+        line-height: 1.25rem;
+    }
+
+    .toast-close-button {
+        position: absolute;
+        top: 0.25rem;
+        right: 0.5rem;
+        background: transparent;
+        color: inherit;
+        border: none;
+        font-size: 1.25rem;
+        line-height: 1;
+        cursor: pointer;
+    }
+
+    .toast-progress {
+        position: absolute;
+        left: 0;
+        bottom: 0;
+        height: 0.25rem;
+        width: 100%;
+        background: rgb(255 255 255 / 0.6);
+        transform-origin: left;
+    }
+
+    @keyframes toast-progress {
         from {
-            opacity: 0;
-            transform: translateY(32px);
+            transform: scaleX(1);
         }
 
         to {
-            opacity: 1;
-            transform: translateY(0);
+            transform: scaleX(0);
         }
-    }
-
-    @keyframes toast-out {
-        from {
-            opacity: 1;
-            transform: translateY(0);
-        }
-
-        to {
-            opacity: 0;
-            transform: translateY(-32px);
-        }
-    }
-
-    .toast-animate-in {
-        animation: toast-in 0.4s cubic-bezier(0.4, 0, 0.2, 1) both;
-        will-change: opacity, transform;
-    }
-
-    .toast-animate-out {
-        animation: toast-out 0.4s cubic-bezier(0.4, 0, 0.2, 1) both;
-        will-change: opacity, transform;
     }
 
     @keyframes fadein-choices {

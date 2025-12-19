@@ -18,17 +18,17 @@ mod services;
 mod utils;
 
 use crate::{
-    components::toast::ToastContainer,
     contexts::{
         chapter_context::ChapterProvider, language_context::LanguageProvider,
         paragraph_context::ParagraphProvider, settings_context::SettingsContext,
-        story_context::StoryContext, toast_context::ToastManager,
+        story_context::StoryContext,
     },
     enums::route::Route,
 };
 use dioxus::prelude::*;
 use dioxus::web;
 use dioxus::web::launch::launch_cfg;
+use dioxus_toastr::ToastProvider;
 
 #[cfg(target_arch = "wasm32")]
 fn append_log_line(msg: &str) {
@@ -111,18 +111,18 @@ fn main() {
 
 #[component]
 fn App() -> Element {
-    use_context_provider(|| Signal::new(ToastManager::new()));
     provide_context(Signal::new(SettingsContext::default()));
 
     #[cfg(target_arch = "wasm32")]
     {
         rsx! {
-            LanguageProvider {
-                ChapterProvider {
-                    ParagraphProvider {
-                        StoryProvider {
-                            Router::<Route> {}
-                            ToastContainer {}
+            ToastProvider {
+                LanguageProvider {
+                    ChapterProvider {
+                        ParagraphProvider {
+                            StoryProvider {
+                                Router::<Route> {}
+                            }
                         }
                     }
                 }
