@@ -1,7 +1,5 @@
-use crate::components::toast::ToastType;
 use crate::contexts::language_context::LanguageState;
 use crate::contexts::settings_context::use_settings_context;
-use crate::contexts::toast_context::use_toast;
 use crate::enums::route::Route;
 use crate::enums::style::NavbarStyle;
 #[cfg(target_arch = "wasm32")]
@@ -12,6 +10,7 @@ use crate::services::indexeddb::set_setting_to_indexeddb;
 use crate::utils::theme::{apply_theme_class, ThemeMode};
 use dioxus::prelude::*;
 use dioxus_i18n::t;
+use dioxus_toastr::use_toast;
 use wasm_bindgen_futures::spawn_local;
 #[cfg(target_arch = "wasm32")]
 use web_sys::window;
@@ -25,7 +24,7 @@ pub struct SettingsProps {
 pub fn Settings(props: SettingsProps) -> Element {
     let mut is_open = use_signal(|| false);
     let navigator = use_navigator();
-    let mut toast = use_toast();
+    let toast = use_toast();
     let language_state = use_context::<Signal<LanguageState>>();
     let current_lang = language_state.read().current_language.clone();
     let settings_context = use_settings_context();
@@ -186,7 +185,7 @@ pub fn Settings(props: SettingsProps) -> Element {
                                         let _ = clear_all_disabled_choices_from_indexeddb().await;
                                     }
                                 });
-                                toast.write().show("Choices cleared successfully.".to_string(), ToastType::Success, 5000);
+                                toast.success("Choices cleared successfully.");
                                 is_open.set(false);
                             },
                             "{t!(\"clear_all_story_choices\")}"
