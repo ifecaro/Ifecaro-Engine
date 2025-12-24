@@ -6,3 +6,4 @@ pocketbase/data
 pocketbase/.env
 .env
 node_modules
+vendor
