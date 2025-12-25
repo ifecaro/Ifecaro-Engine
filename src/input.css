@@ -1,6 +1,5 @@
 @import "tailwindcss";
 @plugin "@tailwindcss/typography";
-@import "../vendor/dioxus-toastr/src/toastr.css";
 
 @custom-variant dark {
     &:where(.dark *),
