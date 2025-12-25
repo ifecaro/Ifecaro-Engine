@@ -113,10 +113,11 @@ fn main() {
 fn App() -> Element {
     provide_context(Signal::new(SettingsContext::default()));
 
-    #[cfg(target_arch = "wasm32")]
-    {
-        rsx! {
-            ToastProvider {
+    let is_wasm = cfg!(target_arch = "wasm32");
+
+    rsx! {
+        ToastProvider {
+            if is_wasm {
                 LanguageProvider {
                     ChapterProvider {
                         ParagraphProvider {
@@ -126,16 +127,11 @@ fn App() -> Element {
                         }
                     }
                 }
-            }
-        }
-    }
-
-    #[cfg(not(target_arch = "wasm32"))]
-    {
-        rsx! {
-            div {
-                class: "min-h-screen flex items-center justify-center bg-gray-100 text-gray-900 dark:bg-gray-900 dark:text-gray-100",
-                "Ifecaro is intended to run in a WebAssembly target."
+            } else {
+                div {
+                    class: "min-h-screen flex items-center justify-center bg-gray-100 text-gray-900 dark:bg-gray-900 dark:text-gray-100",
+                    "Ifecaro is intended to run in a WebAssembly target."
+                }
             }
         }
     }
