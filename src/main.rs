@@ -28,7 +28,7 @@ use crate::{
 use dioxus::prelude::*;
 use dioxus::web;
 use dioxus::web::launch::launch_cfg;
-use dioxus_toastr::ToastProvider;
+use dioxus_toastr::{ToastProvider};
 
 #[cfg(target_arch = "wasm32")]
 fn append_log_line(msg: &str) {
