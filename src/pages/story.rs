@@ -4,9 +4,7 @@ use crate::constants::config::{BASE_API_URL, CHAPTERS, PARAGRAPHS};
 use crate::contexts::language_context::LanguageState;
 use crate::contexts::settings_context::use_settings_context;
 use crate::contexts::story_context::use_story_context;
-use crate::contexts::story_merged_context::{
-    provide_story_merged_context, use_story_merged_context,
-};
+use crate::contexts::story_merged_context::StoryMergedContext;
 use crate::models::impacts::{CharacterStateSnapshot, Impact};
 use crate::services::indexeddb::get_choice_from_indexeddb;
 use crate::services::indexeddb::get_settings_from_indexeddb;
@@ -282,8 +280,7 @@ pub fn paragraph_has_translation(paragraphs: &[Paragraph], paragraph_id: &str, l
 
 #[component]
 pub fn Story(props: StoryProps) -> Element {
-    provide_story_merged_context();
-    let story_merged_context = use_story_merged_context();
+    let story_merged_context = use_context_provider(|| Signal::new(StoryMergedContext::new()));
     let state = use_context::<Signal<LanguageState>>();
     let story_context = use_story_context();
     let settings_context = use_settings_context();

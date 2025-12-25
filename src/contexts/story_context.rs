@@ -41,6 +41,6 @@ pub fn use_story_context() -> Signal<StoryContext> {
     use_context::<Signal<StoryContext>>()
 }
 
-pub fn provide_story_context() {
-    provide_context(Signal::new(StoryContext::new()));
+pub fn provide_story_context() -> Signal<StoryContext> {
+    use_context_provider(|| Signal::new(StoryContext::new()))
 }

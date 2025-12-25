@@ -166,7 +166,7 @@ pub struct ParagraphProviderProps {
 
 #[component]
 pub fn ParagraphProvider(props: ParagraphProviderProps) -> Element {
-    let state = use_signal(|| ParagraphState::new());
+    let state = use_context_provider(|| Signal::new(ParagraphState::new()));
 
     // Load paragraph list
     use_effect(move || {
@@ -198,8 +198,6 @@ pub fn ParagraphProvider(props: ParagraphProviderProps) -> Element {
 
         (move || {})()
     });
-
-    provide_context(state);
 
     rsx! {
         {props.children}

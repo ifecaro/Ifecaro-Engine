@@ -111,7 +111,7 @@ fn main() {
 
 #[component]
 fn App() -> Element {
-    provide_context(Signal::new(SettingsContext::default()));
+    let _settings_context = use_context_provider(|| Signal::new(SettingsContext::default()));
 
     #[cfg(target_arch = "wasm32")]
     {

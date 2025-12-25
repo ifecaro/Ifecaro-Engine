@@ -43,7 +43,7 @@ pub struct ChapterProviderProps {
 
 #[component]
 pub fn ChapterProvider(props: ChapterProviderProps) -> Element {
-    let state = use_signal(|| ChapterState::new());
+    let state = use_context_provider(|| Signal::new(ChapterState::new()));
 
     // Load chapter list
     use_effect(move || {
@@ -109,8 +109,6 @@ pub fn ChapterProvider(props: ChapterProviderProps) -> Element {
 
         (move || {})()
     });
-
-    provide_context(state);
 
     rsx! {
         {props.children}
