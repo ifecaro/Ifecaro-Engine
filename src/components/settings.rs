@@ -10,7 +10,7 @@ use crate::services::indexeddb::set_setting_to_indexeddb;
 use crate::utils::theme::{apply_theme_class, ThemeMode};
 use dioxus::prelude::*;
 use dioxus_i18n::t;
-use dioxus_toastr::use_toast;
+use dioxus_toastr::{use_toast};
 use wasm_bindgen_futures::spawn_local;
 #[cfg(target_arch = "wasm32")]
 use web_sys::window;

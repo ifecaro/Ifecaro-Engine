@@ -28,7 +28,7 @@ use crate::{
 use dioxus::prelude::*;
 use dioxus::web;
 use dioxus::web::launch::launch_cfg;
-use dioxus_toastr::ToastProvider;
+use dioxus_toastr::{ToastProvider};
 
 #[cfg(target_arch = "wasm32")]
 fn append_log_line(msg: &str) {
@@ -111,7 +111,7 @@ fn main() {
 
 #[component]
 fn App() -> Element {
-    provide_context(Signal::new(SettingsContext::default()));
+    let _settings_context = use_context_provider(|| Signal::new(SettingsContext::default()));
 
     #[cfg(target_arch = "wasm32")]
     {

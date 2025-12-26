@@ -37,7 +37,7 @@ impl Default for KeyboardState {
 pub fn Layout() -> Element {
     let route = use_route::<Route>();
     let mut state = use_context::<Signal<LanguageState>>();
-    let mut keyboard_state = use_signal(KeyboardState::default);
+    let mut keyboard_state = use_context_provider(|| Signal::new(KeyboardState::default()));
     let mut story_context = use_story_context();
     let settings_context = use_settings_context();
     let closure_signal = use_signal(|| None::<Closure<dyn FnMut(WebEvent)>>);
@@ -71,8 +71,6 @@ pub fn Layout() -> Element {
     }
 
     let main_theme_class = "bg-gray-100 text-gray-900 dark:bg-gray-900 dark:text-gray-100 paper:bg-transparent paper:text-[#1f2937] transition-colors duration-200";
-
-    provide_context(keyboard_state);
 
     let _handle_choice = {
         let mut _story_context = story_context.clone();

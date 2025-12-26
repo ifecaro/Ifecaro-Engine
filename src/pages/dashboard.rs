@@ -985,7 +985,7 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
             let submit_success_text = t!("submit_success").to_string();
             let submit_failed_text = t!("submit_failed").to_string();
 
-            spawn_local({
+            spawn({
                 let mut is_submitting = is_submitting.clone();
                 let mut paragraph_state = paragraph_state.clone();
                 let mut toast = toast.clone();
