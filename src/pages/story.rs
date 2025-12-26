@@ -678,7 +678,8 @@ pub fn Story(props: StoryProps) -> Element {
                                         let paragraph = paragraph.clone();
                                         let story_context = story_context.clone();
                                         spawn_local(async move {
-                                            let mut visited = vec![paragraph.id.clone()];
+                                            let mut visited = HashSet::new();
+                                            visited.insert(paragraph.id.clone());
                                             let mut path = vec![paragraph.clone()];
                                             let mut current = paragraph.clone();
                                             let mut random_choice_futures = Vec::new();
@@ -739,11 +740,10 @@ pub fn Story(props: StoryProps) -> Element {
                                                         .iter()
                                                         .find(|p| p.id == *next_id)
                                                     {
-                                                        if visited.contains(&next.id) {
+                                                        if !visited.insert(next.id.clone()) {
                                                             break;
                                                         }
                                                         path.push(next.clone());
-                                                        visited.push(next.id.clone());
                                                         current = next.clone();
                                                     } else {
                                                         break;
@@ -812,11 +812,10 @@ pub fn Story(props: StoryProps) -> Element {
                                                     .iter()
                                                     .find(|p| p.id == chosen_target)
                                                 {
-                                                    if visited.contains(&next.id) {
+                                                    if !visited.insert(next.id.clone()) {
                                                         break;
                                                     }
                                                     path.push(next.clone());
-                                                    visited.push(next.id.clone());
                                                 } else {
                                                     break;
                                                 }
