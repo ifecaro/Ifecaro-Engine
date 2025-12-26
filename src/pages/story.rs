@@ -425,21 +425,30 @@ pub fn Story(props: StoryProps) -> Element {
                                                     .read()
                                                     .is_empty();
                                                 if !has_history {
-                                                    {
-                                                        let mut ctx = story_context.write();
+                                                    if let Ok(mut ctx) = story_context.try_write() {
                                                         ctx.target_paragraph_id =
                                                             Some(first_paragraph.id.clone());
                                                     }
-                                                    _expanded_paragraphs
-                                                        .set(vec![first_paragraph.clone()]);
+                                                    if let Ok(mut expanded) =
+                                                        _expanded_paragraphs.try_write()
+                                                    {
+                                                        *expanded = vec![first_paragraph.clone()];
+                                                    }
                                                 }
                                             }
                                             // Here first set to paragraph_data (signal), then set to context
-                                            _paragraph_data.set(data.items.clone());
-                                            story_context
-                                                .write()
-                                                .paragraphs
-                                                .set(data.items.clone());
+                                            if let Ok(mut paragraph_guard) =
+                                                _paragraph_data.try_write()
+                                            {
+                                                *paragraph_guard = data.items.clone();
+                                            }
+                                            if let Ok(mut ctx) = story_context.try_write() {
+                                                if let Ok(mut paragraphs) =
+                                                    ctx.paragraphs.try_write()
+                                                {
+                                                    *paragraphs = data.items.clone();
+                                                }
+                                            }
                                         }
                                         Err(_e) => {}
                                     }
@@ -508,8 +517,14 @@ pub fn Story(props: StoryProps) -> Element {
                                             .unwrap_or_default();
                                         result.push(Chapter { id, titles, order });
                                     }
-                                    story_context.write().chapters.set(result);
-                                    chapters_loaded.set(true);
+                                    if let Ok(mut ctx) = story_context.try_write() {
+                                        if let Ok(mut chapters) = ctx.chapters.try_write() {
+                                            *chapters = result;
+                                        }
+                                    }
+                                    if let Ok(mut loaded) = chapters_loaded.try_write() {
+                                        *loaded = true;
+                                    }
                                 }
                             }
                         }
