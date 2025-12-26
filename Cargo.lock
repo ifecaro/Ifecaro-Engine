@@ -1123,10 +1123,11 @@ dependencies = [
 [[package]]
 name = "dioxus-toastr"
 version = "0.1.0"
-source = "git+https://github.com/togekk39/dioxus-toastr.git#8023bd493f7cdcb29b802358f1a4697f241e2ed6"
+source = "git+https://github.com/togekk39/dioxus-toastr.git#a5b2dee3dd3dd8f91ad777cf74108bf30262d27a"
 dependencies = [
  "dioxus",
  "futures-timer",
+ "gloo-timers",
 ]
 
 [[package]]
@@ -4542,6 +4543,6 @@ dependencies = [
 
 [[package]]
 name = "zmij"
-version = "0.1.7"
+version = "0.1.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9e404bcd8afdaf006e529269d3e85a743f9480c3cef60034d77860d02964f3ba"
+checksum = "d0095ecd462946aa3927d9297b63ef82fb9a5316d7a37d134eeb36e58228615a"
