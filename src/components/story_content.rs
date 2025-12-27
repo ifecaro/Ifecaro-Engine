@@ -212,7 +212,6 @@ pub fn StoryContent(props: StoryContentProps) -> Element {
     {
         let mut show_paper_tutorial = show_paper_tutorial.clone();
         let settings_ctx = settings_ctx.clone();
-        let theme_mode = theme_mode.clone();
         use_effect(move || {
             let tutorial_seen = settings_ctx
                 .read()
@@ -220,7 +219,7 @@ pub fn StoryContent(props: StoryContentProps) -> Element {
                 .get("paper_mode_tutorial_seen")
                 .map(|v| v == "true")
                 .unwrap_or(false);
-            if theme_mode == "paper" && !tutorial_seen {
+            if !tutorial_seen {
                 show_paper_tutorial.set(true);
             } else {
                 show_paper_tutorial.set(false);
@@ -715,14 +714,15 @@ pub fn StoryContent(props: StoryContentProps) -> Element {
             .unwrap_or(false) // Default to disabled
     });
 
-    // Scroll lock impact: disable page scrolling when overlay is visible
+    // Scroll lock impact: disable page scrolling when overlay is visible or page turn mode is locked
     {
         let show_filter = show_filter.clone();
+        let page_turn_mode = page_turn_mode.clone();
         use_effect(move || {
             let lock_scroll = *show_filter.read();
             if let Some((_, document)) = get_window_document() {
                 if let Some(body) = document.body() {
-                    if should_lock_page_scroll(lock_scroll) {
+                    if should_lock_page_scroll(lock_scroll, page_turn_mode.as_str()) {
                         let _ = body.set_attribute("style", "overflow: hidden;");
                     } else {
                         let _ = body.remove_attribute("style");
@@ -738,10 +738,9 @@ pub fn StoryContent(props: StoryContentProps) -> Element {
             class: "relative story-content-container",
             tabindex: "0",
             onpointerdown: {
-                let theme_mode = theme_mode.clone();
                 let page_turn_mode = page_turn_mode.clone();
                 move |event: Event<PointerData>| {
-                    if theme_mode != "paper" || page_turn_mode == "scroll" {
+                    if page_turn_mode == "scroll" {
                         return;
                     }
                     if !event.data.is_primary() {
@@ -752,10 +751,9 @@ pub fn StoryContent(props: StoryContentProps) -> Element {
                 }
             },
             onpointerup: {
-                let theme_mode = theme_mode.clone();
                 let page_turn_mode = page_turn_mode.clone();
                 move |event: Event<PointerData>| {
-                    if theme_mode != "paper" || page_turn_mode == "scroll" {
+                    if page_turn_mode == "scroll" {
                         return;
                     }
                     if !event.data.is_primary() {
@@ -1101,8 +1099,8 @@ pub fn should_show_choices_on_overlay_hide(
 }
 
 // 1st edit: Append new helper function.
-pub fn should_lock_page_scroll(show_filter: bool) -> bool {
-    show_filter
+pub fn should_lock_page_scroll(show_filter: bool, page_turn_mode: &str) -> bool {
+    show_filter || page_turn_mode != "scroll"
 }
 
 /// Determine if overlay should reappear when the story content container loses focus.
