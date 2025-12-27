@@ -7,6 +7,8 @@ use crate::pages::story::paragraph_has_translation;
 use crate::services::indexeddb::{
     get_disabled_choices_from_indexeddb, set_disabled_choice_to_indexeddb,
 };
+#[cfg(target_arch = "wasm32")]
+use crate::services::indexeddb::set_setting_to_indexeddb;
 use dioxus::prelude::*;
 use dioxus_i18n::t;
 use serde::{Deserialize, Serialize};
@@ -166,6 +168,8 @@ pub fn StoryContent(props: StoryContentProps) -> Element {
     let mut keyboard_state = use_context::<Signal<KeyboardState>>();
     let story_ctx = use_story_context();
     let settings_ctx = use_settings_context();
+    let mut show_paper_tutorial = use_signal(|| false);
+    let mut pointer_start = use_signal(|| None::<(f64, f64)>);
     let mut countdowns = props.countdowns.clone();
     let mut max_times = props.max_times.clone();
     let mut progress_started = props.progress_started.clone();
@@ -181,6 +185,49 @@ pub fn StoryContent(props: StoryContentProps) -> Element {
     let paragraphs_vec = story_ctx.read().paragraphs.read().clone();
     let paragraphs_vec_keydown = paragraphs_vec.clone();
     let current_language_keydown = current_language.clone();
+    let theme_mode = settings_ctx
+        .read()
+        .settings
+        .get("theme_mode")
+        .cloned()
+        .unwrap_or_else(|| "auto".to_string());
+    let page_turn_mode = settings_ctx
+        .read()
+        .settings
+        .get("page_turn_mode")
+        .cloned()
+        .unwrap_or_else(|| {
+            if theme_mode == "paper" {
+                "horizontal".to_string()
+            } else {
+                "scroll".to_string()
+            }
+        });
+    let tutorial_message = match page_turn_mode.as_str() {
+        "horizontal" => t!("paper_tutorial_body_left_right"),
+        "vertical" => t!("paper_tutorial_body_up_down"),
+        _ => t!("paper_tutorial_body_scroll"),
+    };
+
+    {
+        let mut show_paper_tutorial = show_paper_tutorial.clone();
+        let settings_ctx = settings_ctx.clone();
+        let theme_mode = theme_mode.clone();
+        use_effect(move || {
+            let tutorial_seen = settings_ctx
+                .read()
+                .settings
+                .get("paper_mode_tutorial_seen")
+                .map(|v| v == "true")
+                .unwrap_or(false);
+            if theme_mode == "paper" && !tutorial_seen {
+                show_paper_tutorial.set(true);
+            } else {
+                show_paper_tutorial.set(false);
+            }
+            ()
+        });
+    }
     {
         let mut story_ctx = story_ctx.clone();
         let mut disabled_by_countdown = disabled_by_countdown.clone();
@@ -690,6 +737,61 @@ pub fn StoryContent(props: StoryContentProps) -> Element {
         div {
             class: "relative story-content-container",
             tabindex: "0",
+            onpointerdown: {
+                let theme_mode = theme_mode.clone();
+                let page_turn_mode = page_turn_mode.clone();
+                move |event: Event<PointerData>| {
+                    if theme_mode != "paper" || page_turn_mode == "scroll" {
+                        return;
+                    }
+                    if !event.data.is_primary() {
+                        return;
+                    }
+                    let coords = event.data.client_coordinates();
+                    pointer_start.set(Some((coords.x, coords.y)));
+                }
+            },
+            onpointerup: {
+                let theme_mode = theme_mode.clone();
+                let page_turn_mode = page_turn_mode.clone();
+                move |event: Event<PointerData>| {
+                    if theme_mode != "paper" || page_turn_mode == "scroll" {
+                        return;
+                    }
+                    if !event.data.is_primary() {
+                        return;
+                    }
+                    let Some((start_x, start_y)) = *pointer_start.read() else {
+                        return;
+                    };
+                    let coords = event.data.client_coordinates();
+                    let dx = coords.x - start_x;
+                    let dy = coords.y - start_y;
+                    let threshold = 50.0;
+                    let (is_forward, should_turn) = match page_turn_mode.as_str() {
+                        "horizontal" => (dx < 0.0, dx.abs() > dy.abs() && dx.abs() > threshold),
+                        "vertical" => (dy < 0.0, dy.abs() > dx.abs() && dy.abs() > threshold),
+                        _ => (false, false),
+                    };
+                    if should_turn {
+                        if let Some(window) = web_sys::window() {
+                            let height = window
+                                .inner_height()
+                                .ok()
+                                .and_then(|v| v.as_f64())
+                                .unwrap_or(0.0);
+                            let delta = if is_forward { height } else { -height };
+                            if delta != 0.0 {
+                                window.scroll_by_with_x_and_y(0.0, delta);
+                            }
+                        }
+                    }
+                    pointer_start.set(None);
+                }
+            },
+            onpointercancel: move |_| {
+                pointer_start.set(None);
+            },
             onkeydown: move |event: Event<KeyboardData>| {
                 match event.data.key() {
                     key => {
@@ -766,6 +868,69 @@ pub fn StoryContent(props: StoryContentProps) -> Element {
                             t!("continue_reading")
                         } else {
                             t!("start_reading")
+                        }
+                    }
+                }
+            }
+            if *show_paper_tutorial.read() {
+                div {
+                    class: "fixed inset-0 z-[2000] flex items-center justify-center bg-black/60 px-6",
+                    div {
+                        class: "w-full max-w-md rounded-2xl bg-white dark:bg-gray-800 paper:bg-[#fef8e7] paper:text-[#1f2937] shadow-xl p-6 space-y-4 text-center",
+                        h2 { class: "text-xl font-semibold text-gray-900 dark:text-white paper:text-[#1f2937]", "{t!(\"paper_tutorial_title\")}" }
+                        p { class: "text-sm text-gray-600 dark:text-gray-300 paper:text-[#374151] leading-relaxed", "{tutorial_message}" }
+                        div {
+                            class: "flex items-center justify-center gap-3",
+                            button {
+                                class: "px-4 py-2 rounded-md border border-gray-300 dark:border-gray-600 paper:border-[#e4d5b2] text-gray-700 dark:text-gray-200 paper:text-[#374151] hover:bg-gray-100 dark:hover:bg-gray-700 paper:hover:bg-[#f0e6cf] transition",
+                                onclick: {
+                                    let mut settings_ctx = settings_ctx.clone();
+                                    let mut show_paper_tutorial = show_paper_tutorial.clone();
+                                    move |_| {
+                                        settings_ctx
+                                            .write()
+                                            .settings
+                                            .insert(
+                                            "paper_mode_tutorial_seen".to_string(),
+                                            "true".to_string(),
+                                        );
+                                    #[cfg(target_arch = "wasm32")]
+                                        {
+                                            set_setting_to_indexeddb(
+                                                "paper_mode_tutorial_seen",
+                                                "true",
+                                            );
+                                        }
+                                        show_paper_tutorial.set(false);
+                                    }
+                                },
+                                "{t!(\"paper_tutorial_skip\")}"
+                            }
+                            button {
+                                class: "px-4 py-2 rounded-md bg-green-600 text-white hover:bg-green-700 transition",
+                                onclick: {
+                                    let mut settings_ctx = settings_ctx.clone();
+                                    let mut show_paper_tutorial = show_paper_tutorial.clone();
+                                    move |_| {
+                                        settings_ctx
+                                            .write()
+                                            .settings
+                                            .insert(
+                                            "paper_mode_tutorial_seen".to_string(),
+                                            "true".to_string(),
+                                        );
+                                    #[cfg(target_arch = "wasm32")]
+                                        {
+                                            set_setting_to_indexeddb(
+                                                "paper_mode_tutorial_seen",
+                                                "true",
+                                            );
+                                        }
+                                        show_paper_tutorial.set(false);
+                                    }
+                                },
+                                "{t!(\"paper_tutorial_got_it\")}"
+                            }
                         }
                     }
                 }
