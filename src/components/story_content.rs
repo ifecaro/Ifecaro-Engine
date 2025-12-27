@@ -723,9 +723,22 @@ pub fn StoryContent(props: StoryContentProps) -> Element {
             if let Some((_, document)) = get_window_document() {
                 if let Some(body) = document.body() {
                     if should_lock_page_scroll(lock_scroll, page_turn_mode.as_str()) {
-                        let _ = body.set_attribute("style", "overflow: hidden;");
+                        let _ = body.set_attribute(
+                            "style",
+                            "overflow: hidden; overscroll-behavior: none;",
+                        );
                     } else {
                         let _ = body.remove_attribute("style");
+                    }
+                }
+                if let Some(document_element) = document.document_element() {
+                    if should_lock_page_scroll(lock_scroll, page_turn_mode.as_str()) {
+                        let _ = document_element.set_attribute(
+                            "style",
+                            "overflow: hidden; overscroll-behavior: none;",
+                        );
+                    } else {
+                        let _ = document_element.remove_attribute("style");
                     }
                 }
             }
@@ -737,6 +750,22 @@ pub fn StoryContent(props: StoryContentProps) -> Element {
         div {
             class: "relative story-content-container",
             tabindex: "0",
+            onwheel: {
+                let page_turn_mode = page_turn_mode.clone();
+                move |event: Event<WheelData>| {
+                    if page_turn_mode != "scroll" {
+                        event.prevent_default();
+                    }
+                }
+            },
+            ontouchmove: {
+                let page_turn_mode = page_turn_mode.clone();
+                move |event: Event<TouchData>| {
+                    if page_turn_mode != "scroll" {
+                        event.prevent_default();
+                    }
+                }
+            },
             onpointerdown: {
                 let page_turn_mode = page_turn_mode.clone();
                 move |event: Event<PointerData>| {
@@ -779,12 +808,10 @@ pub fn StoryContent(props: StoryContentProps) -> Element {
                                 .and_then(|v| v.as_f64())
                                 .unwrap_or(0.0);
                             if let Some(document) = window.document() {
-                                if let Ok(Some(container)) =
-                                    document.query_selector(".story-content-container")
-                                {
-                                    let rect = container.get_bounding_client_rect();
-                                    if rect.height() > 0.0 {
-                                        height = rect.height();
+                                if let Some(document_element) = document.document_element() {
+                                    let client_height = document_element.client_height();
+                                    if client_height > 0 {
+                                        height = client_height as f64;
                                     }
                                 }
                             }
