@@ -773,11 +773,21 @@ pub fn StoryContent(props: StoryContentProps) -> Element {
                     };
                     if should_turn {
                         if let Some(window) = web_sys::window() {
-                            let height = window
+                            let mut height = window
                                 .inner_height()
                                 .ok()
                                 .and_then(|v| v.as_f64())
                                 .unwrap_or(0.0);
+                            if let Some(document) = window.document() {
+                                if let Ok(Some(container)) =
+                                    document.query_selector(".story-content-container")
+                                {
+                                    let rect = container.get_bounding_client_rect();
+                                    if rect.height() > 0.0 {
+                                        height = rect.height();
+                                    }
+                                }
+                            }
                             let delta = if is_forward { height } else { -height };
                             if delta != 0.0 {
                                 window.scroll_by_with_x_and_y(0.0, delta);
