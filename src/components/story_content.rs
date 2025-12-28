@@ -749,6 +749,11 @@ pub fn StoryContent(props: StoryContentProps) -> Element {
     rsx! {
         div {
             class: "relative story-content-container",
+            style: if *is_mobile.read() {
+                "padding-bottom: calc(env(safe-area-inset-bottom) + 4rem);"
+            } else {
+                ""
+            },
             tabindex: "0",
             onwheel: {
                 let page_turn_mode = page_turn_mode.clone();
