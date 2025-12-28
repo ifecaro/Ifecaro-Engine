@@ -812,6 +812,14 @@ pub fn StoryContent(props: StoryContentProps) -> Element {
                                     let client_height = document_element.client_height();
                                     if client_height > 0 {
                                         height = client_height as f64;
+                                        if let Ok(Some(navbar)) =
+                                            document.query_selector("#app-navbar")
+                                        {
+                                            let rect = navbar.get_bounding_client_rect();
+                                            if rect.height() > 0.0 {
+                                                height = (height - rect.height()).max(0.0);
+                                            }
+                                        }
                                     }
                                 }
                             }
