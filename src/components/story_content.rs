@@ -807,17 +807,22 @@ pub fn StoryContent(props: StoryContentProps) -> Element {
                                 .ok()
                                 .and_then(|v| v.as_f64())
                                 .unwrap_or(0.0);
+                            let mut scroll_top = 0.0;
+                            let mut max_scroll_top = 0.0;
+                            let mut is_mobile_device = false;
                             if let Some(document) = window.document() {
                                 if let Some(document_element) = document.document_element() {
                                     let client_height = document_element.client_height();
                                     let scroll_height = document_element.scroll_height();
-                                    let scroll_top = document_element.scroll_top();
-                                    let is_mobile_device = *is_mobile.read();
+                                    scroll_top = document_element.scroll_top() as f64;
+                                    max_scroll_top =
+                                        (scroll_height - client_height).max(0) as f64;
+                                    is_mobile_device = *is_mobile.read();
                                     if is_forward
                                         && is_scrolled_to_bottom(
                                             scroll_height,
                                             client_height,
-                                            scroll_top,
+                                            scroll_top as i32,
                                             is_mobile_device,
                                         )
                                     {
@@ -825,7 +830,7 @@ pub fn StoryContent(props: StoryContentProps) -> Element {
                                         return;
                                     }
                                     if !is_forward
-                                        && is_scrolled_to_top(scroll_top, is_mobile_device)
+                                        && is_scrolled_to_top(scroll_top as i32, is_mobile_device)
                                     {
                                         pointer_start.set(None);
                                         return;
@@ -845,7 +850,15 @@ pub fn StoryContent(props: StoryContentProps) -> Element {
                             }
                             let delta = if is_forward { height } else { -height };
                             if delta != 0.0 {
-                                window.scroll_by_with_x_and_y(0.0, delta);
+                                let target_scroll_top = (scroll_top + delta)
+                                    .clamp(0.0, max_scroll_top)
+                                    .round();
+                                let tolerance = if is_mobile_device { 100.0 } else { 10.0 };
+                                if (target_scroll_top - scroll_top).abs() <= tolerance {
+                                    pointer_start.set(None);
+                                    return;
+                                }
+                                window.scroll_to_with_x_and_y(0.0, target_scroll_top);
                             }
                         }
                     }
