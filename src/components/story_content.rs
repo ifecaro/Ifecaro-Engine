@@ -810,6 +810,26 @@ pub fn StoryContent(props: StoryContentProps) -> Element {
                             if let Some(document) = window.document() {
                                 if let Some(document_element) = document.document_element() {
                                     let client_height = document_element.client_height();
+                                    let scroll_height = document_element.scroll_height();
+                                    let scroll_top = document_element.scroll_top();
+                                    let is_mobile_device = *is_mobile.read();
+                                    if is_forward
+                                        && is_scrolled_to_bottom(
+                                            scroll_height,
+                                            client_height,
+                                            scroll_top,
+                                            is_mobile_device,
+                                        )
+                                    {
+                                        pointer_start.set(None);
+                                        return;
+                                    }
+                                    if !is_forward
+                                        && is_scrolled_to_top(scroll_top, is_mobile_device)
+                                    {
+                                        pointer_start.set(None);
+                                        return;
+                                    }
                                     if client_height > 0 {
                                         height = client_height as f64;
                                         if let Ok(Some(navbar)) =
@@ -1176,6 +1196,12 @@ pub fn is_scrolled_to_bottom(
 ) -> bool {
     let tolerance = if is_mobile { 100 } else { 10 };
     (scroll_height - client_height - scroll_top) <= tolerance
+}
+
+/// Determine if the user has effectively scrolled to the top of the page.
+pub fn is_scrolled_to_top(scroll_top: i32, is_mobile: bool) -> bool {
+    let tolerance = if is_mobile { 100 } else { 10 };
+    scroll_top <= tolerance
 }
 
 /*
