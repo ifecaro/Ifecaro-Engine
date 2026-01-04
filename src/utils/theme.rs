@@ -96,3 +96,43 @@ pub fn apply_theme_class(mode: ThemeMode) {
 
 #[cfg(not(target_arch = "wasm32"))]
 pub fn apply_theme_class(_mode: ThemeMode) {}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn from_value_maps_known_modes() {
+        assert_eq!(ThemeMode::from_value("light"), ThemeMode::Light);
+        assert_eq!(ThemeMode::from_value("dark"), ThemeMode::Dark);
+        assert_eq!(ThemeMode::from_value("paper"), ThemeMode::Paper);
+    }
+
+    #[test]
+    fn from_value_defaults_to_auto() {
+        assert_eq!(ThemeMode::from_value("unknown"), ThemeMode::Auto);
+    }
+
+    #[test]
+    #[cfg(not(target_arch = "wasm32"))]
+    fn resolve_auto_defaults_to_light_off_wasm() {
+        let resolved = ThemeMode::Auto.resolve();
+
+        assert_eq!(resolved.data_value, "light");
+        assert!(!resolved.is_dark);
+    }
+
+    #[test]
+    fn resolve_explicit_modes() {
+        let light = ThemeMode::Light.resolve();
+        let dark = ThemeMode::Dark.resolve();
+        let paper = ThemeMode::Paper.resolve();
+
+        assert_eq!(light.data_value, "light");
+        assert!(!light.is_dark);
+        assert_eq!(dark.data_value, "dark");
+        assert!(dark.is_dark);
+        assert_eq!(paper.data_value, "paper");
+        assert!(!paper.is_dark);
+    }
+}
