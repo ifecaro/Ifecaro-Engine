@@ -103,6 +103,20 @@ fn get_window_document() -> Option<(Window, Document)> {
     Some((window, document))
 }
 
+fn should_block_page_turn(x: f64, y: f64) -> bool {
+    let Some(window) = web_sys::window() else {
+        return false;
+    };
+    let Some(document) = window.document() else {
+        return false;
+    };
+    let Some(element) = document.element_from_point(x as f32, y as f32) else {
+        return false;
+    };
+    let selector = "button, a, input, textarea, select, label, [role='button'], .page-turn-block";
+    element.closest(selector).ok().flatten().is_some()
+}
+
 #[derive(Props, Clone, PartialEq)]
 pub struct StoryContentUIProps {
     pub paragraph: String,
@@ -800,11 +814,40 @@ pub fn StoryContent(props: StoryContentProps) -> Element {
                     let dx = coords.x - start_x;
                     let dy = coords.y - start_y;
                     let threshold = 50.0;
-                    let (is_forward, should_turn) = match page_turn_mode.as_str() {
-                        "horizontal" => (dx < 0.0, dx.abs() > dy.abs() && dx.abs() > threshold),
-                        "vertical" => (dy < 0.0, dy.abs() > dx.abs() && dy.abs() > threshold),
-                        _ => (false, false),
-                    };
+                    let tap_threshold = 10.0;
+                    let mut is_forward = false;
+                    let mut should_turn = false;
+                    match page_turn_mode.as_str() {
+                        "horizontal" => {
+                            let is_swipe = dx.abs() > dy.abs() && dx.abs() > threshold;
+                            if is_swipe {
+                                is_forward = dx < 0.0;
+                                should_turn = true;
+                            } else if dx.abs() < tap_threshold && dy.abs() < tap_threshold {
+                                if let Some(window) = web_sys::window() {
+                                    if !should_block_page_turn(coords.x, coords.y) {
+                                        let width = window
+                                            .inner_width()
+                                            .ok()
+                                            .and_then(|v| v.as_f64())
+                                            .unwrap_or(0.0);
+                                        if width > 0.0 {
+                                            is_forward = coords.x >= width / 2.0;
+                                            should_turn = true;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        "vertical" => {
+                            let is_swipe = dy.abs() > dx.abs() && dy.abs() > threshold;
+                            if is_swipe {
+                                is_forward = dy < 0.0;
+                                should_turn = true;
+                            }
+                        }
+                        _ => {}
+                    }
                     if should_turn {
                         if let Some(window) = web_sys::window() {
                             let mut height = window
@@ -917,7 +960,7 @@ pub fn StoryContent(props: StoryContentProps) -> Element {
             },
             div {
                 class: {
-                    format!("fixed inset-0 backdrop-blur-sm z-10 flex items-center justify-center transition duration-500 cursor-pointer will-change-transform will-change-opacity {}",
+                    format!("fixed inset-0 backdrop-blur-sm z-10 flex items-center justify-center transition duration-500 cursor-pointer will-change-transform will-change-opacity page-turn-block {}",
                         if !*show_filter.read() || *is_mobile.read() { "opacity-0 pointer-events-none transform translate-y-2" } else { "opacity-100 transform translate-y-0" }
                     )
                 },
@@ -955,7 +998,7 @@ pub fn StoryContent(props: StoryContentProps) -> Element {
             }
             if *show_paper_tutorial.read() {
                 div {
-                    class: "fixed inset-0 z-[2000] flex items-center justify-center bg-black/60 px-6",
+                    class: "fixed inset-0 z-[2000] flex items-center justify-center bg-black/60 px-6 page-turn-block",
                     div {
                         class: "w-full max-w-md rounded-2xl bg-white dark:bg-gray-800 paper:bg-[#fef8e7] paper:text-[#1f2937] shadow-xl p-6 space-y-4 text-center",
                         h2 { class: "text-xl font-semibold text-gray-900 dark:text-white paper:text-[#1f2937]", "{t!(\"paper_tutorial_title\")}" }
@@ -1090,7 +1133,7 @@ pub fn StoryContent(props: StoryContentProps) -> Element {
                             rsx! {
                                 li {
                                     class: {{
-                                        let base = "p-4 transition duration-200 relative text-gray-900 dark:text-white paper:!text-[#1f2937]";
+                                        let base = "p-4 transition duration-200 relative text-gray-900 dark:text-white paper:!text-[#1f2937] page-turn-block";
                                         let enabled = "cursor-pointer hover:text-gray-700 dark:hover:text-gray-300 paper:hover:!text-[#111827] transition-opacity transition-transform";
                                         let disabled = "opacity-50 cursor-not-allowed text-gray-400 dark:text-gray-400 paper:!text-[#9ca3af]";
                                         let selected = "text-gray-900 dark:text-gray-100 paper:!text-[#111827]";
