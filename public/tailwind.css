@@ -1,12 +1,12 @@
-/*! tailwindcss v4.1.17 | MIT License | https://tailwindcss.com */
+/*! tailwindcss v4.1.18 | MIT License | https://tailwindcss.com */
 @layer properties;
 @layer theme, base, components, utilities;
 @layer theme {
   :root, :host {
-    --font-sans: ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji",
-      "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
-    --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono",
-      "Courier New", monospace;
+    --font-sans: ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol',
+    'Noto Color Emoji';
+    --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New',
+    monospace;
     --color-red-50: oklch(97.1% 0.013 17.38);
     --color-red-300: oklch(80.8% 0.114 19.571);
     --color-red-400: oklch(70.4% 0.191 22.216);
@@ -15,7 +15,6 @@
     --color-red-700: oklch(50.5% 0.213 27.518);
     --color-red-900: oklch(39.6% 0.141 25.723);
     --color-orange-700: oklch(55.3% 0.195 38.402);
-    --color-yellow-500: oklch(79.5% 0.184 86.047);
     --color-green-500: oklch(72.3% 0.219 149.579);
     --color-green-600: oklch(62.7% 0.194 149.214);
     --color-green-700: oklch(52.7% 0.154 150.069);
@@ -80,6 +79,7 @@
     --radius-md: 0.375rem;
     --radius-lg: 0.5rem;
     --radius-xl: 0.75rem;
+    --radius-2xl: 1rem;
     --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
     --blur-sm: 8px;
     --default-transition-duration: 150ms;
@@ -99,7 +99,7 @@
     line-height: 1.5;
     -webkit-text-size-adjust: 100%;
     tab-size: 4;
-    font-family: var(--default-font-family, ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji");
+    font-family: var(--default-font-family, ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji');
     font-feature-settings: var(--default-font-feature-settings, normal);
     font-variation-settings: var(--default-font-variation-settings, normal);
     -webkit-tap-highlight-color: transparent;
@@ -126,7 +126,7 @@
     font-weight: bolder;
   }
   code, kbd, samp, pre {
-    font-family: var(--default-mono-font-family, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace);
+    font-family: var(--default-mono-font-family, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace);
     font-feature-settings: var(--default-mono-font-feature-settings, normal);
     font-variation-settings: var(--default-mono-font-variation-settings, normal);
     font-size: 1em;
@@ -226,13 +226,13 @@
   :-moz-ui-invalid {
     box-shadow: none;
   }
-  button, input:where([type="button"], [type="reset"], [type="submit"]), ::file-selector-button {
+  button, input:where([type='button'], [type='reset'], [type='submit']), ::file-selector-button {
     appearance: button;
   }
   ::-webkit-inner-spin-button, ::-webkit-outer-spin-button {
     height: auto;
   }
-  [hidden]:where(:not([hidden="until-found"])) {
+  [hidden]:where(:not([hidden='until-found'])) {
     display: none !important;
   }
 }
@@ -302,6 +302,9 @@
   }
   .z-\[1000\] {
     z-index: 1000;
+  }
+  .z-\[2000\] {
+    z-index: 2000;
   }
   .z-\[9999\] {
     z-index: 9999;
@@ -830,6 +833,9 @@
   .rounded {
     border-radius: 0.25rem;
   }
+  .rounded-2xl {
+    border-radius: var(--radius-2xl);
+  }
   .rounded-full {
     border-radius: calc(infinity * 1px);
   }
@@ -890,14 +896,17 @@
       background-color: color-mix(in oklab, var(--color-black) 50%, transparent);
     }
   }
+  .bg-black\/60 {
+    background-color: color-mix(in srgb, #000 60%, transparent);
+    @supports (color: color-mix(in lab, red, red)) {
+      background-color: color-mix(in oklab, var(--color-black) 60%, transparent);
+    }
+  }
   .bg-blue-50 {
     background-color: var(--color-blue-50);
   }
   .bg-blue-100 {
     background-color: var(--color-blue-100);
-  }
-  .bg-blue-500 {
-    background-color: var(--color-blue-500);
   }
   .bg-blue-600 {
     background-color: var(--color-blue-600);
@@ -914,9 +923,6 @@
   .bg-gray-200 {
     background-color: var(--color-gray-200);
   }
-  .bg-green-500 {
-    background-color: var(--color-green-500);
-  }
   .bg-green-600 {
     background-color: var(--color-green-600);
   }
@@ -926,14 +932,8 @@
   .bg-indigo-600 {
     background-color: var(--color-indigo-600);
   }
-  .bg-red-500 {
-    background-color: var(--color-red-500);
-  }
   .bg-white {
     background-color: var(--color-white);
-  }
-  .bg-yellow-500 {
-    background-color: var(--color-yellow-500);
   }
   .bg-cover {
     background-size: cover;
@@ -947,11 +947,20 @@
   .fill-current {
     fill: currentcolor;
   }
+  .p-1 {
+    padding: calc(var(--spacing) * 1);
+  }
   .p-2 {
     padding: calc(var(--spacing) * 2);
   }
+  .p-3 {
+    padding: calc(var(--spacing) * 3);
+  }
   .p-4 {
     padding: calc(var(--spacing) * 4);
+  }
+  .p-6 {
+    padding: calc(var(--spacing) * 6);
   }
   .p-8 {
     padding: calc(var(--spacing) * 8);
@@ -1142,6 +1151,10 @@
   }
   .shadow-sm {
     --tw-shadow: 0 1px 3px 0 var(--tw-shadow-color, rgb(0 0 0 / 0.1)), 0 1px 2px -1px var(--tw-shadow-color, rgb(0 0 0 / 0.1));
+    box-shadow: var(--tw-inset-shadow), var(--tw-inset-ring-shadow), var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow);
+  }
+  .shadow-xl {
+    --tw-shadow: 0 20px 25px -5px var(--tw-shadow-color, rgb(0 0 0 / 0.1)), 0 8px 10px -6px var(--tw-shadow-color, rgb(0 0 0 / 0.1));
     box-shadow: var(--tw-inset-shadow), var(--tw-inset-ring-shadow), var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow);
   }
   .ring-0 {
@@ -2713,11 +2726,6 @@
       background-color: #f6edda;
     }
   }
-  .paper\:bg-\[\#fdf6e3\] {
-    &:where([data-theme="paper"] *) {
-      background-color: #fdf6e3;
-    }
-  }
   .paper\:bg-\[\#fef8e7\] {
     &:where([data-theme="paper"] *) {
       background-color: #fef8e7;
@@ -2823,35 +2831,74 @@ li {
 }
 @layer base {
   [data-theme="paper"] {
+    --paper-text-opacity: 80%;
     background-color: #fdf6e3;
     color: #1f2937;
+    @supports (color: color-mix(in lab, red, red)) {
+      color: color-mix(in srgb, #1f2937 var(--paper-text-opacity), transparent);
+    }
     --paper-texture: url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA0MDAgNDAwIj4KICA8ZmlsdGVyIGlkPSJyb3VnaHBhcGVyIiB4PSIwJSIgeT0iMCUiIHdpZHRoPSIxMDAlIiBoZWlnaHQ9IjEwMCUiPgogICAgPGZlVHVyYnVsZW5jZSB0eXBlPSJmcmFjdGFsTm9pc2UiIGJhc2VGcmVxdWVuY3k9IjAuMTI1IDAuMTc1IiByZXN1bHQ9Im5vaXNlIiBudW1PY3RhdmVzPSIzIiBzZWVkPSIyMDAwMCIgLz4KICAgIDxmZURpZmZ1c2VMaWdodGluZyBpbj0ibm9pc2UiIHN1cmZhY2VTY2FsZT0iMC42NSI+CiAgICAgIDxmZURpc3RhbnRMaWdodCBhemltdXRoPSI5MCIgZWxldmF0aW9uPSI2NSIgLz4KICAgIDwvZmVEaWZmdXNlTGlnaHRpbmc+CiAgPC9maWx0ZXI+CiAgPHJlY3Qgd2lkdGg9IjEwMCUiIGhlaWdodD0iMTAwJSIgZmlsdGVyPSJ1cmwoI3JvdWdocGFwZXIpIiBvcGFjaXR5PSIwLjkiIC8+Cjwvc3ZnPgo=");
   }
   [data-theme="paper"] body {
     background-color: #fdf6e3;
     color: #1f2937;
-    background-image:
-      radial-gradient(1200px at 30% 18%, rgba(255, 255, 255, 0.6), rgba(253, 246, 227, 0)),
-      radial-gradient(900px at 82% 8%, rgba(255, 255, 255, 0.38), rgba(253, 246, 227, 0)),
-      linear-gradient(160deg, rgba(236, 221, 193, 0.32) 0%, rgba(236, 221, 193, 0.14) 32%, rgba(217, 197, 158, 0.08) 100%),
-      var(--paper-texture);
+    @supports (color: color-mix(in lab, red, red)) {
+      color: color-mix(in srgb, #1f2937 var(--paper-text-opacity), transparent);
+    }
+    background-image: radial-gradient(1200px at 30% 18%, rgba(255, 255, 255, 0.6), rgba(253, 246, 227, 0)), radial-gradient(900px at 82% 8%, rgba(255, 255, 255, 0.38), rgba(253, 246, 227, 0)), linear-gradient( 160deg, rgba(236, 221, 193, 0.32) 0%, rgba(236, 221, 193, 0.14) 32%, rgba(217, 197, 158, 0.08) 100% ), var(--paper-texture);
     background-size: 100% 100%, 100% 100%, 100% 100%, 420px 420px;
     background-blend-mode: screen, soft-light, multiply, normal;
     box-shadow: inset 0 0 48px rgba(17, 24, 39, 0.05);
   }
+  [data-theme="paper"] :is( p, span, li, h1, h2, h3, h4, h5, h6, a, button, label, small, strong, em, code, blockquote, input, textarea, select, option ) {
+    color: currentColor;
+    @supports (color: color-mix(in lab, red, red)) {
+      color: color-mix(in srgb, currentColor var(--paper-text-opacity), transparent);
+    }
+  }
   [data-theme="paper"] .prose, [data-theme="paper"] .paper\:prose {
     --tw-prose-body: #1f2937;
+    @supports (color: color-mix(in lab, red, red)) {
+      --tw-prose-body: color-mix(in srgb, #1f2937 var(--paper-text-opacity), transparent);
+    }
     --tw-prose-headings: #111827;
+    @supports (color: color-mix(in lab, red, red)) {
+      --tw-prose-headings: color-mix(in srgb, #111827 var(--paper-text-opacity), transparent);
+    }
     --tw-prose-links: #111827;
+    @supports (color: color-mix(in lab, red, red)) {
+      --tw-prose-links: color-mix(in srgb, #111827 var(--paper-text-opacity), transparent);
+    }
     --tw-prose-bold: #111827;
+    @supports (color: color-mix(in lab, red, red)) {
+      --tw-prose-bold: color-mix(in srgb, #111827 var(--paper-text-opacity), transparent);
+    }
     --tw-prose-counters: #4b5563;
+    @supports (color: color-mix(in lab, red, red)) {
+      --tw-prose-counters: color-mix(in srgb, #4b5563 var(--paper-text-opacity), transparent);
+    }
     --tw-prose-bullets: #4b5563;
+    @supports (color: color-mix(in lab, red, red)) {
+      --tw-prose-bullets: color-mix(in srgb, #4b5563 var(--paper-text-opacity), transparent);
+    }
     --tw-prose-hr: #e4d5b2;
     --tw-prose-quotes: #1f2937;
+    @supports (color: color-mix(in lab, red, red)) {
+      --tw-prose-quotes: color-mix(in srgb, #1f2937 var(--paper-text-opacity), transparent);
+    }
     --tw-prose-quote-borders: #d4c29a;
     --tw-prose-captions: #4b5563;
+    @supports (color: color-mix(in lab, red, red)) {
+      --tw-prose-captions: color-mix(in srgb, #4b5563 var(--paper-text-opacity), transparent);
+    }
     --tw-prose-code: #111827;
+    @supports (color: color-mix(in lab, red, red)) {
+      --tw-prose-code: color-mix(in srgb, #111827 var(--paper-text-opacity), transparent);
+    }
     --tw-prose-pre-code: #111827;
+    @supports (color: color-mix(in lab, red, red)) {
+      --tw-prose-pre-code: color-mix(in srgb, #111827 var(--paper-text-opacity), transparent);
+    }
     --tw-prose-pre-bg: #f0e6cf;
   }
   [data-theme="paper"] button, [data-theme="paper"] button:hover, [data-theme="paper"] button:focus {
@@ -2860,34 +2907,6 @@ li {
   }
 }
 @layer utilities {
-  @keyframes toast-in {
-    from {
-      opacity: 0;
-      transform: translateY(32px);
-    }
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
-  }
-  @keyframes toast-out {
-    from {
-      opacity: 1;
-      transform: translateY(0);
-    }
-    to {
-      opacity: 0;
-      transform: translateY(-32px);
-    }
-  }
-  .toast-animate-in {
-    animation: toast-in 0.4s cubic-bezier(0.4, 0, 0.2, 1) both;
-    will-change: opacity, transform;
-  }
-  .toast-animate-out {
-    animation: toast-out 0.4s cubic-bezier(0.4, 0, 0.2, 1) both;
-    will-change: opacity, transform;
-  }
   @keyframes fadein-choices {
     from {
       opacity: 0;
@@ -2900,8 +2919,26 @@ li {
     animation: fadein-choices 1s cubic-bezier(0.4, 0, 0.2, 1) forwards;
     will-change: opacity, transform;
   }
+  :where([data-theme="paper"]) {
+    --story-paragraph-filter: url(#pen-texture);
+  }
+  .pen-texture-text {
+    -webkit-filter: var(--story-paragraph-filter, none);
+    filter: var(--story-paragraph-filter, none);
+  }
+  .story-text-filter {
+    -webkit-filter: var(--story-paragraph-filter, none);
+    filter: var(--story-paragraph-filter, none);
+  }
 }
 @layer components {
+  :where([data-theme="paper"] .paper-surface) {
+    background-color: #fdf6e3;
+    background-image: radial-gradient(1200px at 30% 18%, rgba(255, 255, 255, 0.6), rgba(253, 246, 227, 0)), radial-gradient(900px at 82% 8%, rgba(255, 255, 255, 0.38), rgba(253, 246, 227, 0)), linear-gradient( 160deg, rgba(236, 221, 193, 0.32) 0%, rgba(236, 221, 193, 0.14) 32%, rgba(217, 197, 158, 0.08) 100% ), var(--paper-texture);
+    background-size: 100% 100%, 100% 100%, 100% 100%, 420px 420px;
+    background-blend-mode: screen, soft-light, multiply, normal;
+    box-shadow: inset 0 0 48px rgba(17, 24, 39, 0.05);
+  }
   .journal-page {
     position: relative;
     margin-inline: auto;
