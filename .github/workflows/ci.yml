@@ -1,12 +1,12 @@
 name: CI
 
 on:
-  push:
-    branches: ["**"]
   pull_request:
+    types: [closed]
 
 jobs:
   build:
+    if: github.event.pull_request.merged == true
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -26,31 +26,31 @@ jobs:
       - name: Cargo check
         run: cargo check --all-targets
 
-      - name: Cargo build (release)
-        run: cargo build --release --all-targets
+      - name: Add wasm target
+        run: rustup target add wasm32-unknown-unknown
+
+      - name: Install Dioxus CLI
+        run: cargo install dioxus-cli --locked
+
+      - name: Dioxus web build (release)
+        run: dx build --release --platform web
 
       - name: Determine version
         id: version
-        if: github.event_name == 'push'
         run: |
           version=$(cargo metadata --no-deps --format-version 1 | jq -r '.packages[] | select(.name=="ifecaro") | .version')
           echo "version=${version}" >> "${GITHUB_OUTPUT}"
 
       - name: Package release artifacts
-        if: github.event_name == 'push'
         run: |
-          tag="v${{ steps.version.outputs.version }}-beta+${{ github.run_number }}"
-          tar -czf "ifecaro-${tag}-linux-x86_64.tar.gz" \
-            target/release/ifecaro \
-            target/release/deploy \
-            target/release/test-runner
+          tag="v${{ steps.version.outputs.version }}-beta${{ github.run_number }}"
+          tar -czf "ifecaro-${tag}-web.tar.gz" dist/
 
       - name: Create GitHub prerelease
-        if: github.event_name == 'push'
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v${{ steps.version.outputs.version }}-beta+${{ github.run_number }}
-          name: ifecaro v${{ steps.version.outputs.version }}-beta+${{ github.run_number }}
+          tag_name: v${{ steps.version.outputs.version }}-beta${{ github.run_number }}
+          name: ifecaro v${{ steps.version.outputs.version }}-beta${{ github.run_number }}
           prerelease: true
           files: |
-            ifecaro-v${{ steps.version.outputs.version }}-beta+${{ github.run_number }}-linux-x86_64.tar.gz
+            ifecaro-v${{ steps.version.outputs.version }}-beta${{ github.run_number }}-web.tar.gz
