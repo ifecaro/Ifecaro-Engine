@@ -8,6 +8,8 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     env:
       CARGO_TERM_COLOR: always
       SKIP_TAILWIND: "1"
@@ -26,3 +28,29 @@ jobs:
 
       - name: Cargo build (release)
         run: cargo build --release --all-targets
+
+      - name: Determine version
+        id: version
+        if: github.event_name == 'push'
+        run: |
+          version=$(cargo metadata --no-deps --format-version 1 | jq -r '.packages[] | select(.name=="ifecaro") | .version')
+          echo "version=${version}" >> "${GITHUB_OUTPUT}"
+
+      - name: Package release artifacts
+        if: github.event_name == 'push'
+        run: |
+          tag="v${{ steps.version.outputs.version }}-beta+${{ github.run_number }}"
+          tar -czf "ifecaro-${tag}-linux-x86_64.tar.gz" \
+            target/release/ifecaro \
+            target/release/deploy \
+            target/release/test-runner
+
+      - name: Create GitHub prerelease
+        if: github.event_name == 'push'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ steps.version.outputs.version }}-beta+${{ github.run_number }}
+          name: ifecaro v${{ steps.version.outputs.version }}-beta+${{ github.run_number }}
+          prerelease: true
+          files: |
+            ifecaro-v${{ steps.version.outputs.version }}-beta+${{ github.run_number }}-linux-x86_64.tar.gz
