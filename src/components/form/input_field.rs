@@ -10,7 +10,7 @@ pub struct InputFieldProps {
     has_error: bool,
     on_input: EventHandler<String>,
     on_blur: EventHandler<()>,
-    #[props(optional)]
+    #[props(default = rsx! {})]
     children: Element,
     #[props(default = false)]
     disabled: bool,
