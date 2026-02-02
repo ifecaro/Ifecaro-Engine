@@ -601,6 +601,24 @@ cargo test --test dashboard_benchmark_tests    # Dashboard performance tests (11
 - **Automated Deployment**: Tests must pass before deployment
 - **Dashboard Validation**: Specialized Dashboard tests integrated into CI pipeline
 
+### GitHub Actions CI Workflow
+
+This repository includes a GitHub Actions workflow that validates compilation on every push and pull request by running `cargo check` and a release build with Tailwind compilation skipped in CI.
+
+#### Usage Steps
+
+1. **Enable GitHub Actions**  
+   Make sure Actions are enabled in your GitHub repository settings.
+
+2. **Push or open a pull request**  
+   Any push to any branch, or a new pull request, will automatically trigger the workflow.
+
+3. **Monitor CI results**  
+   Go to the **Actions** tab in GitHub to see the job status and logs for `cargo check --all-targets` and `cargo build --release --all-targets`.
+
+4. **Troubleshoot failures**  
+   If the workflow fails, review the logs, fix issues locally, and push updates to rerun CI.
+
 ## 📁 Project Structure
 
 ```
