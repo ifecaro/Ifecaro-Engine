@@ -32,6 +32,8 @@ enum Commands {
     Dev,
     /// Production mode (optimized full deployment process)
     Prod,
+    /// Remote VPS deployment via GHCR (pull image + docker compose up)
+    Remote,
 }
 
 #[derive(clap::ValueEnum, Clone, Debug)]
@@ -64,6 +66,9 @@ fn main() -> Result<()> {
         Some(Commands::Prod) => {
             deploy()?;
             println!("{}", "🎉 Production deployment completed".green().bold());
+        }
+        Some(Commands::Remote) => {
+            deploy_remote_from_ghcr()?;
         }
         None => {
             show_interactive_menu()?;
@@ -101,10 +106,14 @@ fn show_interactive_menu() -> Result<()> {
             "  {}  🎯 Production mode (full one-click deployment)",
             "6.".cyan().bold()
         );
+        println!(
+            "  {}  🌐 Remote VPS deploy (GHCR pull + docker compose up)",
+            "7.".cyan().bold()
+        );
         println!("  {}  ❌ Exit", "0.".red().bold());
         println!();
 
-        print!("{}", "Please enter option (0-6): ".green().bold());
+        print!("{}", "Please enter option (0-7): ".green().bold());
         io::stdout().flush()?;
 
         let mut input = String::new();
@@ -148,6 +157,15 @@ fn show_interactive_menu() -> Result<()> {
                 println!("{}", "🎉 Production deployment completed".green().bold());
                 wait_for_enter();
             }
+            "7" => {
+                println!(
+                    "{}",
+                    "Starting remote VPS deployment (GHCR pull + docker compose up)..."
+                        .yellow()
+                );
+                deploy_remote_from_ghcr()?;
+                wait_for_enter();
+            }
             "0" => {
                 println!(
                     "{}",
@@ -160,7 +178,7 @@ fn show_interactive_menu() -> Result<()> {
             _ => {
                 println!(
                     "{}",
-                    "Invalid option, please enter again (0-6)".red().bold()
+                    "Invalid option, please enter again (0-7)".red().bold()
                 );
                 wait_for_enter();
             }
@@ -691,6 +709,73 @@ fn upload_to_remote() -> Result<()> {
     restart_remote_docker(&deploy_user, &deploy_host, &deploy_path, &ssh_key_path)?;
 
     println!("{}", "✅ Remote deployment completed".green().bold());
+    Ok(())
+}
+
+fn deploy_remote_from_ghcr() -> Result<()> {
+    println!(
+        "\n{}",
+        "🌐 Running remote VPS deployment (GHCR pull + docker compose up)..."
+            .yellow()
+            .bold()
+    );
+
+    if std::path::Path::new(".env").exists() {
+        dotenv::dotenv().ok();
+    } else {
+        anyhow::bail!(
+            "❌ Unable to find .env file, please create and configure deployment parameters first"
+        );
+    }
+
+    let deploy_user =
+        std::env::var("DEPLOY_USER").context("❌ Missing DEPLOY_USER environment variable")?;
+    let deploy_host =
+        std::env::var("DEPLOY_HOST").context("❌ Missing DEPLOY_HOST environment variable")?;
+    let deploy_path =
+        std::env::var("DEPLOY_PATH").context("❌ Missing DEPLOY_PATH environment variable")?;
+    let ssh_key_path = std::env::var("SSH_KEY_PATH").unwrap_or_else(|_| "/root/.ssh".to_string());
+
+    let remote_command = format!(
+        "cd {} && docker compose pull && docker compose up -d",
+        deploy_path
+    );
+
+    let ssh_args = &[
+        "-i",
+        &format!("{}/id_rsa", ssh_key_path),
+        "-o",
+        "UserKnownHostsFile=/root/.ssh/known_hosts",
+        "-o",
+        "StrictHostKeyChecking=yes",
+        "-o",
+        "PasswordAuthentication=no",
+        "-o",
+        "PubkeyAuthentication=yes",
+        "-o",
+        "ConnectTimeout=30",
+        &format!("{}@{}", deploy_user, deploy_host),
+        &remote_command,
+    ];
+
+    let deploy_result = Command::new("ssh")
+        .args(ssh_args)
+        .stdout(Stdio::inherit())
+        .stderr(Stdio::inherit())
+        .status()
+        .context("Failed to deploy via remote VPS command")?;
+
+    if deploy_result.success() {
+        println!(
+            "{}",
+            "✅ Remote VPS deployment completed (GHCR pull + docker compose up)"
+                .green()
+                .bold()
+        );
+    } else {
+        anyhow::bail!("❌ Remote VPS deployment failed");
+    }
+
     Ok(())
 }
 
