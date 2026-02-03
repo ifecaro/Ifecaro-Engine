@@ -58,7 +58,7 @@ jobs:
       - name: Package release artifacts
         run: |
           tag="v${{ steps.version.outputs.version }}-beta${{ github.run_number }}"
-          tar -czf "ifecaro-${tag}-web.tar.gz" dist/
+          tar -czf "ifecaro-${tag}-web.tar.gz" -C dist .
 
       - name: Create GitHub prerelease
         uses: softprops/action-gh-release@v2
