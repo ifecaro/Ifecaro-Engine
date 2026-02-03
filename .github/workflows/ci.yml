@@ -36,39 +36,11 @@ jobs:
       - name: Dioxus web build (release)
         run: dx build --release --platform web
 
-      - name: Ensure dist output exists
-        run: |
-          if [ ! -d dist ]; then
-            echo "dist/ not found; searching for Dioxus web build output."
-            out_dir=$(find target -type f -name index.html -path "*/web/*" -print -quit)
-            if [ -z "${out_dir}" ]; then
-              echo "Unable to locate web build output (index.html missing)." >&2
-              exit 1
-            fi
-            out_dir=$(dirname "${out_dir}")
-            mkdir -p dist
-            cp -a "${out_dir}/." dist/
-          fi
-
       - name: Determine version
         id: version
         run: |
           version=$(cargo metadata --no-deps --format-version 1 | jq -r '.packages[] | select(.name=="ifecaro") | .version')
           echo "version=${version}" >> "${GITHUB_OUTPUT}"
-
-      - name: Package release artifacts
-        run: |
-          tag="v${{ steps.version.outputs.version }}-beta${{ github.run_number }}"
-          tar -czf "ifecaro-${tag}-web.tar.gz" -C dist .
-
-      - name: Create GitHub prerelease
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: v${{ steps.version.outputs.version }}-beta${{ github.run_number }}
-          name: ifecaro v${{ steps.version.outputs.version }}-beta${{ github.run_number }}
-          prerelease: true
-          files: |
-            ifecaro-v${{ steps.version.outputs.version }}-beta${{ github.run_number }}-web.tar.gz
 
       - name: Set image name
         run: echo "IMAGE_NAME=ghcr.io/${GITHUB_REPOSITORY,,}" >> "${GITHUB_ENV}"
