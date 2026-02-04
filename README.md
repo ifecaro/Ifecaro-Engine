@@ -357,9 +357,9 @@ Set `GHCR_IMAGE` and `GHCR_TAG` in the server-side `.env` file to control which 
 
 **GHCR tag versioning rules**
 
-- `GHCR_TAG` **must stay in sync** with the version in `Cargo.toml` under `[package] version`.
-- If you add a prefix (e.g. `v<version>` or any other prefix), keep the same underlying version from `Cargo.toml` and include the prefix in `GHCR_TAG`.
-  - Example with `v` prefix: `GHCR_TAG=v0.15.1` (matches `Cargo.toml` version `0.15.1`).
+- The CI workflow publishes two tags: `latest` and `v<version>-beta<run>` (for example, `v0.15.1-beta123`). Align `GHCR_TAG` with one of these published tags.
+- If you use the versioned beta tag, keep the `<version>` portion in sync with the version in `Cargo.toml` under `[package] version`.
+  - Example: `GHCR_TAG=v0.15.1-beta123` (matches `Cargo.toml` version `0.15.1`).
 
 ### Deployment Pipeline
 
