@@ -616,13 +616,11 @@ fn restore_tailwind_css() -> Result<()> {
 fn upload_to_remote() -> Result<()> {
     println!("\n{}", "🚀 Uploading to remote server...".yellow().bold());
 
-    // Load .env environment variables
+    // Load .env environment variables if present
     if std::path::Path::new(".env").exists() {
         dotenv::dotenv().ok();
     } else {
-        anyhow::bail!(
-            "❌ Unable to find .env file, please create and configure deployment parameters first"
-        );
+        println!("ℹ️  No .env file found, using existing environment variables.");
     }
 
     // Check necessary environment variables
@@ -723,9 +721,7 @@ fn deploy_remote_from_ghcr() -> Result<()> {
     if std::path::Path::new(".env").exists() {
         dotenv::dotenv().ok();
     } else {
-        anyhow::bail!(
-            "❌ Unable to find .env file, please create and configure deployment parameters first"
-        );
+        println!("ℹ️  No .env file found, using existing environment variables.");
     }
 
     let deploy_user =
