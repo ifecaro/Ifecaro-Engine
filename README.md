@@ -355,6 +355,12 @@ services:
 
 Set `GHCR_IMAGE` and `GHCR_TAG` in the server-side `.env` file to control which image tag is pulled.
 
+**GHCR tag versioning rules**
+
+- `GHCR_TAG` **must stay in sync** with the version in `Cargo.toml` under `[package] version`.
+- If you add a prefix (e.g. `v<version>` or any other prefix), keep the same underlying version from `Cargo.toml` and include the prefix in `GHCR_TAG`.
+  - Example with `v` prefix: `GHCR_TAG=v0.15.1` (matches `Cargo.toml` version `0.15.1`).
+
 ### Deployment Pipeline
 
 The automated deployment process includes:
