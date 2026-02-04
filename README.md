@@ -92,9 +92,10 @@ Please select an operation:
   4.  🧹 Clean Build Files
   5.  ⚡ Development Mode (check + quick test)
   6.  🎯 Production Mode (complete one-click deployment)
+  7.  🌐 Remote VPS Deploy (GHCR pull + docker compose up)
   0.  ❌ Exit
 
-Please enter option (0-6):
+Please enter option (0-7):
 ```
 
 3. Or use direct commands for automation:
@@ -114,6 +115,7 @@ cargo run --bin deploy build      # Build project
 cargo run --bin deploy deploy     # Full deployment pipeline
 cargo run --bin deploy dev        # Development mode (check + quick test)
 cargo run --bin deploy prod       # Production mode (full test + build + deploy)
+cargo run --bin deploy remote     # Remote VPS deploy (GHCR pull + docker compose up)
 ```
 
 ## 🛠️ Development Tools
@@ -140,6 +142,7 @@ docker compose exec app cargo run --bin deploy <command>
 | `clean` | Clean build artifacts | Remove target/ and dx/ directories | Cleanup, fresh start | ~5s |
 | `dev` | Development mode | check + quick test | **Daily development** | ~20s |
 | `prod` | Production mode | full test + build + deploy + remote | **Production deployment** | ~90s |
+| `remote` | Remote VPS deploy | docker compose pull + up (remote) | **Deploy GHCR images** | ~10-30s |
 
 #### Menu Options Detailed Comparison
 
@@ -151,6 +154,7 @@ docker compose exec app cargo run --bin deploy <command>
 | **4** | 🧹 Clean Build Files | `clean()` | 1. Remove target/<br>2. Remove dx/ | ✅ Clean workspace | Fresh start, disk space |
 | **5** | ⚡ Development Mode | `check() + test(quick)` | 1. Cargo check<br>2. Quick test suite | ✅ Development ready | **Daily development** |
 | **6** | 🎯 Production Mode | `deploy()` | 1. Full test suite<br>2. Rust + Dioxus build<br>3. PWA bundling<br>4. Deploy package<br>5. Remote upload<br>6. Service restart | ✅ Production deployed | **Production deployment** |
+| **7** | 🌐 Remote VPS Deploy | `deploy_remote_from_ghcr()` | 1. GHCR image pull<br>2. docker compose up -d | ✅ Remote services running | **Fast remote refresh** |
 
 #### Performance Comparison
 
@@ -322,6 +326,7 @@ SSH_KEY_PATH=/home/your-local-username/.ssh  # Local SSH key directory
 # DEPLOY_HOST=192.168.1.100
 # DEPLOY_PATH=/home/developer/ifecaro
 # SSH_KEY_PATH=/home/user/.ssh
+# DEPLOY_COMPOSE_FILE=docker-compose.deploy.yml
 ```
 
 Note: Make sure to:
@@ -330,6 +335,25 @@ Note: Make sure to:
 3. Replace `your-local-username` with your local machine username
 4. Ensure the deployment path exists on the server
 5. Verify SSH key permissions (600 for private key, 644 for public key)
+6. Place `docker-compose.deploy.yml` in `DEPLOY_PATH` (or set `DEPLOY_COMPOSE_FILE` to match)
+
+### Remote Compose File (GHCR Deploy)
+
+The remote deploy command (`deploy remote`) runs `docker compose -f <file> pull` and `up -d` on the server.
+Create a deployment-specific compose file at `DEPLOY_PATH`, for example:
+
+```yaml
+services:
+  app:
+    image: ${GHCR_IMAGE:-ghcr.io/your-org/ifecaro-engine}:${GHCR_TAG:-latest}
+    env_file:
+      - .env
+    ports:
+      - "9999:9999"
+    restart: unless-stopped
+```
+
+Set `GHCR_IMAGE` and `GHCR_TAG` in the server-side `.env` file to control which image tag is pulled.
 
 ### Deployment Pipeline
 
