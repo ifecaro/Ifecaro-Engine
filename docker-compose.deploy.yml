@@ -1,0 +1,8 @@
+services:
+  app:
+    image: ${GHCR_IMAGE:-ghcr.io/your-org/ifecaro-engine}:${GHCR_TAG:-latest}
+    env_file:
+      - .env
+    ports:
+      - "9999:9999"
+    restart: unless-stopped

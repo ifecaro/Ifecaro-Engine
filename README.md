@@ -326,6 +326,7 @@ SSH_KEY_PATH=/home/your-local-username/.ssh  # Local SSH key directory
 # DEPLOY_HOST=192.168.1.100
 # DEPLOY_PATH=/home/developer/ifecaro
 # SSH_KEY_PATH=/home/user/.ssh
+# DEPLOY_COMPOSE_FILE=docker-compose.deploy.yml
 ```
 
 Note: Make sure to:
@@ -334,6 +335,25 @@ Note: Make sure to:
 3. Replace `your-local-username` with your local machine username
 4. Ensure the deployment path exists on the server
 5. Verify SSH key permissions (600 for private key, 644 for public key)
+6. Place `docker-compose.deploy.yml` in `DEPLOY_PATH` (or set `DEPLOY_COMPOSE_FILE` to match)
+
+### Remote Compose File (GHCR Deploy)
+
+The remote deploy command (`deploy remote`) runs `docker compose -f <file> pull` and `up -d` on the server.
+Create a deployment-specific compose file at `DEPLOY_PATH`, for example:
+
+```yaml
+services:
+  app:
+    image: ${GHCR_IMAGE:-ghcr.io/your-org/ifecaro-engine}:${GHCR_TAG:-latest}
+    env_file:
+      - .env
+    ports:
+      - "9999:9999"
+    restart: unless-stopped
+```
+
+Set `GHCR_IMAGE` and `GHCR_TAG` in the server-side `.env` file to control which image tag is pulled.
 
 ### Deployment Pipeline
 

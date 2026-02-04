@@ -734,11 +734,13 @@ fn deploy_remote_from_ghcr() -> Result<()> {
         std::env::var("DEPLOY_HOST").context("❌ Missing DEPLOY_HOST environment variable")?;
     let deploy_path =
         std::env::var("DEPLOY_PATH").context("❌ Missing DEPLOY_PATH environment variable")?;
+    let deploy_compose_file =
+        std::env::var("DEPLOY_COMPOSE_FILE").unwrap_or_else(|_| "docker-compose.deploy.yml".to_string());
     let ssh_key_path = std::env::var("SSH_KEY_PATH").unwrap_or_else(|_| "/root/.ssh".to_string());
 
     let remote_command = format!(
-        "cd {} && docker compose pull && docker compose up -d",
-        deploy_path
+        "cd {} && docker compose -f {} pull && docker compose -f {} up -d",
+        deploy_path, deploy_compose_file, deploy_compose_file
     );
 
     let ssh_args = &[
