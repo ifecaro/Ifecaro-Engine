@@ -13,6 +13,8 @@ use std::collections::HashSet;
 use std::{rc::Rc, sync::Arc};
 use wasm_bindgen::closure::Closure;
 use web_sys::Event as WebEvent;
+#[cfg(target_arch = "wasm32")]
+use web_sys::window;
 
 #[derive(Debug, Clone)]
 pub struct KeyboardState {
@@ -41,6 +43,17 @@ pub fn Layout() -> Element {
     let mut story_context = use_story_context();
     let settings_context = use_settings_context();
     let closure_signal = use_signal(|| None::<Closure<dyn FnMut(WebEvent)>>);
+    let app_version = env!("CARGO_PKG_VERSION");
+    #[cfg(target_arch = "wasm32")]
+    let debugmode = {
+        let raw = window().unwrap().location().search().unwrap_or_default();
+        raw.split('?').nth(1).unwrap_or("").split('&').any(|pair| {
+            let mut iter = pair.split('=');
+            iter.next() == Some("debugmode") && iter.next() == Some("true")
+        })
+    };
+    #[cfg(not(target_arch = "wasm32"))]
+    let debugmode = false;
 
     use_effect(move || {
         let lang = match &route {
@@ -153,6 +166,12 @@ pub fn Layout() -> Element {
             div {
                 class: "container mx-auto px-4 py-8",
                 Outlet::<Route> {}
+            }
+            if debugmode {
+                div {
+                    class: "fixed bottom-2 left-2 text-xs text-gray-600 dark:text-gray-300 bg-white/80 dark:bg-gray-900/80 px-2 py-1 rounded shadow pointer-events-none z-[10000]",
+                    "v{app_version}"
+                }
             }
         }
     }
