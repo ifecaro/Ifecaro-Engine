@@ -360,7 +360,7 @@ Set `GHCR_IMAGE` and `GHCR_TAG` in the server-side `.env` file to control which 
 - `GHCR_TAG` **must stay in sync** with the version in `Cargo.toml` under `[package] version`.
 - If you add a prefix (e.g. `v<version>` or any other prefix), keep the same underlying version from `Cargo.toml` and include the prefix in `GHCR_TAG`.
   - Example with `v` prefix: `GHCR_TAG=v0.15.1` (matches `Cargo.toml` version `0.15.1`).
-- The deploy tool can generate tags from `GHCR_TAG_FORMAT` (e.g. `v{version}`) when `GHCR_TAG` is not set.
+- The deploy tool can generate tags from `GHCR_TAG_FORMAT` (e.g. `v{version}`) when `GHCR_TAG` is not set, using the build-time `CARGO_PKG_VERSION`.
 
 ### Deployment Pipeline
 
