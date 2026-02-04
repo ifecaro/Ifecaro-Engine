@@ -10,8 +10,25 @@ use dioxus_i18n::t;
 use gloo_timers::callback::Timeout;
 use wasm_bindgen::JsValue;
 use wasm_bindgen::{closure::Closure, JsCast};
+#[cfg(target_arch = "wasm32")]
+use web_sys::UrlSearchParams;
 use web_sys::window;
 use web_sys::Event;
+
+#[cfg(target_arch = "wasm32")]
+fn build_debugmode_url(path: &str, search: &str, hash: &str) -> String {
+    let query = search.trim_start_matches('?');
+    let params = UrlSearchParams::new_with_str(query)
+        .unwrap_or_else(|_| UrlSearchParams::new().expect("failed to build URLSearchParams"));
+    params.set("debugmode", "true");
+    let query_string = params.to_string();
+    let query_part = if query_string.is_empty() {
+        String::new()
+    } else {
+        format!("?{query_string}")
+    };
+    format!("{path}{query_part}{hash}")
+}
 
 #[component]
 pub fn Navbar(closure_signal: Signal<Option<Closure<dyn FnMut(Event)>>>) -> Element {
@@ -33,8 +50,11 @@ pub fn Navbar(closure_signal: Signal<Option<Closure<dyn FnMut(Event)>>>) -> Elem
     use_effect(move || {
         if debugmode {
             let win = window().unwrap();
-            let path = win.location().pathname().unwrap_or_default();
-            let new_url = format!("{}?debugmode=true", path);
+            let location = win.location();
+            let path = location.pathname().unwrap_or_default();
+            let search = location.search().unwrap_or_default();
+            let hash = location.hash().unwrap_or_default();
+            let new_url = build_debugmode_url(&path, &search, &hash);
             let _ =
                 win.history()
                     .unwrap()
@@ -133,11 +153,19 @@ pub fn Navbar(closure_signal: Signal<Option<Closure<dyn FnMut(Event)>>>) -> Elem
                             #[cfg(target_arch = "wasm32")]
                             if debugmode {
                                 let win = window().unwrap();
-                                let path = win.location().pathname().unwrap_or_default();
-                                let new_url = format!("{}?debugmode=true", path);
+                                let location = win.location();
+                                let search = location.search().unwrap_or_default();
+                                let hash = location.hash().unwrap_or_default();
                                 Timeout::new(0, move || {
-                                    let _ = window().unwrap().history().unwrap().replace_state_with_url(&JsValue::NULL, "", Some(&new_url));
-                                }).forget();
+                                    let win = window().unwrap();
+                                    let path = win.location().pathname().unwrap_or_default();
+                                    let new_url = build_debugmode_url(&path, &search, &hash);
+                                    let _ = win
+                                        .history()
+                                        .unwrap()
+                                        .replace_state_with_url(&JsValue::NULL, "", Some(&new_url));
+                                })
+                                .forget();
                             }
                         },
                         "{t!(\"story\")}"
@@ -150,11 +178,19 @@ pub fn Navbar(closure_signal: Signal<Option<Closure<dyn FnMut(Event)>>>) -> Elem
                             #[cfg(target_arch = "wasm32")]
                             if debugmode {
                                 let win = window().unwrap();
-                                let path = win.location().pathname().unwrap_or_default();
-                                let new_url = format!("{}?debugmode=true", path);
+                                let location = win.location();
+                                let search = location.search().unwrap_or_default();
+                                let hash = location.hash().unwrap_or_default();
                                 Timeout::new(0, move || {
-                                    let _ = window().unwrap().history().unwrap().replace_state_with_url(&JsValue::NULL, "", Some(&new_url));
-                                }).forget();
+                                    let win = window().unwrap();
+                                    let path = win.location().pathname().unwrap_or_default();
+                                    let new_url = build_debugmode_url(&path, &search, &hash);
+                                    let _ = win
+                                        .history()
+                                        .unwrap()
+                                        .replace_state_with_url(&JsValue::NULL, "", Some(&new_url));
+                                })
+                                .forget();
                             }
                         },
                         "{t!(\"dashboard\")}"
