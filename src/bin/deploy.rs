@@ -724,6 +724,9 @@ fn deploy_remote_from_ghcr() -> Result<()> {
         println!("ℹ️  No .env file found, using existing environment variables.");
     }
 
+    let cargo_version = env!("CARGO_PKG_VERSION");
+    let ghcr_tag = resolve_ghcr_tag(&cargo_version)?;
+
     let deploy_user =
         std::env::var("DEPLOY_USER").context("❌ Missing DEPLOY_USER environment variable")?;
     let deploy_host =
@@ -735,8 +738,12 @@ fn deploy_remote_from_ghcr() -> Result<()> {
     let ssh_key_path = std::env::var("SSH_KEY_PATH").unwrap_or_else(|_| "/root/.ssh".to_string());
 
     let remote_command = format!(
-        "cd {} && docker compose -f {} pull && docker compose -f {} up -d",
-        deploy_path, deploy_compose_file, deploy_compose_file
+        "cd {} && GHCR_TAG={} docker compose -f {} pull && GHCR_TAG={} docker compose -f {} up -d",
+        deploy_path,
+        shell_escape(&ghcr_tag),
+        deploy_compose_file,
+        shell_escape(&ghcr_tag),
+        deploy_compose_file
     );
 
     let ssh_args = &[
@@ -775,6 +782,26 @@ fn deploy_remote_from_ghcr() -> Result<()> {
     }
 
     Ok(())
+}
+
+fn resolve_ghcr_tag(cargo_version: &str) -> Result<String> {
+    if let Ok(existing_tag) = std::env::var("GHCR_TAG") {
+        return Ok(existing_tag);
+    }
+
+    if let Ok(format) = std::env::var("GHCR_TAG_FORMAT") {
+        if format.contains("{version}") {
+            return Ok(format.replace("{version}", cargo_version));
+        }
+        return Ok(format + cargo_version);
+    }
+
+    Ok(cargo_version.to_string())
+}
+
+fn shell_escape(value: &str) -> String {
+    let escaped = value.replace('\'', "'\"'\"'");
+    format!("'{}'", escaped)
 }
 
 fn extract_on_remote(user: &str, host: &str, path: &str, ssh_key_path: &str) -> Result<()> {

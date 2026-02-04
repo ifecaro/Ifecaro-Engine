@@ -1,6 +1,6 @@
 services:
   app:
-    image: ${GHCR_IMAGE:-ghcr.io/your-org/ifecaro-engine}:${GHCR_TAG:-latest}
+    image: ${GHCR_IMAGE:-ghcr.io/your-org/ifecaro-engine}:${GHCR_TAG:-0.15.1}
     env_file:
       - .env
     ports:
