@@ -68,7 +68,7 @@ fn main() -> Result<()> {
             println!("{}", "🎉 Production deployment completed".green().bold());
         }
         Some(Commands::Remote) => {
-            deploy_remote_from_ghcr()?;
+            run_remote_deploy_binary()?;
         }
         None => {
             show_interactive_menu()?;
@@ -160,10 +160,9 @@ fn show_interactive_menu() -> Result<()> {
             "7" => {
                 println!(
                     "{}",
-                    "Starting remote VPS deployment (GHCR pull + docker compose up)..."
-                        .yellow()
+                    "Starting remote VPS deployment (GHCR pull + docker compose up)...".yellow()
                 );
-                deploy_remote_from_ghcr()?;
+                run_remote_deploy_binary()?;
                 wait_for_enter();
             }
             "0" => {
@@ -710,98 +709,31 @@ fn upload_to_remote() -> Result<()> {
     Ok(())
 }
 
-fn deploy_remote_from_ghcr() -> Result<()> {
+fn run_remote_deploy_binary() -> Result<()> {
     println!(
         "\n{}",
-        "🌐 Running remote VPS deployment (GHCR pull + docker compose up)..."
+        "🌐 Running remote VPS deployment (minimal standalone binary)..."
             .yellow()
             .bold()
     );
 
-    if std::path::Path::new(".env").exists() {
-        dotenv::dotenv().ok();
-    } else {
-        println!("ℹ️  No .env file found, using existing environment variables.");
-    }
-
-    let cargo_version = env!("CARGO_PKG_VERSION");
-    let ghcr_tag = resolve_ghcr_tag(&cargo_version)?;
-
-    let deploy_user =
-        std::env::var("DEPLOY_USER").context("❌ Missing DEPLOY_USER environment variable")?;
-    let deploy_host =
-        std::env::var("DEPLOY_HOST").context("❌ Missing DEPLOY_HOST environment variable")?;
-    let deploy_path =
-        std::env::var("DEPLOY_PATH").context("❌ Missing DEPLOY_PATH environment variable")?;
-    let deploy_compose_file =
-        std::env::var("DEPLOY_COMPOSE_FILE").unwrap_or_else(|_| "docker-compose.deploy.yml".to_string());
-    let ssh_key_path = std::env::var("SSH_KEY_PATH").unwrap_or_else(|_| "/root/.ssh".to_string());
-
-    let remote_command = format!(
-        "cd {} && GHCR_TAG={} docker compose -f {} pull && GHCR_TAG={} docker compose -f {} up -d",
-        deploy_path,
-        shell_escape(&ghcr_tag),
-        deploy_compose_file,
-        shell_escape(&ghcr_tag),
-        deploy_compose_file
-    );
-
-    let ssh_args = &[
-        "-i",
-        &format!("{}/id_rsa", ssh_key_path),
-        "-o",
-        "UserKnownHostsFile=/root/.ssh/known_hosts",
-        "-o",
-        "StrictHostKeyChecking=yes",
-        "-o",
-        "PasswordAuthentication=no",
-        "-o",
-        "PubkeyAuthentication=yes",
-        "-o",
-        "ConnectTimeout=30",
-        &format!("{}@{}", deploy_user, deploy_host),
-        &remote_command,
-    ];
-
-    let deploy_result = Command::new("ssh")
-        .args(ssh_args)
+    let status = Command::new("cargo")
+        .args([
+            "run",
+            "--manifest-path",
+            "tools/deploy-remote/Cargo.toml",
+            "--release",
+        ])
         .stdout(Stdio::inherit())
         .stderr(Stdio::inherit())
         .status()
-        .context("Failed to deploy via remote VPS command")?;
+        .context("Failed to run deploy-remote binary")?;
 
-    if deploy_result.success() {
-        println!(
-            "{}",
-            "✅ Remote VPS deployment completed (GHCR pull + docker compose up)"
-                .green()
-                .bold()
-        );
+    if status.success() {
+        Ok(())
     } else {
-        anyhow::bail!("❌ Remote VPS deployment failed");
+        anyhow::bail!("❌ deploy-remote execution failed");
     }
-
-    Ok(())
-}
-
-fn resolve_ghcr_tag(cargo_version: &str) -> Result<String> {
-    if let Ok(existing_tag) = std::env::var("GHCR_TAG") {
-        return Ok(existing_tag);
-    }
-
-    if let Ok(format) = std::env::var("GHCR_TAG_FORMAT") {
-        if format.contains("{version}") {
-            return Ok(format.replace("{version}", cargo_version));
-        }
-        return Ok(format + cargo_version);
-    }
-
-    Ok(cargo_version.to_string())
-}
-
-fn shell_escape(value: &str) -> String {
-    let escaped = value.replace('\'', "'\"'\"'");
-    format!("'{}'", escaped)
 }
 
 fn extract_on_remote(user: &str, host: &str, path: &str, ssh_key_path: &str) -> Result<()> {

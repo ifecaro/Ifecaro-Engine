@@ -115,7 +115,8 @@ cargo run --bin deploy build      # Build project
 cargo run --bin deploy deploy     # Full deployment pipeline
 cargo run --bin deploy dev        # Development mode (check + quick test)
 cargo run --bin deploy prod       # Production mode (full test + build + deploy)
-cargo run --bin deploy remote     # Remote VPS deploy (GHCR pull + docker compose up)
+cargo run --manifest-path tools/deploy-remote/Cargo.toml --release  # Standalone remote deploy (minimal deps)
+cargo run --bin deploy remote     # Wrapper: delegates to standalone remote deploy
 ```
 
 ## 🛠️ Development Tools
@@ -142,7 +143,7 @@ docker compose exec app cargo run --bin deploy <command>
 | `clean` | Clean build artifacts | Remove target/ and dx/ directories | Cleanup, fresh start | ~5s |
 | `dev` | Development mode | check + quick test | **Daily development** | ~20s |
 | `prod` | Production mode | full test + build + deploy + remote | **Production deployment** | ~90s |
-| `remote` | Remote VPS deploy | docker compose pull + up (remote) | **Deploy GHCR images** | ~10-30s |
+| `remote` | Remote VPS deploy (wrapper) | run standalone `tools/deploy-remote` binary | **Deploy GHCR images** | ~10-30s |
 
 #### Menu Options Detailed Comparison
 
@@ -154,7 +155,7 @@ docker compose exec app cargo run --bin deploy <command>
 | **4** | 🧹 Clean Build Files | `clean()` | 1. Remove target/<br>2. Remove dx/ | ✅ Clean workspace | Fresh start, disk space |
 | **5** | ⚡ Development Mode | `check() + test(quick)` | 1. Cargo check<br>2. Quick test suite | ✅ Development ready | **Daily development** |
 | **6** | 🎯 Production Mode | `deploy()` | 1. Full test suite<br>2. Rust + Dioxus build<br>3. PWA bundling<br>4. Deploy package<br>5. Remote upload<br>6. Service restart | ✅ Production deployed | **Production deployment** |
-| **7** | 🌐 Remote VPS Deploy | `deploy_remote_from_ghcr()` | 1. GHCR image pull<br>2. docker compose up -d | ✅ Remote services running | **Fast remote refresh** |
+| **7** | 🌐 Remote VPS Deploy | `run_remote_deploy_binary()` | 1. Run standalone deploy binary<br>2. GHCR image pull<br>3. docker compose up -d | ✅ Remote services running | **Fast remote refresh** |
 
 #### Performance Comparison
 
@@ -362,7 +363,8 @@ Note: Make sure to:
 
 ### Remote Compose File (GHCR Deploy)
 
-The remote deploy command (`deploy remote`) runs `docker compose -f <file> pull` and `up -d` on the server.
+The standalone remote deploy program (`tools/deploy-remote`) runs `docker compose -f <file> pull` and `up -d` on the server.
+`cargo run --bin deploy remote` now acts as a wrapper that forwards execution to this standalone program, reducing dependency loading and startup overhead for remote-only deployment.
 Create a deployment-specific compose file at `DEPLOY_PATH`, for example:
 
 ```yaml
@@ -384,6 +386,19 @@ Set `GHCR_IMAGE` and `GHCR_TAG` in the server-side `.env` file to control which 
 - If you add a prefix (e.g. `v<version>` or any other prefix), keep the same underlying version from `Cargo.toml` and include the prefix in `GHCR_TAG`.
   - Example with `v` prefix: `GHCR_TAG=v0.15.1` (matches `Cargo.toml` version `0.15.1`).
 - The deploy tool can generate tags from `GHCR_TAG_FORMAT` (e.g. `v{version}`) when `GHCR_TAG` is not set, using the build-time `CARGO_PKG_VERSION`.
+
+
+
+### Standalone Remote Deploy Binary
+
+For fastest startup and minimal dependency loading, use the dedicated binary:
+
+```bash
+cargo run --manifest-path tools/deploy-remote/Cargo.toml --release
+```
+
+It intentionally uses only Rust standard library (no clap/anyhow/dotenv/colored), and supports the same environment variables:
+`DEPLOY_USER`, `DEPLOY_HOST`, `DEPLOY_PATH`, optional `DEPLOY_COMPOSE_FILE`, `SSH_KEY_PATH`, `GHCR_TAG`, `GHCR_TAG_FORMAT`.
 
 ### Deployment Pipeline
 

@@ -1,0 +1,8 @@
+[package]
+name = "deploy-remote"
+version = "0.1.0"
+edition = "2021"
+
+[[bin]]
+name = "deploy-remote"
+path = "src/main.rs"
