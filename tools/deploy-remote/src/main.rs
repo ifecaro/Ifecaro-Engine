@@ -14,6 +14,7 @@ fn main() -> Result<(), String> {
     let deploy_compose_file =
         env::var("DEPLOY_COMPOSE_FILE").unwrap_or_else(|_| "docker-compose.deploy.yml".to_string());
     let ssh_key_file = resolve_ssh_key_file();
+    let known_hosts_file = resolve_known_hosts_file();
 
     let remote_command = format!(
         "cd {} && GHCR_TAG={} docker compose -f {} pull && GHCR_TAG={} docker compose -f {} up -d",
@@ -29,7 +30,7 @@ fn main() -> Result<(), String> {
             "-i",
             &ssh_key_file,
             "-o",
-            "UserKnownHostsFile=/root/.ssh/known_hosts",
+            &format!("UserKnownHostsFile={}", known_hosts_file),
             "-o",
             "StrictHostKeyChecking=yes",
             "-o",
@@ -52,6 +53,22 @@ fn main() -> Result<(), String> {
     } else {
         Err("❌ Remote VPS deployment failed".to_string())
     }
+}
+
+fn resolve_known_hosts_file() -> String {
+    if let Ok(known_hosts_file) = env::var("SSH_KNOWN_HOSTS_FILE") {
+        if !known_hosts_file.trim().is_empty() {
+            return known_hosts_file;
+        }
+    }
+
+    if let Ok(home) = env::var("HOME") {
+        if !home.trim().is_empty() {
+            return format!("{}/.ssh/known_hosts", home);
+        }
+    }
+
+    "/root/.ssh/known_hosts".to_string()
 }
 
 fn required_env(name: &str) -> Result<String, String> {
