@@ -13,7 +13,7 @@ fn main() -> Result<(), String> {
     let deploy_path = required_env("DEPLOY_PATH")?;
     let deploy_compose_file =
         env::var("DEPLOY_COMPOSE_FILE").unwrap_or_else(|_| "docker-compose.deploy.yml".to_string());
-    let ssh_key_path = env::var("SSH_KEY_PATH").unwrap_or_else(|_| "/root/.ssh".to_string());
+    let ssh_key_file = resolve_ssh_key_file();
 
     let remote_command = format!(
         "cd {} && GHCR_TAG={} docker compose -f {} pull && GHCR_TAG={} docker compose -f {} up -d",
@@ -27,7 +27,7 @@ fn main() -> Result<(), String> {
     let status = Command::new("ssh")
         .args([
             "-i",
-            &format!("{}/id_rsa", ssh_key_path),
+            &ssh_key_file,
             "-o",
             "UserKnownHostsFile=/root/.ssh/known_hosts",
             "-o",
@@ -75,6 +75,18 @@ fn resolve_ghcr_tag(cargo_version: &str) -> String {
 
 fn resolve_app_version() -> &'static str {
     option_env!("IFECARO_APP_VERSION").unwrap_or(env!("CARGO_PKG_VERSION"))
+}
+
+fn resolve_ssh_key_file() -> String {
+    if let Ok(ssh_key_file) = env::var("SSH_KEY_FILE") {
+        if !ssh_key_file.trim().is_empty() {
+            return ssh_key_file;
+        }
+    }
+
+    let ssh_key_path = env::var("SSH_KEY_PATH").unwrap_or_else(|_| "/root/.ssh".to_string());
+    let ssh_key_name = env::var("SSH_KEY_NAME").unwrap_or_else(|_| "id_rsa".to_string());
+    format!("{}/{}", ssh_key_path, ssh_key_name)
 }
 
 fn shell_escape(value: &str) -> String {
