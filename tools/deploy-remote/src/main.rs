@@ -74,39 +74,7 @@ fn resolve_ghcr_tag(cargo_version: &str) -> String {
 }
 
 fn resolve_app_version() -> &'static str {
-    let root_manifest = include_str!("../../../Cargo.toml");
-    parse_package_version(root_manifest).unwrap_or(env!("CARGO_PKG_VERSION"))
-}
-
-fn parse_package_version(manifest: &str) -> Option<&str> {
-    let mut in_package = false;
-
-    for raw_line in manifest.lines() {
-        let line = raw_line.trim();
-
-        if line.is_empty() || line.starts_with('#') {
-            continue;
-        }
-
-        if line.starts_with('[') && line.ends_with(']') {
-            in_package = line == "[package]";
-            continue;
-        }
-
-        if in_package {
-            let (key, value) = line.split_once('=')?;
-            if key.trim() != "version" {
-                continue;
-            }
-
-            let version = value.trim();
-            if version.len() >= 2 && version.starts_with('"') && version.ends_with('"') {
-                return Some(&version[1..version.len() - 1]);
-            }
-        }
-    }
-
-    None
+    option_env!("IFECARO_APP_VERSION").unwrap_or(env!("CARGO_PKG_VERSION"))
 }
 
 fn shell_escape(value: &str) -> String {
@@ -156,39 +124,4 @@ fn parse_env_value(raw: &str) -> String {
         }
     }
     value.to_string()
-}
-
-#[cfg(test)]
-mod tests {
-    use super::parse_package_version;
-
-    #[test]
-    fn parses_version_from_package_section() {
-        let manifest = r#"
-            [package]
-            name = "ifecaro"
-            version = "1.2.3"
-
-            [dependencies]
-            anyhow = "1"
-        "#;
-
-        assert_eq!(parse_package_version(manifest), Some("1.2.3"));
-    }
-
-    #[test]
-    fn ignores_versions_outside_package_section() {
-        let manifest = r#"
-            [workspace.package]
-            version = "9.9.9"
-
-            [package]
-            name = "ifecaro"
-
-            [dependencies]
-            serde = "1"
-        "#;
-
-        assert_eq!(parse_package_version(manifest), None);
-    }
 }
