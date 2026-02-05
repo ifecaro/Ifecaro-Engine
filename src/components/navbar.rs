@@ -21,7 +21,7 @@ fn build_debugmode_url(path: &str, search: &str, hash: &str) -> String {
     let params = UrlSearchParams::new_with_str(query)
         .unwrap_or_else(|_| UrlSearchParams::new().expect("failed to build URLSearchParams"));
     params.set("debugmode", "true");
-    let query_string = params.to_string();
+    let query_string = params.to_string().as_string().unwrap_or_default();
     let query_part = if query_string.is_empty() {
         String::new()
     } else {
