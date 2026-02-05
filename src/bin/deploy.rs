@@ -630,7 +630,7 @@ fn upload_to_remote() -> Result<()> {
         std::env::var("DEPLOY_HOST").context("❌ Missing DEPLOY_HOST environment variable")?;
     let deploy_path =
         std::env::var("DEPLOY_PATH").context("❌ Missing DEPLOY_PATH environment variable")?;
-    let ssh_key_path = std::env::var("SSH_KEY_PATH").unwrap_or_else(|_| "/root/.ssh".to_string());
+    let ssh_key_file = resolve_ssh_key_file();
 
     let deploy_target = format!("{}@{}:{}", deploy_user, deploy_host, deploy_path);
     println!("Uploading to: {}", deploy_target);
@@ -643,7 +643,7 @@ fn upload_to_remote() -> Result<()> {
     // Ensure remote directory exists
     let ssh_args = &[
         "-i",
-        &format!("{}/id_rsa", ssh_key_path),
+        &ssh_key_file,
         "-o",
         "UserKnownHostsFile=/root/.ssh/known_hosts",
         "-o",
@@ -672,7 +672,7 @@ fn upload_to_remote() -> Result<()> {
     // Upload deployment package
     let scp_args = &[
         "-i",
-        &format!("{}/id_rsa", ssh_key_path),
+        &ssh_key_file,
         "-o",
         "UserKnownHostsFile=/root/.ssh/known_hosts",
         "-o",
@@ -701,10 +701,10 @@ fn upload_to_remote() -> Result<()> {
     println!("{}", "✅ Deployment package uploaded".green().bold());
 
     // Remote decompression
-    extract_on_remote(&deploy_user, &deploy_host, &deploy_path, &ssh_key_path)?;
+    extract_on_remote(&deploy_user, &deploy_host, &deploy_path, &ssh_key_file)?;
 
     // Restart remote Docker service
-    restart_remote_docker(&deploy_user, &deploy_host, &deploy_path, &ssh_key_path)?;
+    restart_remote_docker(&deploy_user, &deploy_host, &deploy_path, &ssh_key_file)?;
 
     println!("{}", "✅ Remote deployment completed".green().bold());
     Ok(())
@@ -735,7 +735,7 @@ fn deploy_remote_from_ghcr() -> Result<()> {
         std::env::var("DEPLOY_PATH").context("❌ Missing DEPLOY_PATH environment variable")?;
     let deploy_compose_file =
         std::env::var("DEPLOY_COMPOSE_FILE").unwrap_or_else(|_| "docker-compose.deploy.yml".to_string());
-    let ssh_key_path = std::env::var("SSH_KEY_PATH").unwrap_or_else(|_| "/root/.ssh".to_string());
+    let ssh_key_file = resolve_ssh_key_file();
 
     let remote_command = format!(
         "cd {} && GHCR_TAG={} docker compose -f {} pull && GHCR_TAG={} docker compose -f {} up -d",
@@ -748,7 +748,7 @@ fn deploy_remote_from_ghcr() -> Result<()> {
 
     let ssh_args = &[
         "-i",
-        &format!("{}/id_rsa", ssh_key_path),
+        &ssh_key_file,
         "-o",
         "UserKnownHostsFile=/root/.ssh/known_hosts",
         "-o",
@@ -804,7 +804,19 @@ fn shell_escape(value: &str) -> String {
     format!("'{}'", escaped)
 }
 
-fn extract_on_remote(user: &str, host: &str, path: &str, ssh_key_path: &str) -> Result<()> {
+fn resolve_ssh_key_file() -> String {
+    if let Ok(ssh_key_file) = std::env::var("SSH_KEY_FILE") {
+        if !ssh_key_file.trim().is_empty() {
+            return ssh_key_file;
+        }
+    }
+
+    let ssh_key_path = std::env::var("SSH_KEY_PATH").unwrap_or_else(|_| "/root/.ssh".to_string());
+    let ssh_key_name = std::env::var("SSH_KEY_NAME").unwrap_or_else(|_| "id_rsa".to_string());
+    format!("{}/{}", ssh_key_path, ssh_key_name)
+}
+
+fn extract_on_remote(user: &str, host: &str, path: &str, ssh_key_file: &str) -> Result<()> {
     println!("Running remote decompression...");
 
     let extract_command = format!(
@@ -814,7 +826,7 @@ fn extract_on_remote(user: &str, host: &str, path: &str, ssh_key_path: &str) -> 
 
     let ssh_args = &[
         "-i",
-        &format!("{}/id_rsa", ssh_key_path),
+        ssh_key_file,
         "-o",
         "UserKnownHostsFile=/root/.ssh/known_hosts",
         "-o",
@@ -845,14 +857,14 @@ fn extract_on_remote(user: &str, host: &str, path: &str, ssh_key_path: &str) -> 
     Ok(())
 }
 
-fn restart_remote_docker(user: &str, host: &str, path: &str, ssh_key_path: &str) -> Result<()> {
+fn restart_remote_docker(user: &str, host: &str, path: &str, ssh_key_file: &str) -> Result<()> {
     println!("Restarting remote Docker service...");
 
     let restart_command = format!("cd {} && docker compose restart", path);
 
     let ssh_args = &[
         "-i",
-        &format!("{}/id_rsa", ssh_key_path),
+        ssh_key_file,
         "-o",
         "UserKnownHostsFile=/root/.ssh/known_hosts",
         "-o",
