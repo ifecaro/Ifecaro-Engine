@@ -320,13 +320,17 @@ Create a `.env` file with deployment configuration:
 DEPLOY_USER=your-username        # Your SSH username on the server
 DEPLOY_HOST=your-server-ip       # Server IP address or domain name
 DEPLOY_PATH=/home/your-username/ifecaro  # Deployment directory on server
-SSH_KEY_PATH=/home/your-local-username/.ssh  # Local SSH key directory
+SSH_KEY_PATH=/home/your-local-username/.ssh  # SSH key directory (optional when SSH_KEY_FILE is set)
+SSH_KEY_NAME=id_ed25519                    # SSH key filename in SSH_KEY_PATH (default: id_rsa)
+# SSH_KEY_FILE=/home/your-local-username/.ssh/id_ed25519  # Full key path (overrides path + name)
 
 # Example:
 # DEPLOY_USER=developer
 # DEPLOY_HOST=192.168.1.100
 # DEPLOY_PATH=/home/developer/ifecaro
 # SSH_KEY_PATH=/home/user/.ssh
+# SSH_KEY_NAME=id_ed25519
+# SSH_KEY_FILE=/home/user/.ssh/id_ed25519
 # DEPLOY_COMPOSE_FILE=docker-compose.deploy.yml
 ```
 
@@ -334,9 +338,10 @@ Note: Make sure to:
 1. Replace `your-username` with your actual server username
 2. Replace `your-server-ip` with your server's IP address
 3. Replace `your-local-username` with your local machine username
-4. Ensure the deployment path exists on the server
-5. Verify SSH key permissions (600 for private key, 644 for public key)
-6. Place `docker-compose.deploy.yml` in `DEPLOY_PATH` (or set `DEPLOY_COMPOSE_FILE` to match)
+4. If needed, set `SSH_KEY_NAME` (for example `id_ed25519`) or `SSH_KEY_FILE` (full path)
+5. Ensure the deployment path exists on the server
+6. Verify SSH key permissions (600 for private key, 644 for public key)
+7. Place `docker-compose.deploy.yml` in `DEPLOY_PATH` (or set `DEPLOY_COMPOSE_FILE` to match)
 
 ### 取得 VPS 的 SSH Key（建議流程）
 
