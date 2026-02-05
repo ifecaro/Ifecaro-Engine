@@ -337,6 +337,29 @@ Note: Make sure to:
 5. Verify SSH key permissions (600 for private key, 644 for public key)
 6. Place `docker-compose.deploy.yml` in `DEPLOY_PATH` (or set `DEPLOY_COMPOSE_FILE` to match)
 
+### 取得 VPS 的 SSH Key（建議流程）
+
+以下流程避免包含任何敏感資訊，僅提供一般做法：
+
+1. 在本機產生一組 SSH 金鑰（若已存在可略過）：
+   ```bash
+   ssh-keygen -t ed25519 -C "your-email"
+   ```
+2. 將 **公開金鑰**（如 `~/.ssh/id_ed25519.pub`）加入 VPS：
+   - 透過雲端主機提供的控制台／Web 介面上傳公鑰，或
+   - 使用 VPS 的緊急／主控台登入，將公鑰加入 `~/.ssh/authorized_keys`
+3. 確認 `~/.ssh` 權限與檔案權限正確：
+   ```bash
+   chmod 700 ~/.ssh
+   chmod 600 ~/.ssh/authorized_keys
+   ```
+4. 在本機用以下方式測試連線：
+   ```bash
+   ssh -i ~/.ssh/id_ed25519 your-username@your-server-ip
+   ```
+
+> 提醒：請勿將私鑰（例如 `id_ed25519`）分享或提交到版本控制。
+
 ### Remote Compose File (GHCR Deploy)
 
 The remote deploy command (`deploy remote`) runs `docker compose -f <file> pull` and `up -d` on the server.
