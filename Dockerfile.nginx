@@ -1,6 +1,0 @@
-FROM nginx:1.27-alpine
-
-ARG STATIC_DIR=dist
-
-COPY nginx.default.conf /etc/nginx/conf.d/default.conf
-COPY ${STATIC_DIR}/ /usr/share/nginx/html/

@@ -36,39 +36,16 @@ jobs:
       - name: Dioxus web build (release)
         run: dx build --release --platform web
 
-      - name: Locate web build output
-        id: web_dist
-        shell: bash
-        run: |
-          set -euo pipefail
-
-          if [ -d "dist" ] && [ -f "dist/index.html" ]; then
-            web_dist="dist"
-          elif [ -d "target/dx/ifecaro/release/web/public" ] && [ -f "target/dx/ifecaro/release/web/public/index.html" ]; then
-            web_dist="target/dx/ifecaro/release/web/public"
-          else
-            detected_index=$(find target -type f -path '*release/web*' -name 'index.html' | head -n 1 || true)
-            if [ -z "$detected_index" ]; then
-              echo "Unable to locate Dioxus web build output directory."
-              exit 1
-            fi
-            web_dist=$(dirname "$detected_index")
-          fi
-
-          echo "path=$web_dist" >> "$GITHUB_OUTPUT"
-          echo "Using web build output: $web_dist"
-
       - name: Determine version
         id: version
         run: |
           version=$(cargo metadata --no-deps --format-version 1 | jq -r '.packages[] | select(.name=="ifecaro") | .version')
           echo "version=${version}" >> "${GITHUB_OUTPUT}"
 
-      - name: Set image names
+      - name: Set image name
         run: |
           repo_owner="${GITHUB_REPOSITORY_OWNER,,}"
           echo "ENGINE_IMAGE=ghcr.io/${repo_owner}/ifecaro-engine" >> "${GITHUB_ENV}"
-          echo "FRONTEND_NGINX_IMAGE=ghcr.io/${repo_owner}/ifecaro-frontend-nginx" >> "${GITHUB_ENV}"
 
       - name: Log in to GitHub Container Registry
         uses: docker/login-action@v3
@@ -92,14 +69,3 @@ jobs:
             ${{ env.ENGINE_IMAGE }}:latest
             ${{ env.ENGINE_IMAGE }}:v${{ steps.version.outputs.version }}-beta${{ github.run_number }}
 
-      - name: Build and push ifecaro-frontend-nginx image
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          file: ./Dockerfile.nginx
-          push: true
-          build-args: |
-            STATIC_DIR=${{ steps.web_dist.outputs.path }}
-          tags: |
-            ${{ env.FRONTEND_NGINX_IMAGE }}:latest
-            ${{ env.FRONTEND_NGINX_IMAGE }}:v${{ steps.version.outputs.version }}-beta${{ github.run_number }}
