@@ -404,6 +404,8 @@ Set `PB_ENCRYPTION_KEY` in the server-side `.env` file, and optionally set `NGIN
 - If you add a prefix (e.g. `v<version>` or any other prefix), keep the same underlying version from `Cargo.toml` and include the prefix in `GHCR_TAG`.
   - Example with `v` prefix: `GHCR_TAG=v0.15.1` (matches `Cargo.toml` version `0.15.1`).
 - The deploy tool can generate tags from `GHCR_TAG_FORMAT` (e.g. `v{version}`) when `GHCR_TAG` is not set, using the build-time `CARGO_PKG_VERSION`.
+- Remote deployments default to a staging suffix (`-staging`) unless `DEPLOY_ENV=production` or `GHCR_TAG_SUFFIX` is set.
+- When using staging, the resulting tag is `GHCR_TAG` + `GHCR_TAG_SUFFIX` (default: `-staging`).
 
 
 
@@ -416,7 +418,18 @@ cargo run --manifest-path tools/deploy-remote/Cargo.toml --release
 ```
 
 It intentionally uses only Rust standard library (no clap/anyhow/dotenv/colored), and supports the same environment variables:
-`DEPLOY_USER`, `DEPLOY_HOST`, `DEPLOY_PATH`, optional `DEPLOY_COMPOSE_FILE`, `SSH_KEY_FILE`, `SSH_KEY_PATH`, `SSH_KEY_NAME`, `GHCR_TAG`, `GHCR_TAG_FORMAT`.
+`DEPLOY_USER`, `DEPLOY_HOST`, `DEPLOY_PATH`, optional `DEPLOY_COMPOSE_FILE`, `SSH_KEY_FILE`, `SSH_KEY_PATH`, `SSH_KEY_NAME`, `GHCR_TAG`, `GHCR_TAG_FORMAT`, `GHCR_TAG_SUFFIX`, `DEPLOY_ENV`.
+
+### Staging -> Production Tag Promotion
+
+After QA validates the staging deploy (default `-staging` tag), use the promotion helper to tag the staging image as production (no suffix):
+
+```bash
+cargo run --manifest-path tools/tag-production/Cargo.toml --release
+```
+
+Environment variables:
+`GHCR_IMAGE` (required), `GHCR_TAG`, `GHCR_TAG_FORMAT`, `GHCR_TAG_SUFFIX`.
 
 ### Deployment Pipeline
 

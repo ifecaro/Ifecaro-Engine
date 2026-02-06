@@ -76,6 +76,17 @@ fn required_env(name: &str) -> Result<String, String> {
 }
 
 fn resolve_ghcr_tag(cargo_version: &str) -> String {
+    let base_tag = resolve_base_ghcr_tag(cargo_version);
+    let suffix = resolve_ghcr_suffix();
+
+    if suffix.is_empty() || base_tag.ends_with(&suffix) {
+        return base_tag;
+    }
+
+    format!("{base_tag}{suffix}")
+}
+
+fn resolve_base_ghcr_tag(cargo_version: &str) -> String {
     if let Ok(existing_tag) = env::var("GHCR_TAG") {
         return existing_tag;
     }
@@ -88,6 +99,23 @@ fn resolve_ghcr_tag(cargo_version: &str) -> String {
     }
 
     cargo_version.to_string()
+}
+
+fn resolve_ghcr_suffix() -> String {
+    if let Ok(suffix) = env::var("GHCR_TAG_SUFFIX") {
+        if !suffix.trim().is_empty() {
+            return suffix;
+        }
+    }
+
+    if let Ok(env_value) = env::var("DEPLOY_ENV") {
+        let normalized = env_value.trim().to_lowercase();
+        if normalized == "production" || normalized == "prod" {
+            return String::new();
+        }
+    }
+
+    "-staging".to_string()
 }
 
 fn resolve_app_version() -> &'static str {
