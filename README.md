@@ -386,17 +386,17 @@ services:
       - ./hooks:/pb_hooks
 
   nginx:
-    image: nginx:1.27-alpine
+    image: ${FRONTEND_IMAGE:-ghcr.io/muchobien/ifecaro-frontend:${GHCR_TAG:-latest}}
     ports:
       - "80:80"
       - "443:443"
     volumes:
       - ./certs:/etc/nginx/certs:ro
       - ${NGINX_CONF_PATH:-./nginx.conf}:/etc/nginx/conf.d/default.conf:ro
-      - ${FRONTEND_DIST_DIR:-./dist}:/usr/share/nginx/html:ro
 ```
 
-Set `PB_ENCRYPTION_KEY` in the server-side `.env` file, and optionally set `NGINX_CONF_PATH` / `FRONTEND_DIST_DIR` to control nginx config and mounted frontend build output path.
+Set `PB_ENCRYPTION_KEY` in the server-side `.env` file, and optionally set `NGINX_CONF_PATH` / `FRONTEND_IMAGE` to control nginx config and the prebuilt frontend image tag.
+The frontend image is meant to be built in CI and pushed to GHCR, so VPS nodes only need to pull the image and start the containers (no local frontend build or dist mount required).
 
 **GHCR tag versioning rules**
 
