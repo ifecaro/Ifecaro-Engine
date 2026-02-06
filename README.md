@@ -374,16 +374,27 @@ Create a deployment-specific compose file at `DEPLOY_PATH`, for example:
 
 ```yaml
 services:
-  app:
-    image: ${GHCR_IMAGE:-ghcr.io/your-org/ifecaro-engine}:${GHCR_TAG:-0.15.1}
-    env_file:
-      - .env
+  pocketbase:
+    image: ghcr.io/muchobien/pocketbase:latest
+    environment:
+      ENCRYPTION: ${PB_ENCRYPTION_KEY}
     ports:
-      - "9999:9999"
-    restart: unless-stopped
+      - "8090:8090"
+    volumes:
+      - ./data:/pb_data
+      - ./public:/pb_public
+      - ./hooks:/pb_hooks
+
+  nginx:
+    image: ${FRONTEND_NGINX_IMAGE:-ghcr.io/your-org/ifecaro-frontend-nginx:latest}
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./certs:/etc/nginx/certs:ro
 ```
 
-Set `GHCR_IMAGE` and `GHCR_TAG` in the server-side `.env` file to control which image tag is pulled.
+Set `PB_ENCRYPTION_KEY` and `FRONTEND_NGINX_IMAGE` in the server-side `.env` file to control runtime encryption and frontend image version.
 
 **GHCR tag versioning rules**
 
