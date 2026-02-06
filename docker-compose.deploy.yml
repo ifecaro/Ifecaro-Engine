@@ -1,8 +1,42 @@
 services:
-  app:
-    image: ${GHCR_IMAGE:-ghcr.io/your-org/ifecaro-engine}:${GHCR_TAG:-0.15.1}
-    env_file:
-      - .env
-    ports:
-      - "9999:9999"
+  pocketbase:
+    image: ghcr.io/muchobien/pocketbase:latest
+    container_name: pocketbase
     restart: unless-stopped
+    command:
+      - --encryptionEnv
+      - ENCRYPTION
+    environment:
+      ENCRYPTION: ${PB_ENCRYPTION_KEY}
+    ports:
+      - "8090:8090"
+    volumes:
+      - ./data:/pb_data
+      - ./public:/pb_public
+      - ./hooks:/pb_hooks
+    healthcheck:
+      test: wget --no-verbose --tries=1 --spider http://localhost:8090/api/health || exit 1
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - web
+
+  nginx:
+    image: ${FRONTEND_NGINX_IMAGE:-ghcr.io/your-org/ifecaro-frontend-nginx:latest}
+    container_name: nginx
+    restart: always
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./certs:/etc/nginx/certs:ro
+    depends_on:
+      pocketbase:
+        condition: service_healthy
+    networks:
+      - web
+
+networks:
+  web:
+    driver: bridge
