@@ -43,7 +43,9 @@ jobs:
           echo "version=${version}" >> "${GITHUB_OUTPUT}"
 
       - name: Set image name
-        run: echo "IMAGE_NAME=ghcr.io/${GITHUB_REPOSITORY,,}" >> "${GITHUB_ENV}"
+        run: |
+          repo_owner="${GITHUB_REPOSITORY_OWNER,,}"
+          echo "ENGINE_IMAGE=ghcr.io/${repo_owner}/ifecaro-engine" >> "${GITHUB_ENV}"
 
       - name: Log in to GitHub Container Registry
         uses: docker/login-action@v3
@@ -57,12 +59,13 @@ jobs:
         with:
           buildkit-image: public.ecr.aws/docker/library/buildkit:buildx-stable-1
 
-      - name: Build and push Docker image
+      - name: Build and push ifecaro-engine image
         uses: docker/build-push-action@v6
         with:
           context: .
           file: ./Dockerfile
           push: true
           tags: |
-            ${{ env.IMAGE_NAME }}:latest
-            ${{ env.IMAGE_NAME }}:v${{ steps.version.outputs.version }}-beta${{ github.run_number }}
+            ${{ env.ENGINE_IMAGE }}:latest
+            ${{ env.ENGINE_IMAGE }}:v${{ steps.version.outputs.version }}-beta${{ github.run_number }}
+

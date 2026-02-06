@@ -386,15 +386,17 @@ services:
       - ./hooks:/pb_hooks
 
   nginx:
-    image: ${FRONTEND_NGINX_IMAGE:-ghcr.io/your-org/ifecaro-frontend-nginx:latest}
+    image: nginx:1.27-alpine
     ports:
       - "80:80"
       - "443:443"
     volumes:
       - ./certs:/etc/nginx/certs:ro
+      - ${NGINX_CONF_PATH:-./nginx.conf}:/etc/nginx/conf.d/default.conf:ro
+      - ${FRONTEND_DIST_DIR:-./dist}:/usr/share/nginx/html:ro
 ```
 
-Set `PB_ENCRYPTION_KEY` and `FRONTEND_NGINX_IMAGE` in the server-side `.env` file to control runtime encryption and frontend image version.
+Set `PB_ENCRYPTION_KEY` in the server-side `.env` file, and optionally set `NGINX_CONF_PATH` / `FRONTEND_DIST_DIR` to control nginx config and mounted frontend build output path.
 
 **GHCR tag versioning rules**
 
