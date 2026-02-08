@@ -6,7 +6,7 @@ services:
     command:
       - sh
       - -c
-      - cp -r /dist/. /shared
+      - rm -rf /shared/* && cp -r /dist/. /shared
     volumes:
       - frontend_assets:/shared
     networks:
