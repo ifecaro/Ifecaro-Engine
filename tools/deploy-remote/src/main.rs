@@ -6,7 +6,10 @@ fn main() -> Result<(), String> {
     load_env_file();
 
     let app_version = resolve_app_version();
-    let ghcr_tag = resolve_ghcr_tag(app_version);
+    let ghcr_tag = resolve_base_ghcr_tag(app_version);
+    let container_suffix = resolve_container_suffix();
+    let nginx_container_name = format!("nginx{}", container_suffix);
+    let pocketbase_container_name = format!("pocketbase{}", container_suffix);
 
     let deploy_user = required_env("DEPLOY_USER")?;
     let deploy_host = required_env("DEPLOY_HOST")?;
@@ -17,11 +20,15 @@ fn main() -> Result<(), String> {
     let known_hosts_file = resolve_known_hosts_file();
 
     let remote_command = format!(
-        "cd {} && GHCR_TAG={} docker compose -f {} pull && GHCR_TAG={} docker compose -f {} up -d",
+        "cd {} && GHCR_TAG={} NGINX_CONTAINER_NAME={} POCKETBASE_CONTAINER_NAME={} docker compose -f {} pull && GHCR_TAG={} NGINX_CONTAINER_NAME={} POCKETBASE_CONTAINER_NAME={} docker compose -f {} up -d",
         deploy_path,
         shell_escape(&ghcr_tag),
+        shell_escape(&nginx_container_name),
+        shell_escape(&pocketbase_container_name),
         deploy_compose_file,
         shell_escape(&ghcr_tag),
+        shell_escape(&nginx_container_name),
+        shell_escape(&pocketbase_container_name),
         deploy_compose_file
     );
 
@@ -75,17 +82,6 @@ fn required_env(name: &str) -> Result<String, String> {
     env::var(name).map_err(|_| format!("❌ Missing {} environment variable", name))
 }
 
-fn resolve_ghcr_tag(cargo_version: &str) -> String {
-    let base_tag = resolve_base_ghcr_tag(cargo_version);
-    let suffix = resolve_ghcr_suffix();
-
-    if suffix.is_empty() || base_tag.ends_with(&suffix) {
-        return base_tag;
-    }
-
-    format!("{base_tag}{suffix}")
-}
-
 fn resolve_base_ghcr_tag(cargo_version: &str) -> String {
     if let Ok(existing_tag) = env::var("GHCR_TAG") {
         return existing_tag;
@@ -101,21 +97,17 @@ fn resolve_base_ghcr_tag(cargo_version: &str) -> String {
     cargo_version.to_string()
 }
 
-fn resolve_ghcr_suffix() -> String {
-    if let Ok(suffix) = env::var("GHCR_TAG_SUFFIX") {
-        if !suffix.trim().is_empty() {
-            return suffix;
-        }
-    }
+fn resolve_container_suffix() -> String {
+    let Ok(env_value) = env::var("DEPLOY_ENV") else {
+        return String::new();
+    };
 
-    if let Ok(env_value) = env::var("DEPLOY_ENV") {
-        let normalized = env_value.trim().to_lowercase();
-        if normalized == "production" || normalized == "prod" {
-            return String::new();
-        }
+    let normalized = env_value.trim().to_lowercase();
+    if normalized == "staging" || normalized == "stage" {
+        "-staging".to_string()
+    } else {
+        String::new()
     }
-
-    "-staging".to_string()
 }
 
 fn resolve_app_version() -> &'static str {

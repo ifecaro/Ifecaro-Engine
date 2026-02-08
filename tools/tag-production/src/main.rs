@@ -63,7 +63,7 @@ fn resolve_ghcr_suffix() -> String {
         }
     }
 
-    "-staging".to_string()
+    String::new()
 }
 
 fn resolve_app_version() -> &'static str {
@@ -143,15 +143,15 @@ mod tests {
 
     #[test]
     fn resolves_tags_with_suffix() {
-        let (production, staging) = resolve_tags("0.15.1", "-staging");
-        assert_eq!(production, "0.15.1");
-        assert_eq!(staging, "0.15.1-staging");
+        let (production, staging) = resolve_tags("1.2.3", "-staging");
+        assert_eq!(production, "1.2.3");
+        assert_eq!(staging, "1.2.3-staging");
     }
 
     #[test]
     fn resolves_tags_when_base_includes_suffix() {
-        let (production, staging) = resolve_tags("0.15.1-staging", "-staging");
-        assert_eq!(production, "0.15.1");
-        assert_eq!(staging, "0.15.1-staging");
+        let (production, staging) = resolve_tags("1.2.3-staging", "-staging");
+        assert_eq!(production, "1.2.3");
+        assert_eq!(staging, "1.2.3-staging");
     }
 }

@@ -1,7 +1,7 @@
 services:
   pocketbase:
     image: ghcr.io/muchobien/pocketbase:latest
-    container_name: pocketbase
+    container_name: ${POCKETBASE_CONTAINER_NAME:-pocketbase}
     restart: unless-stopped
     command:
       - --encryptionEnv
@@ -23,8 +23,8 @@ services:
       - web
 
   nginx:
-    image: ${FRONTEND_IMAGE:-ghcr.io/muchobien/ifecaro-frontend:${GHCR_TAG:-latest}}
-    container_name: nginx
+    image: ${FRONTEND_IMAGE:-ghcr.io/muchobien/ifecaro-engine:${GHCR_TAG:-latest}}
+    container_name: ${NGINX_CONTAINER_NAME:-nginx}
     restart: always
     ports:
       - "80:80"

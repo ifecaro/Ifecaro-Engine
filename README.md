@@ -386,7 +386,7 @@ services:
       - ./hooks:/pb_hooks
 
   nginx:
-    image: ${FRONTEND_IMAGE:-ghcr.io/muchobien/ifecaro-frontend:${GHCR_TAG:-latest}}
+    image: ${FRONTEND_IMAGE:-ghcr.io/muchobien/ifecaro-engine:${GHCR_TAG:-latest}}
     ports:
       - "80:80"
       - "443:443"
@@ -397,15 +397,15 @@ services:
 
 Set `PB_ENCRYPTION_KEY` in the server-side `.env` file, and optionally set `NGINX_CONF_PATH` / `FRONTEND_IMAGE` to control nginx config and the prebuilt frontend image tag.
 The frontend image is meant to be built in CI and pushed to GHCR, so VPS nodes only need to pull the image and start the containers (no local frontend build or dist mount required).
+For staging deployments, set `NGINX_CONTAINER_NAME=nginx-staging` and `POCKETBASE_CONTAINER_NAME=pocketbase-staging` so only the staging containers carry the `-staging` suffix.
 
 **GHCR tag versioning rules**
 
 - `GHCR_TAG` **must stay in sync** with the version in `Cargo.toml` under `[package] version`.
 - If you add a prefix (e.g. `v<version>` or any other prefix), keep the same underlying version from `Cargo.toml` and include the prefix in `GHCR_TAG`.
-  - Example with `v` prefix: `GHCR_TAG=v0.15.1` (matches `Cargo.toml` version `0.15.1`).
+  - Example with `v` prefix: `GHCR_TAG=v{version}` (matches `Cargo.toml` version `{version}`).
 - The deploy tool can generate tags from `GHCR_TAG_FORMAT` (e.g. `v{version}`) when `GHCR_TAG` is not set, using the build-time `CARGO_PKG_VERSION`.
-- Remote deployments default to a staging suffix (`-staging`) unless `DEPLOY_ENV=production` or `GHCR_TAG_SUFFIX` is set.
-- When using staging, the resulting tag is `GHCR_TAG` + `GHCR_TAG_SUFFIX` (default: `-staging`).
+- Staging and production use the same image tag; only container names are suffixed for staging.
 
 
 
@@ -418,18 +418,8 @@ cargo run --manifest-path tools/deploy-remote/Cargo.toml --release
 ```
 
 It intentionally uses only Rust standard library (no clap/anyhow/dotenv/colored), and supports the same environment variables:
-`DEPLOY_USER`, `DEPLOY_HOST`, `DEPLOY_PATH`, optional `DEPLOY_COMPOSE_FILE`, `SSH_KEY_FILE`, `SSH_KEY_PATH`, `SSH_KEY_NAME`, `GHCR_TAG`, `GHCR_TAG_FORMAT`, `GHCR_TAG_SUFFIX`, `DEPLOY_ENV`.
-
-### Staging -> Production Tag Promotion
-
-After QA validates the staging deploy (default `-staging` tag), use the promotion helper to tag the staging image as production (no suffix):
-
-```bash
-cargo run --manifest-path tools/tag-production/Cargo.toml --release
-```
-
-Environment variables:
-`GHCR_IMAGE` (required), `GHCR_TAG`, `GHCR_TAG_FORMAT`, `GHCR_TAG_SUFFIX`.
+`DEPLOY_USER`, `DEPLOY_HOST`, `DEPLOY_PATH`, optional `DEPLOY_COMPOSE_FILE`, `SSH_KEY_FILE`, `SSH_KEY_PATH`, `SSH_KEY_NAME`, `GHCR_TAG`, `GHCR_TAG_FORMAT`, `DEPLOY_ENV`,
+`NGINX_CONTAINER_NAME`, `POCKETBASE_CONTAINER_NAME`.
 
 ### Deployment Pipeline
 
