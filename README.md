@@ -323,6 +323,7 @@ DEPLOY_PATH=/home/your-username/ifecaro  # Deployment directory on server
 SSH_KEY_PATH=/home/your-local-username/.ssh  # SSH key directory (optional when SSH_KEY_FILE is set)
 SSH_KEY_NAME=id_ed25519                    # SSH key filename in SSH_KEY_PATH (default: id_rsa)
 # SSH_KEY_FILE=/home/your-local-username/.ssh/id_ed25519  # Full key path (overrides path + name)
+# SSH_KNOWN_HOSTS_FILE=/home/your-local-username/.ssh/known_hosts  # Optional known_hosts file override
 
 # Example:
 # DEPLOY_USER=developer
@@ -332,6 +333,9 @@ SSH_KEY_NAME=id_ed25519                    # SSH key filename in SSH_KEY_PATH (d
 # SSH_KEY_NAME=id_ed25519
 # SSH_KEY_FILE=/home/user/.ssh/id_ed25519
 # DEPLOY_COMPOSE_FILE=docker-compose.deploy.yml
+# GHCR_TAG=v1.2.3
+# GHCR_TAG_FORMAT=v{version}
+# DEPLOY_ENV=staging
 ```
 
 Note: Make sure to:
@@ -420,6 +424,34 @@ cargo run --manifest-path tools/deploy-remote/Cargo.toml --release
 It intentionally uses only Rust standard library (no clap/anyhow/dotenv/colored), and supports the same environment variables:
 `DEPLOY_USER`, `DEPLOY_HOST`, `DEPLOY_PATH`, optional `DEPLOY_COMPOSE_FILE`, `SSH_KEY_FILE`, `SSH_KEY_PATH`, `SSH_KEY_NAME`, `GHCR_TAG`, `GHCR_TAG_FORMAT`, `DEPLOY_ENV`,
 `NGINX_CONTAINER_NAME`, `POCKETBASE_CONTAINER_NAME`.
+
+### Environment variables reference
+
+Use this list to keep `.env` files and CI/CD configuration complete:
+
+| Variable | Used by | Purpose |
+| --- | --- | --- |
+| `DEPLOY_USER` | `deploy` binaries | SSH username for deployment. |
+| `DEPLOY_HOST` | `deploy` binaries | SSH host/IP for deployment. |
+| `DEPLOY_PATH` | `deploy` binaries | Remote deployment directory. |
+| `DEPLOY_COMPOSE_FILE` | deploy (remote) | Docker Compose file name on the server (default: `docker-compose.deploy.yml`). |
+| `SSH_KEY_FILE` | deploy | Full path to SSH private key (overrides `SSH_KEY_PATH` + `SSH_KEY_NAME`). |
+| `SSH_KEY_PATH` | deploy | SSH key directory (default: `/root/.ssh`). |
+| `SSH_KEY_NAME` | deploy | SSH key filename (default: `id_rsa`). |
+| `SSH_KNOWN_HOSTS_FILE` | deploy-remote | Override `known_hosts` file path (default: `$HOME/.ssh/known_hosts` or `/root/.ssh/known_hosts`). |
+| `DEPLOY_ENV` | deploy-remote | `staging`/`stage` appends `-staging` to container names. |
+| `NGINX_CONTAINER_NAME` | deploy-remote | Override nginx container name (for staging/prod). |
+| `POCKETBASE_CONTAINER_NAME` | deploy-remote | Override pocketbase container name (for staging/prod). |
+| `GHCR_TAG` | deploy/tag tools | Explicit GHCR image tag (should match `Cargo.toml` version). |
+| `GHCR_TAG_FORMAT` | deploy/tag tools | Tag template (supports `{version}` placeholder). |
+| `GHCR_TAG_SUFFIX` | tag-production | Suffix to map staging vs production tags. |
+| `GHCR_IMAGE` | tag-production | Full GHCR image name to promote (e.g., `ghcr.io/org/app`). |
+| `PB_ENCRYPTION_KEY` | PocketBase | PocketBase encryption key in remote `.env`. |
+| `NGINX_CONF_PATH` | nginx | Override nginx config path in remote compose file. |
+| `FRONTEND_IMAGE` | nginx | Override frontend image in remote compose file. |
+| `SKIP_TAILWIND` | build/test | Skip Tailwind build steps (set by test runner). |
+| `DOCKER_CONTAINER` | test runner | Force container detection in `test-runner`. |
+| `IFECARO_APP_VERSION` | build/tag tools | Override build-time version embedded in binaries. |
 
 ### Deployment Pipeline
 
