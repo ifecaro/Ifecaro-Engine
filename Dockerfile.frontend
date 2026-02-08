@@ -29,5 +29,6 @@ COPY src ./src
 
 RUN dx build --release
 
-FROM nginx:1.27-alpine
-COPY --from=builder /app/dist /usr/share/nginx/html
+FROM alpine:3.20
+WORKDIR /dist
+COPY --from=builder /app/dist ./
