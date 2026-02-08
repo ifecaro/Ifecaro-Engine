@@ -46,6 +46,7 @@ jobs:
         run: |
           repo_owner="${GITHUB_REPOSITORY_OWNER,,}"
           echo "ENGINE_IMAGE=ghcr.io/${repo_owner}/ifecaro-engine" >> "${GITHUB_ENV}"
+          echo "FRONTEND_IMAGE=ghcr.io/${repo_owner}/ifecaro-frontend" >> "${GITHUB_ENV}"
 
       - name: Log in to GitHub Container Registry
         uses: docker/login-action@v3
@@ -69,3 +70,12 @@ jobs:
             ${{ env.ENGINE_IMAGE }}:latest
             ${{ env.ENGINE_IMAGE }}:v${{ steps.version.outputs.version }}-beta${{ github.run_number }}
 
+      - name: Build and push ifecaro-frontend image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./Dockerfile.frontend
+          push: true
+          tags: |
+            ${{ env.FRONTEND_IMAGE }}:latest
+            ${{ env.FRONTEND_IMAGE }}:v${{ steps.version.outputs.version }}-beta${{ github.run_number }}
