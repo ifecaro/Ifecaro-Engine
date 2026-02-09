@@ -316,6 +316,8 @@ fn test(mode: Option<TestMode>) -> Result<()> {
         anyhow::bail!("❌ Test suite failed");
     }
 
+    ensure_wasm_target_installed()?;
+
     // 新增：自動執行 wasm-pack test
     println!(
         "\n{}",
@@ -399,6 +401,8 @@ fn deploy() -> Result<()> {
         anyhow::bail!("❌ Test suite failed, aborting deployment");
     }
     println!("{}", "✅ Test suite passed".green().bold());
+
+    ensure_wasm_target_installed()?;
 
     // 1.5. Run wasm-pack test (browser, headless)
     println!(
