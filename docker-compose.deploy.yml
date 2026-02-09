@@ -9,7 +9,7 @@ services:
     command:
       - sh
       - -c
-      - rm -rf /shared/* && cp -r /dist/. /shared
+      - rm -rf /shared/* && if [ -d /dist ]; then cp -r /dist/. /shared; elif [ -d /app/dist ]; then cp -r /app/dist/. /shared; else echo "dist folder not found"; exit 1; fi
     volumes:
       - frontend_assets:/shared
     networks:
