@@ -1,6 +1,9 @@
 services:
   frontend:
     image: ${FRONTEND_IMAGE:-ghcr.io/muchobien/ifecaro-frontend:${GHCR_TAG:-latest}}
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
     container_name: ${FRONTEND_CONTAINER_NAME:-frontend}
     restart: "no"
     command:
