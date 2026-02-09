@@ -486,11 +486,32 @@ fn deploy() -> Result<()> {
 fn ensure_wasm_target_installed() -> Result<()> {
     let installed_targets = Command::new("rustup")
         .args(["target", "list", "--installed"])
-        .output()
-        .context("Failed to check installed Rust targets")?;
+        .output();
+
+    let installed_targets = match installed_targets {
+        Ok(output) => output,
+        Err(err) => {
+            println!(
+                "{}",
+                format!(
+                    "⚠️  rustup unavailable ({}). Skipping wasm target check.",
+                    err
+                )
+                .yellow()
+                .bold()
+            );
+            return Ok(());
+        }
+    };
 
     if !installed_targets.status.success() {
-        anyhow::bail!("❌ Unable to list installed Rust targets");
+        println!(
+            "{}",
+            "⚠️  Unable to list installed Rust targets; proceeding without wasm target check."
+                .yellow()
+                .bold()
+        );
+        return Ok(());
     }
 
     let installed_targets = String::from_utf8_lossy(&installed_targets.stdout);
