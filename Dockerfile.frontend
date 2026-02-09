@@ -34,8 +34,12 @@ RUN dx build --release \
             echo "dx build did not produce /app/dist or a target/dx release/web directory"; \
             exit 1; \
         fi; \
+        COPY_SOURCE="$DIST_DIR"; \
+        if [ -d "$DIST_DIR/public" ]; then \
+            COPY_SOURCE="$DIST_DIR/public"; \
+        fi; \
         mkdir -p /app/dist; \
-        cp -r "$DIST_DIR"/* /app/dist/; \
+        cp -r "$COPY_SOURCE"/. /app/dist/; \
     fi
 
 FROM alpine:3.20
