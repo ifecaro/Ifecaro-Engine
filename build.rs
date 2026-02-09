@@ -1,6 +1,8 @@
 use std::process::Command;
 
 fn main() {
+    ensure_wasm_target_installed();
+
     // Allow skipping Tailwind compilation via environment variable
     if std::env::var("SKIP_TAILWIND").is_ok() {
         println!("cargo:warning=Tailwind CSS compilation skipped (SKIP_TAILWIND set)");
@@ -62,5 +64,63 @@ fn main() {
         println!("cargo:warning=Tailwind CSS compilation complete!");
     } else {
         println!("cargo:warning=Tailwind CSS is up to date, skipping compilation");
+    }
+}
+
+fn ensure_wasm_target_installed() {
+    let target = match std::env::var("TARGET") {
+        Ok(target) => target,
+        Err(_) => return,
+    };
+
+    if target != "wasm32-unknown-unknown" {
+        return;
+    }
+
+    let installed_targets = Command::new("rustup")
+        .args(["target", "list", "--installed"])
+        .output();
+
+    let installed_targets = match installed_targets {
+        Ok(output) if output.status.success() => output,
+        Ok(_) => {
+            println!("cargo:warning=Failed to list installed Rust targets.");
+            return;
+        }
+        Err(err) => {
+            println!(
+                "cargo:warning=Failed to run rustup to list installed targets: {}",
+                err
+            );
+            return;
+        }
+    };
+
+    let installed_targets = String::from_utf8_lossy(&installed_targets.stdout);
+    if installed_targets
+        .lines()
+        .any(|line| line.trim() == "wasm32-unknown-unknown")
+    {
+        return;
+    }
+
+    println!("cargo:warning=Rust wasm32 target missing. Installing...");
+    let install_status = Command::new("rustup")
+        .args(["target", "add", "wasm32-unknown-unknown"])
+        .status();
+
+    match install_status {
+        Ok(status) if status.success() => {
+            println!("cargo:warning=Rust wasm32 target installed.");
+        }
+        Ok(_) => {
+            println!("cargo:warning=Failed to install wasm32-unknown-unknown target.");
+        }
+        Err(err) => {
+            println!(
+                "cargo:warning=Failed to run rustup to install wasm32 target: {}",
+                err
+            );
+        }
     }
 }
