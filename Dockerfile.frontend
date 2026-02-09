@@ -27,7 +27,16 @@ COPY public ./public
 COPY i18n ./i18n
 COPY src ./src
 
-RUN dx build --release
+RUN dx build --release \
+    && if [ ! -d /app/dist ]; then \
+        DIST_DIR=$(find /app/target/dx -type d -path "*/release/web" -print -quit); \
+        if [ -z "$DIST_DIR" ]; then \
+            echo "dx build did not produce /app/dist or a target/dx release/web directory"; \
+            exit 1; \
+        fi; \
+        mkdir -p /app/dist; \
+        cp -r "$DIST_DIR"/* /app/dist/; \
+    fi
 
 FROM alpine:3.20
 WORKDIR /dist
