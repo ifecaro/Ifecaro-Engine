@@ -21,14 +21,14 @@ jobs:
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
 
+      - name: Add wasm target
+        run: rustup target add wasm32-unknown-unknown
+
       - name: Cache Rust dependencies
         uses: Swatinem/rust-cache@v2
 
       - name: Cargo check
         run: cargo check --all-targets
-
-      - name: Add wasm target
-        run: rustup target add wasm32-unknown-unknown
 
       - name: Install Dioxus CLI
         run: cargo install dioxus-cli --locked
