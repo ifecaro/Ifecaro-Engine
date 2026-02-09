@@ -343,6 +343,8 @@ fn test(mode: Option<TestMode>) -> Result<()> {
 fn build() -> Result<()> {
     println!("{}", "🏗 Building Rust project...".yellow().bold());
 
+    ensure_wasm_target_installed()?;
+
     let rust_build = Command::new("cargo")
         .args(&["build", "--release", "--target", "wasm32-unknown-unknown"])
         .stdout(Stdio::inherit())
@@ -420,6 +422,9 @@ fn deploy() -> Result<()> {
 
     // 2. Run Rust build
     println!("\n{}", "🏗️ Running Rust build...".yellow().bold());
+
+    ensure_wasm_target_installed()?;
+
     let rust_build = Command::new("cargo")
         .args(&["build", "--release", "--target", "wasm32-unknown-unknown"])
         .stdout(Stdio::inherit())
@@ -476,6 +481,64 @@ fn deploy() -> Result<()> {
     println!("Uploaded to remote server");
 
     Ok(())
+}
+
+fn ensure_wasm_target_installed() -> Result<()> {
+    let installed_targets = Command::new("rustup")
+        .args(["target", "list", "--installed"])
+        .output();
+
+    let installed_targets = match installed_targets {
+        Ok(output) => output,
+        Err(err) => {
+            println!(
+                "{}",
+                format!(
+                    "⚠️  rustup unavailable ({}). Skipping wasm target check.",
+                    err
+                )
+                .yellow()
+                .bold()
+            );
+            return Ok(());
+        }
+    };
+
+    if !installed_targets.status.success() {
+        println!(
+            "{}",
+            "⚠️  Unable to list installed Rust targets; proceeding without wasm target check."
+                .yellow()
+                .bold()
+        );
+        return Ok(());
+    }
+
+    let installed_targets = String::from_utf8_lossy(&installed_targets.stdout);
+    let wasm_target = "wasm32-unknown-unknown";
+
+    if installed_targets.lines().any(|line| line.trim() == wasm_target) {
+        return Ok(());
+    }
+
+    println!(
+        "{}",
+        "🧩 Rust wasm32 target missing. Installing...".yellow().bold()
+    );
+
+    let install_status = Command::new("rustup")
+        .args(["target", "add", wasm_target])
+        .stdout(Stdio::inherit())
+        .stderr(Stdio::inherit())
+        .status()
+        .context("Failed to install wasm32-unknown-unknown target")?;
+
+    if install_status.success() {
+        println!("{}", "✅ wasm32 target installed".green().bold());
+        Ok(())
+    } else {
+        anyhow::bail!("❌ Failed to install wasm32-unknown-unknown target");
+    }
 }
 
 fn copy_pwa_resources() -> Result<()> {
