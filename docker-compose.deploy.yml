@@ -44,7 +44,7 @@ services:
       - "443:443"
     volumes:
       - ./certs:/etc/nginx/certs:ro
-      - ${NGINX_CONF_PATH:-./nginx.conf}:/etc/nginx/conf.d/default.conf:ro
+      - ${NGINX_CONF_PATH:-./nginx/conf.d}:/etc/nginx/conf.d:ro
       - frontend_assets:/usr/share/nginx/html:ro
     depends_on:
       frontend:

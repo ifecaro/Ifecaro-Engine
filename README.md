@@ -392,10 +392,10 @@ services:
       - "443:443"
     volumes:
       - ./certs:/etc/nginx/certs:ro
-      - ${NGINX_CONF_PATH:-./nginx.conf}:/etc/nginx/conf.d/default.conf:ro
+      - ${NGINX_CONF_PATH:-./nginx/conf.d}:/etc/nginx/conf.d:ro
 ```
 
-Set `PB_ENCRYPTION_KEY` in the server-side `.env` file, and optionally set `NGINX_CONF_PATH` / `FRONTEND_IMAGE` to control nginx config and the prebuilt frontend image tag.
+Set `PB_ENCRYPTION_KEY` in the server-side `.env` file, and optionally set `NGINX_CONF_PATH` / `FRONTEND_IMAGE` to control the nginx config directory and the prebuilt frontend image tag.
 The frontend image is meant to be built in CI and pushed to GHCR, so VPS nodes only need to pull the image and start the containers (no local frontend build or dist mount required).
 For staging deployments, set `NGINX_CONTAINER_NAME=nginx-staging` and `POCKETBASE_CONTAINER_NAME=pocketbase-staging` so only the staging containers carry the `-staging` suffix.
 
