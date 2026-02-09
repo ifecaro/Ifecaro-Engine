@@ -27,7 +27,15 @@ COPY public ./public
 COPY i18n ./i18n
 COPY src ./src
 
-RUN dx build --release
+RUN dx build --release \
+    && if [ -d dist ]; then echo "dist exists"; \
+    elif ls -d target/dx/*/release/web/public >/dev/null 2>&1; then \
+        mkdir -p dist \
+        && cp -r target/dx/*/release/web/public/. dist; \
+    else \
+        echo "dist folder not found" \
+        && exit 1; \
+    fi
 
 FROM alpine:3.20
 WORKDIR /dist
