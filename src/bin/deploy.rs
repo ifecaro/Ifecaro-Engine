@@ -593,16 +593,39 @@ fn upload_to_remote() -> Result<()> {
         println!("ℹ️  No .env file found, using existing environment variables.");
     }
 
-    // Prefer staging-specific variables for quick testing environment deployment.
-    let deploy_user = std::env::var("STAGING_DEPLOY_USER")
-        .or_else(|_| std::env::var("DEPLOY_USER"))
-        .context("❌ Missing STAGING_DEPLOY_USER/DEPLOY_USER environment variable")?;
-    let deploy_host = std::env::var("STAGING_DEPLOY_HOST")
-        .or_else(|_| std::env::var("DEPLOY_HOST"))
-        .context("❌ Missing STAGING_DEPLOY_HOST/DEPLOY_HOST environment variable")?;
-    let deploy_path = std::env::var("STAGING_DEPLOY_PATH")
-        .or_else(|_| std::env::var("DEPLOY_PATH"))
-        .context("❌ Missing STAGING_DEPLOY_PATH/DEPLOY_PATH environment variable")?;
+    // Resolve deploy namespace atomically to avoid mixing staging and legacy values.
+    let staging_deploy_user = std::env::var("STAGING_DEPLOY_USER").ok();
+    let staging_deploy_host = std::env::var("STAGING_DEPLOY_HOST").ok();
+    let staging_deploy_path = std::env::var("STAGING_DEPLOY_PATH").ok();
+
+    let (deploy_user, deploy_host, deploy_path) = match (
+        staging_deploy_user,
+        staging_deploy_host,
+        staging_deploy_path,
+    ) {
+        (Some(user), Some(host), Some(path)) => (user, host, path),
+        (None, None, None) => (
+            std::env::var("DEPLOY_USER")
+                .context("❌ Missing DEPLOY_USER environment variable")?,
+            std::env::var("DEPLOY_HOST")
+                .context("❌ Missing DEPLOY_HOST environment variable")?,
+            std::env::var("DEPLOY_PATH")
+                .context("❌ Missing DEPLOY_PATH environment variable")?,
+        ),
+        _ => {
+            println!(
+                "⚠️  Partial STAGING_DEPLOY_* configuration detected; falling back to DEPLOY_* variables."
+            );
+            (
+                std::env::var("DEPLOY_USER")
+                    .context("❌ Missing DEPLOY_USER environment variable")?,
+                std::env::var("DEPLOY_HOST")
+                    .context("❌ Missing DEPLOY_HOST environment variable")?,
+                std::env::var("DEPLOY_PATH")
+                    .context("❌ Missing DEPLOY_PATH environment variable")?,
+            )
+        }
+    };
     let ssh_key_file = resolve_ssh_key_file();
 
     let deploy_target = format!("{}@{}:{}", deploy_user, deploy_host, deploy_path);
