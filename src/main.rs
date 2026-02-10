@@ -29,6 +29,7 @@ use dioxus::prelude::*;
 use dioxus::web;
 use dioxus::web::launch::launch_cfg;
 use dioxus_toastr::{ToastProvider};
+use std::rc::Rc;
 
 #[cfg(target_arch = "wasm32")]
 fn append_log_line(msg: &str) {
@@ -121,7 +122,10 @@ fn App() -> Element {
                     ChapterProvider {
                         ParagraphProvider {
                             StoryProvider {
-                                Router::<Route> {}
+                                HistoryProvider {
+                                    history: |_| Rc::new(web::WebHistory::new(staging_prefix(), true)),
+                                    Router::<Route> {}
+                                }
                             }
                         }
                     }
@@ -139,6 +143,24 @@ fn App() -> Element {
             }
         }
     }
+}
+
+#[cfg(target_arch = "wasm32")]
+fn staging_prefix() -> Option<String> {
+    let path = web_sys::window()
+        .and_then(|win| win.location().pathname().ok())
+        .unwrap_or_default();
+
+    if path == "/staging" || path.starts_with("/staging/") {
+        Some("staging".to_string())
+    } else {
+        None
+    }
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+fn staging_prefix() -> Option<String> {
+    None
 }
 
 #[derive(Props, Clone, PartialEq)]
