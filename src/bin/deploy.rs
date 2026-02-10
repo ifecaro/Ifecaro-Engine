@@ -30,7 +30,7 @@ enum Commands {
     Clean,
     /// Development mode (build and deploy without tests)
     Dev,
-    /// Production mode (optimized full deployment process)
+    /// Fast staging mode (optimized quick deployment process)
     Prod,
     /// Remote VPS deployment via GHCR (pull image + docker compose up)
     Remote,
@@ -64,8 +64,8 @@ fn main() -> Result<()> {
             println!("{}", "✅ Development deployment completed".green().bold());
         }
         Some(Commands::Prod) => {
-            deploy_production()?;
-            println!("{}", "🎉 Production deployment completed".green().bold());
+            deploy()?;
+            println!("{}", "🎉 Staging deployment completed".green().bold());
         }
         Some(Commands::Remote) => {
             run_remote_deploy_binary()?;
@@ -103,7 +103,7 @@ fn show_interactive_menu() -> Result<()> {
             "5.".cyan().bold()
         );
         println!(
-            "  {}  🎯 Production mode (full one-click deployment)",
+            "  {}  🎯 Staging mode (fast one-click deployment)",
             "6.".cyan().bold()
         );
         println!(
@@ -152,9 +152,9 @@ fn show_interactive_menu() -> Result<()> {
                 wait_for_enter();
             }
             "6" => {
-                println!("{}", "Starting production mode...".yellow());
-                deploy_production()?;
-                println!("{}", "🎉 Production deployment completed".green().bold());
+                println!("{}", "Starting staging mode...".yellow());
+                deploy()?;
+                println!("{}", "🎉 Staging deployment completed".green().bold());
                 wait_for_enter();
             }
             "7" => {
@@ -384,16 +384,8 @@ fn deploy_staging() -> Result<()> {
         "================================================".blue()
     );
 
-    run_staging_gate()?;
-    run_deploy_pipeline("staging")
-}
-
-fn run_staging_gate() -> Result<()> {
-    // Run quick check for faster staging iteration
-    println!(
-        "\n{}",
-        "📋 Running quick cargo check for staging...".yellow().bold()
-    );
+    // 1. Run quick check for faster staging iteration
+    println!("\n{}", "📋 Running quick cargo check for staging...".yellow().bold());
     let check_result = Command::new("cargo")
         .args(&["check", "--release"])
         .stdout(Stdio::inherit())
@@ -453,24 +445,10 @@ fn run_deploy_pipeline(target_name: &str) -> Result<()> {
     // Optional: clean up debug & incremental artifacts to reduce target size
     cleanup_target_artifacts();
 
-    println!(
-        "\n{}",
-        format!("🎉 {} deployment process completed!", target_name)
-            .green()
-            .bold()
-    );
+    println!("\n{}", "🎉 Staging deployment process completed!".green().bold());
     println!("Deployment file location: target/dx/ifecaro/release/web/public.tar.gz");
 
-    // Read environment variables for final output
-    if let Ok(user) = std::env::var("DEPLOY_USER") {
-        if let Ok(host) = std::env::var("DEPLOY_HOST") {
-            if let Ok(path) = std::env::var("DEPLOY_PATH") {
-                println!("Uploaded to: {}@{}:{}/frontend/", user, host, path);
-                return Ok(());
-            }
-        }
-    }
-    println!("Uploaded to {} server", target_name);
+    println!("Uploaded to staging server");
 
     Ok(())
 }
@@ -638,16 +616,39 @@ fn upload_to_remote() -> Result<()> {
         println!("ℹ️  No .env file found, using existing environment variables.");
     }
 
-    // Prefer staging-specific variables for quick testing environment deployment.
-    let deploy_user = std::env::var("STAGING_DEPLOY_USER")
-        .or_else(|_| std::env::var("DEPLOY_USER"))
-        .context("❌ Missing STAGING_DEPLOY_USER/DEPLOY_USER environment variable")?;
-    let deploy_host = std::env::var("STAGING_DEPLOY_HOST")
-        .or_else(|_| std::env::var("DEPLOY_HOST"))
-        .context("❌ Missing STAGING_DEPLOY_HOST/DEPLOY_HOST environment variable")?;
-    let deploy_path = std::env::var("STAGING_DEPLOY_PATH")
-        .or_else(|_| std::env::var("DEPLOY_PATH"))
-        .context("❌ Missing STAGING_DEPLOY_PATH/DEPLOY_PATH environment variable")?;
+    // Resolve deploy namespace atomically to avoid mixing staging and legacy values.
+    let staging_deploy_user = std::env::var("STAGING_DEPLOY_USER").ok();
+    let staging_deploy_host = std::env::var("STAGING_DEPLOY_HOST").ok();
+    let staging_deploy_path = std::env::var("STAGING_DEPLOY_PATH").ok();
+
+    let (deploy_user, deploy_host, deploy_path) = match (
+        staging_deploy_user,
+        staging_deploy_host,
+        staging_deploy_path,
+    ) {
+        (Some(user), Some(host), Some(path)) => (user, host, path),
+        (None, None, None) => (
+            std::env::var("DEPLOY_USER")
+                .context("❌ Missing DEPLOY_USER environment variable")?,
+            std::env::var("DEPLOY_HOST")
+                .context("❌ Missing DEPLOY_HOST environment variable")?,
+            std::env::var("DEPLOY_PATH")
+                .context("❌ Missing DEPLOY_PATH environment variable")?,
+        ),
+        _ => {
+            println!(
+                "⚠️  Partial STAGING_DEPLOY_* configuration detected; falling back to DEPLOY_* variables."
+            );
+            (
+                std::env::var("DEPLOY_USER")
+                    .context("❌ Missing DEPLOY_USER environment variable")?,
+                std::env::var("DEPLOY_HOST")
+                    .context("❌ Missing DEPLOY_HOST environment variable")?,
+                std::env::var("DEPLOY_PATH")
+                    .context("❌ Missing DEPLOY_PATH environment variable")?,
+            )
+        }
+    };
     let ssh_key_file = resolve_ssh_key_file();
 
     let deploy_target = format!("{}@{}:{}", deploy_user, deploy_host, deploy_path);
