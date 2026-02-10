@@ -53,7 +53,7 @@ fn main() -> Result<()> {
         Some(Commands::Check) => check()?,
         Some(Commands::Test { mode }) => test(mode.clone())?,
         Some(Commands::Build) => build()?,
-        Some(Commands::Deploy) => deploy()?,
+        Some(Commands::Deploy) => deploy_staging()?,
         Some(Commands::Clean) => clean()?,
         Some(Commands::Dev) => {
             build()?;
@@ -372,7 +372,7 @@ fn build() -> Result<()> {
     Ok(())
 }
 
-fn deploy() -> Result<()> {
+fn deploy_staging() -> Result<()> {
     println!(
         "{}",
         "🚀 Starting Ifecaro Engine staging deployment process"
@@ -398,7 +398,11 @@ fn deploy() -> Result<()> {
     }
     println!("{}", "✅ Cargo check passed".green().bold());
 
-    // 2. Run Rust build
+    Ok(())
+}
+
+fn run_deploy_pipeline(target_name: &str) -> Result<()> {
+    // Run Rust build
     println!("\n{}", "🏗️ Running Rust build...".yellow().bold());
     let rust_build = Command::new("cargo")
         .args(&["build", "--release", "--target", "wasm32-unknown-unknown"])
@@ -412,7 +416,7 @@ fn deploy() -> Result<()> {
     }
     println!("{}", "✅ Rust build completed".green().bold());
 
-    // 3. Run Dioxus build
+    // Run Dioxus build
     println!("\n{}", "🎯 Running Dioxus build...".yellow().bold());
     let dioxus_build = Command::new("dx")
         .args(&["build", "--release", "--platform", "web"])
@@ -426,16 +430,16 @@ fn deploy() -> Result<()> {
     }
     println!("{}", "✅ Dioxus build completed".green().bold());
 
-    // 4. Copy PWA resources
+    // Copy PWA resources
     copy_pwa_resources()?;
 
-    // 5. Create deployment package
+    // Create deployment package
     create_deployment_package()?;
 
-    // 6. Restore tailwind.css
+    // Restore tailwind.css
     restore_tailwind_css()?;
 
-    // 7. Upload to remote server
+    // Upload to remote server
     upload_to_remote()?;
 
     // Optional: clean up debug & incremental artifacts to reduce target size
@@ -447,6 +451,25 @@ fn deploy() -> Result<()> {
     println!("Uploaded to staging server");
 
     Ok(())
+}
+
+fn deploy_production() -> Result<()> {
+    println!(
+        "{}",
+        "🚀 Starting Ifecaro Engine production deployment process"
+            .blue()
+            .bold()
+    );
+    println!(
+        "{}",
+        "================================================".blue()
+    );
+
+    // Keep full release gates for production deployments
+    test(Some(TestMode::Full))?;
+
+    // Reuse the same build/package/upload pipeline
+    run_deploy_pipeline("production")
 }
 
 fn copy_pwa_resources() -> Result<()> {
