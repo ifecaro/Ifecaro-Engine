@@ -24,7 +24,7 @@ enum Commands {
     },
     /// Build project
     Build,
-    /// Full deployment process (test + build + deploy)
+    /// Staging deployment process (quick check + build + deploy)
     Deploy,
     /// Clean build files
     Clean,
@@ -53,7 +53,7 @@ fn main() -> Result<()> {
         Some(Commands::Check) => check()?,
         Some(Commands::Test { mode }) => test(mode.clone())?,
         Some(Commands::Build) => build()?,
-        Some(Commands::Deploy) => deploy()?,
+        Some(Commands::Deploy) => deploy_staging()?,
         Some(Commands::Clean) => clean()?,
         Some(Commands::Dev) => {
             build()?;
@@ -64,7 +64,7 @@ fn main() -> Result<()> {
             println!("{}", "✅ Development deployment completed".green().bold());
         }
         Some(Commands::Prod) => {
-            deploy()?;
+            deploy_production()?;
             println!("{}", "🎉 Production deployment completed".green().bold());
         }
         Some(Commands::Remote) => {
@@ -153,7 +153,7 @@ fn show_interactive_menu() -> Result<()> {
             }
             "6" => {
                 println!("{}", "Starting production mode...".yellow());
-                deploy()?;
+                deploy_production()?;
                 println!("{}", "🎉 Production deployment completed".green().bold());
                 wait_for_enter();
             }
@@ -372,10 +372,10 @@ fn build() -> Result<()> {
     Ok(())
 }
 
-fn deploy() -> Result<()> {
+fn deploy_staging() -> Result<()> {
     println!(
         "{}",
-        "🚀 Starting Ifecaro Engine deployment process"
+        "🚀 Starting Ifecaro Engine staging deployment process"
             .blue()
             .bold()
     );
@@ -384,41 +384,33 @@ fn deploy() -> Result<()> {
         "================================================".blue()
     );
 
-    // 1. Run full test suite
-    println!("\n{}", "📋 Running full test suite...".yellow().bold());
-    let test_result = Command::new("cargo")
-        .args(&["run", "--release", "--bin", "test-runner", "full"])
+    run_staging_gate()?;
+    run_deploy_pipeline("staging")
+}
+
+fn run_staging_gate() -> Result<()> {
+    // Run quick check for faster staging iteration
+    println!(
+        "\n{}",
+        "📋 Running quick cargo check for staging...".yellow().bold()
+    );
+    let check_result = Command::new("cargo")
+        .args(&["check", "--release"])
         .stdout(Stdio::inherit())
         .stderr(Stdio::inherit())
         .status()
-        .context("Failed to run test suite")?;
+        .context("Failed to run cargo check")?;
 
-    if !test_result.success() {
-        anyhow::bail!("❌ Test suite failed, aborting deployment");
+    if !check_result.success() {
+        anyhow::bail!("❌ Cargo check failed, aborting staging deployment");
     }
-    println!("{}", "✅ Test suite passed".green().bold());
+    println!("{}", "✅ Cargo check passed".green().bold());
 
-    // 1.5. Run wasm-pack test (browser, headless)
-    println!(
-        "\n{}",
-        "🦀 Running wasm-pack test (headless, Chrome)..."
-            .yellow()
-            .bold()
-    );
-    let wasm_pack_result = Command::new("wasm-pack")
-        .args(&["test", "--headless", "--chrome", "--release"])
-        .env("RUST_LOG", "info")
-        .stdout(Stdio::null())
-        .stderr(Stdio::null())
-        .status()
-        .context("Failed to run wasm-pack test")?;
+    Ok(())
+}
 
-    if !wasm_pack_result.success() {
-        anyhow::bail!("❌ wasm-pack test failed, aborting deployment");
-    }
-    println!("{}", "✅ wasm-pack test passed".green().bold());
-
-    // 2. Run Rust build
+fn run_deploy_pipeline(target_name: &str) -> Result<()> {
+    // Run Rust build
     println!("\n{}", "🏗️ Running Rust build...".yellow().bold());
     let rust_build = Command::new("cargo")
         .args(&["build", "--release", "--target", "wasm32-unknown-unknown"])
@@ -432,7 +424,7 @@ fn deploy() -> Result<()> {
     }
     println!("{}", "✅ Rust build completed".green().bold());
 
-    // 3. Run Dioxus build
+    // Run Dioxus build
     println!("\n{}", "🎯 Running Dioxus build...".yellow().bold());
     let dioxus_build = Command::new("dx")
         .args(&["build", "--release", "--platform", "web"])
@@ -446,22 +438,27 @@ fn deploy() -> Result<()> {
     }
     println!("{}", "✅ Dioxus build completed".green().bold());
 
-    // 4. Copy PWA resources
+    // Copy PWA resources
     copy_pwa_resources()?;
 
-    // 5. Create deployment package
+    // Create deployment package
     create_deployment_package()?;
 
-    // 6. Restore tailwind.css
+    // Restore tailwind.css
     restore_tailwind_css()?;
 
-    // 7. Upload to remote server
+    // Upload to remote server
     upload_to_remote()?;
 
     // Optional: clean up debug & incremental artifacts to reduce target size
     cleanup_target_artifacts();
 
-    println!("\n{}", "🎉 Deployment process completed!".green().bold());
+    println!(
+        "\n{}",
+        format!("🎉 {} deployment process completed!", target_name)
+            .green()
+            .bold()
+    );
     println!("Deployment file location: target/dx/ifecaro/release/web/public.tar.gz");
 
     // Read environment variables for final output
@@ -473,9 +470,28 @@ fn deploy() -> Result<()> {
             }
         }
     }
-    println!("Uploaded to remote server");
+    println!("Uploaded to {} server", target_name);
 
     Ok(())
+}
+
+fn deploy_production() -> Result<()> {
+    println!(
+        "{}",
+        "🚀 Starting Ifecaro Engine production deployment process"
+            .blue()
+            .bold()
+    );
+    println!(
+        "{}",
+        "================================================".blue()
+    );
+
+    // Keep full release gates for production deployments
+    test(Some(TestMode::Full))?;
+
+    // Reuse the same build/package/upload pipeline
+    run_deploy_pipeline("production")
 }
 
 fn copy_pwa_resources() -> Result<()> {
@@ -622,13 +638,16 @@ fn upload_to_remote() -> Result<()> {
         println!("ℹ️  No .env file found, using existing environment variables.");
     }
 
-    // Check necessary environment variables
-    let deploy_user =
-        std::env::var("DEPLOY_USER").context("❌ Missing DEPLOY_USER environment variable")?;
-    let deploy_host =
-        std::env::var("DEPLOY_HOST").context("❌ Missing DEPLOY_HOST environment variable")?;
-    let deploy_path =
-        std::env::var("DEPLOY_PATH").context("❌ Missing DEPLOY_PATH environment variable")?;
+    // Prefer staging-specific variables for quick testing environment deployment.
+    let deploy_user = std::env::var("STAGING_DEPLOY_USER")
+        .or_else(|_| std::env::var("DEPLOY_USER"))
+        .context("❌ Missing STAGING_DEPLOY_USER/DEPLOY_USER environment variable")?;
+    let deploy_host = std::env::var("STAGING_DEPLOY_HOST")
+        .or_else(|_| std::env::var("DEPLOY_HOST"))
+        .context("❌ Missing STAGING_DEPLOY_HOST/DEPLOY_HOST environment variable")?;
+    let deploy_path = std::env::var("STAGING_DEPLOY_PATH")
+        .or_else(|_| std::env::var("DEPLOY_PATH"))
+        .context("❌ Missing STAGING_DEPLOY_PATH/DEPLOY_PATH environment variable")?;
     let ssh_key_file = resolve_ssh_key_file();
 
     let deploy_target = format!("{}@{}:{}", deploy_user, deploy_host, deploy_path);
@@ -705,7 +724,7 @@ fn upload_to_remote() -> Result<()> {
     // Restart remote Docker service
     restart_remote_docker(&deploy_user, &deploy_host, &deploy_path, &ssh_key_file)?;
 
-    println!("{}", "✅ Remote deployment completed".green().bold());
+    println!("{}", "✅ Staging deployment completed".green().bold());
     Ok(())
 }
 
