@@ -5,7 +5,7 @@ use unic_langid::{langid, LanguageIdentifier};
 static I18N_DIR: Dir<'_> = include_dir!("$CARGO_MANIFEST_DIR/i18n");
 
 pub fn create_i18n_store() -> I18nConfig {
-    let mut config = I18nConfig::new(langid!("en-US"));
+    let mut config = I18nConfig::new(langid!("en-US")).with_fallback(langid!("en-US"));
 
     for file in I18N_DIR.files() {
         let Some(language_code) = file.path().file_stem().and_then(|stem| stem.to_str()) else {
