@@ -110,7 +110,14 @@ fn is_production_enabled() -> bool {
         return false;
     };
 
-    matches!(value.trim().to_ascii_lowercase().as_str(), "true" | "1" | "yes" | "on")
+    is_truthy_production_value(&value)
+}
+
+fn is_truthy_production_value(value: &str) -> bool {
+    matches!(
+        value.trim().to_ascii_lowercase().as_str(),
+        "true" | "1" | "yes" | "on"
+    )
 }
 
 fn resolve_app_version() -> &'static str {
@@ -183,28 +190,21 @@ mod tests {
     use super::*;
 
     #[test]
-    fn production_env_defaults_to_false() {
-        // SAFETY: Test process mutates env in isolation for this key.
-        unsafe { env::remove_var("PRODUCTION") };
-        assert!(!is_production_enabled());
-    }
-
-    #[test]
-    fn production_env_truthy_values_enable_production() {
-        for truthy in ["true", "TRUE", "1", "yes", "on"] {
-            // SAFETY: Test process mutates env in isolation for this key.
-            unsafe { env::set_var("PRODUCTION", truthy) };
-            assert!(is_production_enabled(), "expected truthy value: {}", truthy);
+    fn truthy_production_values_enable_production() {
+        for truthy in ["true", "TRUE", "1", "yes", "on", " On "] {
+            assert!(
+                is_truthy_production_value(truthy),
+                "expected truthy value: {}",
+                truthy
+            );
         }
     }
 
     #[test]
-    fn production_env_non_truthy_values_use_staging() {
-        for non_truthy in ["false", "0", "staging", ""] {
-            // SAFETY: Test process mutates env in isolation for this key.
-            unsafe { env::set_var("PRODUCTION", non_truthy) };
+    fn non_truthy_production_values_use_staging() {
+        for non_truthy in ["false", "0", "staging", "", "prod", "enabled"] {
             assert!(
-                !is_production_enabled(),
+                !is_truthy_production_value(non_truthy),
                 "expected non-truthy value: {}",
                 non_truthy
             );
