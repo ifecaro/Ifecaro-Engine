@@ -64,7 +64,7 @@ fn main() -> Result<()> {
             println!("{}", "✅ Development deployment completed".green().bold());
         }
         Some(Commands::Prod) => {
-            deploy()?;
+            deploy_staging()?;
             println!("{}", "🎉 Staging deployment completed".green().bold());
         }
         Some(Commands::Remote) => {
@@ -153,7 +153,7 @@ fn show_interactive_menu() -> Result<()> {
             }
             "6" => {
                 println!("{}", "Starting staging mode...".yellow());
-                deploy()?;
+                deploy_staging()?;
                 println!("{}", "🎉 Staging deployment completed".green().bold());
                 wait_for_enter();
             }
