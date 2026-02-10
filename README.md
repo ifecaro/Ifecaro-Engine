@@ -397,7 +397,7 @@ services:
 
 Set `PB_ENCRYPTION_KEY` in the server-side `.env` file, and optionally set `NGINX_CONF_PATH` / `FRONTEND_IMAGE` to control the nginx config directory and the prebuilt frontend image tag.
 The frontend image is meant to be built in CI and pushed to GHCR, so VPS nodes only need to pull the image and start the containers (no local frontend build or dist mount required).
-For staging deployments, set `NGINX_CONTAINER_NAME=nginx-staging` and `POCKETBASE_CONTAINER_NAME=pocketbase-staging` so only the staging containers carry the `-staging` suffix.
+The remote deploy binary now defaults to staging container names (`nginx-staging` / `pocketbase-staging`). Set `PRODUCTION=true` to deploy directly to production container names (`nginx` / `pocketbase`).
 
 **GHCR tag versioning rules**
 
@@ -405,7 +405,7 @@ For staging deployments, set `NGINX_CONTAINER_NAME=nginx-staging` and `POCKETBAS
 - If you add a prefix (e.g. `v<version>` or any other prefix), keep the same underlying version from `Cargo.toml` and include the prefix in `GHCR_TAG`.
   - Example with `v` prefix: `GHCR_TAG=v{version}` (matches `Cargo.toml` version `{version}`).
 - The deploy tool can generate tags from `GHCR_TAG_FORMAT` (e.g. `v{version}`) when `GHCR_TAG` is not set, using the build-time `CARGO_PKG_VERSION`.
-- Staging and production use the same image tag; only container names are suffixed for staging.
+- Staging and production use the same image tag; only container names are suffixed for staging (unless `PRODUCTION=true`).
 
 
 
@@ -418,7 +418,7 @@ cargo run --manifest-path tools/deploy-remote/Cargo.toml --release
 ```
 
 It intentionally uses only Rust standard library (no clap/anyhow/dotenv/colored), and supports the same environment variables:
-`DEPLOY_USER`, `DEPLOY_HOST`, `DEPLOY_PATH`, optional `DEPLOY_COMPOSE_FILE`, `SSH_KEY_FILE`, `SSH_KEY_PATH`, `SSH_KEY_NAME`, `GHCR_TAG`, `GHCR_TAG_FORMAT`, `DEPLOY_ENV`,
+`DEPLOY_USER`, `DEPLOY_HOST`, `DEPLOY_PATH`, optional `DEPLOY_COMPOSE_FILE`, `SSH_KEY_FILE`, `SSH_KEY_PATH`, `SSH_KEY_NAME`, `GHCR_TAG`, `GHCR_TAG_FORMAT`, `PRODUCTION`,
 `NGINX_CONTAINER_NAME`, `POCKETBASE_CONTAINER_NAME`.
 
 ### Deployment Pipeline
