@@ -9,8 +9,9 @@ fn main() -> Result<(), String> {
     let ghcr_tag = resolve_base_ghcr_tag(app_version);
     let container_suffix = resolve_container_suffix();
     let compose_project_name = resolve_compose_project_name(&container_suffix);
-    let nginx_container_name = format!("nginx{}", container_suffix);
-    let pocketbase_container_name = format!("pocketbase{}", container_suffix);
+    let frontend_container_name = resolve_frontend_container_name(&container_suffix);
+    let nginx_container_name = resolve_nginx_container_name(&container_suffix);
+    let pocketbase_container_name = resolve_pocketbase_container_name(&container_suffix);
 
     let deploy_user = required_env("DEPLOY_USER")?;
     let deploy_host = required_env("DEPLOY_HOST")?;
@@ -21,14 +22,16 @@ fn main() -> Result<(), String> {
     let known_hosts_file = resolve_known_hosts_file();
 
     let remote_command = format!(
-        "cd {} && GHCR_TAG={} NGINX_CONTAINER_NAME={} POCKETBASE_CONTAINER_NAME={} docker compose -p {} -f {} pull && GHCR_TAG={} NGINX_CONTAINER_NAME={} POCKETBASE_CONTAINER_NAME={} docker compose -p {} -f {} up -d",
+        "cd {} && GHCR_TAG={} FRONTEND_CONTAINER_NAME={} NGINX_CONTAINER_NAME={} POCKETBASE_CONTAINER_NAME={} docker compose -p {} -f {} pull && GHCR_TAG={} FRONTEND_CONTAINER_NAME={} NGINX_CONTAINER_NAME={} POCKETBASE_CONTAINER_NAME={} docker compose -p {} -f {} up -d",
         deploy_path,
         shell_escape(&ghcr_tag),
+        shell_escape(&frontend_container_name),
         shell_escape(&nginx_container_name),
         shell_escape(&pocketbase_container_name),
         shell_escape(&compose_project_name),
         deploy_compose_file,
         shell_escape(&ghcr_tag),
+        shell_escape(&frontend_container_name),
         shell_escape(&nginx_container_name),
         shell_escape(&pocketbase_container_name),
         shell_escape(&compose_project_name),
@@ -106,6 +109,18 @@ fn resolve_container_suffix() -> String {
     } else {
         "-staging".to_string()
     }
+}
+
+fn resolve_frontend_container_name(container_suffix: &str) -> String {
+    format!("frontend{}", container_suffix)
+}
+
+fn resolve_nginx_container_name(container_suffix: &str) -> String {
+    format!("nginx{}", container_suffix)
+}
+
+fn resolve_pocketbase_container_name(container_suffix: &str) -> String {
+    format!("pocketbase{}", container_suffix)
 }
 
 fn resolve_compose_project_name(container_suffix: &str) -> String {
@@ -256,5 +271,18 @@ mod tests {
 
         // SAFETY: test-only cleanup of environment variable.
         unsafe { env::remove_var("DEPLOY_COMPOSE_PROJECT_NAME") };
+    }
+
+    #[test]
+    fn container_names_include_staging_suffix() {
+        assert_eq!(
+            resolve_frontend_container_name("-staging"),
+            "frontend-staging"
+        );
+        assert_eq!(resolve_nginx_container_name("-staging"), "nginx-staging");
+        assert_eq!(
+            resolve_pocketbase_container_name("-staging"),
+            "pocketbase-staging"
+        );
     }
 }
