@@ -398,6 +398,8 @@ services:
 Set `PB_ENCRYPTION_KEY` in the server-side `.env` file, and optionally set `NGINX_CONF_PATH` / `FRONTEND_IMAGE` to control the nginx config directory and the prebuilt frontend image tag.
 The frontend image is meant to be built in CI and pushed to GHCR, so VPS nodes only need to pull the image and start the containers (no local frontend build or dist mount required).
 The remote deploy binary now defaults to staging container names (`nginx-staging` / `pocketbase-staging`). Set `PRODUCTION=true` to deploy directly to production container names (`nginx` / `pocketbase`).
+To avoid port collisions when staging and production run on the same host, `docker-compose.deploy.yml` now defaults to staging host ports (`18080`, `18443`, `18090`).
+For production deployment, set `NGINX_HTTP_HOST_PORT=80`, `NGINX_HTTPS_HOST_PORT=443`, and `POCKETBASE_HOST_PORT=8090` in the server `.env`.
 
 **GHCR tag versioning rules**
 
