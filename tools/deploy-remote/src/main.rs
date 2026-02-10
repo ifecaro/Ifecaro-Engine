@@ -98,16 +98,26 @@ fn resolve_base_ghcr_tag(cargo_version: &str) -> String {
 }
 
 fn resolve_container_suffix() -> String {
-    let Ok(env_value) = env::var("DEPLOY_ENV") else {
-        return String::new();
+    if is_production_enabled() {
+        String::new()
+    } else {
+        "-staging".to_string()
+    }
+}
+
+fn is_production_enabled() -> bool {
+    let Ok(value) = env::var("PRODUCTION") else {
+        return false;
     };
 
-    let normalized = env_value.trim().to_lowercase();
-    if normalized == "staging" || normalized == "stage" {
-        "-staging".to_string()
-    } else {
-        String::new()
-    }
+    is_truthy_production_value(&value)
+}
+
+fn is_truthy_production_value(value: &str) -> bool {
+    matches!(
+        value.trim().to_ascii_lowercase().as_str(),
+        "true" | "1" | "yes" | "on"
+    )
 }
 
 fn resolve_app_version() -> &'static str {
@@ -173,4 +183,31 @@ fn parse_env_value(raw: &str) -> String {
         }
     }
     value.to_string()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn truthy_production_values_enable_production() {
+        for truthy in ["true", "TRUE", "1", "yes", "on", " On "] {
+            assert!(
+                is_truthy_production_value(truthy),
+                "expected truthy value: {}",
+                truthy
+            );
+        }
+    }
+
+    #[test]
+    fn non_truthy_production_values_use_staging() {
+        for non_truthy in ["false", "0", "staging", "", "prod", "enabled"] {
+            assert!(
+                !is_truthy_production_value(non_truthy),
+                "expected non-truthy value: {}",
+                non_truthy
+            );
+        }
+    }
 }
