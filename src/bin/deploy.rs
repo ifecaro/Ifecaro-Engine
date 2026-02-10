@@ -53,7 +53,7 @@ fn main() -> Result<()> {
         Some(Commands::Check) => check()?,
         Some(Commands::Test { mode }) => test(mode.clone())?,
         Some(Commands::Build) => build()?,
-        Some(Commands::Deploy) => deploy()?,
+        Some(Commands::Deploy) => deploy_staging()?,
         Some(Commands::Clean) => clean()?,
         Some(Commands::Dev) => {
             build()?;
@@ -64,7 +64,7 @@ fn main() -> Result<()> {
             println!("{}", "✅ Development deployment completed".green().bold());
         }
         Some(Commands::Prod) => {
-            deploy()?;
+            deploy_production()?;
             println!("{}", "🎉 Production deployment completed".green().bold());
         }
         Some(Commands::Remote) => {
@@ -153,7 +153,7 @@ fn show_interactive_menu() -> Result<()> {
             }
             "6" => {
                 println!("{}", "Starting production mode...".yellow());
-                deploy()?;
+                deploy_production()?;
                 println!("{}", "🎉 Production deployment completed".green().bold());
                 wait_for_enter();
             }
@@ -372,7 +372,7 @@ fn build() -> Result<()> {
     Ok(())
 }
 
-fn deploy() -> Result<()> {
+fn deploy_staging() -> Result<()> {
     println!(
         "{}",
         "🚀 Starting Ifecaro Engine staging deployment process"
@@ -384,8 +384,16 @@ fn deploy() -> Result<()> {
         "================================================".blue()
     );
 
-    // 1. Run quick check for faster staging iteration
-    println!("\n{}", "📋 Running quick cargo check for staging...".yellow().bold());
+    run_staging_gate()?;
+    run_deploy_pipeline("staging")
+}
+
+fn run_staging_gate() -> Result<()> {
+    // Run quick check for faster staging iteration
+    println!(
+        "\n{}",
+        "📋 Running quick cargo check for staging...".yellow().bold()
+    );
     let check_result = Command::new("cargo")
         .args(&["check", "--release"])
         .stdout(Stdio::inherit())
@@ -398,7 +406,11 @@ fn deploy() -> Result<()> {
     }
     println!("{}", "✅ Cargo check passed".green().bold());
 
-    // 2. Run Rust build
+    Ok(())
+}
+
+fn run_deploy_pipeline(target_name: &str) -> Result<()> {
+    // Run Rust build
     println!("\n{}", "🏗️ Running Rust build...".yellow().bold());
     let rust_build = Command::new("cargo")
         .args(&["build", "--release", "--target", "wasm32-unknown-unknown"])
@@ -412,7 +424,7 @@ fn deploy() -> Result<()> {
     }
     println!("{}", "✅ Rust build completed".green().bold());
 
-    // 3. Run Dioxus build
+    // Run Dioxus build
     println!("\n{}", "🎯 Running Dioxus build...".yellow().bold());
     let dioxus_build = Command::new("dx")
         .args(&["build", "--release", "--platform", "web"])
@@ -426,22 +438,27 @@ fn deploy() -> Result<()> {
     }
     println!("{}", "✅ Dioxus build completed".green().bold());
 
-    // 4. Copy PWA resources
+    // Copy PWA resources
     copy_pwa_resources()?;
 
-    // 5. Create deployment package
+    // Create deployment package
     create_deployment_package()?;
 
-    // 6. Restore tailwind.css
+    // Restore tailwind.css
     restore_tailwind_css()?;
 
-    // 7. Upload to remote server
+    // Upload to remote server
     upload_to_remote()?;
 
     // Optional: clean up debug & incremental artifacts to reduce target size
     cleanup_target_artifacts();
 
-    println!("\n{}", "🎉 Staging deployment process completed!".green().bold());
+    println!(
+        "\n{}",
+        format!("🎉 {} deployment process completed!", target_name)
+            .green()
+            .bold()
+    );
     println!("Deployment file location: target/dx/ifecaro/release/web/public.tar.gz");
 
     // Read environment variables for final output
@@ -453,9 +470,28 @@ fn deploy() -> Result<()> {
             }
         }
     }
-    println!("Uploaded to staging server");
+    println!("Uploaded to {} server", target_name);
 
     Ok(())
+}
+
+fn deploy_production() -> Result<()> {
+    println!(
+        "{}",
+        "🚀 Starting Ifecaro Engine production deployment process"
+            .blue()
+            .bold()
+    );
+    println!(
+        "{}",
+        "================================================".blue()
+    );
+
+    // Keep full release gates for production deployments
+    test(Some(TestMode::Full))?;
+
+    // Reuse the same build/package/upload pipeline
+    run_deploy_pipeline("production")
 }
 
 fn copy_pwa_resources() -> Result<()> {
