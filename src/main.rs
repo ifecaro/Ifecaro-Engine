@@ -124,7 +124,7 @@ fn App() -> Element {
                         ParagraphProvider {
                             StoryProvider {
                                 HistoryProvider {
-                                    history: |_| Rc::new(web::WebHistory::new(staging_prefix(), true)),
+                                    history: || Rc::new(web::WebHistory::new(staging_prefix(), true)),
                                     Router::<Route> {}
                                 }
                             }
