@@ -30,6 +30,36 @@ fn build_debugmode_url(path: &str, search: &str, hash: &str) -> String {
     format!("{path}{query_part}{hash}")
 }
 
+#[cfg(target_arch = "wasm32")]
+fn current_path_is_staging() -> bool {
+    let path = window()
+        .and_then(|win| win.location().pathname().ok())
+        .unwrap_or_default();
+
+    path == "/staging" || path.starts_with("/staging/")
+}
+
+#[cfg(target_arch = "wasm32")]
+fn restore_staging_prefix_if_missing() {
+    Timeout::new(0, move || {
+        let Some(win) = window() else { return };
+        let location = win.location();
+        let path = location.pathname().unwrap_or_default();
+        if path == "/staging" || path.starts_with("/staging/") {
+            return;
+        }
+
+        let search = location.search().unwrap_or_default();
+        let hash = location.hash().unwrap_or_default();
+        let new_url = format!("/staging{path}{search}{hash}");
+        let _ = win
+            .history()
+            .unwrap()
+            .replace_state_with_url(&JsValue::NULL, "", Some(&new_url));
+    })
+    .forget();
+}
+
 #[component]
 pub fn Navbar(closure_signal: Signal<Option<Closure<dyn FnMut(Event)>>>) -> Element {
     let navigator = use_navigator();
@@ -208,6 +238,9 @@ pub fn Navbar(closure_signal: Signal<Option<Closure<dyn FnMut(Event)>>>) -> Elem
                         on_search: move |query| search_query.set(query),
                         on_select: move |lang: &Language| {
                             let lang_code = lang.code.to_string();
+                            #[cfg(target_arch = "wasm32")]
+                            let should_preserve_staging = current_path_is_staging();
+
                             state.write().set_language(&lang_code);
                             match route {
                                 Route::Story { .. } => {
@@ -230,6 +263,12 @@ pub fn Navbar(closure_signal: Signal<Option<Closure<dyn FnMut(Event)>>>) -> Elem
                                 }
                                 _ => {}
                             };
+
+                            #[cfg(target_arch = "wasm32")]
+                            if should_preserve_staging {
+                                restore_staging_prefix_if_missing();
+                            }
+
                             is_open.set(false);
                             search_query.set(String::new());
                         },
