@@ -398,7 +398,8 @@ fn deploy_staging() -> Result<()> {
     }
     println!("{}", "✅ Cargo check passed".green().bold());
 
-    Ok(())
+    // Continue with full staging build/package/upload steps after quick validation.
+    run_deploy_pipeline("staging")
 }
 
 fn run_deploy_pipeline(target_name: &str) -> Result<()> {
