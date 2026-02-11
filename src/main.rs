@@ -28,7 +28,8 @@ use crate::{
 use dioxus::prelude::*;
 use dioxus::web;
 use dioxus::web::launch::launch_cfg;
-use dioxus_toastr::{ToastProvider};
+use dioxus_router::components::HistoryProvider;
+use dioxus_toastr::ToastProvider;
 use std::rc::Rc;
 
 #[cfg(target_arch = "wasm32")]
