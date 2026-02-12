@@ -10,10 +10,10 @@ use dioxus_i18n::t;
 use gloo_timers::callback::Timeout;
 use wasm_bindgen::JsValue;
 use wasm_bindgen::{closure::Closure, JsCast};
-#[cfg(target_arch = "wasm32")]
-use web_sys::UrlSearchParams;
 use web_sys::window;
 use web_sys::Event;
+#[cfg(target_arch = "wasm32")]
+use web_sys::UrlSearchParams;
 
 #[cfg(target_arch = "wasm32")]
 fn build_debugmode_url(path: &str, search: &str, hash: &str) -> String {
@@ -60,6 +60,24 @@ fn restore_staging_prefix_if_missing() {
     .forget();
 }
 
+#[cfg(target_arch = "wasm32")]
+fn should_preserve_staging_prefix() -> bool {
+    let Some(win) = window() else { return false };
+
+    if current_path_is_staging() {
+        if let Ok(Some(storage)) = win.session_storage() {
+            let _ = storage.set_item("ifecaro_staging_prefix", "true");
+        }
+        return true;
+    }
+
+    win.session_storage()
+        .ok()
+        .flatten()
+        .and_then(|storage| storage.get_item("ifecaro_staging_prefix").ok().flatten())
+        .is_some()
+}
+
 #[component]
 pub fn Navbar(closure_signal: Signal<Option<Closure<dyn FnMut(Event)>>>) -> Element {
     let navigator = use_navigator();
@@ -89,6 +107,13 @@ pub fn Navbar(closure_signal: Signal<Option<Closure<dyn FnMut(Event)>>>) -> Elem
                 win.history()
                     .unwrap()
                     .replace_state_with_url(&JsValue::NULL, "", Some(&new_url));
+        }
+    });
+
+    #[cfg(target_arch = "wasm32")]
+    use_effect(move || {
+        if should_preserve_staging_prefix() {
+            restore_staging_prefix_if_missing();
         }
     });
     let mut state = use_context::<Signal<LanguageState>>();
@@ -180,7 +205,7 @@ pub fn Navbar(closure_signal: Signal<Option<Closure<dyn FnMut(Event)>>>) -> Elem
                         class: NavbarStyle::Link.class(),
                         onclick: move |_| {
                             #[cfg(target_arch = "wasm32")]
-                            let should_preserve_staging = current_path_is_staging();
+                            let should_preserve_staging = should_preserve_staging_prefix();
 
                             let _ = navigator.push(Route::Story { lang: story_lang.clone() });
 
@@ -214,7 +239,7 @@ pub fn Navbar(closure_signal: Signal<Option<Closure<dyn FnMut(Event)>>>) -> Elem
                         class: NavbarStyle::Link.class(),
                         onclick: move |_| {
                             #[cfg(target_arch = "wasm32")]
-                            let should_preserve_staging = current_path_is_staging();
+                            let should_preserve_staging = should_preserve_staging_prefix();
 
                             let _ = navigator.push(Route::Dashboard { lang: dashboard_lang.clone() });
 
@@ -257,7 +282,7 @@ pub fn Navbar(closure_signal: Signal<Option<Closure<dyn FnMut(Event)>>>) -> Elem
                         on_select: move |lang: &Language| {
                             let lang_code = lang.code.to_string();
                             #[cfg(target_arch = "wasm32")]
-                            let should_preserve_staging = current_path_is_staging();
+                            let should_preserve_staging = should_preserve_staging_prefix();
 
                             state.write().set_language(&lang_code);
                             match route {
