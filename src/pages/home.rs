@@ -25,9 +25,14 @@ pub fn Home() -> Element {
             )
         };
 
-        state.write().set_language(&default_lang);
+        let current_lang = state.read().current_language.clone();
+        let lang = if current_lang.is_empty() {
+            default_lang.clone()
+        } else {
+            current_lang
+        };
 
-        let lang = default_lang.clone();
+        state.write().set_language(&lang);
         navigator.replace(Route::Story { lang });
 
         #[cfg(target_arch = "wasm32")]
@@ -42,10 +47,11 @@ pub fn Home() -> Element {
                     format!("?{}", current_search.trim_start_matches('?'))
                 };
                 let new_url = format!("{path}{search}{current_hash}");
-                let _ = win
-                    .history()
-                    .unwrap()
-                    .replace_state_with_url(&JsValue::NULL, "", Some(&new_url));
+                let _ = win.history().unwrap().replace_state_with_url(
+                    &JsValue::NULL,
+                    "",
+                    Some(&new_url),
+                );
             })
             .forget();
         }
