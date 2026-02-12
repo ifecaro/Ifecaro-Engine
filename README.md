@@ -386,7 +386,7 @@ services:
       - ./hooks:/pb_hooks
 
   nginx:
-    image: ${FRONTEND_IMAGE:-ghcr.io/muchobien/ifecaro-engine:${GHCR_TAG:-latest}}
+    image: ${FRONTEND_IMAGE:-ghcr.io/muchobien/ifecaro-development:${GHCR_TAG:-latest}}
     ports:
       - "80:80"
       - "443:443"
