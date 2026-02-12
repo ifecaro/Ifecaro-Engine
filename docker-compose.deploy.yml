@@ -1,6 +1,6 @@
 services:
   frontend:
-    image: ${FRONTEND_IMAGE:-ghcr.io/muchobien/ifecaro-frontend:${GHCR_TAG:-latest}}
+    image: ${FRONTEND_IMAGE:-ghcr.io/muchobien/ifecaro-development:${GHCR_TAG:-latest}}
     container_name: ${FRONTEND_CONTAINER_NAME:-frontend-staging}
     restart: "no"
     command:
