@@ -179,7 +179,16 @@ pub fn Navbar(closure_signal: Signal<Option<Closure<dyn FnMut(Event)>>>) -> Elem
                         to: Route::Story { lang: story_lang.clone() },
                         class: NavbarStyle::Link.class(),
                         onclick: move |_| {
+                            #[cfg(target_arch = "wasm32")]
+                            let should_preserve_staging = current_path_is_staging();
+
                             let _ = navigator.push(Route::Story { lang: story_lang.clone() });
+
+                            #[cfg(target_arch = "wasm32")]
+                            if should_preserve_staging {
+                                restore_staging_prefix_if_missing();
+                            }
+
                             #[cfg(target_arch = "wasm32")]
                             if debugmode {
                                 let win = window().unwrap();
@@ -204,7 +213,16 @@ pub fn Navbar(closure_signal: Signal<Option<Closure<dyn FnMut(Event)>>>) -> Elem
                         to: Route::Dashboard { lang: dashboard_lang.clone() },
                         class: NavbarStyle::Link.class(),
                         onclick: move |_| {
+                            #[cfg(target_arch = "wasm32")]
+                            let should_preserve_staging = current_path_is_staging();
+
                             let _ = navigator.push(Route::Dashboard { lang: dashboard_lang.clone() });
+
+                            #[cfg(target_arch = "wasm32")]
+                            if should_preserve_staging {
+                                restore_staging_prefix_if_missing();
+                            }
+
                             #[cfg(target_arch = "wasm32")]
                             if debugmode {
                                 let win = window().unwrap();
