@@ -25,12 +25,7 @@ pub fn Home() -> Element {
             )
         };
 
-        let current_lang = state.read().current_language.clone();
-        let lang = if current_lang.is_empty() {
-            default_lang.clone()
-        } else {
-            current_lang
-        };
+        let lang = default_lang.clone();
 
         state.write().set_language(&lang);
         navigator.replace(Route::Story { lang });
