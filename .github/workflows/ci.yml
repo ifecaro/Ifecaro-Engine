@@ -6,7 +6,7 @@ on:
 
 jobs:
   build-engine:
-    name: Build ifecaro-engine
+    name: Build ifecaro-development
     if: github.event.pull_request.merged == true
     runs-on: ubuntu-latest
     permissions:
@@ -36,7 +36,7 @@ jobs:
       - name: Set image name
         run: |
           repo_owner="${GITHUB_REPOSITORY_OWNER,,}"
-          echo "ENGINE_IMAGE=ghcr.io/${repo_owner}/ifecaro-engine" >> "${GITHUB_ENV}"
+          echo "ENGINE_IMAGE=ghcr.io/${repo_owner}/ifecaro-development" >> "${GITHUB_ENV}"
 
       - name: Log in to GitHub Container Registry
         uses: docker/login-action@v3
@@ -50,7 +50,7 @@ jobs:
         with:
           buildkit-image: public.ecr.aws/docker/library/buildkit:buildx-stable-1
 
-      - name: Build and push ifecaro-engine image
+      - name: Build and push ifecaro-development image
         uses: docker/build-push-action@v6
         with:
           context: .
@@ -61,7 +61,7 @@ jobs:
             ${{ env.ENGINE_IMAGE }}:v${{ steps.version.outputs.version }}-beta${{ github.run_number }}
 
   build-frontend:
-    name: Build ifecaro-frontend
+    name: Build ifecaro-engine
     if: github.event.pull_request.merged == true
     runs-on: ubuntu-latest
     permissions:
@@ -101,7 +101,7 @@ jobs:
       - name: Set image name
         run: |
           repo_owner="${GITHUB_REPOSITORY_OWNER,,}"
-          echo "FRONTEND_IMAGE=ghcr.io/${repo_owner}/ifecaro-frontend" >> "${GITHUB_ENV}"
+          echo "FRONTEND_IMAGE=ghcr.io/${repo_owner}/ifecaro-engine" >> "${GITHUB_ENV}"
 
       - name: Log in to GitHub Container Registry
         uses: docker/login-action@v3
@@ -115,7 +115,7 @@ jobs:
         with:
           buildkit-image: public.ecr.aws/docker/library/buildkit:buildx-stable-1
 
-      - name: Build and push ifecaro-frontend image
+      - name: Build and push ifecaro-engine image
         uses: docker/build-push-action@v6
         with:
           context: .
