@@ -1,13 +1,14 @@
 name: CI
 
 on:
-  pull_request:
-    types: [closed]
+  push:
+    branches:
+      - main
+      - master
 
 jobs:
   build-engine:
     name: Build ifecaro-development
-    if: github.event.pull_request.merged == true
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -62,7 +63,6 @@ jobs:
 
   build-frontend:
     name: Build ifecaro-engine
-    if: github.event.pull_request.merged == true
     runs-on: ubuntu-latest
     permissions:
       contents: read
