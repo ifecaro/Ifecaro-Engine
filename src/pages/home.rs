@@ -8,6 +8,27 @@ use wasm_bindgen::JsValue;
 #[cfg(target_arch = "wasm32")]
 use web_sys::window;
 
+
+#[cfg(target_arch = "wasm32")]
+fn preferred_language(default_lang: String) -> String {
+    if let Some(win) = window() {
+        if let Ok(Some(storage)) = win.session_storage() {
+            if let Ok(Some(lang)) = storage.get_item("ifecaro_language") {
+                if !lang.is_empty() {
+                    return lang;
+                }
+            }
+        }
+    }
+
+    default_lang
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+fn preferred_language(default_lang: String) -> String {
+    default_lang
+}
+
 #[component]
 pub fn Home() -> Element {
     let navigator = use_navigator();
@@ -25,7 +46,14 @@ pub fn Home() -> Element {
             )
         };
 
-        let lang = default_lang.clone();
+        let lang = preferred_language(default_lang.clone());
+
+        #[cfg(target_arch = "wasm32")]
+        if let Some(win) = window() {
+            if let Ok(Some(storage)) = win.session_storage() {
+                let _ = storage.set_item("ifecaro_language", &lang);
+            }
+        }
 
         state.write().set_language(&lang);
         navigator.replace(Route::Story { lang });
