@@ -284,8 +284,18 @@ pub fn Navbar(closure_signal: Signal<Option<Closure<dyn FnMut(Event)>>>) -> Elem
                             #[cfg(target_arch = "wasm32")]
                             let should_preserve_staging = should_preserve_staging_prefix();
 
+                            #[cfg(target_arch = "wasm32")]
+                            if let Some(win) = window() {
+                                if let Ok(Some(storage)) = win.session_storage() {
+                                    let _ = storage.set_item("ifecaro_language", &lang_code);
+                                }
+                            }
+
                             state.write().set_language(&lang_code);
                             match route {
+                                Route::Home {} => {
+                                    let _ = navigator.push(Route::Story { lang: lang_code.clone() });
+                                }
                                 Route::Story { .. } => {
                                     let _ = navigator.push(Route::Story { lang: lang_code.clone() });
                                 }
