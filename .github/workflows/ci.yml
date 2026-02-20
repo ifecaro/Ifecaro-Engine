@@ -24,6 +24,9 @@ jobs:
 
       - name: Cache Rust dependencies
         uses: Swatinem/rust-cache@v2
+        with:
+          cache-all-crates: true
+          cache-workspaces: ". -> target"
 
       - name: Cargo check
         run: cargo check --all-targets
@@ -57,6 +60,8 @@ jobs:
           context: .
           file: ./Dockerfile
           push: true
+          cache-from: type=gha,scope=ifecaro-development-buildx
+          cache-to: type=gha,mode=max,scope=ifecaro-development-buildx
           tags: |
             ${{ env.ENGINE_IMAGE }}:latest
             ${{ env.ENGINE_IMAGE }}:v${{ steps.version.outputs.version }}-beta${{ github.run_number }}
@@ -79,6 +84,9 @@ jobs:
 
       - name: Cache Rust dependencies
         uses: Swatinem/rust-cache@v2
+        with:
+          cache-all-crates: true
+          cache-workspaces: ". -> target"
 
       - name: Cargo check
         run: cargo check --all-targets
@@ -121,6 +129,8 @@ jobs:
           context: .
           file: ./Dockerfile.frontend
           push: true
+          cache-from: type=gha,scope=ifecaro-frontend-buildx
+          cache-to: type=gha,mode=max,scope=ifecaro-frontend-buildx
           tags: |
             ${{ env.FRONTEND_IMAGE }}:latest
             ${{ env.FRONTEND_IMAGE }}:v${{ steps.version.outputs.version }}-beta${{ github.run_number }}
