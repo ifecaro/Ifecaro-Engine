@@ -33,6 +33,9 @@ use dioxus_toastr::ToastProvider;
 use std::collections::HashMap;
 use std::rc::Rc;
 
+#[cfg(target_arch = "wasm32")]
+use web_sys::UrlSearchParams;
+
 use crate::models::multi_attr_check::{
     run_event_resolution, AttrInfluence, AttrUpdateRule, AttrUpdateRuleMap, EventCheckConfig,
     EventOutcomeTier, InfluenceKind,
@@ -149,7 +152,7 @@ fn App() -> Element {
                 }
             }
 
-            if show_node_runtime_demo {
+            if should_show_node_runtime_demo() {
                 NodeRuntimePanel {
                     runtime: node_runtime,
                     nodes: story_nodes,
@@ -167,6 +170,25 @@ fn App() -> Element {
             }
         }
     }
+}
+
+#[cfg(target_arch = "wasm32")]
+fn should_show_node_runtime_demo() -> bool {
+    let search = web_sys::window()
+        .and_then(|win| win.location().search().ok())
+        .unwrap_or_default();
+    let query = search.trim_start_matches('?');
+    let params = UrlSearchParams::new_with_str(query)
+        .unwrap_or_else(|_| UrlSearchParams::new().expect("failed to build URLSearchParams"));
+
+    params
+        .get("node_runtime_demo")
+        .is_some_and(|value| value == "1")
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+fn should_show_node_runtime_demo() -> bool {
+    false
 }
 
 #[cfg(target_arch = "wasm32")]
