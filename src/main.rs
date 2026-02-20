@@ -209,19 +209,6 @@ fn staging_prefix() -> Option<String> {
     None
 }
 
-#[cfg(target_arch = "wasm32")]
-fn should_show_node_runtime_demo() -> bool {
-    web_sys::window()
-        .and_then(|win| win.location().search().ok())
-        .map(|search| search.contains("node_runtime_demo=1"))
-        .unwrap_or(false)
-}
-
-#[cfg(not(target_arch = "wasm32"))]
-fn should_show_node_runtime_demo() -> bool {
-    false
-}
-
 #[derive(Props, Clone, PartialEq)]
 struct StoryProviderProps {
     children: Element,
