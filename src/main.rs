@@ -215,9 +215,6 @@ fn restore_initial_query_and_hash_if_stripped() {
 
     let location = win.location();
     let current_path = location.pathname().unwrap_or_default();
-    if current_path == "/" {
-        return;
-    }
 
     let current_search = location.search().unwrap_or_default();
     let current_hash = location.hash().unwrap_or_default();
