@@ -34,6 +34,8 @@ use std::collections::HashMap;
 use std::rc::Rc;
 
 #[cfg(target_arch = "wasm32")]
+use wasm_bindgen::JsValue;
+#[cfg(target_arch = "wasm32")]
 use web_sys::UrlSearchParams;
 
 use crate::models::multi_attr_check::{
@@ -117,6 +119,7 @@ fn main() {
         console_error_panic_hook::set_once();
         tracing_wasm::set_as_global_default();
         init_dom_logger();
+        cache_initial_query_and_hash();
     }
 
     // 這裡一定要指定 root id = "app-root"
@@ -130,6 +133,8 @@ fn App() -> Element {
 
     #[cfg(target_arch = "wasm32")]
     {
+        use_effect(restore_initial_query_and_hash_if_stripped);
+
         let node_runtime = use_signal(GameRuntimeState::default);
         let story_nodes = use_signal(sample_story_nodes);
         let show_node_runtime_demo = should_show_node_runtime_demo();
@@ -170,6 +175,66 @@ fn App() -> Element {
             }
         }
     }
+}
+
+#[cfg(target_arch = "wasm32")]
+fn cache_initial_query_and_hash() {
+    let Some(win) = web_sys::window() else { return };
+    let Ok(Some(storage)) = win.session_storage() else {
+        return;
+    };
+    let location = win.location();
+    let initial_search = location.search().unwrap_or_default();
+    let initial_hash = location.hash().unwrap_or_default();
+
+    let _ = storage.set_item("ifecaro_initial_search", &initial_search);
+    let _ = storage.set_item("ifecaro_initial_hash", &initial_hash);
+}
+
+#[cfg(target_arch = "wasm32")]
+fn restore_initial_query_and_hash_if_stripped() {
+    let Some(win) = web_sys::window() else { return };
+    let Ok(Some(storage)) = win.session_storage() else {
+        return;
+    };
+
+    let initial_search = storage
+        .get_item("ifecaro_initial_search")
+        .ok()
+        .flatten()
+        .unwrap_or_default();
+    let initial_hash = storage
+        .get_item("ifecaro_initial_hash")
+        .ok()
+        .flatten()
+        .unwrap_or_default();
+
+    if initial_search.is_empty() && initial_hash.is_empty() {
+        return;
+    }
+
+    let location = win.location();
+    let current_path = location.pathname().unwrap_or_default();
+    if current_path == "/" {
+        return;
+    }
+
+    let current_search = location.search().unwrap_or_default();
+    let current_hash = location.hash().unwrap_or_default();
+    if current_search == initial_search && current_hash == initial_hash {
+        let _ = storage.remove_item("ifecaro_initial_search");
+        let _ = storage.remove_item("ifecaro_initial_hash");
+        return;
+    }
+
+    let new_url = format!("{current_path}{initial_search}{initial_hash}");
+    let _ = win
+        .history()
+        .unwrap()
+        .replace_state_with_url(&JsValue::NULL, "", Some(&new_url));
+
+    let _ = storage.remove_item("ifecaro_initial_search");
+    let _ = storage.remove_item("ifecaro_initial_hash");
 }
 
 #[cfg(target_arch = "wasm32")]
