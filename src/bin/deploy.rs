@@ -434,6 +434,10 @@ fn run_deploy_pipeline(target_name: &str) -> Result<()> {
     // Copy PWA resources
     copy_pwa_resources()?;
 
+    if target_name == "staging" {
+        rewrite_staging_asset_paths()?;
+    }
+
     // Create deployment package
     create_deployment_package()?;
 
@@ -451,6 +455,47 @@ fn run_deploy_pipeline(target_name: &str) -> Result<()> {
 
     println!("Uploaded to staging server");
 
+    Ok(())
+}
+
+fn rewrite_staging_asset_paths() -> Result<()> {
+    println!(
+        "\n{}",
+        "🧭 Rewriting staging asset paths in generated HTML..."
+            .yellow()
+            .bold()
+    );
+
+    let index_path = "target/dx/ifecaro/release/web/public/index.html";
+    let mut html = std::fs::read_to_string(index_path)
+        .with_context(|| format!("Failed to read generated html at {index_path}"))?;
+
+    let replacements = [
+        ("\"/assets/", "\"/staging/assets/"),
+        ("\"assets/", "\"/staging/assets/"),
+        ("\"/img/", "\"/staging/img/"),
+        ("\"img/", "\"/staging/img/"),
+        ("\"/favicon.ico\"", "\"/staging/favicon.ico\""),
+        ("\"favicon.ico\"", "\"/staging/favicon.ico\""),
+        (
+            "\"manifest.json\"",
+            "\"/staging/manifest.json\"",
+        ),
+        ("\"/sw.js\"", "\"/staging/sw.js\""),
+        ("\"sw.js\"", "\"/staging/sw.js\""),
+    ];
+
+    for (from, to) in replacements {
+        html = html.replace(from, to);
+    }
+
+    std::fs::write(index_path, html)
+        .with_context(|| format!("Failed to write rewritten html to {index_path}"))?;
+
+    println!(
+        "{}",
+        "✅ Staging asset path rewrite completed".green().bold()
+    );
     Ok(())
 }
 
