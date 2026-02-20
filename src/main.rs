@@ -231,6 +231,7 @@ struct GameRuntimeState {
     current_text_key: Option<String>,
     debug_message: Option<String>,
     last_outcome_tier: Option<String>,
+    is_running: bool,
 }
 
 impl Default for GameRuntimeState {
@@ -241,6 +242,7 @@ impl Default for GameRuntimeState {
             current_text_key: None,
             debug_message: None,
             last_outcome_tier: None,
+            is_running: false,
         }
     }
 }
@@ -262,6 +264,7 @@ fn NodeRuntimePanel(
             h3 { class: "mb-2 font-bold", "Node Runtime Demo" }
             p { "Node: {state.current_node_id}" }
             p { "Outcome tier: {outcome_tier}" }
+            p { "Running: {state.is_running}" }
             p { class: "mt-2 whitespace-pre-wrap", "{state.current_text}" }
             if let Some(text_key) = state.current_text_key.clone() {
                 p { class: "text-xs text-gray-600 dark:text-gray-300", "textKey: {text_key}" }
@@ -271,6 +274,7 @@ fn NodeRuntimePanel(
             }
             button {
                 class: "mt-3 rounded bg-blue-600 px-3 py-2 text-white",
+                disabled: state.is_running,
                 onclick: move |_| {
                     spawn(async move {
                         run_current_node(runtime, nodes).await;
@@ -292,12 +296,27 @@ async fn run_current_node(
     mut runtime: Signal<GameRuntimeState>,
     nodes: Signal<HashMap<String, StoryNode>>,
 ) {
+    let run_started = runtime.with_mut(|state| {
+        if state.is_running {
+            false
+        } else {
+            state.is_running = true;
+            state.debug_message = None;
+            true
+        }
+    });
+
+    if !run_started {
+        return;
+    }
+
     let current_node_id = runtime.read().current_node_id.clone();
     let node = nodes.read().get(&current_node_id).cloned();
 
     let Some(node) = node else {
         runtime.with_mut(|state| {
             state.debug_message = Some(format!("找不到 node: {current_node_id}"));
+            state.is_running = false;
         });
         return;
     };
@@ -310,6 +329,7 @@ async fn run_current_node(
             state.current_text_key = node.text_key.clone();
             state.last_outcome_tier = None;
             state.debug_message = None;
+            state.is_running = false;
         });
 
         if let Some(next_node_id) = node.next_node_id.clone() {
@@ -328,12 +348,14 @@ async fn run_current_node(
                 state.current_text_key = result.text_key.clone();
                 state.last_outcome_tier = Some(result.outcome_tier);
                 state.debug_message = None;
+                state.is_running = false;
             });
             goto_node(result.next_node_id, runtime);
         }
         Err(err) => {
             runtime.with_mut(|state| {
                 state.debug_message = Some(err);
+                state.is_running = false;
             });
         }
     }
