@@ -24,6 +24,9 @@ jobs:
 
       - name: Cache Rust dependencies
         uses: Swatinem/rust-cache@v2
+        with:
+          cache-all-crates: true
+          cache-workspaces: ". -> target"
 
       - name: Cargo check
         run: cargo check --all-targets
@@ -79,6 +82,9 @@ jobs:
 
       - name: Cache Rust dependencies
         uses: Swatinem/rust-cache@v2
+        with:
+          cache-all-crates: true
+          cache-workspaces: ". -> target"
 
       - name: Cargo check
         run: cargo check --all-targets
