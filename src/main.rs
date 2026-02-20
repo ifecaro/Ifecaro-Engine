@@ -132,6 +132,7 @@ fn App() -> Element {
     {
         let node_runtime = use_signal(GameRuntimeState::default);
         let story_nodes = use_signal(sample_story_nodes);
+        let show_node_runtime_demo = should_show_node_runtime_demo();
 
         rsx! {
             ToastProvider {
@@ -206,6 +207,19 @@ fn staging_prefix() -> Option<String> {
 #[cfg(not(target_arch = "wasm32"))]
 fn staging_prefix() -> Option<String> {
     None
+}
+
+#[cfg(target_arch = "wasm32")]
+fn should_show_node_runtime_demo() -> bool {
+    web_sys::window()
+        .and_then(|win| win.location().search().ok())
+        .map(|search| search.contains("node_runtime_demo=1"))
+        .unwrap_or(false)
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+fn should_show_node_runtime_demo() -> bool {
+    false
 }
 
 #[derive(Props, Clone, PartialEq)]
@@ -328,9 +342,7 @@ async fn run_current_node(
 
     if node.check.is_none() {
         runtime.with_mut(|state| {
-            state.current_text = node.text.clone().unwrap_or_else(|| {
-                format!("[textKey:{}]", node.text_key.clone().unwrap_or_default())
-            });
+            state.current_text = resolve_node_text(node.text.clone(), node.text_key.clone());
             state.current_text_key = node.text_key.clone();
             state.last_outcome_tier = None;
             state.debug_message = None;
@@ -346,9 +358,8 @@ async fn run_current_node(
     match resolve_node_check_and_jump(&node).await {
         Ok(result) => {
             runtime.with_mut(|state| {
-                state.current_text = result.text.clone().unwrap_or_else(|| {
-                    format!("[textKey:{}]", result.text_key.clone().unwrap_or_default())
-                });
+                state.current_text =
+                    resolve_node_text(result.text.clone(), result.text_key.clone());
                 state.current_text_key = result.text_key.clone();
                 state.last_outcome_tier = Some(result.outcome_tier);
                 state.debug_message = None;
@@ -399,6 +410,31 @@ async fn resolve_node_check_and_jump(node: &StoryNode) -> Result<NodeResolveResu
     })
 }
 
+fn resolve_node_text(text: Option<String>, text_key: Option<String>) -> String {
+    if let Some(text) = text {
+        return text;
+    }
+
+    if let Some(key) = text_key {
+        if let Some(resolved) = load_text_by_key(&key) {
+            return resolved;
+        }
+
+        return format!("[textKey:{key}]");
+    }
+
+    "(missing narrative text)".to_string()
+}
+
+fn load_text_by_key(text_key: &str) -> Option<String> {
+    match text_key {
+        "demo.node.intro" => Some("夜幕降臨，前線傳來緊急命令。".to_string()),
+        "demo.outcome.success" => Some("你穩住局勢，隊伍順利前進。".to_string()),
+        "demo.outcome.failure" => Some("你失去節奏，隊伍陷入混亂。".to_string()),
+        _ => None,
+    }
+}
+
 fn pick_outcome_with_fallback<'a>(
     node: &'a StoryNode,
     tier_key: &str,
@@ -442,16 +478,16 @@ fn sample_story_nodes() -> HashMap<String, StoryNode> {
         "success".to_string(),
         NodeOutcome {
             next_node_id: "camp_success".to_string(),
-            text: Some("你穩住局勢，隊伍順利前進。".to_string()),
-            text_key: None,
+            text: None,
+            text_key: Some("demo.outcome.success".to_string()),
         },
     );
     outcomes.insert(
         "failure".to_string(),
         NodeOutcome {
             next_node_id: "camp_failure".to_string(),
-            text: Some("你失去節奏，隊伍陷入混亂。".to_string()),
-            text_key: None,
+            text: None,
+            text_key: Some("demo.outcome.failure".to_string()),
         },
     );
 
@@ -479,8 +515,8 @@ fn sample_story_nodes() -> HashMap<String, StoryNode> {
         "intro".to_string(),
         StoryNode {
             id: "intro".to_string(),
-            text: Some("夜幕降臨，前線傳來緊急命令。".to_string()),
-            text_key: None,
+            text: None,
+            text_key: Some("demo.node.intro".to_string()),
             next_node_id: None,
             actor_id: Some("demo_actor".to_string()),
             check: Some(EventCheckConfig {
