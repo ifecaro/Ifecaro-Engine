@@ -241,11 +241,6 @@ fn is_landing_path(path: &str) -> bool {
 }
 
 #[cfg(target_arch = "wasm32")]
-fn is_landing_path(path: &str) -> bool {
-    path == "/" || path == "/staging" || path == "/staging/"
-}
-
-#[cfg(target_arch = "wasm32")]
 fn should_show_node_runtime_demo() -> bool {
     let search = web_sys::window()
         .and_then(|win| win.location().search().ok())
