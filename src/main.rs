@@ -219,6 +219,10 @@ fn restore_initial_query_and_hash_if_stripped() {
     let current_search = location.search().unwrap_or_default();
     let current_hash = location.hash().unwrap_or_default();
     if current_search == initial_search && current_hash == initial_hash {
+        if is_landing_path(&current_path) {
+            return;
+        }
+
         let _ = storage.remove_item("ifecaro_initial_search");
         let _ = storage.remove_item("ifecaro_initial_hash");
         return;
@@ -229,9 +233,11 @@ fn restore_initial_query_and_hash_if_stripped() {
         .history()
         .unwrap()
         .replace_state_with_url(&JsValue::NULL, "", Some(&new_url));
+}
 
-    let _ = storage.remove_item("ifecaro_initial_search");
-    let _ = storage.remove_item("ifecaro_initial_hash");
+#[cfg(target_arch = "wasm32")]
+fn is_landing_path(path: &str) -> bool {
+    path == "/" || path == "/staging" || path == "/staging/"
 }
 
 #[cfg(target_arch = "wasm32")]
