@@ -238,8 +238,6 @@ pub fn Navbar(closure_signal: Signal<Option<Closure<dyn FnMut(Event)>>>) -> Elem
                                 (String::new(), String::new())
                             };
 
-                            let _ = navigator.push(Route::Story { lang: story_lang.clone() });
-
                             #[cfg(target_arch = "wasm32")]
                             if should_preserve_staging {
                                 restore_staging_prefix_if_missing();
@@ -269,8 +267,6 @@ pub fn Navbar(closure_signal: Signal<Option<Closure<dyn FnMut(Event)>>>) -> Elem
                             } else {
                                 (String::new(), String::new())
                             };
-
-                            let _ = navigator.push(Route::Dashboard { lang: dashboard_lang.clone() });
 
                             #[cfg(target_arch = "wasm32")]
                             if should_preserve_staging {
