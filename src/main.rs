@@ -233,9 +233,11 @@ fn restore_initial_query_and_hash_if_stripped() {
         .history()
         .unwrap()
         .replace_state_with_url(&JsValue::NULL, "", Some(&new_url));
+}
 
-    let _ = storage.remove_item("ifecaro_initial_search");
-    let _ = storage.remove_item("ifecaro_initial_hash");
+#[cfg(target_arch = "wasm32")]
+fn is_landing_path(path: &str) -> bool {
+    path == "/" || path == "/staging" || path == "/staging/"
 }
 
 #[cfg(target_arch = "wasm32")]
