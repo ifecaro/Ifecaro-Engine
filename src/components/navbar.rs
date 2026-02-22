@@ -31,15 +31,28 @@ fn build_debugmode_url(path: &str, search: &str, hash: &str) -> String {
 }
 
 #[cfg(target_arch = "wasm32")]
-fn preserve_search_and_hash_after_navigation(search: String, hash: String, keep_debugmode: bool) {
+fn finalize_url_after_navigation(
+    search: String,
+    hash: String,
+    keep_debugmode: bool,
+    preserve_staging_prefix: bool,
+) {
     Timeout::new(0, move || {
         let Some(win) = window() else { return };
-        let path = win.location().pathname().unwrap_or_default();
+        let current_path = win.location().pathname().unwrap_or_default();
+        let final_path = if preserve_staging_prefix
+            && current_path != "/staging"
+            && !current_path.starts_with("/staging/")
+        {
+            format!("/staging{current_path}")
+        } else {
+            current_path
+        };
 
         let new_url = if keep_debugmode {
-            build_debugmode_url(&path, &search, &hash)
+            build_debugmode_url(&final_path, &search, &hash)
         } else {
-            format!("{path}{search}{hash}")
+            format!("{final_path}{search}{hash}")
         };
 
         let _ = win
@@ -239,13 +252,8 @@ pub fn Navbar(closure_signal: Signal<Option<Closure<dyn FnMut(Event)>>>) -> Elem
                             };
 
                             #[cfg(target_arch = "wasm32")]
-                            if should_preserve_staging {
-                                restore_staging_prefix_if_missing();
-                            }
-
-                            #[cfg(target_arch = "wasm32")]
-                            if !search.is_empty() || !hash.is_empty() || debugmode {
-                                preserve_search_and_hash_after_navigation(search, hash, debugmode);
+                            if !search.is_empty() || !hash.is_empty() || debugmode || should_preserve_staging {
+                                finalize_url_after_navigation(search, hash, debugmode, should_preserve_staging);
                             }
                         },
                         "{t!(\"story\")}"
@@ -269,13 +277,8 @@ pub fn Navbar(closure_signal: Signal<Option<Closure<dyn FnMut(Event)>>>) -> Elem
                             };
 
                             #[cfg(target_arch = "wasm32")]
-                            if should_preserve_staging {
-                                restore_staging_prefix_if_missing();
-                            }
-
-                            #[cfg(target_arch = "wasm32")]
-                            if !search.is_empty() || !hash.is_empty() || debugmode {
-                                preserve_search_and_hash_after_navigation(search, hash, debugmode);
+                            if !search.is_empty() || !hash.is_empty() || debugmode || should_preserve_staging {
+                                finalize_url_after_navigation(search, hash, debugmode, should_preserve_staging);
                             }
                         },
                         "{t!(\"dashboard\")}"
@@ -341,8 +344,8 @@ pub fn Navbar(closure_signal: Signal<Option<Closure<dyn FnMut(Event)>>>) -> Elem
                             };
 
                             #[cfg(target_arch = "wasm32")]
-                            if should_preserve_staging {
-                                restore_staging_prefix_if_missing();
+                            if !search.is_empty() || !hash.is_empty() || debugmode || should_preserve_staging {
+                                finalize_url_after_navigation(search, hash, debugmode, should_preserve_staging);
                             }
 
                             #[cfg(target_arch = "wasm32")]
