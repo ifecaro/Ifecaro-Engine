@@ -348,6 +348,11 @@ pub fn Navbar(closure_signal: Signal<Option<Closure<dyn FnMut(Event)>>>) -> Elem
                                 finalize_url_after_navigation(search, hash, debugmode, should_preserve_staging);
                             }
 
+                            #[cfg(target_arch = "wasm32")]
+                            if !search.is_empty() || !hash.is_empty() || debugmode {
+                                preserve_search_and_hash_after_navigation(search, hash, debugmode);
+                            }
+
                             is_open.set(false);
                             search_query.set(String::new());
                         },
