@@ -129,8 +129,14 @@ jobs:
           context: .
           file: ./Dockerfile.frontend
           push: true
+          build-args: |
+            VCS_REF=${{ github.sha }}
+            BUILD_VERSION=${{ steps.version.outputs.version }}
           cache-from: type=gha,scope=ifecaro-frontend-buildx
           cache-to: type=gha,mode=max,scope=ifecaro-frontend-buildx
+          labels: |
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.version=${{ steps.version.outputs.version }}
           tags: |
             ${{ env.FRONTEND_IMAGE }}:latest
             ${{ env.FRONTEND_IMAGE }}:v${{ steps.version.outputs.version }}-beta${{ github.run_number }}
