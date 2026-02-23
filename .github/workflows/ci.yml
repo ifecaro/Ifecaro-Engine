@@ -37,6 +37,11 @@ jobs:
           version=$(cargo metadata --no-deps --format-version 1 | jq -r '.packages[] | select(.name=="ifecaro") | .version')
           echo "version=${version}" >> "${GITHUB_OUTPUT}"
 
+      - name: Capture build metadata
+        id: build_meta
+        run: |
+          echo "build_time=$(date -u +'%Y-%m-%dT%H:%M:%SZ')" >> "${GITHUB_OUTPUT}"
+
       - name: Set image name
         run: |
           repo_owner="${GITHUB_REPOSITORY_OWNER,,}"
@@ -121,6 +126,11 @@ jobs:
           version=$(cargo metadata --no-deps --format-version 1 | jq -r '.packages[] | select(.name=="ifecaro") | .version')
           echo "version=${version}" >> "${GITHUB_OUTPUT}"
 
+      - name: Capture build metadata
+        id: build_meta
+        run: |
+          echo "build_time=$(date -u +'%Y-%m-%dT%H:%M:%SZ')" >> "${GITHUB_OUTPUT}"
+
       - name: Set image name
         run: |
           repo_owner="${GITHUB_REPOSITORY_OWNER,,}"
@@ -147,6 +157,7 @@ jobs:
           build-args: |
             VCS_REF=${{ github.sha }}
             BUILD_VERSION=${{ steps.version.outputs.version }}
+            BUILD_TIME=${{ steps.build_meta.outputs.build_time }}
             VITE_APP_ENV=${{ matrix.app_env }}
             VITE_BASE_API_URL=${{ matrix.api_url }}
           cache-from: type=gha,scope=ifecaro-frontend-buildx-${{ matrix.deploy_env }}

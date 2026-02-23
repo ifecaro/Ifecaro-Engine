@@ -442,6 +442,33 @@ It intentionally uses only Rust standard library (no clap/anyhow/dotenv/colored)
 
 This boundary ensures staging can be visually verified (`ENV=staging`) while keeping API/database/container resources isolated from production.
 
+### 如何驗證目前線上版本
+
+部署後可透過版本端點確認前端是否已更新到預期 commit：
+
+```bash
+# Production
+curl -fsSL https://ifecaro.com/version.json
+
+# Staging
+curl -fsSL https://ifecaro.com/staging/version.json
+```
+
+回傳 JSON 至少包含：
+
+- `git_sha`: 前端映像建立時寫入的 commit SHA
+- `build_time`: 映像建立時間（UTC）
+- `app_version`: `Cargo.toml` 的版本號
+
+如果要自動比對（例如在 CI/部署腳本），可用：
+
+```bash
+EXPECTED_SHA=<your_commit_sha>
+curl -fsSL https://ifecaro.com/staging/version.json   | jq -e --arg sha "$EXPECTED_SHA" '.git_sha == $sha'
+```
+
+當 `.git_sha` 與預期 SHA 不一致時，指令會以非 0 退出碼失敗。
+
 ### Deployment Pipeline
 
 The automated deployment process includes:

@@ -1,6 +1,7 @@
 use std::env;
 use std::path::Path;
 use std::process::{Command, Stdio};
+use std::str;
 
 fn main() -> Result<(), String> {
     load_env_file();
@@ -14,6 +15,8 @@ fn main() -> Result<(), String> {
     let pocketbase_container_name = resolve_pocketbase_container_name(&container_suffix);
     let deploy_environment = resolve_deploy_environment(&container_suffix);
     let api_url = resolve_api_url(&deploy_environment);
+    let version_endpoint_url = resolve_version_endpoint_url(&deploy_environment);
+    let expected_git_sha = required_expected_git_sha()?;
 
     let deploy_user = required_env("DEPLOY_USER")?;
     let deploy_host = required_env("DEPLOY_HOST")?;
@@ -70,12 +73,13 @@ fn main() -> Result<(), String> {
         .status()
         .map_err(|e| format!("failed to run ssh: {}", e))?;
 
-    if status.success() {
-        println!("✅ Remote VPS deployment completed (GHCR pull + docker compose up)");
-        Ok(())
-    } else {
-        Err("❌ Remote VPS deployment failed".to_string())
+    if !status.success() {
+        return Err("❌ Remote VPS deployment failed".to_string());
     }
+
+    verify_deployed_git_sha(&version_endpoint_url, &expected_git_sha)?;
+    println!("✅ Remote VPS deployment completed (GHCR pull + docker compose up)");
+    Ok(())
 }
 
 fn resolve_known_hosts_file() -> String {
@@ -96,6 +100,107 @@ fn resolve_known_hosts_file() -> String {
 
 fn required_env(name: &str) -> Result<String, String> {
     env::var(name).map_err(|_| format!("❌ Missing {} environment variable", name))
+}
+
+fn required_expected_git_sha() -> Result<String, String> {
+    if let Ok(value) = env::var("DEPLOY_EXPECTED_GIT_SHA") {
+        let trimmed = value.trim();
+        if !trimmed.is_empty() {
+            return Ok(trimmed.to_string());
+        }
+    }
+
+    if let Ok(value) = env::var("GITHUB_SHA") {
+        let trimmed = value.trim();
+        if !trimmed.is_empty() {
+            return Ok(trimmed.to_string());
+        }
+    }
+
+    Err("❌ Missing DEPLOY_EXPECTED_GIT_SHA (or GITHUB_SHA) for deployed version verification".to_string())
+}
+
+fn resolve_version_endpoint_url(deploy_environment: &str) -> String {
+    if let Ok(url) = env::var("DEPLOY_VERSION_ENDPOINT") {
+        let trimmed = url.trim();
+        if !trimmed.is_empty() {
+            return trimmed.to_string();
+        }
+    }
+
+    if deploy_environment == "production" {
+        "https://ifecaro.com/version.json".to_string()
+    } else {
+        "https://ifecaro.com/staging/version.json".to_string()
+    }
+}
+
+fn verify_deployed_git_sha(version_endpoint_url: &str, expected_git_sha: &str) -> Result<(), String> {
+    let output = Command::new("curl")
+        .args(["--fail", "--silent", "--show-error", version_endpoint_url])
+        .output()
+        .map_err(|e| format!("❌ Failed to request {}: {}", version_endpoint_url, e))?;
+
+    if !output.status.success() {
+        return Err(format!(
+            "❌ Failed to request {} (status: {})",
+            version_endpoint_url,
+            output.status
+        ));
+    }
+
+    let body = str::from_utf8(&output.stdout)
+        .map_err(|e| format!("❌ Invalid UTF-8 in version endpoint response: {}", e))?;
+    let deployed_sha = extract_json_string_field(body, "git_sha")
+        .ok_or_else(|| "❌ Unable to parse git_sha from version endpoint response".to_string())?;
+
+    if deployed_sha != expected_git_sha {
+        return Err(format!(
+            "❌ Deployed SHA mismatch: expected {}, got {} from {}",
+            expected_git_sha, deployed_sha, version_endpoint_url
+        ));
+    }
+
+    println!(
+        "✅ Verified deployed git SHA ({}) via {}",
+        deployed_sha, version_endpoint_url
+    );
+    Ok(())
+}
+
+fn extract_json_string_field(content: &str, field_name: &str) -> Option<String> {
+    let key = format!("\"{}\"", field_name);
+    let key_index = content.find(&key)?;
+    let rest = &content[key_index + key.len()..];
+    let colon_index = rest.find(':')?;
+    let value_part = rest[colon_index + 1..].trim_start();
+    let mut chars = value_part.chars();
+    if chars.next()? != '"' {
+        return None;
+    }
+
+    let mut result = String::new();
+    let mut escaped = false;
+    for ch in chars {
+        if escaped {
+            result.push(ch);
+            escaped = false;
+            continue;
+        }
+
+        if ch == '\\' {
+            escaped = true;
+            continue;
+        }
+
+        if ch == '"' {
+            return Some(result);
+        }
+
+        result.push(ch);
+    }
+
+    None
 }
 
 fn resolve_base_ghcr_tag(cargo_version: &str) -> String {
@@ -365,6 +470,33 @@ mod tests {
         assert_eq!(
             resolve_pocketbase_container_name("-staging"),
             "pocketbase-staging"
+        );
+    }
+
+    #[test]
+    fn extract_json_string_field_reads_git_sha() {
+        let json = r#"{
+  "git_sha": "abc123",
+  "build_time": "2026-01-01T00:00:00Z"
+}"#;
+        assert_eq!(
+            extract_json_string_field(json, "git_sha"),
+            Some("abc123".to_string())
+        );
+    }
+
+    #[test]
+    fn resolve_version_endpoint_url_defaults_by_environment() {
+        // SAFETY: test-only scoped environment mutation.
+        unsafe { env::remove_var("DEPLOY_VERSION_ENDPOINT") };
+
+        assert_eq!(
+            resolve_version_endpoint_url("staging"),
+            "https://ifecaro.com/staging/version.json".to_string()
+        );
+        assert_eq!(
+            resolve_version_endpoint_url("production"),
+            "https://ifecaro.com/version.json".to_string()
         );
     }
 }
