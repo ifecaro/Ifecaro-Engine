@@ -6,7 +6,18 @@ pub struct Language<'a> {
     pub code: &'a str,
 }
 
-pub static BASE_API_URL: &str = "https://ifecaro.com/db/api";
+pub fn base_api_url() -> &'static str {
+    option_env!("VITE_BASE_API_URL")
+        .or(option_env!("IFECARO_BASE_API_URL"))
+        .expect("Missing compile-time API URL. Set VITE_BASE_API_URL (or IFECARO_BASE_API_URL).")
+}
+
+pub fn app_env_label() -> &'static str {
+    option_env!("VITE_APP_ENV")
+        .or(option_env!("IFECARO_APP_ENV"))
+        .unwrap_or("development")
+}
+
 pub static PARAGRAPHS: &str = "/collections/paragraphs/records";
 pub static CHAPTERS: &str = "/collections/chapters/records";
 #[allow(dead_code)]

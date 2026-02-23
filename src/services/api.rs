@@ -1,4 +1,4 @@
-use crate::constants::config::{BASE_API_URL, CHAPTERS, PARAGRAPHS};
+use crate::constants::config::{base_api_url, CHAPTERS, PARAGRAPHS};
 use crate::contexts::paragraph_context::{Paragraph, ParagraphData};
 use serde::{Deserialize, Serialize};
 
@@ -56,7 +56,7 @@ impl HttpApiClient {
 #[async_trait::async_trait(?Send)]
 impl ApiClient for HttpApiClient {
     async fn get_paragraphs(&self) -> ApiResult<ParagraphData> {
-        let url = format!("{}{}", BASE_API_URL, PARAGRAPHS);
+        let url = format!("{}{}", base_api_url(), PARAGRAPHS);
 
         let response = self
             .client
@@ -76,7 +76,7 @@ impl ApiClient for HttpApiClient {
     }
 
     async fn get_chapters(&self) -> ApiResult<ChapterData> {
-        let url = format!("{}{}", BASE_API_URL, CHAPTERS);
+        let url = format!("{}{}", base_api_url(), CHAPTERS);
 
         let response = self
             .client
@@ -106,7 +106,7 @@ impl ApiClient for HttpApiClient {
     }
 
     async fn update_paragraph(&self, paragraph: &Paragraph) -> ApiResult<()> {
-        let url = format!("{}{}/{}", BASE_API_URL, PARAGRAPHS, paragraph.id);
+        let url = format!("{}{}/{}", base_api_url(), PARAGRAPHS, paragraph.id);
 
         let response = self
             .client

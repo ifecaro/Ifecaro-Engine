@@ -1,4 +1,4 @@
-use crate::constants::config::{BASE_API_URL, CHAPTERS};
+use crate::constants::config::{base_api_url, CHAPTERS};
 use dioxus::prelude::*;
 use serde::{Deserialize, Serialize};
 use wasm_bindgen_futures::spawn_local;
@@ -50,7 +50,7 @@ pub fn ChapterProvider(props: ChapterProviderProps) -> Element {
         let mut state = state.clone();
         spawn_local(async move {
             if !state.read().loaded {
-                let chapters_url = format!("{}{}", BASE_API_URL, CHAPTERS);
+                let chapters_url = format!("{}{}", base_api_url(), CHAPTERS);
                 let client = reqwest::Client::new();
 
                 match client.get(&chapters_url).send().await {

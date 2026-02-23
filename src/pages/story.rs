@@ -1,6 +1,6 @@
 #![allow(unused_mut)]
 use crate::components::story_content::{Action, Choice, StoryContent};
-use crate::constants::config::{BASE_API_URL, CHAPTERS, PARAGRAPHS};
+use crate::constants::config::{base_api_url, CHAPTERS, PARAGRAPHS};
 use crate::contexts::language_context::LanguageState;
 use crate::contexts::settings_context::use_settings_context;
 use crate::contexts::story_context::use_story_context;
@@ -389,7 +389,7 @@ pub fn Story(props: StoryProps) -> Element {
                 }
                 apply_theme_class(ThemeMode::from_value(&theme_mode));
                 // 2. Then load paragraph data
-                let paragraphs_url = format!("{}{}", BASE_API_URL, PARAGRAPHS);
+                let paragraphs_url = format!("{}{}", base_api_url(), PARAGRAPHS);
                 let client = reqwest::Client::new();
                 match client.get(&paragraphs_url).send().await {
                     Ok(response) => {
@@ -470,7 +470,7 @@ pub fn Story(props: StoryProps) -> Element {
                 return;
             }
             spawn_local(async move {
-                let chapters_url = format!("{}{}", BASE_API_URL, CHAPTERS);
+                let chapters_url = format!("{}{}", base_api_url(), CHAPTERS);
                 let client = reqwest::Client::new();
                 if let Ok(response) = client.get(&chapters_url).send().await {
                     if response.status().is_success() {
@@ -1129,7 +1129,10 @@ pub fn Story(props: StoryProps) -> Element {
                                 spawn_local(async move {
                                     let fetch_url = format!(
                                         "{}{}{}{}",
-                                        BASE_API_URL, PARAGRAPHS, "/", timeout_id_clone
+                                        base_api_url(),
+                                        PARAGRAPHS,
+                                        "/",
+                                        timeout_id_clone
                                     );
                                     let client = reqwest::Client::new();
                                     if let Ok(resp) = client.get(&fetch_url).send().await {
@@ -1465,7 +1468,8 @@ pub fn Story(props: StoryProps) -> Element {
                     let mut show_chapter_title = show_chapter_title.clone();
                     wasm_bindgen_futures::spawn_local(async move {
                         // Construct the record URL: /collections/paragraphs/records/{id}
-                        let fetch_url = format!("{}{}{}{}", BASE_API_URL, PARAGRAPHS, "/", goto_id);
+                        let fetch_url =
+                            format!("{}{}{}{}", base_api_url(), PARAGRAPHS, "/", goto_id);
                         let client = reqwest::Client::new();
                         if let Ok(response) = client.get(&fetch_url).send().await {
                             if response.status().is_success() {
