@@ -7,11 +7,14 @@ fn main() -> Result<(), String> {
 
     let app_version = resolve_app_version();
     let ghcr_tag = resolve_base_ghcr_tag(app_version);
+    let expected_git_sha = resolve_expected_git_sha()?;
     let container_suffix = resolve_container_suffix();
     let compose_project_name = resolve_compose_project_name(&container_suffix);
     let frontend_container_name = resolve_frontend_container_name(&container_suffix);
     let nginx_container_name = resolve_nginx_container_name(&container_suffix);
     let pocketbase_container_name = resolve_pocketbase_container_name(&container_suffix);
+    let version_endpoint_path = resolve_version_endpoint_path(&container_suffix);
+    let version_http_port = resolve_version_http_port();
 
     let deploy_user = required_env("DEPLOY_USER")?;
     let deploy_host = required_env("DEPLOY_HOST")?;
@@ -21,8 +24,10 @@ fn main() -> Result<(), String> {
     let ssh_key_file = resolve_ssh_key_file();
     let known_hosts_file = resolve_known_hosts_file();
 
+    let version_url = format!("http://127.0.0.1:{}{}", version_http_port, version_endpoint_path);
+
     let remote_command = format!(
-        "cd {} && GHCR_TAG={} FRONTEND_CONTAINER_NAME={} NGINX_CONTAINER_NAME={} POCKETBASE_CONTAINER_NAME={} docker compose -p {} -f {} pull && GHCR_TAG={} FRONTEND_CONTAINER_NAME={} NGINX_CONTAINER_NAME={} POCKETBASE_CONTAINER_NAME={} docker compose -p {} -f {} up -d",
+        "cd {} && GHCR_TAG={} FRONTEND_CONTAINER_NAME={} NGINX_CONTAINER_NAME={} POCKETBASE_CONTAINER_NAME={} docker compose -p {} -f {} pull && GHCR_TAG={} FRONTEND_CONTAINER_NAME={} NGINX_CONTAINER_NAME={} POCKETBASE_CONTAINER_NAME={} docker compose -p {} -f {} up -d && VERSION_JSON=$(curl --fail --silent --show-error {}) && DEPLOYED_SHA=$(printf '%s' "$VERSION_JSON" | sed -n 's/.*"git_sha"[[:space:]]*:[[:space:]]*"\([^"[:space:]]*\)".*/\1/p') && if [ -z "$DEPLOYED_SHA" ]; then echo '❌ Unable to parse git_sha from version endpoint'; echo "$VERSION_JSON"; exit 1; fi && if [ "$DEPLOYED_SHA" != {} ]; then echo "❌ git_sha mismatch: expected {} got $DEPLOYED_SHA"; exit 1; fi",
         deploy_path,
         shell_escape(&ghcr_tag),
         shell_escape(&frontend_container_name),
@@ -35,7 +40,10 @@ fn main() -> Result<(), String> {
         shell_escape(&nginx_container_name),
         shell_escape(&pocketbase_container_name),
         shell_escape(&compose_project_name),
-        deploy_compose_file
+        deploy_compose_file,
+        shell_escape(&version_url),
+        shell_escape(&expected_git_sha),
+        shell_escape(&expected_git_sha)
     );
 
     let status = Command::new("ssh")
@@ -61,7 +69,7 @@ fn main() -> Result<(), String> {
         .map_err(|e| format!("failed to run ssh: {}", e))?;
 
     if status.success() {
-        println!("✅ Remote VPS deployment completed (GHCR pull + docker compose up)");
+        println!("✅ Remote VPS deployment completed and version SHA verified");
         Ok(())
     } else {
         Err("❌ Remote VPS deployment failed".to_string())
@@ -103,12 +111,37 @@ fn resolve_base_ghcr_tag(cargo_version: &str) -> String {
     cargo_version.to_string()
 }
 
+fn resolve_expected_git_sha() -> Result<String, String> {
+    for key in ["DEPLOY_EXPECTED_GIT_SHA", "GITHUB_SHA", "VCS_REF"] {
+        if let Ok(value) = env::var(key) {
+            let trimmed = value.trim();
+            if !trimmed.is_empty() {
+                return Ok(trimmed.to_string());
+            }
+        }
+    }
+
+    Err("❌ Missing expected git SHA. Set DEPLOY_EXPECTED_GIT_SHA (or GITHUB_SHA).".to_string())
+}
+
 fn resolve_container_suffix() -> String {
     if is_production_enabled() {
         String::new()
     } else {
         "-staging".to_string()
     }
+}
+
+fn resolve_version_endpoint_path(container_suffix: &str) -> &'static str {
+    if container_suffix.is_empty() {
+        "/version.json"
+    } else {
+        "/staging/version.json"
+    }
+}
+
+fn resolve_version_http_port() -> String {
+    env::var("NGINX_HTTP_HOST_PORT").unwrap_or_else(|_| "18080".to_string())
 }
 
 fn resolve_frontend_container_name(container_suffix: &str) -> String {
@@ -284,5 +317,11 @@ mod tests {
             resolve_pocketbase_container_name("-staging"),
             "pocketbase-staging"
         );
+    }
+
+    #[test]
+    fn version_endpoint_path_uses_staging_prefix() {
+        assert_eq!(resolve_version_endpoint_path("-staging"), "/staging/version.json");
+        assert_eq!(resolve_version_endpoint_path(""), "/version.json");
     }
 }

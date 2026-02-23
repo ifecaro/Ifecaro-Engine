@@ -119,6 +119,30 @@ cargo run --manifest-path tools/deploy-remote/Cargo.toml --release  # Standalone
 cargo run --bin deploy remote     # Wrapper: delegates to standalone remote deploy
 ```
 
+## ✅ 如何驗證目前線上版本
+
+部署完成後，可以透過 `version.json` 端點確認目前線上容器是否為預期 commit：
+
+```bash
+# Production
+curl -fsS https://<your-domain>/version.json
+
+# Staging
+curl -fsS https://<your-domain>/staging/version.json
+```
+
+預期回傳範例：
+
+```json
+{
+  "git_sha": "<commit-sha>",
+  "build_time": "2026-01-01T12:34:56Z",
+  "app_version": "0.1.0"
+}
+```
+
+比對 `git_sha` 與你要部署的 commit SHA（例如 GitHub Actions 的 `${{ github.sha }}`）必須一致，才代表目前線上版本正確。
+
 ## 🛠️ Development Tools
 
 ### Rust Deployment CLI

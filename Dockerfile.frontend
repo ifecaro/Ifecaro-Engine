@@ -2,6 +2,7 @@ FROM rust:1.85-slim AS builder
 
 ARG VCS_REF=unknown
 ARG BUILD_VERSION=unknown
+ARG BUILD_TIME=unknown
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \
@@ -44,7 +45,8 @@ RUN rm -rf /app/dist /app/target/dx \
         fi; \
         mkdir -p /app/dist; \
         cp -r "$COPY_SOURCE"/. /app/dist/; \
-    fi
+    fi \
+    && printf '{\n  "git_sha": "%s",\n  "build_time": "%s",\n  "app_version": "%s"\n}\n' "$VCS_REF" "$BUILD_TIME" "$BUILD_VERSION" > /app/dist/version.json
 
 FROM alpine:3.20
 ARG VCS_REF=unknown
