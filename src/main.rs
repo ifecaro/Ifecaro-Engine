@@ -184,11 +184,34 @@ fn cache_initial_query_and_hash() {
         return;
     };
     let location = win.location();
+    let path = location.pathname().unwrap_or_default();
     let initial_search = location.search().unwrap_or_default();
     let initial_hash = location.hash().unwrap_or_default();
 
+    let _ = storage.set_item("ifecaro_initial_path", &path);
     let _ = storage.set_item("ifecaro_initial_search", &initial_search);
     let _ = storage.set_item("ifecaro_initial_hash", &initial_hash);
+}
+
+#[cfg(target_arch = "wasm32")]
+fn cache_latest_query_and_hash() {
+    let Some(win) = web_sys::window() else { return };
+    let Ok(Some(storage)) = win.session_storage() else {
+        return;
+    };
+
+    let location = win.location();
+    let path = location.pathname().unwrap_or_default();
+    let search = location.search().unwrap_or_default();
+    let hash = location.hash().unwrap_or_default();
+
+    if search.is_empty() && hash.is_empty() {
+        return;
+    }
+
+    let _ = storage.set_item("ifecaro_latest_path", &path);
+    let _ = storage.set_item("ifecaro_latest_search", &search);
+    let _ = storage.set_item("ifecaro_latest_hash", &hash);
 }
 
 #[cfg(target_arch = "wasm32")]
@@ -198,6 +221,11 @@ fn restore_initial_query_and_hash_if_stripped() {
         return;
     };
 
+    let initial_path = storage
+        .get_item("ifecaro_initial_path")
+        .ok()
+        .flatten()
+        .unwrap_or_default();
     let initial_search = storage
         .get_item("ifecaro_initial_search")
         .ok()
@@ -209,20 +237,52 @@ fn restore_initial_query_and_hash_if_stripped() {
         .flatten()
         .unwrap_or_default();
 
+    let latest_path = storage
+        .get_item("ifecaro_latest_path")
+        .ok()
+        .flatten()
+        .unwrap_or_default();
+    let latest_search = storage
+        .get_item("ifecaro_latest_search")
+        .ok()
+        .flatten()
+        .unwrap_or_default();
+    let latest_hash = storage
+        .get_item("ifecaro_latest_hash")
+        .ok()
+        .flatten()
+        .unwrap_or_default();
+
+    let location = win.location();
+    let current_path = location.pathname().unwrap_or_default();
+    let current_search = location.search().unwrap_or_default();
+    let current_hash = location.hash().unwrap_or_default();
+
+    if current_search.is_empty() && current_hash.is_empty() {
+        if latest_path == current_path && (!latest_search.is_empty() || !latest_hash.is_empty()) {
+            let new_url = format!("{current_path}{latest_search}{latest_hash}");
+            let _ =
+                win.history()
+                    .unwrap()
+                    .replace_state_with_url(&JsValue::NULL, "", Some(&new_url));
+            return;
+        }
+    } else {
+        cache_latest_query_and_hash();
+    }
+
     if initial_search.is_empty() && initial_hash.is_empty() {
         return;
     }
 
-    let location = win.location();
-    let current_path = location.pathname().unwrap_or_default();
-
-    let current_search = location.search().unwrap_or_default();
-    let current_hash = location.hash().unwrap_or_default();
     if current_search == initial_search && current_hash == initial_hash {
-        if is_landing_path(&current_path) {
+        if is_landing_path(&current_path)
+            || (!initial_path.is_empty() && initial_path != current_path)
+        {
             return;
         }
 
+        let _ = storage.remove_item("ifecaro_initial_path");
         let _ = storage.remove_item("ifecaro_initial_search");
         let _ = storage.remove_item("ifecaro_initial_hash");
         return;
