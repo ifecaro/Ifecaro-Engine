@@ -332,6 +332,8 @@ SSH_KEY_NAME=id_ed25519                    # SSH key filename in SSH_KEY_PATH (d
 # SSH_KEY_NAME=id_ed25519
 # SSH_KEY_FILE=/home/user/.ssh/id_ed25519
 # DEPLOY_COMPOSE_FILE=docker-compose.deploy.yml
+# STAGING_API_URL=https://ifecaro.com/staging/db/api
+# PRODUCTION_API_URL=https://ifecaro.com/db/api
 ```
 
 Note: Make sure to:
@@ -407,7 +409,9 @@ For production deployment, set `NGINX_HTTP_HOST_PORT=80`, `NGINX_HTTPS_HOST_PORT
 - If you add a prefix (e.g. `v<version>` or any other prefix), keep the same underlying version from `Cargo.toml` and include the prefix in `GHCR_TAG`.
   - Example with `v` prefix: `GHCR_TAG=v{version}` (matches `Cargo.toml` version `{version}`).
 - The deploy tool can generate tags from `GHCR_TAG_FORMAT` (e.g. `v{version}`) when `GHCR_TAG` is not set, using the build-time `CARGO_PKG_VERSION`.
-- Staging and production use the same image tag; only container names are suffixed for staging (unless `PRODUCTION=true`).
+- CI now builds **two frontend image variants** with environment-specific API URLs baked at build time:
+  - staging: `ghcr.io/.../ifecaro-engine:latest-staging` (default `VITE_BASE_API_URL=https://ifecaro.com/staging/db/api`)
+  - production: `ghcr.io/.../ifecaro-engine:latest` (default `VITE_BASE_API_URL=https://ifecaro.com/db/api`)
 
 
 
@@ -421,7 +425,22 @@ cargo run --manifest-path tools/deploy-remote/Cargo.toml --release
 
 It intentionally uses only Rust standard library (no clap/anyhow/dotenv/colored), and supports the same environment variables:
 `DEPLOY_USER`, `DEPLOY_HOST`, `DEPLOY_PATH`, optional `DEPLOY_COMPOSE_FILE`, `SSH_KEY_FILE`, `SSH_KEY_PATH`, `SSH_KEY_NAME`, `GHCR_TAG`, `GHCR_TAG_FORMAT`, `PRODUCTION`,
-`NGINX_CONTAINER_NAME`, `POCKETBASE_CONTAINER_NAME`.
+`STAGING_API_URL`, `PRODUCTION_API_URL`, `FRONTEND_IMAGE`, `NGINX_CONTAINER_NAME`, `POCKETBASE_CONTAINER_NAME`.
+
+### Staging vs Production Boundary Definition
+
+| Layer | Staging | Production |
+|------|---------|------------|
+| Frontend URL | `https://ifecaro.com/staging` | `https://ifecaro.com/` |
+| Frontend build env | `VITE_APP_ENV=staging` | `VITE_APP_ENV=production` |
+| Frontend API base | `VITE_BASE_API_URL=https://ifecaro.com/staging/db/api` | `VITE_BASE_API_URL=https://ifecaro.com/db/api` |
+| Visible environment marker | `ENV=staging` shown in app footer | `ENV=production` shown in app footer |
+| PocketBase / API endpoint | `https://ifecaro.com/staging/db/api` (or `STAGING_API_URL`) | `https://ifecaro.com/db/api` (or `PRODUCTION_API_URL`) |
+| Database / data volume | Staging PocketBase container + staging volume/data directory | Production PocketBase container + production volume/data directory |
+| Container names | `frontend-staging`, `nginx-staging`, `pocketbase-staging` | `frontend`, `nginx`, `pocketbase` |
+| Exposed host ports (default) | `18080`, `18443`, `18090` | `80`, `443`, `8090` |
+
+This boundary ensures staging can be visually verified (`ENV=staging`) while keeping API/database/container resources isolated from production.
 
 ### Deployment Pipeline
 

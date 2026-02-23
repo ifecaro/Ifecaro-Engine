@@ -1,5 +1,5 @@
 use crate::{
-    constants::config::{BASE_API_URL, PARAGRAPHS},
+    constants::config::{base_api_url, PARAGRAPHS},
     models::impacts::Impact,
 };
 use dioxus::prelude::*;
@@ -173,7 +173,7 @@ pub fn ParagraphProvider(props: ParagraphProviderProps) -> Element {
         let mut state = state.clone();
         spawn_local(async move {
             if !state.read().loaded {
-                let paragraphs_url = format!("{}{}", BASE_API_URL, PARAGRAPHS);
+                let paragraphs_url = format!("{}{}", base_api_url(), PARAGRAPHS);
                 let client = reqwest::Client::new();
 
                 match client.get(&paragraphs_url).send().await {

@@ -12,6 +12,8 @@ fn main() -> Result<(), String> {
     let frontend_container_name = resolve_frontend_container_name(&container_suffix);
     let nginx_container_name = resolve_nginx_container_name(&container_suffix);
     let pocketbase_container_name = resolve_pocketbase_container_name(&container_suffix);
+    let deploy_environment = resolve_deploy_environment(&container_suffix);
+    let api_url = resolve_api_url(&deploy_environment);
 
     let deploy_user = required_env("DEPLOY_USER")?;
     let deploy_host = required_env("DEPLOY_HOST")?;
@@ -21,16 +23,24 @@ fn main() -> Result<(), String> {
     let ssh_key_file = resolve_ssh_key_file();
     let known_hosts_file = resolve_known_hosts_file();
 
+    let frontend_image = resolve_frontend_image(&deploy_environment);
+
     let remote_command = format!(
-        "cd {} && GHCR_TAG={} FRONTEND_CONTAINER_NAME={} NGINX_CONTAINER_NAME={} POCKETBASE_CONTAINER_NAME={} docker compose -p {} -f {} pull && GHCR_TAG={} FRONTEND_CONTAINER_NAME={} NGINX_CONTAINER_NAME={} POCKETBASE_CONTAINER_NAME={} docker compose -p {} -f {} up -d",
+        "cd {} && GHCR_TAG={} FRONTEND_IMAGE={} VITE_APP_ENV={} VITE_BASE_API_URL={} FRONTEND_CONTAINER_NAME={} NGINX_CONTAINER_NAME={} POCKETBASE_CONTAINER_NAME={} docker compose -p {} -f {} pull && GHCR_TAG={} FRONTEND_IMAGE={} VITE_APP_ENV={} VITE_BASE_API_URL={} FRONTEND_CONTAINER_NAME={} NGINX_CONTAINER_NAME={} POCKETBASE_CONTAINER_NAME={} docker compose -p {} -f {} up -d",
         deploy_path,
         shell_escape(&ghcr_tag),
+        shell_escape(&frontend_image),
+        shell_escape(&deploy_environment),
+        shell_escape(&api_url),
         shell_escape(&frontend_container_name),
         shell_escape(&nginx_container_name),
         shell_escape(&pocketbase_container_name),
         shell_escape(&compose_project_name),
         deploy_compose_file,
         shell_escape(&ghcr_tag),
+        shell_escape(&frontend_image),
+        shell_escape(&deploy_environment),
+        shell_escape(&api_url),
         shell_escape(&frontend_container_name),
         shell_escape(&nginx_container_name),
         shell_escape(&pocketbase_container_name),
@@ -101,6 +111,50 @@ fn resolve_base_ghcr_tag(cargo_version: &str) -> String {
     }
 
     cargo_version.to_string()
+}
+
+fn resolve_deploy_environment(container_suffix: &str) -> String {
+    if container_suffix.is_empty() {
+        "production".to_string()
+    } else {
+        "staging".to_string()
+    }
+}
+
+fn resolve_frontend_image(deploy_environment: &str) -> String {
+    if let Ok(frontend_image) = env::var("FRONTEND_IMAGE") {
+        if !frontend_image.trim().is_empty() {
+            return frontend_image;
+        }
+    }
+
+    let default_tag = if deploy_environment == "production" {
+        "latest"
+    } else {
+        "latest-staging"
+    };
+
+    format!("ghcr.io/muchobien/ifecaro-engine:{}", default_tag)
+}
+
+fn resolve_api_url(deploy_environment: &str) -> String {
+    let env_key = if deploy_environment == "production" {
+        "PRODUCTION_API_URL"
+    } else {
+        "STAGING_API_URL"
+    };
+
+    if let Ok(api_url) = env::var(env_key) {
+        if !api_url.trim().is_empty() {
+            return api_url;
+        }
+    }
+
+    if deploy_environment == "production" {
+        "https://ifecaro.com/db/api".to_string()
+    } else {
+        "https://ifecaro.com/staging/db/api".to_string()
+    }
 }
 
 fn resolve_container_suffix() -> String {
@@ -220,6 +274,7 @@ fn parse_env_value(raw: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::env;
 
     #[test]
     fn truthy_production_values_enable_production() {
@@ -241,6 +296,33 @@ mod tests {
                 non_truthy
             );
         }
+    }
+
+    #[test]
+    fn resolve_deploy_environment_matches_suffix() {
+        assert_eq!(resolve_deploy_environment(""), "production".to_string());
+        assert_eq!(
+            resolve_deploy_environment("-staging"),
+            "staging".to_string()
+        );
+    }
+
+    #[test]
+    fn resolve_api_url_defaults_by_environment() {
+        // SAFETY: tests are single-threaded in this binary and this mutation is scoped to test process.
+        unsafe {
+            env::remove_var("STAGING_API_URL");
+            env::remove_var("PRODUCTION_API_URL");
+        }
+
+        assert_eq!(
+            resolve_api_url("staging"),
+            "https://ifecaro.com/staging/db/api".to_string()
+        );
+        assert_eq!(
+            resolve_api_url("production"),
+            "https://ifecaro.com/db/api".to_string()
+        );
     }
 
     #[test]

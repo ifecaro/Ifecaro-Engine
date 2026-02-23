@@ -4,7 +4,7 @@ use crate::components::dropdown::Dropdown;
 use crate::components::form::{ChoiceOptions, TextareaField};
 use crate::components::language_selector::{Language, AVAILABLE_LANGUAGES};
 use crate::components::paragraph_list::Paragraph as ParagraphListParagraph;
-use crate::constants::config::{BASE_API_URL, CHAPTERS, CHARACTERS, PARAGRAPHS, RELATIONSHIPS};
+use crate::constants::config::{base_api_url, CHAPTERS, CHARACTERS, PARAGRAPHS, RELATIONSHIPS};
 use crate::contexts::chapter_context::{Chapter, ChapterState, ChapterTitle};
 use crate::contexts::language_context::LanguageState;
 use crate::contexts::paragraph_context::{
@@ -134,15 +134,8 @@ fn display_language(lang: &&Language) -> String {
     lang.name.to_string()
 }
 
-fn push_toast(
-    toast: &ToastHandle,
-    kind: ToastKind,
-    message: impl Into<String>,
-    timeout_ms: u64,
-) {
-    toast.push(
-        ToastRequest::new(kind, message).with_timeout(Duration::from_millis(timeout_ms)),
-    );
+fn push_toast(toast: &ToastHandle, kind: ToastKind, message: impl Into<String>, timeout_ms: u64) {
+    toast.push(ToastRequest::new(kind, message).with_timeout(Duration::from_millis(timeout_ms)));
 }
 
 #[allow(non_snake_case)]
@@ -230,7 +223,7 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
 
                 if character_options.read().is_empty() {
                     if let Ok(response) = client
-                        .get(format!("{}{}", BASE_API_URL, CHARACTERS))
+                        .get(format!("{}{}", base_api_url(), CHARACTERS))
                         .send()
                         .await
                     {
@@ -256,7 +249,7 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
 
                 if relationship_options.read().is_empty() {
                     if let Ok(response) = client
-                        .get(format!("{}{}", BASE_API_URL, RELATIONSHIPS))
+                        .get(format!("{}{}", base_api_url(), RELATIONSHIPS))
                         .send()
                         .await
                     {
@@ -1041,13 +1034,13 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
                     };
 
                     // Publish to paragraph collection
-                    let paragraphs_url = format!("{}{}", BASE_API_URL, PARAGRAPHS);
+                    let paragraphs_url = format!("{}{}", base_api_url(), PARAGRAPHS);
 
                     let response = if is_edit_mode_flag {
                         // Edit mode: Use PATCH method to update existing paragraph
                         if let Some(paragraph) = selected_paragraph.read().as_ref() {
                             let update_url =
-                                format!("{}{}/{}", BASE_API_URL, PARAGRAPHS, paragraph.id);
+                                format!("{}{}/{}", base_api_url(), PARAGRAPHS, paragraph.id);
                             client.patch(&update_url).json(&new_paragraph).send().await
                         } else {
                             return;
@@ -1066,7 +1059,7 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
                             let status = response.status();
                             if status.is_success() {
                                 // Reload paragraph data
-                                let paragraphs_url = format!("{}{}", BASE_API_URL, PARAGRAPHS);
+                                let paragraphs_url = format!("{}{}", base_api_url(), PARAGRAPHS);
                                 match client.get(&paragraphs_url).send().await {
                                     Ok(response) => {
                                         if response.status().is_success() {
