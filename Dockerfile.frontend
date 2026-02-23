@@ -1,5 +1,8 @@
 FROM rust:1.85-slim AS builder
 
+ARG VCS_REF=unknown
+ARG BUILD_VERSION=unknown
+
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \
     curl \
@@ -27,7 +30,8 @@ COPY public ./public
 COPY i18n ./i18n
 COPY src ./src
 
-RUN dx build --release \
+RUN rm -rf /app/dist /app/target/dx \
+    && dx build --release --platform web \
     && if [ ! -d /app/dist ]; then \
         DIST_DIR=$(find /app/target/dx -type d -path "*/release/web" -print -quit); \
         if [ -z "$DIST_DIR" ]; then \
@@ -43,5 +47,9 @@ RUN dx build --release \
     fi
 
 FROM alpine:3.20
+ARG VCS_REF=unknown
+ARG BUILD_VERSION=unknown
+LABEL org.opencontainers.image.revision=$VCS_REF \
+      org.opencontainers.image.version=$BUILD_VERSION
 WORKDIR /dist
 COPY --from=builder /app/dist ./
