@@ -119,7 +119,10 @@ fn required_expected_git_sha() -> Result<String, String> {
         }
     }
 
-    Err("❌ Missing DEPLOY_EXPECTED_GIT_SHA (or GITHUB_SHA) for deployed version verification".to_string())
+    Err(
+        "❌ Missing DEPLOY_EXPECTED_GIT_SHA (or GITHUB_SHA) for deployed version verification"
+            .to_string(),
+    )
 }
 
 fn resolve_version_endpoint_url(deploy_environment: &str) -> String {
@@ -137,7 +140,10 @@ fn resolve_version_endpoint_url(deploy_environment: &str) -> String {
     }
 }
 
-fn verify_deployed_git_sha(version_endpoint_url: &str, expected_git_sha: &str) -> Result<(), String> {
+fn verify_deployed_git_sha(
+    version_endpoint_url: &str,
+    expected_git_sha: &str,
+) -> Result<(), String> {
     let output = Command::new("curl")
         .args(["--fail", "--silent", "--show-error", version_endpoint_url])
         .output()
@@ -146,13 +152,16 @@ fn verify_deployed_git_sha(version_endpoint_url: &str, expected_git_sha: &str) -
     if !output.status.success() {
         return Err(format!(
             "❌ Failed to request {} (status: {})",
-            version_endpoint_url,
-            output.status
+            version_endpoint_url, output.status
         ));
     }
 
-    let body = str::from_utf8(&output.stdout)
-        .map_err(|e| format!("❌ Invalid UTF-8 in version endpoint response: {}", e))?;
+    let body = str::from_utf8(&output.stdout).map_err(|e| {
+        format!(
+            "❌ Failed to parse version payload from {}: invalid UTF-8 ({})",
+            version_endpoint_url, e
+        )
+    })?;
     let deployed_sha = parse_git_sha_from_version_payload(body, version_endpoint_url)?;
 
     if deployed_sha != expected_git_sha {
@@ -178,32 +187,43 @@ struct VersionPayload {
     app_version: Option<String>,
 }
 
-fn parse_git_sha_from_version_payload(body: &str, version_endpoint_url: &str) -> Result<String, String> {
+fn parse_git_sha_from_version_payload(
+    body: &str,
+    version_endpoint_url: &str,
+) -> Result<String, String> {
+    let response_preview = safe_response_preview(body);
     let payload = serde_json::from_str::<VersionPayload>(body).map_err(|e| {
         format!(
-            "❌ Failed to parse JSON from {}: {}. Body preview: {}",
-            version_endpoint_url,
-            e,
-            body_preview(body)
+            "❌ Failed to parse version payload from {}: {}. Response preview: {}",
+            version_endpoint_url, e, response_preview
         )
     })?;
 
     let git_sha = payload.git_sha.unwrap_or_default();
     if git_sha.trim().is_empty() {
         return Err(format!(
-            "❌ Missing or empty git_sha in version payload from {}. Body preview: {}",
+            "❌ Failed to parse version payload from {}: missing or empty git_sha. Response preview: {}",
             version_endpoint_url,
-            body_preview(body)
+            response_preview
         ));
     }
 
     Ok(git_sha)
 }
 
-fn body_preview(body: &str) -> String {
-    let preview: String = body.chars().take(200).collect();
-    let suffix = if body.chars().count() > 200 { "…" } else { "" };
-    format!("{}{}", preview.replace('\n', "\\n"), suffix)
+fn safe_response_preview(response_body: &str) -> String {
+    let normalized = response_body
+        .split_whitespace()
+        .collect::<Vec<_>>()
+        .join(" ");
+    let max_len = 200;
+    let preview: String = normalized.chars().take(max_len).collect();
+
+    if normalized.chars().count() > max_len {
+        format!("{}…", preview)
+    } else {
+        preview
+    }
 }
 
 fn resolve_base_ghcr_tag(cargo_version: &str) -> String {
@@ -494,18 +514,19 @@ mod tests {
         let result = parse_git_sha_from_version_payload(json, "https://ifecaro.com/version.json");
 
         let err = result.expect_err("expected missing git_sha to fail");
-        assert!(err.contains("Missing or empty git_sha in version payload from https://ifecaro.com/version.json"));
-        assert!(err.contains("Body preview"));
+        assert!(err.contains("https://ifecaro.com/version.json"));
+        assert!(err.contains("missing or empty git_sha"));
+        assert!(err.contains("Response preview"));
     }
 
     #[test]
     fn parse_git_sha_from_version_payload_fails_for_non_json_response() {
-        let html = "<html><body>502 bad gateway</body></html>";
+        let html = "\n\n<html>\n<body>   502 bad gateway   </body>\n</html>\n";
         let result = parse_git_sha_from_version_payload(html, "https://ifecaro.com/version.json");
 
         let err = result.expect_err("expected non-json response to fail");
-        assert!(err.contains("Failed to parse JSON from https://ifecaro.com/version.json"));
-        assert!(err.contains("Body preview: <html><body>502 bad gateway</body></html>"));
+        assert!(err.contains("https://ifecaro.com/version.json"));
+        assert!(err.contains("Response preview: <html> <body> 502 bad gateway </body> </html>"));
     }
 
     #[test]
