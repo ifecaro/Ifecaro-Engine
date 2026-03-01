@@ -14,7 +14,7 @@ services:
 
   pocketbase:
     image: ghcr.io/muchobien/pocketbase:latest
-    container_name: ${POCKETBASE_CONTAINER_NAME:-pocketbase}
+    container_name: ${POCKETBASE_CONTAINER_NAME:-pocketbase-staging}
     restart: unless-stopped
     command:
       - --encryptionEnv
@@ -37,7 +37,7 @@ services:
 
   nginx:
     image: nginx:1.27-alpine
-    container_name: ${NGINX_CONTAINER_NAME:-nginx}
+    container_name: ${NGINX_CONTAINER_NAME:-nginx-staging}
     restart: always
     ports:
       - "${NGINX_HTTP_HOST_PORT:-18080}:80"
