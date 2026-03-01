@@ -14,7 +14,7 @@ services:
 
   pocketbase:
     image: ghcr.io/muchobien/pocketbase:latest
-    container_name: ${POCKETBASE_CONTAINER_NAME:-pocketbase}
+    container_name: ${POCKETBASE_CONTAINER_NAME:-pocketbase-staging}
     restart: unless-stopped
     command:
       - --encryptionEnv
@@ -37,13 +37,16 @@ services:
 
   nginx:
     image: nginx:1.27-alpine
-    container_name: ${NGINX_CONTAINER_NAME:-nginx}
+    container_name: ${NGINX_CONTAINER_NAME:-nginx-staging}
     restart: always
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     ports:
       - "${NGINX_HTTP_HOST_PORT:-18080}:80"
       - "${NGINX_HTTPS_HOST_PORT:-18443}:443"
     volumes:
       - ./certs:/etc/nginx/certs:ro
+      - ./nginx/mime.types:/etc/nginx/mime.types:ro
       - ${NGINX_CONF_PATH:-./nginx/conf.d}:/etc/nginx/conf.d:ro
       - frontend_assets:/usr/share/nginx/html:ro
     depends_on:
