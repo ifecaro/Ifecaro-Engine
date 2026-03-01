@@ -144,6 +144,46 @@ fn verify_deployed_git_sha(
     version_endpoint_url: &str,
     expected_git_sha: &str,
 ) -> Result<(), String> {
+    let candidate_urls = version_endpoint_candidates(version_endpoint_url);
+
+    let mut last_error = String::new();
+
+    for candidate_url in candidate_urls {
+        match request_git_sha_from_url(&candidate_url) {
+            Ok(deployed_sha) => {
+                if deployed_sha != expected_git_sha {
+                    return Err(format!(
+                        "❌ Deployed SHA mismatch: expected {}, got {} from {}",
+                        expected_git_sha, deployed_sha, candidate_url
+                    ));
+                }
+
+                println!(
+                    "✅ Verified deployed git SHA ({}) via {}",
+                    deployed_sha, candidate_url
+                );
+                return Ok(());
+            }
+            Err(err) => {
+                last_error = err;
+            }
+        }
+    }
+
+    if last_error.is_empty() {
+        return Err(
+            "❌ Failed to verify deployed git SHA: no version endpoint candidates".to_string(),
+        );
+    }
+
+    Err(last_error)
+}
+
+fn version_endpoint_candidates(version_endpoint_url: &str) -> Vec<String> {
+    vec![version_endpoint_url.to_string()]
+}
+
+fn request_git_sha_from_url(version_endpoint_url: &str) -> Result<String, String> {
     let output = Command::new("curl")
         .args(["--fail", "--silent", "--show-error", version_endpoint_url])
         .output()
@@ -162,20 +202,7 @@ fn verify_deployed_git_sha(
             version_endpoint_url, e
         )
     })?;
-    let deployed_sha = parse_git_sha_from_version_payload(body, version_endpoint_url)?;
-
-    if deployed_sha != expected_git_sha {
-        return Err(format!(
-            "❌ Deployed SHA mismatch: expected {}, got {} from {}",
-            expected_git_sha, deployed_sha, version_endpoint_url
-        ));
-    }
-
-    println!(
-        "✅ Verified deployed git SHA ({}) via {}",
-        deployed_sha, version_endpoint_url
-    );
-    Ok(())
+    parse_git_sha_from_version_payload(body, version_endpoint_url)
 }
 
 #[derive(Deserialize)]
@@ -527,6 +554,22 @@ mod tests {
         let err = result.expect_err("expected non-json response to fail");
         assert!(err.contains("https://ifecaro.com/version.json"));
         assert!(err.contains("Response preview: <html> <body> 502 bad gateway </body> </html>"));
+    }
+
+    #[test]
+    fn version_endpoint_candidates_use_exact_staging_endpoint_only() {
+        assert_eq!(
+            version_endpoint_candidates("https://ifecaro.com/staging/version.json"),
+            vec!["https://ifecaro.com/staging/version.json".to_string()]
+        );
+    }
+
+    #[test]
+    fn version_endpoint_candidates_keep_custom_endpoint_only() {
+        assert_eq!(
+            version_endpoint_candidates("https://example.com/custom-version.json"),
+            vec!["https://example.com/custom-version.json".to_string()]
+        );
     }
 
     #[test]
