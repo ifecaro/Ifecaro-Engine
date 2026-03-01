@@ -394,6 +394,7 @@ services:
       - "443:443"
     volumes:
       - ./certs:/etc/nginx/certs:ro
+      - ./nginx/mime.types:/etc/nginx/mime.types:ro
       - ${NGINX_CONF_PATH:-./nginx/conf.d}:/etc/nginx/conf.d:ro
 ```
 
@@ -402,18 +403,20 @@ The frontend image is meant to be built in CI and pushed to GHCR, so VPS nodes o
 The remote deploy binary now defaults to staging container names (`nginx-staging` / `pocketbase-staging`). Set `PRODUCTION=true` to deploy directly to production container names (`nginx` / `pocketbase`).
 To avoid port collisions when staging and production run on the same host, `docker-compose.deploy.yml` now defaults to staging host ports (`18080`, `18443`, `18090`).
 For production deployment, set `NGINX_HTTP_HOST_PORT=80`, `NGINX_HTTPS_HOST_PORT=443`, and `POCKETBASE_HOST_PORT=8090` in the server `.env`.
-When keeping a single public domain (`https://ifecaro.com`) with a path-based staging URL (`/staging`), the production nginx acts as ingress and reverse-proxies `/staging/*` to staging frontend (`18080`) and `/staging/db/api/*` to staging PocketBase (`18090`).
+When keeping a single public domain (`https://ifecaro.com`) with a path-based staging URL (`/staging`), the production nginx acts as ingress and reverse-proxies `/staging/*` to staging frontend (`18080`) and `/staging/db/*` to staging PocketBase (`18090`).
 The nginx service includes `host.docker.internal:host-gateway` so this forwarding works even when production and staging are started as different compose projects.
+The deploy compose now mounts `./nginx/mime.types` into `/etc/nginx/mime.types`, so staging and production both use the same MIME mapping (including WASM as `application/wasm`).
 
 
 **Production nginx.conf template and VPS sync**
 
-This repository now includes a root-level `nginx.conf` template for production ingress (`./nginx.conf`).
-If your VPS production container bind-mounts `/etc/nginx/nginx.conf` directly (as in your current setup), copy this file to the deploy path before restarting nginx:
+This repository now includes a root-level `nginx.conf` template for production ingress (`./nginx.conf`) and an explicit `./nginx/mime.types` file (including `application/wasm wasm`) for consistent content types.
+If your VPS production container bind-mounts `/etc/nginx/nginx.conf` and `/etc/nginx/mime.types` directly (as in your current setup), copy these files to the deploy path before restarting nginx:
 
 ```bash
 # From local repo to VPS deploy directory
 scp ./nginx.conf <DEPLOY_USER>@<DEPLOY_HOST>:<DEPLOY_PATH>/nginx/nginx.conf
+scp ./nginx/mime.types <DEPLOY_USER>@<DEPLOY_HOST>:<DEPLOY_PATH>/nginx/mime.types
 
 # If needed, also sync the path-based staging/proxy server blocks
 scp ./nginx/conf.d/default.conf <DEPLOY_USER>@<DEPLOY_HOST>:<DEPLOY_PATH>/nginx/conf.d/default.conf
