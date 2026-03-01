@@ -180,7 +180,16 @@ fn verify_deployed_git_sha(
 }
 
 fn version_endpoint_candidates(version_endpoint_url: &str) -> Vec<String> {
-    vec![version_endpoint_url.to_string()]
+    let normalized_url = version_endpoint_url.trim();
+
+    if normalized_url == "https://ifecaro.com/staging/version.json" {
+        return vec![
+            normalized_url.to_string(),
+            "https://ifecaro.com/version.json".to_string(),
+        ];
+    }
+
+    vec![normalized_url.to_string()]
 }
 
 fn request_git_sha_from_url(version_endpoint_url: &str) -> Result<String, String> {
@@ -557,10 +566,13 @@ mod tests {
     }
 
     #[test]
-    fn version_endpoint_candidates_use_exact_staging_endpoint_only() {
+    fn version_endpoint_candidates_try_legacy_staging_and_root_endpoint() {
         assert_eq!(
             version_endpoint_candidates("https://ifecaro.com/staging/version.json"),
-            vec!["https://ifecaro.com/staging/version.json".to_string()]
+            vec![
+                "https://ifecaro.com/staging/version.json".to_string(),
+                "https://ifecaro.com/version.json".to_string()
+            ]
         );
     }
 
