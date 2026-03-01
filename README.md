@@ -402,6 +402,8 @@ The frontend image is meant to be built in CI and pushed to GHCR, so VPS nodes o
 The remote deploy binary now defaults to staging container names (`nginx-staging` / `pocketbase-staging`). Set `PRODUCTION=true` to deploy directly to production container names (`nginx` / `pocketbase`).
 To avoid port collisions when staging and production run on the same host, `docker-compose.deploy.yml` now defaults to staging host ports (`18080`, `18443`, `18090`).
 For production deployment, set `NGINX_HTTP_HOST_PORT=80`, `NGINX_HTTPS_HOST_PORT=443`, and `POCKETBASE_HOST_PORT=8090` in the server `.env`.
+When keeping a single public domain (`https://ifecaro.com`) with a path-based staging URL (`/staging`), the production nginx acts as ingress and reverse-proxies `/staging/*` to staging frontend (`18080`) and `/staging/db/api/*` to staging PocketBase (`18090`).
+The nginx service includes `host.docker.internal:host-gateway` so this forwarding works even when production and staging are started as different compose projects.
 
 **GHCR tag versioning rules**
 
