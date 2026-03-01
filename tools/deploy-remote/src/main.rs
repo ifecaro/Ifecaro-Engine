@@ -579,6 +579,4 @@ mod tests {
         assert!(err.contains("https://ifecaro.com/version.json"));
         assert!(err.contains("Response preview: <html> <body> 502 bad gateway </body> </html>"));
     }
-
-    #[test]
 }
