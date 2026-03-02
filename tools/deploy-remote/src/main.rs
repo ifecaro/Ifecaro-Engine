@@ -16,6 +16,7 @@ fn main() -> Result<(), String> {
     let pocketbase_container_name = resolve_pocketbase_container_name(&container_suffix);
     let deploy_environment = resolve_deploy_environment(&container_suffix);
     let api_url = resolve_api_url(&deploy_environment);
+    let nginx_conf_path = resolve_nginx_conf_path(&deploy_environment);
     let expected_git_sha = required_expected_git_sha()?;
 
     let deploy_user = required_env("DEPLOY_USER")?;
@@ -29,12 +30,13 @@ fn main() -> Result<(), String> {
     let frontend_image = resolve_frontend_image(&deploy_environment);
 
     let remote_pull_command = format!(
-        "cd {} && GHCR_TAG={} FRONTEND_IMAGE={} VITE_APP_ENV={} VITE_BASE_API_URL={} FRONTEND_CONTAINER_NAME={} NGINX_CONTAINER_NAME={} POCKETBASE_CONTAINER_NAME={} docker compose -p {} -f {} pull",
+        "cd {} && GHCR_TAG={} FRONTEND_IMAGE={} VITE_APP_ENV={} VITE_BASE_API_URL={} NGINX_CONF_PATH={} FRONTEND_CONTAINER_NAME={} NGINX_CONTAINER_NAME={} POCKETBASE_CONTAINER_NAME={} docker compose -p {} -f {} pull",
         deploy_path,
         shell_escape(&ghcr_tag),
         shell_escape(&frontend_image),
         shell_escape(&deploy_environment),
         shell_escape(&api_url),
+        shell_escape(&nginx_conf_path),
         shell_escape(&frontend_container_name),
         shell_escape(&nginx_container_name),
         shell_escape(&pocketbase_container_name),
@@ -64,12 +66,13 @@ fn main() -> Result<(), String> {
     )?;
 
     let remote_up_command = format!(
-        "cd {} && GHCR_TAG={} FRONTEND_IMAGE={} VITE_APP_ENV={} VITE_BASE_API_URL={} FRONTEND_CONTAINER_NAME={} NGINX_CONTAINER_NAME={} POCKETBASE_CONTAINER_NAME={} docker compose -p {} -f {} up -d",
+        "cd {} && GHCR_TAG={} FRONTEND_IMAGE={} VITE_APP_ENV={} VITE_BASE_API_URL={} NGINX_CONF_PATH={} FRONTEND_CONTAINER_NAME={} NGINX_CONTAINER_NAME={} POCKETBASE_CONTAINER_NAME={} docker compose -p {} -f {} up -d",
         deploy_path,
         shell_escape(&ghcr_tag),
         shell_escape(&frontend_image),
         shell_escape(&deploy_environment),
         shell_escape(&api_url),
+        shell_escape(&nginx_conf_path),
         shell_escape(&frontend_container_name),
         shell_escape(&nginx_container_name),
         shell_escape(&pocketbase_container_name),
@@ -336,6 +339,20 @@ fn resolve_api_url(deploy_environment: &str) -> String {
     }
 }
 
+fn resolve_nginx_conf_path(deploy_environment: &str) -> String {
+    if let Ok(nginx_conf_path) = env::var("NGINX_CONF_PATH") {
+        if !nginx_conf_path.trim().is_empty() {
+            return nginx_conf_path;
+        }
+    }
+
+    if deploy_environment == "production" {
+        "./nginx/conf.d".to_string()
+    } else {
+        "./nginx/conf.d/staging".to_string()
+    }
+}
+
 fn resolve_container_suffix() -> String {
     if is_production_enabled() {
         String::new()
@@ -501,6 +518,23 @@ mod tests {
         assert_eq!(
             resolve_api_url("production"),
             "https://ifecaro.com/db/api".to_string()
+        );
+    }
+
+    #[test]
+    fn resolve_nginx_conf_path_defaults_by_environment() {
+        // SAFETY: tests are single-threaded in this binary and this mutation is scoped to test process.
+        unsafe {
+            env::remove_var("NGINX_CONF_PATH");
+        }
+
+        assert_eq!(
+            resolve_nginx_conf_path("staging"),
+            "./nginx/conf.d/staging".to_string()
+        );
+        assert_eq!(
+            resolve_nginx_conf_path("production"),
+            "./nginx/conf.d".to_string()
         );
     }
 
