@@ -92,10 +92,67 @@ fn main() -> Result<(), String> {
         return Err("❌ Remote VPS deployment failed".to_string());
     }
 
+    if deploy_environment == "staging" {
+        rewrite_staging_asset_paths_on_remote(
+            &ssh_key_file,
+            &known_hosts_file,
+            &deploy_user,
+            &deploy_host,
+            &frontend_container_name,
+        )?;
+    }
+
     println!(
         "✅ Remote VPS deployment completed (GHCR pull + image SHA verify + docker compose up)"
     );
     Ok(())
+}
+
+fn rewrite_staging_asset_paths_on_remote(
+    ssh_key_file: &str,
+    known_hosts_file: &str,
+    deploy_user: &str,
+    deploy_host: &str,
+    frontend_container_name: &str,
+) -> Result<(), String> {
+    let remote_command = build_staging_asset_rewrite_command(frontend_container_name);
+    let status = run_ssh_command(
+        ssh_key_file,
+        known_hosts_file,
+        deploy_user,
+        deploy_host,
+        &remote_command,
+    )?;
+
+    if !status.success() {
+        return Err("❌ Failed to rewrite staging asset paths in remote frontend container".to_string());
+    }
+
+    println!(
+        "✅ Rewrote staging asset paths in remote frontend container ({})",
+        frontend_container_name
+    );
+    Ok(())
+}
+
+fn build_staging_asset_rewrite_command(frontend_container_name: &str) -> String {
+    format!(
+        r#"docker exec {} sh -lc "index=/dist/index.html; [ -f \"$index\" ]; sed -i \
+        -e 's|"/assets/|"/staging/assets/|g' \
+        -e 's|"/img/|"/staging/img/|g' \
+        -e 's|"/favicon.ico"|"/staging/favicon.ico"|g' \
+        -e 's|"manifest.json"|"/staging/manifest.json"|g' \
+        -e 's|"/sw.js"|"/staging/sw.js"|g' \
+        -e 's|"sw.js"|"/staging/sw.js"|g' \
+        -e "s|'/assets/|'/staging/assets/|g" \
+        -e "s|'/img/|'/staging/img/|g" \
+        -e "s|'/favicon.ico'|'/staging/favicon.ico'|g" \
+        -e "s|'manifest.json'|'/staging/manifest.json'|g" \
+        -e "s|'/sw.js'|'/staging/sw.js'|g" \
+        -e "s|'sw.js'|'/staging/sw.js'|g" \
+        \"$index\"""#,
+        shell_escape(frontend_container_name)
+    )
 }
 
 fn run_ssh_command(
@@ -540,6 +597,9 @@ mod tests {
 
     #[test]
     fn compose_project_name_defaults_to_staging_project() {
+        // SAFETY: test-only cleanup to ensure deterministic default behavior.
+        unsafe { env::remove_var("DEPLOY_COMPOSE_PROJECT_NAME") };
+
         assert_eq!(
             resolve_compose_project_name("-staging"),
             "ifecaro-staging".to_string()
@@ -548,6 +608,9 @@ mod tests {
 
     #[test]
     fn compose_project_name_defaults_to_production_project() {
+        // SAFETY: test-only cleanup to ensure deterministic default behavior.
+        unsafe { env::remove_var("DEPLOY_COMPOSE_PROJECT_NAME") };
+
         assert_eq!(
             resolve_compose_project_name(""),
             "ifecaro-production".to_string()
@@ -602,6 +665,16 @@ mod tests {
         assert!(err.contains("https://ifecaro.com/version.json"));
         assert!(err.contains("missing or empty git_sha"));
         assert!(err.contains("Response preview"));
+    }
+
+    #[test]
+    fn staging_rewrite_command_targets_dist_index_and_container() {
+        let command = build_staging_asset_rewrite_command("frontend-staging");
+
+        assert!(command.contains("docker exec 'frontend-staging' sh -lc"));
+        assert!(command.contains("index=/dist/index.html"));
+        assert!(command.contains("/staging/assets/"));
+        assert!(command.contains("/staging/manifest.json"));
     }
 
     #[test]
