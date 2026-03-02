@@ -139,13 +139,17 @@ fn build_staging_asset_rewrite_command(frontend_container_name: &str) -> String 
     format!(
         r#"docker exec {} sh -lc "index=/dist/index.html; [ -f \"$index\" ]; sed -i \
         -e 's|"/assets/|"/staging/assets/|g' \
+        -e 's|"assets/|"/staging/assets/|g' \
         -e 's|"/img/|"/staging/img/|g' \
+        -e 's|"img/|"/staging/img/|g' \
         -e 's|"/favicon.ico"|"/staging/favicon.ico"|g' \
         -e 's|"manifest.json"|"/staging/manifest.json"|g' \
         -e 's|"/sw.js"|"/staging/sw.js"|g' \
         -e 's|"sw.js"|"/staging/sw.js"|g' \
         -e "s|'/assets/|'/staging/assets/|g" \
+        -e "s|'assets/|'/staging/assets/|g" \
         -e "s|'/img/|'/staging/img/|g" \
+        -e "s|'img/|'/staging/img/|g" \
         -e "s|'/favicon.ico'|'/staging/favicon.ico'|g" \
         -e "s|'manifest.json'|'/staging/manifest.json'|g" \
         -e "s|'/sw.js'|'/staging/sw.js'|g" \
@@ -674,6 +678,7 @@ mod tests {
         assert!(command.contains("docker exec 'frontend-staging' sh -lc"));
         assert!(command.contains("index=/dist/index.html"));
         assert!(command.contains("/staging/assets/"));
+        assert!(command.contains("\"assets/|\"/staging/assets/"));
         assert!(command.contains("/staging/manifest.json"));
     }
 
