@@ -1,7 +1,6 @@
 use std::env;
 use std::path::Path;
 use std::process::{Command, Stdio};
-use std::str;
 
 use serde::Deserialize;
 
@@ -17,7 +16,7 @@ fn main() -> Result<(), String> {
     let pocketbase_container_name = resolve_pocketbase_container_name(&container_suffix);
     let deploy_environment = resolve_deploy_environment(&container_suffix);
     let api_url = resolve_api_url(&deploy_environment);
-    let version_endpoint_url = resolve_version_endpoint_url(&deploy_environment);
+    let nginx_conf_path = resolve_nginx_conf_path(&deploy_environment);
     let expected_git_sha = required_expected_git_sha()?;
 
     let deploy_user = required_env("DEPLOY_USER")?;
@@ -30,22 +29,14 @@ fn main() -> Result<(), String> {
 
     let frontend_image = resolve_frontend_image(&deploy_environment);
 
-    let remote_command = format!(
-        "cd {} && GHCR_TAG={} FRONTEND_IMAGE={} VITE_APP_ENV={} VITE_BASE_API_URL={} FRONTEND_CONTAINER_NAME={} NGINX_CONTAINER_NAME={} POCKETBASE_CONTAINER_NAME={} docker compose -p {} -f {} pull && GHCR_TAG={} FRONTEND_IMAGE={} VITE_APP_ENV={} VITE_BASE_API_URL={} FRONTEND_CONTAINER_NAME={} NGINX_CONTAINER_NAME={} POCKETBASE_CONTAINER_NAME={} docker compose -p {} -f {} up -d",
+    let remote_pull_command = format!(
+        "cd {} && GHCR_TAG={} FRONTEND_IMAGE={} VITE_APP_ENV={} VITE_BASE_API_URL={} NGINX_CONF_PATH={} FRONTEND_CONTAINER_NAME={} NGINX_CONTAINER_NAME={} POCKETBASE_CONTAINER_NAME={} docker compose -p {} -f {} pull",
         deploy_path,
         shell_escape(&ghcr_tag),
         shell_escape(&frontend_image),
         shell_escape(&deploy_environment),
         shell_escape(&api_url),
-        shell_escape(&frontend_container_name),
-        shell_escape(&nginx_container_name),
-        shell_escape(&pocketbase_container_name),
-        shell_escape(&compose_project_name),
-        deploy_compose_file,
-        shell_escape(&ghcr_tag),
-        shell_escape(&frontend_image),
-        shell_escape(&deploy_environment),
-        shell_escape(&api_url),
+        shell_escape(&nginx_conf_path),
         shell_escape(&frontend_container_name),
         shell_escape(&nginx_container_name),
         shell_escape(&pocketbase_container_name),
@@ -53,10 +44,71 @@ fn main() -> Result<(), String> {
         deploy_compose_file
     );
 
-    let status = Command::new("ssh")
+    let pull_status = run_ssh_command(
+        &ssh_key_file,
+        &known_hosts_file,
+        &deploy_user,
+        &deploy_host,
+        &remote_pull_command,
+    )?;
+
+    if !pull_status.success() {
+        return Err("❌ Remote VPS image pull failed".to_string());
+    }
+
+    verify_remote_image_git_sha(
+        &ssh_key_file,
+        &known_hosts_file,
+        &deploy_user,
+        &deploy_host,
+        &frontend_image,
+        &expected_git_sha,
+    )?;
+
+    let remote_up_command = format!(
+        "cd {} && GHCR_TAG={} FRONTEND_IMAGE={} VITE_APP_ENV={} VITE_BASE_API_URL={} NGINX_CONF_PATH={} FRONTEND_CONTAINER_NAME={} NGINX_CONTAINER_NAME={} POCKETBASE_CONTAINER_NAME={} docker compose -p {} -f {} up -d",
+        deploy_path,
+        shell_escape(&ghcr_tag),
+        shell_escape(&frontend_image),
+        shell_escape(&deploy_environment),
+        shell_escape(&api_url),
+        shell_escape(&nginx_conf_path),
+        shell_escape(&frontend_container_name),
+        shell_escape(&nginx_container_name),
+        shell_escape(&pocketbase_container_name),
+        shell_escape(&compose_project_name),
+        deploy_compose_file
+    );
+
+    let up_status = run_ssh_command(
+        &ssh_key_file,
+        &known_hosts_file,
+        &deploy_user,
+        &deploy_host,
+        &remote_up_command,
+    )?;
+
+    if !up_status.success() {
+        return Err("❌ Remote VPS deployment failed".to_string());
+    }
+
+    println!(
+        "✅ Remote VPS deployment completed (GHCR pull + image SHA verify + docker compose up)"
+    );
+    Ok(())
+}
+
+fn run_ssh_command(
+    ssh_key_file: &str,
+    known_hosts_file: &str,
+    deploy_user: &str,
+    deploy_host: &str,
+    remote_command: &str,
+) -> Result<std::process::ExitStatus, String> {
+    Command::new("ssh")
         .args([
             "-i",
-            &ssh_key_file,
+            ssh_key_file,
             "-o",
             &format!("UserKnownHostsFile={}", known_hosts_file),
             "-o",
@@ -68,20 +120,12 @@ fn main() -> Result<(), String> {
             "-o",
             "ConnectTimeout=30",
             &format!("{}@{}", deploy_user, deploy_host),
-            &remote_command,
+            remote_command,
         ])
         .stdout(Stdio::inherit())
         .stderr(Stdio::inherit())
         .status()
-        .map_err(|e| format!("failed to run ssh: {}", e))?;
-
-    if !status.success() {
-        return Err("❌ Remote VPS deployment failed".to_string());
-    }
-
-    verify_deployed_git_sha(&version_endpoint_url, &expected_git_sha)?;
-    println!("✅ Remote VPS deployment completed (GHCR pull + docker compose up)");
-    Ok(())
+        .map_err(|e| format!("failed to run ssh: {}", e))
 }
 
 fn resolve_known_hosts_file() -> String {
@@ -125,93 +169,67 @@ fn required_expected_git_sha() -> Result<String, String> {
     )
 }
 
-fn resolve_version_endpoint_url(deploy_environment: &str) -> String {
-    if let Ok(url) = env::var("DEPLOY_VERSION_ENDPOINT") {
-        let trimmed = url.trim();
-        if !trimmed.is_empty() {
-            return trimmed.to_string();
-        }
-    }
-
-    if deploy_environment == "production" {
-        "https://ifecaro.com/version.json".to_string()
-    } else {
-        "https://ifecaro.com/staging/version.json".to_string()
-    }
-}
-
-fn verify_deployed_git_sha(
-    version_endpoint_url: &str,
+fn verify_remote_image_git_sha(
+    ssh_key_file: &str,
+    known_hosts_file: &str,
+    deploy_user: &str,
+    deploy_host: &str,
+    frontend_image: &str,
     expected_git_sha: &str,
 ) -> Result<(), String> {
-    let candidate_urls = version_endpoint_candidates(version_endpoint_url);
+    let remote_command = format!(
+        "docker run --rm --entrypoint cat {} /dist/version.json",
+        shell_escape(frontend_image)
+    );
 
-    let mut last_error = String::new();
-
-    for candidate_url in candidate_urls {
-        match request_git_sha_from_url(&candidate_url) {
-            Ok(deployed_sha) => {
-                if deployed_sha != expected_git_sha {
-                    return Err(format!(
-                        "❌ Deployed SHA mismatch: expected {}, got {} from {}",
-                        expected_git_sha, deployed_sha, candidate_url
-                    ));
-                }
-
-                println!(
-                    "✅ Verified deployed git SHA ({}) via {}",
-                    deployed_sha, candidate_url
-                );
-                return Ok(());
-            }
-            Err(err) => {
-                last_error = err;
-            }
-        }
-    }
-
-    if last_error.is_empty() {
-        return Err(
-            "❌ Failed to verify deployed git SHA: no version endpoint candidates".to_string(),
-        );
-    }
-
-    Err(last_error)
-}
-
-fn version_endpoint_candidates(version_endpoint_url: &str) -> Vec<String> {
-    let normalized_url = version_endpoint_url.trim();
-
-    if normalized_url == "https://ifecaro.com/staging/version.json" {
-        return vec![
-            normalized_url.to_string(),
-            "https://ifecaro.com/version.json".to_string(),
-        ];
-    }
-
-    vec![normalized_url.to_string()]
-}
-
-fn request_git_sha_from_url(version_endpoint_url: &str) -> Result<String, String> {
-    let output = Command::new("curl")
-        .args(["--fail", "--silent", "--show-error", version_endpoint_url])
+    let output = Command::new("ssh")
+        .args([
+            "-i",
+            ssh_key_file,
+            "-o",
+            &format!("UserKnownHostsFile={}", known_hosts_file),
+            "-o",
+            "StrictHostKeyChecking=yes",
+            "-o",
+            "PasswordAuthentication=no",
+            "-o",
+            "PubkeyAuthentication=yes",
+            "-o",
+            "ConnectTimeout=30",
+            &format!("{}@{}", deploy_user, deploy_host),
+            &remote_command,
+        ])
         .output()
-        .map_err(|e| format!("❌ Failed to request {}: {}", version_endpoint_url, e))?;
+        .map_err(|e| format!("❌ Failed to inspect remote frontend image: {}", e))?;
 
     if !output.status.success() {
+        let stderr_preview = safe_response_preview(&String::from_utf8_lossy(&output.stderr));
         return Err(format!(
-            "❌ Failed to request {} (status: {})",
-            version_endpoint_url, output.status
+            "❌ Failed to inspect remote frontend image {} (status: {}). stderr: {}",
+            frontend_image, output.status, stderr_preview
         ));
     }
 
-    let body = str::from_utf8(&output.stdout).map_err(|e| {
+    let payload = String::from_utf8(output.stdout).map_err(|e| {
         format!(
-            "❌ Failed to parse version payload from {}: invalid UTF-8 ({})",
-            version_endpoint_url, e
+            "❌ Failed to parse remote image version payload as UTF-8 from {}: {}",
+            frontend_image, e
         )
     })?;
-    parse_git_sha_from_version_payload(body, version_endpoint_url)
+
+    let deployed_sha = parse_git_sha_from_version_payload(&payload, frontend_image)?;
+    if deployed_sha != expected_git_sha {
+        return Err(format!(
+            "❌ Pulled image SHA mismatch: expected {}, got {} from image {}",
+            expected_git_sha, deployed_sha, frontend_image
+        ));
+    }
+
+    println!(
+        "✅ Verified pulled image git SHA ({}) from {}",
+        deployed_sha, frontend_image
+    );
+    Ok(())
 }
 
 #[derive(Deserialize)]
@@ -318,6 +336,20 @@ fn resolve_api_url(deploy_environment: &str) -> String {
         "https://ifecaro.com/db/api".to_string()
     } else {
         "https://ifecaro.com/staging/db/api".to_string()
+    }
+}
+
+fn resolve_nginx_conf_path(deploy_environment: &str) -> String {
+    if let Ok(nginx_conf_path) = env::var("NGINX_CONF_PATH") {
+        if !nginx_conf_path.trim().is_empty() {
+            return nginx_conf_path;
+        }
+    }
+
+    if deploy_environment == "production" {
+        "./nginx/conf.d".to_string()
+    } else {
+        "./nginx/conf.d/staging".to_string()
     }
 }
 
@@ -490,6 +522,23 @@ mod tests {
     }
 
     #[test]
+    fn resolve_nginx_conf_path_defaults_by_environment() {
+        // SAFETY: tests are single-threaded in this binary and this mutation is scoped to test process.
+        unsafe {
+            env::remove_var("NGINX_CONF_PATH");
+        }
+
+        assert_eq!(
+            resolve_nginx_conf_path("staging"),
+            "./nginx/conf.d/staging".to_string()
+        );
+        assert_eq!(
+            resolve_nginx_conf_path("production"),
+            "./nginx/conf.d".to_string()
+        );
+    }
+
+    #[test]
     fn compose_project_name_defaults_to_staging_project() {
         assert_eq!(
             resolve_compose_project_name("-staging"),
@@ -563,39 +612,5 @@ mod tests {
         let err = result.expect_err("expected non-json response to fail");
         assert!(err.contains("https://ifecaro.com/version.json"));
         assert!(err.contains("Response preview: <html> <body> 502 bad gateway </body> </html>"));
-    }
-
-    #[test]
-    fn version_endpoint_candidates_try_legacy_staging_and_root_endpoint() {
-        assert_eq!(
-            version_endpoint_candidates("https://ifecaro.com/staging/version.json"),
-            vec![
-                "https://ifecaro.com/staging/version.json".to_string(),
-                "https://ifecaro.com/version.json".to_string()
-            ]
-        );
-    }
-
-    #[test]
-    fn version_endpoint_candidates_keep_custom_endpoint_only() {
-        assert_eq!(
-            version_endpoint_candidates("https://example.com/custom-version.json"),
-            vec!["https://example.com/custom-version.json".to_string()]
-        );
-    }
-
-    #[test]
-    fn resolve_version_endpoint_url_defaults_by_environment() {
-        // SAFETY: test-only scoped environment mutation.
-        unsafe { env::remove_var("DEPLOY_VERSION_ENDPOINT") };
-
-        assert_eq!(
-            resolve_version_endpoint_url("staging"),
-            "https://ifecaro.com/staging/version.json".to_string()
-        );
-        assert_eq!(
-            resolve_version_endpoint_url("production"),
-            "https://ifecaro.com/version.json".to_string()
-        );
     }
 }
