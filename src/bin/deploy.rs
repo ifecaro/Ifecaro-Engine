@@ -470,24 +470,7 @@ fn rewrite_staging_asset_paths() -> Result<()> {
     let mut html = std::fs::read_to_string(index_path)
         .with_context(|| format!("Failed to read generated html at {index_path}"))?;
 
-    let replacements = [
-        ("\"/assets/", "\"/staging/assets/"),
-        ("\"assets/", "\"/staging/assets/"),
-        ("\"/img/", "\"/staging/img/"),
-        ("\"img/", "\"/staging/img/"),
-        ("\"/favicon.ico\"", "\"/staging/favicon.ico\""),
-        ("\"favicon.ico\"", "\"/staging/favicon.ico\""),
-        (
-            "\"manifest.json\"",
-            "\"/staging/manifest.json\"",
-        ),
-        ("\"/sw.js\"", "\"/staging/sw.js\""),
-        ("\"sw.js\"", "\"/staging/sw.js\""),
-    ];
-
-    for (from, to) in replacements {
-        html = html.replace(from, to);
-    }
+    html = rewrite_staging_html_content(&html);
 
     std::fs::write(index_path, html)
         .with_context(|| format!("Failed to write rewritten html to {index_path}"))?;
@@ -497,6 +480,62 @@ fn rewrite_staging_asset_paths() -> Result<()> {
         "✅ Staging asset path rewrite completed".green().bold()
     );
     Ok(())
+}
+
+fn rewrite_staging_html_content(html: &str) -> String {
+    let mut rewritten = html.to_string();
+
+    let replacements = [
+        ("\"/assets/", "\"/staging/assets/"),
+        ("'/assets/", "'/staging/assets/"),
+        ("\"assets/", "\"/staging/assets/"),
+        ("'assets/", "'/staging/assets/"),
+        ("\"/img/", "\"/staging/img/"),
+        ("'/img/", "'/staging/img/"),
+        ("\"img/", "\"/staging/img/"),
+        ("'img/", "'/staging/img/"),
+        ("\"/favicon.ico\"", "\"/staging/favicon.ico\""),
+        ("'/favicon.ico'", "'/staging/favicon.ico'"),
+        ("\"favicon.ico\"", "\"/staging/favicon.ico\""),
+        ("'favicon.ico'", "'/staging/favicon.ico'"),
+        ("\"manifest.json\"", "\"/staging/manifest.json\""),
+        ("'manifest.json'", "'/staging/manifest.json'"),
+        ("\"/sw.js\"", "\"/staging/sw.js\""),
+        ("'/sw.js'", "'/staging/sw.js'"),
+        ("\"sw.js\"", "\"/staging/sw.js\""),
+        ("'sw.js'", "'/staging/sw.js'"),
+    ];
+
+    for (from, to) in replacements {
+        rewritten = rewritten.replace(from, to);
+    }
+
+    rewritten
+}
+
+#[cfg(test)]
+mod deploy_path_rewrite_tests {
+    use super::rewrite_staging_html_content;
+
+    #[test]
+    fn rewrites_double_and_single_quoted_assets() {
+        let input = r#"<script src="/assets/ifecaro.js"></script><script>import('/assets/chunk.js');import("/assets/other.js");</script>"#;
+        let output = rewrite_staging_html_content(input);
+
+        assert!(output.contains("\"/staging/assets/ifecaro.js\""));
+        assert!(output.contains("'/staging/assets/chunk.js'"));
+        assert!(output.contains("\"/staging/assets/other.js\""));
+    }
+
+    #[test]
+    fn rewrites_pwa_related_paths() {
+        let input = r#"<link rel="manifest" href="manifest.json"><link rel='icon' href='favicon.ico'><script src='sw.js'></script>"#;
+        let output = rewrite_staging_html_content(input);
+
+        assert!(output.contains("\"/staging/manifest.json\""));
+        assert!(output.contains("'/staging/favicon.ico'"));
+        assert!(output.contains("'/staging/sw.js'"));
+    }
 }
 
 fn deploy_production() -> Result<()> {
