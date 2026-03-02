@@ -93,7 +93,7 @@ fn main() -> Result<(), String> {
     }
 
     if deploy_environment == "staging" {
-        rewrite_staging_asset_paths_on_remote(
+        rewrite_staging_base_url_on_remote(
             &ssh_key_file,
             &known_hosts_file,
             &deploy_user,
@@ -108,14 +108,14 @@ fn main() -> Result<(), String> {
     Ok(())
 }
 
-fn rewrite_staging_asset_paths_on_remote(
+fn rewrite_staging_base_url_on_remote(
     ssh_key_file: &str,
     known_hosts_file: &str,
     deploy_user: &str,
     deploy_host: &str,
     frontend_container_name: &str,
 ) -> Result<(), String> {
-    let remote_command = build_staging_asset_rewrite_command(frontend_container_name);
+    let remote_command = build_staging_base_url_rewrite_command(frontend_container_name);
     let status = run_ssh_command(
         ssh_key_file,
         known_hosts_file,
@@ -125,31 +125,22 @@ fn rewrite_staging_asset_paths_on_remote(
     )?;
 
     if !status.success() {
-        return Err("❌ Failed to rewrite staging asset paths in remote frontend container".to_string());
+        return Err("❌ Failed to rewrite staging API base URL in remote frontend container".to_string());
     }
 
     println!(
-        "✅ Rewrote staging asset paths in remote frontend container ({})",
+        "✅ Rewrote staging API base URL in remote frontend container ({})",
         frontend_container_name
     );
     Ok(())
 }
 
-fn build_staging_asset_rewrite_command(frontend_container_name: &str) -> String {
+fn build_staging_base_url_rewrite_command(frontend_container_name: &str) -> String {
     format!(
         "docker exec {} sh -lc 'index=/dist/index.html && [ -f \"$index\" ] && sed -i \\
-        -e \"s|\\\"/assets/|\\\"/staging/assets/|g\" \\
-        -e \"s|\\\"/img/|\\\"/staging/img/|g\" \\
-        -e \"s|\\\"/favicon.ico\\\"|\\\"/staging/favicon.ico\\\"|g\" \\
-        -e \"s|\\\"manifest.json\\\"|\\\"/staging/manifest.json\\\"|g\" \\
-        -e \"s|\\\"/sw.js\\\"|\\\"/staging/sw.js\\\"|g\" \\
-        -e \"s|\\\"sw.js\\\"|\\\"/staging/sw.js\\\"|g\" \\
-        -e \"s|\'/assets/|\'/staging/assets/|g\" \\
-        -e \"s|\'/img/|\'/staging/img/|g\" \\
-        -e \"s|\'/favicon.ico\'|\'/staging/favicon.ico\'|g\" \\
-        -e \"s|\'manifest.json\'|\'/staging/manifest.json\'|g\" \\
-        -e \"s|\'/sw.js\'|\'/staging/sw.js\'|g\" \\
-        -e \"s|\'sw.js\'|\'/staging/sw.js\'|g\" \\
+        -e \"s|https://ifecaro.com/db/api|https://ifecaro.com/staging/db/api|g\" \\
+        -e \"s|\\\"/db/api\\\"|\\\"/staging/db/api\\\"|g\" \\
+        -e \"s|\'/db/api\'|\'/staging/db/api\'|g\" \\
         \"$index\"'",
         shell_escape(frontend_container_name)
     )
@@ -668,13 +659,13 @@ mod tests {
     }
 
     #[test]
-    fn staging_rewrite_command_targets_dist_index_and_container() {
-        let command = build_staging_asset_rewrite_command("frontend-staging");
+    fn staging_base_url_rewrite_command_targets_dist_index_and_container() {
+        let command = build_staging_base_url_rewrite_command("frontend-staging");
 
         assert!(command.contains("docker exec 'frontend-staging' sh -lc"));
         assert!(command.contains("index=/dist/index.html"));
-        assert!(command.contains("/staging/assets/"));
-        assert!(command.contains("/staging/manifest.json"));
+        assert!(command.contains("https://ifecaro.com/staging/db/api"));
+        assert!(command.contains("/staging/db/api"));
     }
 
     #[test]

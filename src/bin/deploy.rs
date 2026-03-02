@@ -435,7 +435,7 @@ fn run_deploy_pipeline(target_name: &str) -> Result<()> {
     copy_pwa_resources()?;
 
     if target_name == "staging" {
-        rewrite_staging_asset_paths()?;
+        rewrite_staging_base_url()?;
     }
 
     // Create deployment package
@@ -458,10 +458,10 @@ fn run_deploy_pipeline(target_name: &str) -> Result<()> {
     Ok(())
 }
 
-fn rewrite_staging_asset_paths() -> Result<()> {
+fn rewrite_staging_base_url() -> Result<()> {
     println!(
         "\n{}",
-        "🧭 Rewriting staging asset paths in generated HTML..."
+        "🧭 Rewriting staging API base URL in generated HTML..."
             .yellow()
             .bold()
     );
@@ -477,7 +477,7 @@ fn rewrite_staging_asset_paths() -> Result<()> {
 
     println!(
         "{}",
-        "✅ Staging asset path rewrite completed".green().bold()
+        "✅ Staging API base URL rewrite completed".green().bold()
     );
     Ok(())
 }
@@ -486,24 +486,9 @@ fn rewrite_staging_html_content(html: &str) -> String {
     let mut rewritten = html.to_string();
 
     let replacements = [
-        ("\"/assets/", "\"/staging/assets/"),
-        ("'/assets/", "'/staging/assets/"),
-        ("\"assets/", "\"/staging/assets/"),
-        ("'assets/", "'/staging/assets/"),
-        ("\"/img/", "\"/staging/img/"),
-        ("'/img/", "'/staging/img/"),
-        ("\"img/", "\"/staging/img/"),
-        ("'img/", "'/staging/img/"),
-        ("\"/favicon.ico\"", "\"/staging/favicon.ico\""),
-        ("'/favicon.ico'", "'/staging/favicon.ico'"),
-        ("\"favicon.ico\"", "\"/staging/favicon.ico\""),
-        ("'favicon.ico'", "'/staging/favicon.ico'"),
-        ("\"manifest.json\"", "\"/staging/manifest.json\""),
-        ("'manifest.json'", "'/staging/manifest.json'"),
-        ("\"/sw.js\"", "\"/staging/sw.js\""),
-        ("'/sw.js'", "'/staging/sw.js'"),
-        ("\"sw.js\"", "\"/staging/sw.js\""),
-        ("'sw.js'", "'/staging/sw.js'"),
+        ("https://ifecaro.com/db/api", "https://ifecaro.com/staging/db/api"),
+        ("\"/db/api\"", "\"/staging/db/api\""),
+        ("'/db/api'", "'/staging/db/api'"),
     ];
 
     for (from, to) in replacements {
@@ -518,23 +503,21 @@ mod deploy_path_rewrite_tests {
     use super::rewrite_staging_html_content;
 
     #[test]
-    fn rewrites_double_and_single_quoted_assets() {
-        let input = r#"<script src="/assets/ifecaro.js"></script><script>import('/assets/chunk.js');import("/assets/other.js");</script>"#;
+    fn rewrites_base_api_url_variants() {
+        let input = r#"window.API_A = "https://ifecaro.com/db/api";window.API_B='/db/api';window.API_C="/db/api";"#;
         let output = rewrite_staging_html_content(input);
 
-        assert!(output.contains("\"/staging/assets/ifecaro.js\""));
-        assert!(output.contains("'/staging/assets/chunk.js'"));
-        assert!(output.contains("\"/staging/assets/other.js\""));
+        assert!(output.contains("https://ifecaro.com/staging/db/api"));
+        assert!(output.contains("'/staging/db/api'"));
+        assert!(output.contains("\"/staging/db/api\""));
     }
 
     #[test]
-    fn rewrites_pwa_related_paths() {
-        let input = r#"<link rel="manifest" href="manifest.json"><link rel='icon' href='favicon.ico'><script src='sw.js'></script>"#;
+    fn keeps_non_api_paths_unchanged() {
+        let input = r#"<script src=\"/assets/ifecaro.js\"></script><link rel='icon' href='favicon.ico'>"#;
         let output = rewrite_staging_html_content(input);
 
-        assert!(output.contains("\"/staging/manifest.json\""));
-        assert!(output.contains("'/staging/favicon.ico'"));
-        assert!(output.contains("'/staging/sw.js'"));
+        assert_eq!(output, input);
     }
 }
 
