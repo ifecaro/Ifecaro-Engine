@@ -9,7 +9,7 @@ pub struct Language<'a> {
 pub fn base_api_url() -> &'static str {
     option_env!("VITE_BASE_API_URL")
         .or(option_env!("IFECARO_BASE_API_URL"))
-        .expect("Missing compile-time API URL. Set VITE_BASE_API_URL (or IFECARO_BASE_API_URL).")
+        .unwrap_or("/api")
 }
 
 pub fn app_env_label() -> &'static str {
