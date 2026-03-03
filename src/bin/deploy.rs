@@ -489,6 +489,8 @@ fn rewrite_staging_html_content(html: &str) -> String {
         ("https://ifecaro.com/db/api", "https://ifecaro.com/staging/db/api"),
         ("\"/db/api\"", "\"/staging/db/api\""),
         ("'/db/api'", "'/staging/db/api'"),
+        ("\"/assets/", "\"/staging/assets/"),
+        ("'/assets/", "'/staging/assets/"),
     ];
 
     for (from, to) in replacements {
@@ -513,11 +515,12 @@ mod deploy_path_rewrite_tests {
     }
 
     #[test]
-    fn keeps_non_api_paths_unchanged() {
-        let input = r#"<script src=\"/assets/ifecaro.js\"></script><link rel='icon' href='favicon.ico'>"#;
+    fn rewrites_asset_paths_for_staging_boundary() {
+        let input = r#"<script src="/assets/ifecaro.js"></script><script>import('/assets/chunk.js')</script>"#;
         let output = rewrite_staging_html_content(input);
 
-        assert_eq!(output, input);
+        assert!(output.contains("\"/staging/assets/ifecaro.js\""));
+        assert!(output.contains("'/staging/assets/chunk.js'"));
     }
 }
 

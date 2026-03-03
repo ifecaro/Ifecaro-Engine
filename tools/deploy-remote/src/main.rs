@@ -137,15 +137,16 @@ fn rewrite_staging_base_url_on_remote(
 
 fn build_staging_base_url_rewrite_command(frontend_container_name: &str) -> String {
     format!(
-        "docker exec {} sh -lc 'index=/dist/index.html && [ -f \"$index\" ] && sed -i \\
-        -e \"s|https://ifecaro.com/db/api|https://ifecaro.com/staging/db/api|g\" \\
-        -e \"s|\\\"/db/api\\\"|\\\"/staging/db/api\\\"|g\" \\
-        -e \"s|\'/db/api\'|\'/staging/db/api\'|g\" \\
-        \"$index\"'",
+        r#"docker exec {} sh -lc 'index=/dist/index.html && [ -f "$index" ] && sed -i \
+        -e "s|https://ifecaro.com/db/api|https://ifecaro.com/staging/db/api|g" \
+        -e "s|\"/db/api\"|\"/staging/db/api\"|g" \
+        -e "s|'/db/api'|'/staging/db/api'|g" \
+        -e "s|\"/assets/|\"/staging/assets/|g" \
+        -e "s|'/assets/|'/staging/assets/|g" \
+        "$index"'"#,
         shell_escape(frontend_container_name)
     )
 }
-
 fn run_ssh_command(
     ssh_key_file: &str,
     known_hosts_file: &str,
@@ -666,6 +667,7 @@ mod tests {
         assert!(command.contains("index=/dist/index.html"));
         assert!(command.contains("https://ifecaro.com/staging/db/api"));
         assert!(command.contains("/staging/db/api"));
+        assert!(command.contains("/staging/assets/"));
     }
 
     #[test]
