@@ -9,7 +9,15 @@ pub struct Language<'a> {
 pub fn base_api_url() -> &'static str {
     option_env!("VITE_BASE_API_URL")
         .or(option_env!("IFECARO_BASE_API_URL"))
-        .expect("Missing compile-time API URL. Set VITE_BASE_API_URL (or IFECARO_BASE_API_URL).")
+        .unwrap_or_else(default_base_api_url)
+}
+
+fn default_base_api_url() -> &'static str {
+    match app_env_label() {
+        "production" => "https://ifecaro.com/db/api",
+        "staging" => "https://ifecaro.com/staging/db/api",
+        _ => "http://127.0.0.1:8090/api",
+    }
 }
 
 pub fn app_env_label() -> &'static str {
