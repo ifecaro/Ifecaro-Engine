@@ -385,7 +385,12 @@ fn deploy_staging() -> Result<()> {
     );
 
     // 1. Run quick check for faster staging iteration
-    println!("\n{}", "📋 Running quick cargo check for staging...".yellow().bold());
+    println!(
+        "\n{}",
+        "📋 Running quick cargo check for staging..."
+            .yellow()
+            .bold()
+    );
     let check_result = Command::new("cargo")
         .args(&["check", "--release"])
         .stdout(Stdio::inherit())
@@ -450,7 +455,10 @@ fn run_deploy_pipeline(target_name: &str) -> Result<()> {
     // Optional: clean up debug & incremental artifacts to reduce target size
     cleanup_target_artifacts();
 
-    println!("\n{}", "🎉 Staging deployment process completed!".green().bold());
+    println!(
+        "\n{}",
+        "🎉 Staging deployment process completed!".green().bold()
+    );
     println!("Deployment file location: target/dx/ifecaro/release/web/public.tar.gz");
 
     println!("Uploaded to staging server");
@@ -713,12 +721,9 @@ fn upload_to_remote() -> Result<()> {
     ) {
         (Some(user), Some(host), Some(path)) => (user, host, path),
         (None, None, None) => (
-            std::env::var("DEPLOY_USER")
-                .context("❌ Missing DEPLOY_USER environment variable")?,
-            std::env::var("DEPLOY_HOST")
-                .context("❌ Missing DEPLOY_HOST environment variable")?,
-            std::env::var("DEPLOY_PATH")
-                .context("❌ Missing DEPLOY_PATH environment variable")?,
+            std::env::var("DEPLOY_USER").context("❌ Missing DEPLOY_USER environment variable")?,
+            std::env::var("DEPLOY_HOST").context("❌ Missing DEPLOY_HOST environment variable")?,
+            std::env::var("DEPLOY_PATH").context("❌ Missing DEPLOY_PATH environment variable")?,
         ),
         _ => {
             println!(
@@ -897,7 +902,10 @@ fn extract_on_remote(user: &str, host: &str, path: &str, ssh_key_file: &str) -> 
 fn restart_remote_docker(user: &str, host: &str, path: &str, ssh_key_file: &str) -> Result<()> {
     println!("Restarting remote Docker service...");
 
-    let restart_command = format!("cd {} && docker compose restart", path);
+    let restart_command = format!(
+        "cd {} && docker compose up -d --remove-orphans && echo '__IFECARO_COMPOSE_PS_BEGIN__' && docker compose ps && echo '__IFECARO_COMPOSE_PS_END__'",
+        path
+    );
 
     let ssh_args = &[
         "-i",
@@ -918,18 +926,124 @@ fn restart_remote_docker(user: &str, host: &str, path: &str, ssh_key_file: &str)
 
     let restart_result = Command::new("ssh")
         .args(ssh_args)
-        .stdout(Stdio::inherit())
-        .stderr(Stdio::inherit())
-        .status()
+        .output()
         .context("Failed to restart remote Docker service")?;
 
-    if restart_result.success() {
-        println!("{}", "✅ Remote Docker service restarted".green().bold());
-    } else {
-        println!("⚠️  Remote Docker service restart failed, but deployment succeeded");
+    if !restart_result.status.success() {
+        let stderr = String::from_utf8_lossy(&restart_result.stderr);
+        anyhow::bail!(
+            "❌ Remote Docker service update failed (docker compose up -d): {}",
+            stderr.trim()
+        );
     }
 
+    let stdout = String::from_utf8_lossy(&restart_result.stdout);
+    let compose_ps_output = extract_compose_ps_output(&stdout)
+        .context("Failed to extract docker compose ps output from remote deploy result")?;
+    let compose_ps_summary = validate_compose_ps_output(compose_ps_output)?;
+
+    println!(
+        "{}\n{}",
+        "✅ Remote Docker service is running".green().bold(),
+        compose_ps_summary
+    );
+
     Ok(())
+}
+
+fn extract_compose_ps_output(stdout: &str) -> Result<&str> {
+    let begin_marker = "__IFECARO_COMPOSE_PS_BEGIN__";
+    let end_marker = "__IFECARO_COMPOSE_PS_END__";
+
+    let begin = stdout
+        .find(begin_marker)
+        .context("compose ps begin marker not found")?;
+    let end = stdout
+        .find(end_marker)
+        .context("compose ps end marker not found")?;
+
+    if begin >= end {
+        anyhow::bail!("invalid compose ps marker range");
+    }
+
+    Ok(stdout[begin + begin_marker.len()..end].trim())
+}
+
+fn validate_compose_ps_output(compose_ps: &str) -> Result<String> {
+    let lines: Vec<&str> = compose_ps
+        .lines()
+        .map(str::trim)
+        .filter(|line| !line.is_empty())
+        .collect();
+
+    if lines.is_empty() {
+        anyhow::bail!("docker compose ps returned no output");
+    }
+
+    let service_lines: Vec<&str> = lines
+        .iter()
+        .copied()
+        .filter(|line| {
+            let lower = line.to_ascii_lowercase();
+            !lower.starts_with("name") && !lower.starts_with("service") && !lower.starts_with("-")
+        })
+        .collect();
+
+    let running_count = service_lines
+        .iter()
+        .filter(|line| {
+            let lower = line.to_ascii_lowercase();
+            lower.contains("running") || lower.contains(" up ") || lower.ends_with(" up")
+        })
+        .count();
+
+    if running_count == 0 {
+        anyhow::bail!(
+            "No running containers detected after docker compose up -d.\n{}",
+            compose_ps
+        );
+    }
+
+    if service_lines
+        .iter()
+        .any(|line| line.to_ascii_lowercase().contains("unhealthy"))
+    {
+        anyhow::bail!(
+            "Detected unhealthy services after docker compose up -d.\n{}",
+            compose_ps
+        );
+    }
+
+    Ok(compose_ps.to_string())
+}
+
+#[cfg(test)]
+mod deploy_remote_compose_tests {
+    use super::validate_compose_ps_output;
+
+    #[test]
+    fn accepts_when_at_least_one_service_is_running() {
+        let compose_ps = r#"
+NAME                IMAGE               COMMAND             SERVICE   STATUS              PORTS
+ifecaro-web-1       ifecaro:latest      \"./start\"          web       running (healthy)   0.0.0.0:8080->80/tcp
+"#;
+
+        let result = validate_compose_ps_output(compose_ps);
+
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn fails_when_health_check_reports_unhealthy() {
+        let compose_ps = r#"
+NAME                IMAGE               COMMAND             SERVICE   STATUS                 PORTS
+ifecaro-web-1       ifecaro:latest      \"./start\"          web       running (unhealthy)   0.0.0.0:8080->80/tcp
+"#;
+
+        let result = validate_compose_ps_output(compose_ps);
+
+        assert!(result.is_err());
+    }
 }
 
 fn clean() -> Result<()> {
