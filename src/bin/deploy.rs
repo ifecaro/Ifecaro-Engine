@@ -424,8 +424,14 @@ fn run_deploy_pipeline(target_name: &str) -> Result<()> {
 
     // Run Dioxus build
     println!("\n{}", "🎯 Running Dioxus build...".yellow().bold());
-    let dioxus_build = Command::new("dx")
-        .args(&["build", "--release", "--platform", "web"])
+    let mut dioxus_build_cmd = Command::new("dx");
+    dioxus_build_cmd.args(["build", "--release", "--platform", "web"]);
+
+    if target_name == "staging" {
+        dioxus_build_cmd.args(["--base-path", "/staging"]);
+    }
+
+    let dioxus_build = dioxus_build_cmd
         .stdout(Stdio::inherit())
         .stderr(Stdio::inherit())
         .status()
@@ -502,6 +508,7 @@ fn rewrite_staging_html_content(html: &str) -> String {
         ("'/db/api'", "'/staging/db/api'"),
         ("\"/assets/", "\"/staging/assets/"),
         ("'/assets/", "'/staging/assets/"),
+        ("=/assets/", "=/staging/assets/"),
     ];
 
     for (from, to) in replacements {
@@ -532,6 +539,10 @@ mod deploy_path_rewrite_tests {
 
         assert!(output.contains("\"/staging/assets/ifecaro.js\""));
         assert!(output.contains("'/staging/assets/chunk.js'"));
+
+        let unquoted = r#"<script src=/assets/noquote.js></script>"#;
+        let unquoted_output = rewrite_staging_html_content(unquoted);
+        assert!(unquoted_output.contains("src=/staging/assets/noquote.js"));
     }
 }
 

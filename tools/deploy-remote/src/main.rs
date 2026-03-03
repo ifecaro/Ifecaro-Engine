@@ -142,6 +142,7 @@ fn build_staging_base_url_rewrite_command(frontend_container_name: &str) -> Stri
         -e "s|'/db/api'|'/staging/db/api'|g" \
         -e "s|\"/assets/|\"/staging/assets/|g" \
         -e "s|'/assets/|'/staging/assets/|g" \
+        -e "s|=/assets/|=/staging/assets/|g" \
         "$index"'"#,
         shell_escape(frontend_container_name)
     )
