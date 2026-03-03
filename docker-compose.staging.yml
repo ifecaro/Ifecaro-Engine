@@ -1,14 +1,15 @@
 services:
   frontend:
-    image: ${FRONTEND_IMAGE:-ghcr.io/muchobien/ifecaro-engine:${GHCR_TAG:-latest}}
+    image: alpine:3.20
     container_name: ${FRONTEND_CONTAINER_NAME:-frontend-staging}
     restart: "no"
     command:
       - sh
       - -c
-      - rm -rf /shared/* && cp -r /dist/. /shared
+      - rm -rf /shared/* && cp -r /frontend/. /shared
     volumes:
-      - frontend_assets:/shared
+      - ./frontend:/frontend:ro
+      - frontend_assets_staging:/shared
     networks:
       - web
 
@@ -48,7 +49,7 @@ services:
       - ./certs:/etc/nginx/certs:ro
       - ./nginx/mime.types:/etc/nginx/mime.types:ro
       - ${NGINX_CONF_PATH:-./nginx/conf.d/staging}:/etc/nginx/conf.d:ro
-      - frontend_assets:/usr/share/nginx/html:ro
+      - frontend_assets_staging:/usr/share/nginx/html:ro
     depends_on:
       frontend:
         condition: service_completed_successfully
@@ -58,7 +59,7 @@ services:
       - web
 
 volumes:
-  frontend_assets:
+  frontend_assets_staging:
 
 networks:
   web:
