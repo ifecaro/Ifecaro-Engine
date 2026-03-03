@@ -536,13 +536,14 @@ mod deploy_target_tests {
             env::set_var("DEPLOY_USER", "prod-user");
             env::set_var("DEPLOY_HOST", "prod-host");
             env::set_var("DEPLOY_PATH", "/var/www/prod");
+            env::remove_var("STAGING_SSH_PROFILE");
             env::remove_var("STAGING_DEPLOY_USER");
             env::remove_var("STAGING_DEPLOY_HOST");
             env::remove_var("STAGING_DEPLOY_PATH");
         }
 
         let err = resolve_deploy_target("staging").expect_err("staging should require STAGING_* vars");
-        assert!(err.to_string().contains("strictly isolated"));
+        assert!(err.to_string().contains("Missing staging deploy target"));
 
         // SAFETY: test-only cleanup of environment variables.
         unsafe {
@@ -562,14 +563,36 @@ mod deploy_target_tests {
         }
 
         let target = resolve_deploy_target("staging").expect("staging target should resolve");
-        assert_eq!(target.0, "staging-user");
-        assert_eq!(target.1, "staging-host");
-        assert_eq!(target.2, "/var/www/staging");
+        assert_eq!(target.ssh_target, "staging-user@staging-host");
+        assert_eq!(target.path, "/var/www/staging");
 
         // SAFETY: test-only cleanup of environment variables.
         unsafe {
+            env::remove_var("STAGING_SSH_PROFILE");
             env::remove_var("STAGING_DEPLOY_USER");
             env::remove_var("STAGING_DEPLOY_HOST");
+            env::remove_var("STAGING_DEPLOY_PATH");
+        }
+    }
+
+    #[test]
+    fn staging_target_supports_ssh_profile_without_user_or_host() {
+        // SAFETY: test-only scoped environment mutation.
+        unsafe {
+            env::set_var("STAGING_SSH_PROFILE", "ifecaro-staging");
+            env::set_var("STAGING_DEPLOY_PATH", "/var/www/staging");
+            env::remove_var("STAGING_DEPLOY_USER");
+            env::remove_var("STAGING_DEPLOY_HOST");
+        }
+
+        let target =
+            resolve_deploy_target("staging").expect("staging target should resolve via profile");
+        assert_eq!(target.ssh_target, "ifecaro-staging");
+        assert_eq!(target.path, "/var/www/staging");
+
+        // SAFETY: test-only cleanup of environment variables.
+        unsafe {
+            env::remove_var("STAGING_SSH_PROFILE");
             env::remove_var("STAGING_DEPLOY_PATH");
         }
     }
@@ -728,33 +751,58 @@ fn restore_tailwind_css() -> Result<()> {
     Ok(())
 }
 
-fn resolve_deploy_target(target_name: &str) -> Result<(String, String, String)> {
-    let staging_deploy_user = std::env::var("STAGING_DEPLOY_USER").ok();
-    let staging_deploy_host = std::env::var("STAGING_DEPLOY_HOST").ok();
-    let staging_deploy_path = std::env::var("STAGING_DEPLOY_PATH").ok();
+#[derive(Debug)]
+struct DeployTarget {
+    ssh_target: String,
+    path: String,
+}
 
-    let production_target = || -> Result<(String, String, String)> {
-        Ok((
-            std::env::var("DEPLOY_USER")
-                .context("❌ Missing DEPLOY_USER environment variable")?,
-            std::env::var("DEPLOY_HOST")
-                .context("❌ Missing DEPLOY_HOST environment variable")?,
-            std::env::var("DEPLOY_PATH")
-                .context("❌ Missing DEPLOY_PATH environment variable")?,
-        ))
+fn resolve_deploy_target(target_name: &str) -> Result<DeployTarget> {
+    let build_target = |profile_env: &str,
+                        user_env: &str,
+                        host_env: &str,
+                        path_env: &str,
+                        missing_msg: &str|
+     -> Result<DeployTarget> {
+        let path = std::env::var(path_env).with_context(|| missing_msg.to_string())?;
+
+        if let Ok(profile) = std::env::var(profile_env) {
+            let trimmed = profile.trim();
+            if !trimmed.is_empty() {
+                return Ok(DeployTarget {
+                    ssh_target: trimmed.to_string(),
+                    path,
+                });
+            }
+        }
+
+        let user = std::env::var(user_env).with_context(|| missing_msg.to_string())?;
+        let host = std::env::var(host_env).with_context(|| missing_msg.to_string())?;
+
+        Ok(DeployTarget {
+            ssh_target: format!("{}@{}", user, host),
+            path,
+        })
     };
 
     if target_name == "staging" {
-        return match (staging_deploy_user, staging_deploy_host, staging_deploy_path) {
-            (Some(user), Some(host), Some(path)) => Ok((user, host, path)),
-            _ => anyhow::bail!(
-                "❌ Missing STAGING_DEPLOY_USER/STAGING_DEPLOY_HOST/STAGING_DEPLOY_PATH. Staging deploy is strictly isolated and will not fall back to DEPLOY_* variables."
-            ),
-        };
+        return build_target(
+            "STAGING_SSH_PROFILE",
+            "STAGING_DEPLOY_USER",
+            "STAGING_DEPLOY_HOST",
+            "STAGING_DEPLOY_PATH",
+            "❌ Missing staging deploy target. Set either STAGING_SSH_PROFILE + STAGING_DEPLOY_PATH, or STAGING_DEPLOY_USER/STAGING_DEPLOY_HOST/STAGING_DEPLOY_PATH.",
+        );
     }
 
     if target_name == "production" {
-        return production_target();
+        return build_target(
+            "SSH_PROFILE",
+            "DEPLOY_USER",
+            "DEPLOY_HOST",
+            "DEPLOY_PATH",
+            "❌ Missing production deploy target. Set either SSH_PROFILE + DEPLOY_PATH, or DEPLOY_USER/DEPLOY_HOST/DEPLOY_PATH.",
+        );
     }
 
     anyhow::bail!("❌ Unknown deploy target: {target_name}")
@@ -770,11 +818,13 @@ fn upload_to_remote(target_name: &str) -> Result<()> {
         println!("ℹ️  No .env file found, using existing environment variables.");
     }
 
-    let (deploy_user, deploy_host, deploy_path) = resolve_deploy_target(target_name)?;
+    let deploy_target = resolve_deploy_target(target_name)?;
     let ssh_key_file = resolve_ssh_key_file();
 
-    let deploy_target = format!("{}@{}:{}", deploy_user, deploy_host, deploy_path);
-    println!("Uploading to: {}", deploy_target);
+    println!(
+        "Uploading to: {}:{}",
+        deploy_target.ssh_target, deploy_target.path
+    );
 
     let tar_file = "target/dx/ifecaro/release/web/public.tar.gz";
     if !std::path::Path::new(tar_file).exists() {
@@ -795,8 +845,8 @@ fn upload_to_remote(target_name: &str) -> Result<()> {
         "PubkeyAuthentication=yes",
         "-o",
         "ConnectTimeout=30",
-        &format!("{}@{}", deploy_user, deploy_host),
-        &format!("mkdir -p {}", deploy_path),
+        &deploy_target.ssh_target,
+        &format!("mkdir -p {}", deploy_target.path),
     ];
 
     let mkdir_result = Command::new("ssh")
@@ -825,7 +875,7 @@ fn upload_to_remote(target_name: &str) -> Result<()> {
         "-o",
         "ConnectTimeout=30",
         tar_file,
-        &format!("{}@{}:{}/", deploy_user, deploy_host, deploy_path),
+        &format!("{}:{}/", deploy_target.ssh_target, deploy_target.path),
     ];
 
     let upload_result = Command::new("scp")
@@ -842,10 +892,10 @@ fn upload_to_remote(target_name: &str) -> Result<()> {
     println!("{}", "✅ Deployment package uploaded".green().bold());
 
     // Remote decompression
-    extract_on_remote(&deploy_user, &deploy_host, &deploy_path, &ssh_key_file)?;
+    extract_on_remote(&deploy_target.ssh_target, &deploy_target.path, &ssh_key_file)?;
 
     // Restart remote Docker service
-    restart_remote_docker(&deploy_user, &deploy_host, &deploy_path, &ssh_key_file)?;
+    restart_remote_docker(&deploy_target.ssh_target, &deploy_target.path, &ssh_key_file)?;
 
     println!("{}", "✅ Staging deployment completed".green().bold());
     Ok(())
@@ -890,7 +940,7 @@ fn resolve_ssh_key_file() -> String {
     format!("{}/{}", ssh_key_path, ssh_key_name)
 }
 
-fn extract_on_remote(user: &str, host: &str, path: &str, ssh_key_file: &str) -> Result<()> {
+fn extract_on_remote(ssh_target: &str, path: &str, ssh_key_file: &str) -> Result<()> {
     println!("Running remote decompression...");
 
     let extract_command = format!(
@@ -911,7 +961,7 @@ fn extract_on_remote(user: &str, host: &str, path: &str, ssh_key_file: &str) -> 
         "PubkeyAuthentication=yes",
         "-o",
         "ConnectTimeout=30",
-        &format!("{}@{}", user, host),
+        ssh_target,
         &extract_command,
     ];
 
@@ -931,7 +981,7 @@ fn extract_on_remote(user: &str, host: &str, path: &str, ssh_key_file: &str) -> 
     Ok(())
 }
 
-fn restart_remote_docker(user: &str, host: &str, path: &str, ssh_key_file: &str) -> Result<()> {
+fn restart_remote_docker(ssh_target: &str, path: &str, ssh_key_file: &str) -> Result<()> {
     println!("Restarting remote Docker service...");
 
     let restart_command = format!("cd {} && docker compose restart", path);
@@ -949,7 +999,7 @@ fn restart_remote_docker(user: &str, host: &str, path: &str, ssh_key_file: &str)
         "PubkeyAuthentication=yes",
         "-o",
         "ConnectTimeout=30",
-        &format!("{}@{}", user, host),
+        ssh_target,
         &restart_command,
     ];
 

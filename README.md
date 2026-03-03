@@ -361,12 +361,29 @@ STAGING_DEPLOY_HOST=staging.example.com
 STAGING_DEPLOY_PATH=/home/staging-user/ifecaro-staging
 ```
 
+如果你在 `~/.ssh/config` 已定義 profile，也可以改用：
+
+```env
+# Use SSH config profile (Host alias)
+STAGING_SSH_PROFILE=ifecaro-staging
+STAGING_DEPLOY_PATH=/home/staging-user/ifecaro-staging
+```
+
+> 使用 `STAGING_SSH_PROFILE` 時，`STAGING_DEPLOY_USER` / `STAGING_DEPLOY_HOST` 可省略。
+
 建議同時保留 production 目標（供 production / dev 流程使用）：
 
 ```env
 # Production upload target
 DEPLOY_USER=prod-user
 DEPLOY_HOST=prod.example.com
+DEPLOY_PATH=/home/prod-user/ifecaro
+```
+
+Production 也支援 SSH profile：
+
+```env
+SSH_PROFILE=ifecaro-prod
 DEPLOY_PATH=/home/prod-user/ifecaro
 ```
 
@@ -485,7 +502,7 @@ cargo run --manifest-path tools/deploy-remote/Cargo.toml --release
 ```
 
 It intentionally uses only Rust standard library (no clap/anyhow/dotenv/colored), and supports the same environment variables:
-`DEPLOY_USER`, `DEPLOY_HOST`, `DEPLOY_PATH`, `STAGING_DEPLOY_USER`, `STAGING_DEPLOY_HOST`, `STAGING_DEPLOY_PATH`, optional `DEPLOY_COMPOSE_FILE`, `SSH_KEY_FILE`, `SSH_KEY_PATH`, `SSH_KEY_NAME`, `GHCR_TAG`, `GHCR_TAG_FORMAT`, `PRODUCTION`,
+`DEPLOY_USER`, `DEPLOY_HOST`, `DEPLOY_PATH`, `STAGING_DEPLOY_USER`, `STAGING_DEPLOY_HOST`, `STAGING_DEPLOY_PATH`, `SSH_PROFILE`, `STAGING_SSH_PROFILE`, optional `DEPLOY_COMPOSE_FILE`, `SSH_KEY_FILE`, `SSH_KEY_PATH`, `SSH_KEY_NAME`, `GHCR_TAG`, `GHCR_TAG_FORMAT`, `PRODUCTION`,
 `STAGING_API_URL`, `PRODUCTION_API_URL`, `FRONTEND_IMAGE`, `NGINX_CONTAINER_NAME`, `POCKETBASE_CONTAINER_NAME`.
 
 ### Staging vs Production Boundary Definition
