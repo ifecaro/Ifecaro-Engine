@@ -60,7 +60,7 @@ fn main() -> Result<()> {
             copy_pwa_resources()?;
             create_deployment_package()?;
             restore_tailwind_css()?;
-            upload_to_remote()?;
+            upload_to_remote("production")?;
             println!("{}", "✅ Development deployment completed".green().bold());
         }
         Some(Commands::Prod) => {
@@ -147,7 +147,7 @@ fn show_interactive_menu() -> Result<()> {
                 copy_pwa_resources()?;
                 create_deployment_package()?;
                 restore_tailwind_css()?;
-                upload_to_remote()?;
+                upload_to_remote("production")?;
                 println!("{}", "✅ Development deployment completed".green().bold());
                 wait_for_enter();
             }
@@ -440,7 +440,7 @@ fn run_deploy_pipeline(target_name: &str) -> Result<()> {
     copy_pwa_resources()?;
 
     if target_name == "staging" {
-        rewrite_staging_asset_paths()?;
+        rewrite_staging_base_url()?;
     }
 
     // Create deployment package
@@ -450,7 +450,7 @@ fn run_deploy_pipeline(target_name: &str) -> Result<()> {
     restore_tailwind_css()?;
 
     // Upload to remote server
-    upload_to_remote()?;
+    upload_to_remote(target_name)?;
 
     // Optional: clean up debug & incremental artifacts to reduce target size
     cleanup_target_artifacts();
@@ -466,10 +466,10 @@ fn run_deploy_pipeline(target_name: &str) -> Result<()> {
     Ok(())
 }
 
-fn rewrite_staging_asset_paths() -> Result<()> {
+fn rewrite_staging_base_url() -> Result<()> {
     println!(
         "\n{}",
-        "🧭 Rewriting staging asset paths in generated HTML..."
+        "🧭 Rewriting staging API base URL in generated HTML..."
             .yellow()
             .bold()
     );
@@ -485,7 +485,7 @@ fn rewrite_staging_asset_paths() -> Result<()> {
 
     println!(
         "{}",
-        "✅ Staging asset path rewrite completed".green().bold()
+        "✅ Staging API base URL rewrite completed".green().bold()
     );
     Ok(())
 }
@@ -494,24 +494,11 @@ fn rewrite_staging_html_content(html: &str) -> String {
     let mut rewritten = html.to_string();
 
     let replacements = [
+        ("https://ifecaro.com/db/api", "https://ifecaro.com/staging/db/api"),
+        ("\"/db/api\"", "\"/staging/db/api\""),
+        ("'/db/api'", "'/staging/db/api'"),
         ("\"/assets/", "\"/staging/assets/"),
         ("'/assets/", "'/staging/assets/"),
-        ("\"assets/", "\"/staging/assets/"),
-        ("'assets/", "'/staging/assets/"),
-        ("\"/img/", "\"/staging/img/"),
-        ("'/img/", "'/staging/img/"),
-        ("\"img/", "\"/staging/img/"),
-        ("'img/", "'/staging/img/"),
-        ("\"/favicon.ico\"", "\"/staging/favicon.ico\""),
-        ("'/favicon.ico'", "'/staging/favicon.ico'"),
-        ("\"favicon.ico\"", "\"/staging/favicon.ico\""),
-        ("'favicon.ico'", "'/staging/favicon.ico'"),
-        ("\"manifest.json\"", "\"/staging/manifest.json\""),
-        ("'manifest.json'", "'/staging/manifest.json'"),
-        ("\"/sw.js\"", "\"/staging/sw.js\""),
-        ("'/sw.js'", "'/staging/sw.js'"),
-        ("\"sw.js\"", "\"/staging/sw.js\""),
-        ("'sw.js'", "'/staging/sw.js'"),
     ];
 
     for (from, to) in replacements {
@@ -526,23 +513,96 @@ mod deploy_path_rewrite_tests {
     use super::rewrite_staging_html_content;
 
     #[test]
-    fn rewrites_double_and_single_quoted_assets() {
-        let input = r#"<script src="/assets/ifecaro.js"></script><script>import('/assets/chunk.js');import("/assets/other.js");</script>"#;
+    fn rewrites_base_api_url_variants() {
+        let input = r#"window.API_A = "https://ifecaro.com/db/api";window.API_B='/db/api';window.API_C="/db/api";"#;
+        let output = rewrite_staging_html_content(input);
+
+        assert!(output.contains("https://ifecaro.com/staging/db/api"));
+        assert!(output.contains("'/staging/db/api'"));
+        assert!(output.contains("\"/staging/db/api\""));
+    }
+
+    #[test]
+    fn rewrites_asset_paths_for_staging_boundary() {
+        let input = r#"<script src="/assets/ifecaro.js"></script><script>import('/assets/chunk.js')</script>"#;
         let output = rewrite_staging_html_content(input);
 
         assert!(output.contains("\"/staging/assets/ifecaro.js\""));
         assert!(output.contains("'/staging/assets/chunk.js'"));
-        assert!(output.contains("\"/staging/assets/other.js\""));
+    }
+}
+
+#[cfg(test)]
+mod deploy_target_tests {
+    use super::resolve_deploy_target;
+    use std::env;
+
+    #[test]
+    fn staging_target_does_not_fallback_to_deploy_variables() {
+        // SAFETY: test-only scoped environment mutation.
+        unsafe {
+            env::set_var("DEPLOY_USER", "prod-user");
+            env::set_var("DEPLOY_HOST", "prod-host");
+            env::set_var("DEPLOY_PATH", "/var/www/prod");
+            env::remove_var("STAGING_SSH_PROFILE");
+            env::remove_var("STAGING_DEPLOY_USER");
+            env::remove_var("STAGING_DEPLOY_HOST");
+            env::remove_var("STAGING_DEPLOY_PATH");
+        }
+
+        let err = resolve_deploy_target("staging").expect_err("staging should require STAGING_* vars");
+        assert!(err.to_string().contains("Missing staging deploy target"));
+
+        // SAFETY: test-only cleanup of environment variables.
+        unsafe {
+            env::remove_var("DEPLOY_USER");
+            env::remove_var("DEPLOY_HOST");
+            env::remove_var("DEPLOY_PATH");
+        }
     }
 
     #[test]
-    fn rewrites_pwa_related_paths() {
-        let input = r#"<link rel="manifest" href="manifest.json"><link rel='icon' href='favicon.ico'><script src='sw.js'></script>"#;
-        let output = rewrite_staging_html_content(input);
+    fn staging_target_uses_staging_variables_when_all_present() {
+        // SAFETY: test-only scoped environment mutation.
+        unsafe {
+            env::set_var("STAGING_DEPLOY_USER", "staging-user");
+            env::set_var("STAGING_DEPLOY_HOST", "staging-host");
+            env::set_var("STAGING_DEPLOY_PATH", "/var/www/staging");
+        }
 
-        assert!(output.contains("\"/staging/manifest.json\""));
-        assert!(output.contains("'/staging/favicon.ico'"));
-        assert!(output.contains("'/staging/sw.js'"));
+        let target = resolve_deploy_target("staging").expect("staging target should resolve");
+        assert_eq!(target.ssh_target, "staging-user@staging-host");
+        assert_eq!(target.path, "/var/www/staging");
+
+        // SAFETY: test-only cleanup of environment variables.
+        unsafe {
+            env::remove_var("STAGING_SSH_PROFILE");
+            env::remove_var("STAGING_DEPLOY_USER");
+            env::remove_var("STAGING_DEPLOY_HOST");
+            env::remove_var("STAGING_DEPLOY_PATH");
+        }
+    }
+
+    #[test]
+    fn staging_target_supports_ssh_profile_without_user_or_host() {
+        // SAFETY: test-only scoped environment mutation.
+        unsafe {
+            env::set_var("STAGING_SSH_PROFILE", "ifecaro-staging");
+            env::set_var("STAGING_DEPLOY_PATH", "/var/www/staging");
+            env::remove_var("STAGING_DEPLOY_USER");
+            env::remove_var("STAGING_DEPLOY_HOST");
+        }
+
+        let target =
+            resolve_deploy_target("staging").expect("staging target should resolve via profile");
+        assert_eq!(target.ssh_target, "ifecaro-staging");
+        assert_eq!(target.path, "/var/www/staging");
+
+        // SAFETY: test-only cleanup of environment variables.
+        unsafe {
+            env::remove_var("STAGING_SSH_PROFILE");
+            env::remove_var("STAGING_DEPLOY_PATH");
+        }
     }
 }
 
@@ -699,7 +759,64 @@ fn restore_tailwind_css() -> Result<()> {
     Ok(())
 }
 
-fn upload_to_remote() -> Result<()> {
+#[derive(Debug)]
+struct DeployTarget {
+    ssh_target: String,
+    path: String,
+}
+
+fn resolve_deploy_target(target_name: &str) -> Result<DeployTarget> {
+    let build_target = |profile_env: &str,
+                        user_env: &str,
+                        host_env: &str,
+                        path_env: &str,
+                        missing_msg: &str|
+     -> Result<DeployTarget> {
+        let path = std::env::var(path_env).with_context(|| missing_msg.to_string())?;
+
+        if let Ok(profile) = std::env::var(profile_env) {
+            let trimmed = profile.trim();
+            if !trimmed.is_empty() {
+                return Ok(DeployTarget {
+                    ssh_target: trimmed.to_string(),
+                    path,
+                });
+            }
+        }
+
+        let user = std::env::var(user_env).with_context(|| missing_msg.to_string())?;
+        let host = std::env::var(host_env).with_context(|| missing_msg.to_string())?;
+
+        Ok(DeployTarget {
+            ssh_target: format!("{}@{}", user, host),
+            path,
+        })
+    };
+
+    if target_name == "staging" {
+        return build_target(
+            "STAGING_SSH_PROFILE",
+            "STAGING_DEPLOY_USER",
+            "STAGING_DEPLOY_HOST",
+            "STAGING_DEPLOY_PATH",
+            "❌ Missing staging deploy target. Set either STAGING_SSH_PROFILE + STAGING_DEPLOY_PATH, or STAGING_DEPLOY_USER/STAGING_DEPLOY_HOST/STAGING_DEPLOY_PATH.",
+        );
+    }
+
+    if target_name == "production" {
+        return build_target(
+            "SSH_PROFILE",
+            "DEPLOY_USER",
+            "DEPLOY_HOST",
+            "DEPLOY_PATH",
+            "❌ Missing production deploy target. Set either SSH_PROFILE + DEPLOY_PATH, or DEPLOY_USER/DEPLOY_HOST/DEPLOY_PATH.",
+        );
+    }
+
+    anyhow::bail!("❌ Unknown deploy target: {target_name}")
+}
+
+fn upload_to_remote(target_name: &str) -> Result<()> {
     println!("\n{}", "🚀 Uploading to remote server...".yellow().bold());
 
     // Load .env environment variables if present
@@ -709,6 +826,7 @@ fn upload_to_remote() -> Result<()> {
         println!("ℹ️  No .env file found, using existing environment variables.");
     }
 
+    let deploy_target = resolve_deploy_target(target_name)?;
     // Resolve deploy namespace atomically to avoid mixing staging and legacy values.
     let staging_deploy_user = std::env::var("STAGING_DEPLOY_USER").ok();
     let staging_deploy_host = std::env::var("STAGING_DEPLOY_HOST").ok();
@@ -741,8 +859,10 @@ fn upload_to_remote() -> Result<()> {
     };
     let ssh_key_file = resolve_ssh_key_file();
 
-    let deploy_target = format!("{}@{}:{}", deploy_user, deploy_host, deploy_path);
-    println!("Uploading to: {}", deploy_target);
+    println!(
+        "Uploading to: {}:{}",
+        deploy_target.ssh_target, deploy_target.path
+    );
 
     let tar_file = "target/dx/ifecaro/release/web/public.tar.gz";
     if !std::path::Path::new(tar_file).exists() {
@@ -763,8 +883,8 @@ fn upload_to_remote() -> Result<()> {
         "PubkeyAuthentication=yes",
         "-o",
         "ConnectTimeout=30",
-        &format!("{}@{}", deploy_user, deploy_host),
-        &format!("mkdir -p {}", deploy_path),
+        &deploy_target.ssh_target,
+        &format!("mkdir -p {}", deploy_target.path),
     ];
 
     let mkdir_result = Command::new("ssh")
@@ -793,7 +913,7 @@ fn upload_to_remote() -> Result<()> {
         "-o",
         "ConnectTimeout=30",
         tar_file,
-        &format!("{}@{}:{}/", deploy_user, deploy_host, deploy_path),
+        &format!("{}:{}/", deploy_target.ssh_target, deploy_target.path),
     ];
 
     let upload_result = Command::new("scp")
@@ -810,10 +930,10 @@ fn upload_to_remote() -> Result<()> {
     println!("{}", "✅ Deployment package uploaded".green().bold());
 
     // Remote decompression
-    extract_on_remote(&deploy_user, &deploy_host, &deploy_path, &ssh_key_file)?;
+    extract_on_remote(&deploy_target.ssh_target, &deploy_target.path, &ssh_key_file)?;
 
     // Restart remote Docker service
-    restart_remote_docker(&deploy_user, &deploy_host, &deploy_path, &ssh_key_file)?;
+    restart_remote_docker(&deploy_target.ssh_target, &deploy_target.path, &ssh_key_file)?;
 
     println!("{}", "✅ Staging deployment completed".green().bold());
     Ok(())
@@ -858,7 +978,7 @@ fn resolve_ssh_key_file() -> String {
     format!("{}/{}", ssh_key_path, ssh_key_name)
 }
 
-fn extract_on_remote(user: &str, host: &str, path: &str, ssh_key_file: &str) -> Result<()> {
+fn extract_on_remote(ssh_target: &str, path: &str, ssh_key_file: &str) -> Result<()> {
     println!("Running remote decompression...");
 
     let extract_command = format!(
@@ -879,7 +999,7 @@ fn extract_on_remote(user: &str, host: &str, path: &str, ssh_key_file: &str) -> 
         "PubkeyAuthentication=yes",
         "-o",
         "ConnectTimeout=30",
-        &format!("{}@{}", user, host),
+        ssh_target,
         &extract_command,
     ];
 
@@ -899,7 +1019,7 @@ fn extract_on_remote(user: &str, host: &str, path: &str, ssh_key_file: &str) -> 
     Ok(())
 }
 
-fn restart_remote_docker(user: &str, host: &str, path: &str, ssh_key_file: &str) -> Result<()> {
+fn restart_remote_docker(ssh_target: &str, path: &str, ssh_key_file: &str) -> Result<()> {
     println!("Restarting remote Docker service...");
 
     let restart_command = format!(
@@ -920,7 +1040,7 @@ fn restart_remote_docker(user: &str, host: &str, path: &str, ssh_key_file: &str)
         "PubkeyAuthentication=yes",
         "-o",
         "ConnectTimeout=30",
-        &format!("{}@{}", user, host),
+        ssh_target,
         &restart_command,
     ];
 

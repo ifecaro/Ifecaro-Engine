@@ -345,6 +345,50 @@ Note: Make sure to:
 6. Verify SSH key permissions (600 for private key, 644 for public key)
 7. Place `docker-compose.deploy.yml` in `DEPLOY_PATH` (or set `DEPLOY_COMPOSE_FILE` to match)
 
+### Staging mode (fast one-click) 必填變數
+
+`cargo run --bin deploy deploy`（選單 option 6: **Staging mode**）現在採用**嚴格隔離**：
+
+- 只會讀取 `STAGING_DEPLOY_USER` / `STAGING_DEPLOY_HOST` / `STAGING_DEPLOY_PATH`
+- **不會** fallback 到 `DEPLOY_USER` / `DEPLOY_HOST` / `DEPLOY_PATH`
+
+請在 `.env` 內同時設定三個值：
+
+```env
+# Staging upload target (required for `deploy` / option 6)
+STAGING_DEPLOY_USER=staging-user
+STAGING_DEPLOY_HOST=staging.example.com
+STAGING_DEPLOY_PATH=/home/staging-user/ifecaro-staging
+```
+
+如果你在 `~/.ssh/config` 已定義 profile，也可以改用：
+
+```env
+# Use SSH config profile (Host alias)
+STAGING_SSH_PROFILE=ifecaro-staging
+STAGING_DEPLOY_PATH=/home/staging-user/ifecaro-staging
+```
+
+> 使用 `STAGING_SSH_PROFILE` 時，`STAGING_DEPLOY_USER` / `STAGING_DEPLOY_HOST` 可省略。
+
+建議同時保留 production 目標（供 production / dev 流程使用）：
+
+```env
+# Production upload target
+DEPLOY_USER=prod-user
+DEPLOY_HOST=prod.example.com
+DEPLOY_PATH=/home/prod-user/ifecaro
+```
+
+Production 也支援 SSH profile：
+
+```env
+SSH_PROFILE=ifecaro-prod
+DEPLOY_PATH=/home/prod-user/ifecaro
+```
+
+若 `STAGING_DEPLOY_*` 任一缺少，staging 部署會直接失敗並提示錯誤，避免誤部署到 production。
+
 ### 取得 VPS 的 SSH Key（建議流程）
 
 以下流程避免包含任何敏感資訊，僅提供一般做法：
@@ -458,7 +502,7 @@ cargo run --manifest-path tools/deploy-remote/Cargo.toml --release
 ```
 
 It intentionally uses only Rust standard library (no clap/anyhow/dotenv/colored), and supports the same environment variables:
-`DEPLOY_USER`, `DEPLOY_HOST`, `DEPLOY_PATH`, optional `DEPLOY_COMPOSE_FILE`, `SSH_KEY_FILE`, `SSH_KEY_PATH`, `SSH_KEY_NAME`, `GHCR_TAG`, `GHCR_TAG_FORMAT`, `PRODUCTION`,
+`DEPLOY_USER`, `DEPLOY_HOST`, `DEPLOY_PATH`, `STAGING_DEPLOY_USER`, `STAGING_DEPLOY_HOST`, `STAGING_DEPLOY_PATH`, `SSH_PROFILE`, `STAGING_SSH_PROFILE`, optional `DEPLOY_COMPOSE_FILE`, `SSH_KEY_FILE`, `SSH_KEY_PATH`, `SSH_KEY_NAME`, `GHCR_TAG`, `GHCR_TAG_FORMAT`, `PRODUCTION`,
 `STAGING_API_URL`, `PRODUCTION_API_URL`, `FRONTEND_IMAGE`, `NGINX_CONTAINER_NAME`, `POCKETBASE_CONTAINER_NAME`.
 
 ### Staging vs Production Boundary Definition
