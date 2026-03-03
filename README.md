@@ -389,6 +389,25 @@ DEPLOY_PATH=/home/prod-user/ifecaro
 
 若 `STAGING_DEPLOY_*` 任一缺少，staging 部署會直接失敗並提示錯誤，避免誤部署到 production。
 
+### Staging 部署完成驗證（必要）
+
+CLI 顯示上傳成功、或遠端命令有正常返回，**不代表 staging 已完成可用部署**。部署完成必須再確認容器是否真的啟動且服務正常。
+
+部署後請至少執行以下人工檢查：
+
+```bash
+docker compose -f <compose-file> ps
+docker logs <staging-container> --tail=100
+```
+
+若你的 staging/production 使用同一台主機並以 path（例如 `/staging`）區隔，請務必先 `cd` 到 `STAGING_DEPLOY_PATH`，再執行上述 `docker compose` 指令，避免誤查到 production 專案：
+
+```bash
+cd <STAGING_DEPLOY_PATH>
+docker compose -f <compose-file> ps
+docker logs <staging-container> --tail=100
+```
+
 ### 取得 VPS 的 SSH Key（建議流程）
 
 以下流程避免包含任何敏感資訊，僅提供一般做法：
