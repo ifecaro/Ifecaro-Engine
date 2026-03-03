@@ -22,8 +22,7 @@ fn main() -> Result<(), String> {
     let deploy_user = required_env("DEPLOY_USER")?;
     let deploy_host = required_env("DEPLOY_HOST")?;
     let deploy_path = required_env("DEPLOY_PATH")?;
-    let deploy_compose_file =
-        env::var("DEPLOY_COMPOSE_FILE").unwrap_or_else(|_| "docker-compose.deploy.yml".to_string());
+    let deploy_compose_file = resolve_deploy_compose_file(&deploy_environment);
     let ssh_key_file = resolve_ssh_key_file();
     let known_hosts_file = resolve_known_hosts_file();
 
@@ -342,6 +341,22 @@ fn resolve_base_ghcr_tag(cargo_version: &str) -> String {
     }
 
     cargo_version.to_string()
+}
+
+
+fn resolve_deploy_compose_file(deploy_environment: &str) -> String {
+    if let Ok(value) = env::var("DEPLOY_COMPOSE_FILE") {
+        let trimmed = value.trim();
+        if !trimmed.is_empty() {
+            return trimmed.to_string();
+        }
+    }
+
+    if deploy_environment == "production" {
+        "docker-compose.production.yml".to_string()
+    } else {
+        "docker-compose.staging.yml".to_string()
+    }
 }
 
 fn resolve_deploy_environment(container_suffix: &str) -> String {
@@ -679,4 +694,21 @@ mod tests {
         assert!(err.contains("https://ifecaro.com/version.json"));
         assert!(err.contains("Response preview: <html> <body> 502 bad gateway </body> </html>"));
     }
+
+    #[test]
+    fn resolve_deploy_compose_file_defaults_by_environment() {
+        unsafe {
+            env::remove_var("DEPLOY_COMPOSE_FILE");
+        }
+
+        assert_eq!(
+            resolve_deploy_compose_file("production"),
+            "docker-compose.production.yml"
+        );
+        assert_eq!(
+            resolve_deploy_compose_file("staging"),
+            "docker-compose.staging.yml"
+        );
+    }
+
 }

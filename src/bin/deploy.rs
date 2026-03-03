@@ -494,7 +494,10 @@ fn rewrite_staging_html_content(html: &str) -> String {
     let mut rewritten = html.to_string();
 
     let replacements = [
-        ("https://ifecaro.com/db/api", "https://ifecaro.com/staging/db/api"),
+        (
+            "https://ifecaro.com/db/api",
+            "https://ifecaro.com/staging/db/api",
+        ),
         ("\"/db/api\"", "\"/staging/db/api\""),
         ("'/db/api'", "'/staging/db/api'"),
         ("\"/assets/", "\"/staging/assets/"),
@@ -550,7 +553,8 @@ mod deploy_target_tests {
             env::remove_var("STAGING_DEPLOY_PATH");
         }
 
-        let err = resolve_deploy_target("staging").expect_err("staging should require STAGING_* vars");
+        let err =
+            resolve_deploy_target("staging").expect_err("staging should require STAGING_* vars");
         assert!(err.to_string().contains("Missing staging deploy target"));
 
         // SAFETY: test-only cleanup of environment variables.
@@ -930,10 +934,19 @@ fn upload_to_remote(target_name: &str) -> Result<()> {
     println!("{}", "✅ Deployment package uploaded".green().bold());
 
     // Remote decompression
-    extract_on_remote(&deploy_target.ssh_target, &deploy_target.path, &ssh_key_file)?;
+    extract_on_remote(
+        &deploy_target.ssh_target,
+        &deploy_target.path,
+        &ssh_key_file,
+    )?;
 
     // Restart remote Docker service
-    restart_remote_docker(&deploy_target.ssh_target, &deploy_target.path, &ssh_key_file)?;
+    restart_remote_docker(
+        target_name,
+        &deploy_target.ssh_target,
+        &deploy_target.path,
+        &ssh_key_file,
+    )?;
 
     println!("{}", "✅ Staging deployment completed".green().bold());
     Ok(())
@@ -1019,12 +1032,41 @@ fn extract_on_remote(ssh_target: &str, path: &str, ssh_key_file: &str) -> Result
     Ok(())
 }
 
-fn restart_remote_docker(ssh_target: &str, path: &str, ssh_key_file: &str) -> Result<()> {
+fn resolve_remote_compose_file(target_name: &str) -> Result<String> {
+    let env_key = if target_name == "staging" {
+        "STAGING_COMPOSE_FILE"
+    } else if target_name == "production" {
+        "PRODUCTION_COMPOSE_FILE"
+    } else {
+        anyhow::bail!("❌ Unknown deploy target: {target_name}");
+    };
+
+    if let Ok(value) = std::env::var(env_key) {
+        let trimmed = value.trim();
+        if !trimmed.is_empty() {
+            return Ok(trimmed.to_string());
+        }
+    }
+
+    Ok(if target_name == "staging" {
+        "docker-compose.staging.yml".to_string()
+    } else {
+        "docker-compose.production.yml".to_string()
+    })
+}
+
+fn restart_remote_docker(
+    target_name: &str,
+    ssh_target: &str,
+    path: &str,
+    ssh_key_file: &str,
+) -> Result<()> {
     println!("Restarting remote Docker service...");
 
+    let compose_file = resolve_remote_compose_file(target_name)?;
     let restart_command = format!(
-        "cd {} && docker compose up -d --remove-orphans && echo '__IFECARO_COMPOSE_PS_BEGIN__' && docker compose ps && echo '__IFECARO_COMPOSE_PS_END__'",
-        path
+        "cd {} && docker compose -f {} up -d --remove-orphans && echo '__IFECARO_COMPOSE_PS_BEGIN__' && docker compose -f {} ps && echo '__IFECARO_COMPOSE_PS_END__'",
+        path, compose_file, compose_file
     );
 
     let ssh_args = &[
@@ -1135,6 +1177,40 @@ fn validate_compose_ps_output(compose_ps: &str) -> Result<String> {
     }
 
     Ok(compose_ps.to_string())
+}
+
+#[cfg(test)]
+mod remote_compose_file_tests {
+    use super::resolve_remote_compose_file;
+    use std::env;
+    use std::sync::{Mutex, OnceLock};
+
+    fn env_lock() -> &'static Mutex<()> {
+        static LOCK: OnceLock<Mutex<()>> = OnceLock::new();
+        LOCK.get_or_init(|| Mutex::new(()))
+    }
+
+    #[test]
+    fn uses_staging_default_file() {
+        let _guard = env_lock().lock().unwrap();
+        unsafe {
+            env::remove_var("STAGING_COMPOSE_FILE");
+        }
+
+        let value = resolve_remote_compose_file("staging").expect("should resolve");
+        assert_eq!(value, "docker-compose.staging.yml");
+    }
+
+    #[test]
+    fn uses_production_default_file() {
+        let _guard = env_lock().lock().unwrap();
+        unsafe {
+            env::remove_var("PRODUCTION_COMPOSE_FILE");
+        }
+
+        let value = resolve_remote_compose_file("production").expect("should resolve");
+        assert_eq!(value, "docker-compose.production.yml");
+    }
 }
 
 #[cfg(test)]
