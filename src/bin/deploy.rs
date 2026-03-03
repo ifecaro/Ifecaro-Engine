@@ -60,7 +60,7 @@ fn main() -> Result<()> {
             copy_pwa_resources()?;
             create_deployment_package()?;
             restore_tailwind_css()?;
-            upload_to_remote()?;
+            upload_to_remote("production")?;
             println!("{}", "✅ Development deployment completed".green().bold());
         }
         Some(Commands::Prod) => {
@@ -147,7 +147,7 @@ fn show_interactive_menu() -> Result<()> {
                 copy_pwa_resources()?;
                 create_deployment_package()?;
                 restore_tailwind_css()?;
-                upload_to_remote()?;
+                upload_to_remote("production")?;
                 println!("{}", "✅ Development deployment completed".green().bold());
                 wait_for_enter();
             }
@@ -445,7 +445,7 @@ fn run_deploy_pipeline(target_name: &str) -> Result<()> {
     restore_tailwind_css()?;
 
     // Upload to remote server
-    upload_to_remote()?;
+    upload_to_remote(target_name)?;
 
     // Optional: clean up debug & incremental artifacts to reduce target size
     cleanup_target_artifacts();
@@ -521,6 +521,57 @@ mod deploy_path_rewrite_tests {
 
         assert!(output.contains("\"/staging/assets/ifecaro.js\""));
         assert!(output.contains("'/staging/assets/chunk.js'"));
+    }
+}
+
+#[cfg(test)]
+mod deploy_target_tests {
+    use super::resolve_deploy_target;
+    use std::env;
+
+    #[test]
+    fn staging_target_does_not_fallback_to_deploy_variables() {
+        // SAFETY: test-only scoped environment mutation.
+        unsafe {
+            env::set_var("DEPLOY_USER", "prod-user");
+            env::set_var("DEPLOY_HOST", "prod-host");
+            env::set_var("DEPLOY_PATH", "/var/www/prod");
+            env::remove_var("STAGING_DEPLOY_USER");
+            env::remove_var("STAGING_DEPLOY_HOST");
+            env::remove_var("STAGING_DEPLOY_PATH");
+        }
+
+        let err = resolve_deploy_target("staging").expect_err("staging should require STAGING_* vars");
+        assert!(err.to_string().contains("strictly isolated"));
+
+        // SAFETY: test-only cleanup of environment variables.
+        unsafe {
+            env::remove_var("DEPLOY_USER");
+            env::remove_var("DEPLOY_HOST");
+            env::remove_var("DEPLOY_PATH");
+        }
+    }
+
+    #[test]
+    fn staging_target_uses_staging_variables_when_all_present() {
+        // SAFETY: test-only scoped environment mutation.
+        unsafe {
+            env::set_var("STAGING_DEPLOY_USER", "staging-user");
+            env::set_var("STAGING_DEPLOY_HOST", "staging-host");
+            env::set_var("STAGING_DEPLOY_PATH", "/var/www/staging");
+        }
+
+        let target = resolve_deploy_target("staging").expect("staging target should resolve");
+        assert_eq!(target.0, "staging-user");
+        assert_eq!(target.1, "staging-host");
+        assert_eq!(target.2, "/var/www/staging");
+
+        // SAFETY: test-only cleanup of environment variables.
+        unsafe {
+            env::remove_var("STAGING_DEPLOY_USER");
+            env::remove_var("STAGING_DEPLOY_HOST");
+            env::remove_var("STAGING_DEPLOY_PATH");
+        }
     }
 }
 
@@ -677,7 +728,39 @@ fn restore_tailwind_css() -> Result<()> {
     Ok(())
 }
 
-fn upload_to_remote() -> Result<()> {
+fn resolve_deploy_target(target_name: &str) -> Result<(String, String, String)> {
+    let staging_deploy_user = std::env::var("STAGING_DEPLOY_USER").ok();
+    let staging_deploy_host = std::env::var("STAGING_DEPLOY_HOST").ok();
+    let staging_deploy_path = std::env::var("STAGING_DEPLOY_PATH").ok();
+
+    let production_target = || -> Result<(String, String, String)> {
+        Ok((
+            std::env::var("DEPLOY_USER")
+                .context("❌ Missing DEPLOY_USER environment variable")?,
+            std::env::var("DEPLOY_HOST")
+                .context("❌ Missing DEPLOY_HOST environment variable")?,
+            std::env::var("DEPLOY_PATH")
+                .context("❌ Missing DEPLOY_PATH environment variable")?,
+        ))
+    };
+
+    if target_name == "staging" {
+        return match (staging_deploy_user, staging_deploy_host, staging_deploy_path) {
+            (Some(user), Some(host), Some(path)) => Ok((user, host, path)),
+            _ => anyhow::bail!(
+                "❌ Missing STAGING_DEPLOY_USER/STAGING_DEPLOY_HOST/STAGING_DEPLOY_PATH. Staging deploy is strictly isolated and will not fall back to DEPLOY_* variables."
+            ),
+        };
+    }
+
+    if target_name == "production" {
+        return production_target();
+    }
+
+    anyhow::bail!("❌ Unknown deploy target: {target_name}")
+}
+
+fn upload_to_remote(target_name: &str) -> Result<()> {
     println!("\n{}", "🚀 Uploading to remote server...".yellow().bold());
 
     // Load .env environment variables if present
@@ -687,39 +770,7 @@ fn upload_to_remote() -> Result<()> {
         println!("ℹ️  No .env file found, using existing environment variables.");
     }
 
-    // Resolve deploy namespace atomically to avoid mixing staging and legacy values.
-    let staging_deploy_user = std::env::var("STAGING_DEPLOY_USER").ok();
-    let staging_deploy_host = std::env::var("STAGING_DEPLOY_HOST").ok();
-    let staging_deploy_path = std::env::var("STAGING_DEPLOY_PATH").ok();
-
-    let (deploy_user, deploy_host, deploy_path) = match (
-        staging_deploy_user,
-        staging_deploy_host,
-        staging_deploy_path,
-    ) {
-        (Some(user), Some(host), Some(path)) => (user, host, path),
-        (None, None, None) => (
-            std::env::var("DEPLOY_USER")
-                .context("❌ Missing DEPLOY_USER environment variable")?,
-            std::env::var("DEPLOY_HOST")
-                .context("❌ Missing DEPLOY_HOST environment variable")?,
-            std::env::var("DEPLOY_PATH")
-                .context("❌ Missing DEPLOY_PATH environment variable")?,
-        ),
-        _ => {
-            println!(
-                "⚠️  Partial STAGING_DEPLOY_* configuration detected; falling back to DEPLOY_* variables."
-            );
-            (
-                std::env::var("DEPLOY_USER")
-                    .context("❌ Missing DEPLOY_USER environment variable")?,
-                std::env::var("DEPLOY_HOST")
-                    .context("❌ Missing DEPLOY_HOST environment variable")?,
-                std::env::var("DEPLOY_PATH")
-                    .context("❌ Missing DEPLOY_PATH environment variable")?,
-            )
-        }
-    };
+    let (deploy_user, deploy_host, deploy_path) = resolve_deploy_target(target_name)?;
     let ssh_key_file = resolve_ssh_key_file();
 
     let deploy_target = format!("{}@{}:{}", deploy_user, deploy_host, deploy_path);
