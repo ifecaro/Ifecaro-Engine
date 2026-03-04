@@ -743,6 +743,7 @@ mod tests {
 
         assert!(command.contains("docker exec 'frontend-staging' sh -lc '"));
         assert!(command.contains("index=/dist/index.html"));
+        assert!(command.contains("\"$index\""));
         assert!(command.contains("https://ifecaro.com/staging/db/api"));
         assert!(command.contains("/staging/db/api"));
         assert!(command.contains("/staging/assets/"));
