@@ -463,7 +463,7 @@ services:
 
 Set `PB_ENCRYPTION_KEY` in the server-side `.env` file, and optionally set `NGINX_CONF_PATH` / `FRONTEND_IMAGE` to control the nginx config directory and the prebuilt frontend image tag.
 The frontend image is meant to be built in CI and pushed to GHCR, so VPS nodes only need to pull the image and start the containers (no local frontend build or dist mount required).
-The remote deploy binary now defaults to staging container names (`nginx-staging` / `pocketbase-staging`). Set `PRODUCTION=true` to deploy directly to production container names (`nginx` / `pocketbase`).
+The remote deploy binary now defaults to staging container names (`nginx-staging` / `pocketbase-staging`). Set `DEPLOY_TO_PRODUCTION=true` to deploy directly to production container names (`nginx` / `pocketbase`).
 For path-based ingress deployments, remote staging deploys now default `NGINX_CONF_PATH` to `./nginx/conf.d/staging`, while production keeps `./nginx/conf.d`, so staging nginx does not recursively proxy `/staging/*` back to itself.
 To avoid port collisions when staging and production run on the same host, `docker-compose.deploy.yml` now defaults to staging host ports (`18080`, `18443`, `18090`).
 For production deployment, set `NGINX_HTTP_HOST_PORT=80`, `NGINX_HTTPS_HOST_PORT=443`, and `POCKETBASE_HOST_PORT=8090` in the server `.env`.
@@ -521,7 +521,7 @@ cargo run --manifest-path tools/deploy-remote/Cargo.toml --release
 ```
 
 It intentionally uses only Rust standard library (no clap/anyhow/dotenv/colored), and supports the same environment variables:
-`DEPLOY_USER`, `DEPLOY_HOST`, `DEPLOY_PATH`, `STAGING_DEPLOY_USER`, `STAGING_DEPLOY_HOST`, `STAGING_DEPLOY_PATH`, `SSH_PROFILE`, `STAGING_SSH_PROFILE`, optional `DEPLOY_COMPOSE_FILE`, `SSH_KEY_FILE`, `SSH_KEY_PATH`, `SSH_KEY_NAME`, `GHCR_TAG`, `GHCR_TAG_FORMAT`, `PRODUCTION`,
+`DEPLOY_USER`, `DEPLOY_HOST`, `DEPLOY_PATH`, `STAGING_DEPLOY_USER`, `STAGING_DEPLOY_HOST`, `STAGING_DEPLOY_PATH`, `SSH_PROFILE`, `STAGING_SSH_PROFILE`, optional `DEPLOY_COMPOSE_FILE`, `SSH_KEY_FILE`, `SSH_KEY_PATH`, `SSH_KEY_NAME`, `GHCR_TAG`, `GHCR_TAG_FORMAT`, `DEPLOY_TO_PRODUCTION`,
 `STAGING_API_URL`, `PRODUCTION_API_URL`, `FRONTEND_IMAGE`, `NGINX_CONTAINER_NAME`, `POCKETBASE_CONTAINER_NAME`.
 
 ### Staging vs Production Boundary Definition

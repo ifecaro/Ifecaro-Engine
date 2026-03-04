@@ -453,7 +453,7 @@ fn resolve_compose_project_name(container_suffix: &str) -> String {
 }
 
 fn is_production_enabled() -> bool {
-    let Ok(value) = env::var("PRODUCTION") else {
+    let Ok(value) = env::var("DEPLOY_TO_PRODUCTION") else {
         return false;
     };
 
@@ -566,6 +566,23 @@ mod tests {
             resolve_deploy_environment("-staging"),
             "staging".to_string()
         );
+    }
+
+    #[test]
+    fn production_toggle_defaults_to_staging() {
+        // SAFETY: test-only cleanup to ensure deterministic default behavior.
+        unsafe { env::remove_var("DEPLOY_TO_PRODUCTION") };
+        assert_eq!(resolve_container_suffix(), "-staging");
+    }
+
+    #[test]
+    fn production_toggle_uses_production_when_enabled() {
+        // SAFETY: test-only scoped environment mutation.
+        unsafe { env::set_var("DEPLOY_TO_PRODUCTION", "true") };
+        assert_eq!(resolve_container_suffix(), "");
+
+        // SAFETY: test-only cleanup of environment variable.
+        unsafe { env::remove_var("DEPLOY_TO_PRODUCTION") };
     }
 
     #[test]
