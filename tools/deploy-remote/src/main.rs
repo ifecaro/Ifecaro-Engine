@@ -118,7 +118,7 @@ fn main() -> Result<(), String> {
             &known_hosts_file,
             &deploy_user,
             &deploy_host,
-            &frontend_container_name,
+            &compose_project_name,
         )?;
     }
 
@@ -161,9 +161,9 @@ fn rewrite_staging_base_url_on_remote(
     known_hosts_file: &str,
     deploy_user: &str,
     deploy_host: &str,
-    frontend_container_name: &str,
+    compose_project_name: &str,
 ) -> Result<(), String> {
-    let remote_command = build_staging_base_url_rewrite_command(frontend_container_name);
+    let remote_command = build_staging_base_url_rewrite_command(compose_project_name);
     let status = run_ssh_command(
         ssh_key_file,
         known_hosts_file,
@@ -177,22 +177,25 @@ fn rewrite_staging_base_url_on_remote(
     }
 
     println!(
-        "✅ Rewrote staging API base URL in remote frontend container ({})",
-        frontend_container_name
+        "✅ Rewrote staging API base URL in remote frontend volume for compose project ({})",
+        compose_project_name
     );
     Ok(())
 }
 
-fn build_staging_base_url_rewrite_command(frontend_container_name: &str) -> String {
-    let inner_script = r#"index=/dist/index.html && [ -f "$index" ] && sed -i -e "s|https://ifecaro.com/db/api|https://ifecaro.com/staging/db/api|g" -e "s|\"/db/api\"|\"/staging/db/api\"|g" -e "s|'/db/api'|'/staging/db/api'|g" -e "s|\"/assets/|\"/staging/assets/|g" -e "s|'/assets/|'/staging/assets/|g" -e "s|=/assets/|=/staging/assets/|g" "$index""#;
-    let escaped_container_name = shell_escape(frontend_container_name);
+fn build_staging_base_url_rewrite_command(compose_project_name: &str) -> String {
+    let inner_script = r#"index=/shared/index.html && [ -f "$index" ] && sed -i -e "s|https://ifecaro.com/db/api|https://ifecaro.com/staging/db/api|g" -e "s|\"/db/api\"|\"/staging/db/api\"|g" -e "s|'/db/api'|'/staging/db/api'|g" -e "s|\"/assets/|\"/staging/assets/|g" -e "s|'/assets/|'/staging/assets/|g" -e "s|=/assets/|=/staging/assets/|g" "$index""#;
+    let volume_name = resolve_staging_frontend_assets_volume_name(compose_project_name);
 
     format!(
-        "docker start {} >/dev/null 2>&1 || true; docker exec {} sh -lc {}",
-        escaped_container_name,
-        escaped_container_name,
+        "docker run --rm -v {}:/shared alpine:3.20 sh -lc {}",
+        shell_escape(&volume_name),
         shell_escape(inner_script)
     )
+}
+
+fn resolve_staging_frontend_assets_volume_name(compose_project_name: &str) -> String {
+    format!("{}_frontend_assets_staging", compose_project_name)
 }
 fn run_ssh_command(
     ssh_key_file: &str,
@@ -740,16 +743,24 @@ mod tests {
     }
 
     #[test]
-    fn staging_base_url_rewrite_command_targets_dist_index_and_container() {
-        let command = build_staging_base_url_rewrite_command("frontend-staging");
+    fn staging_base_url_rewrite_command_targets_shared_index_and_volume() {
+        let command = build_staging_base_url_rewrite_command("ifecaro-staging");
 
-        assert!(command.contains("docker start 'frontend-staging' >/dev/null 2>&1 || true; docker exec 'frontend-staging' sh -lc '"));
-        assert!(command.contains("index=/dist/index.html"));
+        assert!(command.contains("docker run --rm -v 'ifecaro-staging_frontend_assets_staging':/shared alpine:3.20 sh -lc '"));
+        assert!(command.contains("index=/shared/index.html"));
         assert!(command.contains("\"$index\""));
         assert!(command.contains("https://ifecaro.com/staging/db/api"));
         assert!(command.contains("/staging/db/api"));
         assert!(command.contains("/staging/assets/"));
         assert!(!command.contains("\\\n"));
+    }
+
+    #[test]
+    fn staging_frontend_assets_volume_uses_compose_project_name() {
+        assert_eq!(
+            resolve_staging_frontend_assets_volume_name("ifecaro-staging"),
+            "ifecaro-staging_frontend_assets_staging"
+        );
     }
 
     #[test]
