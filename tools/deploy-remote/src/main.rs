@@ -55,6 +55,27 @@ fn main() -> Result<(), String> {
         return Err("❌ Remote VPS image pull failed".to_string());
     }
 
+    let remote_frontend_pull_command = format!(
+        "docker pull {}",
+        shell_escape(&frontend_image)
+    );
+
+    let frontend_pull_output = run_ssh_command_with_output(
+        &ssh_key_file,
+        &known_hosts_file,
+        &deploy_user,
+        &deploy_host,
+        &remote_frontend_pull_command,
+    )?;
+
+    if !frontend_pull_output.status.success() {
+        let stderr_preview = safe_response_preview(&String::from_utf8_lossy(&frontend_pull_output.stderr));
+        return Err(format!(
+            "❌ Remote frontend image pull failed for {} (status: {}). stderr: {}",
+            frontend_image, frontend_pull_output.status, stderr_preview
+        ));
+    }
+
     verify_remote_image_git_sha(
         &ssh_key_file,
         &known_hosts_file,
@@ -105,6 +126,34 @@ fn main() -> Result<(), String> {
         "✅ Remote VPS deployment completed (GHCR pull + image SHA verify + docker compose up)"
     );
     Ok(())
+}
+
+fn run_ssh_command_with_output(
+    ssh_key_file: &str,
+    known_hosts_file: &str,
+    deploy_user: &str,
+    deploy_host: &str,
+    remote_command: &str,
+) -> Result<std::process::Output, String> {
+    Command::new("ssh")
+        .args([
+            "-i",
+            ssh_key_file,
+            "-o",
+            &format!("UserKnownHostsFile={}", known_hosts_file),
+            "-o",
+            "StrictHostKeyChecking=yes",
+            "-o",
+            "PasswordAuthentication=no",
+            "-o",
+            "PubkeyAuthentication=yes",
+            "-o",
+            "ConnectTimeout=30",
+            &format!("{}@{}", deploy_user, deploy_host),
+            remote_command,
+        ])
+        .output()
+        .map_err(|e| format!("failed to run ssh: {}", e))
 }
 
 fn rewrite_staging_base_url_on_remote(
