@@ -185,7 +185,7 @@ fn rewrite_staging_base_url_on_remote(
 
 fn build_staging_base_url_rewrite_command(compose_project_name: &str) -> String {
     let inner_script = r#"index=/shared/index.html && [ -f "$index" ] && sed -i -e "s|https://ifecaro.com/db/api|https://ifecaro.com/staging/db/api|g" -e "s|\"/db/api\"|\"/staging/db/api\"|g" -e "s|'/db/api'|'/staging/db/api'|g" -e "s|\"/assets/|\"/staging/assets/|g" -e "s|'/assets/|'/staging/assets/|g" -e "s|=/assets/|=/staging/assets/|g" "$index""#;
-    let volume_name = resolve_frontend_assets_volume_name(compose_project_name);
+    let volume_name = resolve_staging_frontend_assets_volume_name(compose_project_name);
 
     format!(
         "docker run --rm -v {}:/shared alpine:3.20 sh -lc {}",
@@ -194,8 +194,8 @@ fn build_staging_base_url_rewrite_command(compose_project_name: &str) -> String 
     )
 }
 
-fn resolve_frontend_assets_volume_name(compose_project_name: &str) -> String {
-    format!("{}_frontend_assets", compose_project_name)
+fn resolve_staging_frontend_assets_volume_name(compose_project_name: &str) -> String {
+    format!("{}_frontend_assets_staging", compose_project_name)
 }
 fn run_ssh_command(
     ssh_key_file: &str,
@@ -746,7 +746,7 @@ mod tests {
     fn staging_base_url_rewrite_command_targets_shared_index_and_volume() {
         let command = build_staging_base_url_rewrite_command("ifecaro-staging");
 
-        assert!(command.contains("docker run --rm -v 'ifecaro-staging_frontend_assets':/shared alpine:3.20 sh -lc '"));
+        assert!(command.contains("docker run --rm -v 'ifecaro-staging_frontend_assets_staging':/shared alpine:3.20 sh -lc '"));
         assert!(command.contains("index=/shared/index.html"));
         assert!(command.contains("\"$index\""));
         assert!(command.contains("https://ifecaro.com/staging/db/api"));
@@ -756,10 +756,10 @@ mod tests {
     }
 
     #[test]
-    fn frontend_assets_volume_uses_compose_project_name() {
+    fn staging_frontend_assets_volume_uses_compose_project_name() {
         assert_eq!(
-            resolve_frontend_assets_volume_name("ifecaro-staging"),
-            "ifecaro-staging_frontend_assets"
+            resolve_staging_frontend_assets_volume_name("ifecaro-staging"),
+            "ifecaro-staging_frontend_assets_staging"
         );
     }
 
