@@ -184,16 +184,12 @@ fn rewrite_staging_base_url_on_remote(
 }
 
 fn build_staging_base_url_rewrite_command(frontend_container_name: &str) -> String {
+    let inner_script = r#"index=/dist/index.html && [ -f "$index" ] && sed -i -e "s|https://ifecaro.com/db/api|https://ifecaro.com/staging/db/api|g" -e "s|\"/db/api\"|\"/staging/db/api\"|g" -e "s|'/db/api'|'/staging/db/api'|g" -e "s|\"/assets/|\"/staging/assets/|g" -e "s|'/assets/|'/staging/assets/|g" -e "s|=/assets/|=/staging/assets/|g" "$index""#;
+
     format!(
-        r#"docker exec {} sh -lc 'index=/dist/index.html && [ -f "$index" ] && sed -i \
-        -e "s|https://ifecaro.com/db/api|https://ifecaro.com/staging/db/api|g" \
-        -e "s|\"/db/api\"|\"/staging/db/api\"|g" \
-        -e "s|'/db/api'|'/staging/db/api'|g" \
-        -e "s|\"/assets/|\"/staging/assets/|g" \
-        -e "s|'/assets/|'/staging/assets/|g" \
-        -e "s|=/assets/|=/staging/assets/|g" \
-        "$index"'"#,
-        shell_escape(frontend_container_name)
+        "docker exec {} sh -lc {}",
+        shell_escape(frontend_container_name),
+        shell_escape(inner_script)
     )
 }
 fn run_ssh_command(
@@ -745,11 +741,12 @@ mod tests {
     fn staging_base_url_rewrite_command_targets_dist_index_and_container() {
         let command = build_staging_base_url_rewrite_command("frontend-staging");
 
-        assert!(command.contains("docker exec 'frontend-staging' sh -lc"));
+        assert!(command.contains("docker exec 'frontend-staging' sh -lc '"));
         assert!(command.contains("index=/dist/index.html"));
         assert!(command.contains("https://ifecaro.com/staging/db/api"));
         assert!(command.contains("/staging/db/api"));
         assert!(command.contains("/staging/assets/"));
+        assert!(!command.contains("\\\n"));
     }
 
     #[test]
