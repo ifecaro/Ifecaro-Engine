@@ -249,6 +249,38 @@ fn resolve_api_url(path: &str) -> String {
     join_url(base, path)
 }
 
+fn strip_utf8_bom(text: &str) -> &str {
+    text.strip_prefix('\u{feff}').unwrap_or(text)
+}
+
+fn body_preview(text: &str) -> String {
+    let trimmed = text.trim();
+    if trimmed.is_empty() {
+        return "<empty body>".to_string();
+    }
+
+    let preview: String = trimmed.chars().take(180).collect();
+    preview.replace('\n', "\\n")
+}
+
+fn build_parse_error_message(
+    error: &serde_json::Error,
+    status: reqwest::StatusCode,
+    content_type: Option<&str>,
+    body_text: &str,
+    url: &str,
+) -> String {
+    format!(
+        "{} | status={} | content_type={} | body_preview={} | url={}",
+        error,
+        status,
+        content_type.unwrap_or("<missing>"),
+        body_preview(body_text),
+        url,
+    )
+}
+
+
 #[derive(Clone, Debug)]
 struct ApiRequestDebugState {
     settings: LoadState,
@@ -543,9 +575,16 @@ pub fn Story(props: StoryProps) -> Element {
                 match client.get(&paragraphs_url).send().await {
                     Ok(response) => {
                         let status = response.status();
+                        let content_type = response
+                            .headers()
+                            .get(reqwest::header::CONTENT_TYPE)
+                            .and_then(|v| v.to_str().ok())
+                            .map(|v| v.to_string());
                         if status.is_success() {
                             match response.text().await {
-                                Ok(text) => match serde_json::from_str::<Data>(&text) {
+                                Ok(text) => {
+                                    let cleaned_text = strip_utf8_bom(&text);
+                                    match serde_json::from_str::<Data>(cleaned_text) {
                                     Ok(data) => {
                                         let target_id = "storystartpoint";
                                         let skip_setting = settings_context
@@ -602,12 +641,20 @@ pub fn Story(props: StoryProps) -> Element {
                                             "Failed to parse paragraphs response"
                                         );
                                         paragraphs_load_state.set(LoadState::ParseFailed);
+                                        let parse_error = build_parse_error_message(
+                                            &error,
+                                            status,
+                                            content_type.as_deref(),
+                                            cleaned_text,
+                                            &paragraphs_url,
+                                        );
                                         if let Ok(mut debug) = api_debug_state.try_write() {
                                             debug.paragraphs = LoadState::ParseFailed;
                                             debug.last_step = "段落資料解析失敗".to_string();
-                                            debug.last_error = Some(error.to_string());
+                                            debug.last_error = Some(parse_error);
                                         }
                                     }
+                                }
                                 },
                                 Err(error) => {
                                     tracing::error!(
@@ -688,9 +735,16 @@ pub fn Story(props: StoryProps) -> Element {
                 match client.get(&chapters_url).send().await {
                     Ok(response) => {
                         let status = response.status();
+                        let content_type = response
+                            .headers()
+                            .get(reqwest::header::CONTENT_TYPE)
+                            .and_then(|v| v.to_str().ok())
+                            .map(|v| v.to_string());
                         if status.is_success() {
                             match response.text().await {
-                                Ok(text) => match serde_json::from_str::<serde_json::Value>(&text) {
+                                Ok(text) => {
+                                    let cleaned_text = strip_utf8_bom(&text);
+                                    match serde_json::from_str::<serde_json::Value>(cleaned_text) {
                                     Ok(json) => {
                                         if let Some(items) = json.get("items").and_then(|i| i.as_array()) {
                                             let mut result = Vec::new();
@@ -757,12 +811,20 @@ pub fn Story(props: StoryProps) -> Element {
                                             "Failed to parse chapters response"
                                         );
                                         chapters_load_state.set(LoadState::ParseFailed);
+                                        let parse_error = build_parse_error_message(
+                                            &error,
+                                            status,
+                                            content_type.as_deref(),
+                                            cleaned_text,
+                                            &chapters_url,
+                                        );
                                         if let Ok(mut debug) = api_debug_state.try_write() {
                                             debug.chapters = LoadState::ParseFailed;
                                             debug.last_step = "章節資料解析失敗".to_string();
-                                            debug.last_error = Some(error.to_string());
+                                            debug.last_error = Some(parse_error);
                                         }
                                     }
+                                }
                                 },
                                 Err(error) => {
                                     tracing::error!(
