@@ -78,7 +78,7 @@ export function setSettingToIndexedDB(key, value) {
 export function getSettingsFromIndexedDB(callback) {
     if (!globalThis.indexedDB) {
         logIndexedDbError('getSettingsFromIndexedDB capability check', 'indexedDB is unavailable in this runtime');
-        callback({});
+        callback({ __indexeddb_error: 'IndexedDB unavailable in this runtime' });
         return;
     }
 
@@ -87,7 +87,7 @@ export function getSettingsFromIndexedDB(callback) {
         request = indexedDB.open('ifecaro', DB_VERSION);
     } catch (error) {
         logIndexedDbError('getSettingsFromIndexedDB open throw', error);
-        callback({});
+        callback({ __indexeddb_error: 'IndexedDB open threw an exception' });
         return;
     }
 
@@ -138,14 +138,14 @@ export function getSettingsFromIndexedDB(callback) {
                 };
                 getReq.onerror = function (e) {
                     logIndexedDbError('getSettingsFromIndexedDB get key', e?.target?.error || e);
-                    callback({});
+                    callback({ __indexeddb_error: 'Failed to read a settings key from IndexedDB' });
                     db.close();
                 };
             });
         };
         allReq.onerror = function (e) {
             logIndexedDbError('getSettingsFromIndexedDB getAllKeys', e?.target?.error || e);
-            callback({});
+            callback({ __indexeddb_error: 'Failed to enumerate settings keys from IndexedDB' });
             db.close();
         };
         tx.oncomplete = function () {
@@ -156,7 +156,7 @@ export function getSettingsFromIndexedDB(callback) {
     };
     request.onerror = function (event) {
         logIndexedDbError('getSettingsFromIndexedDB open', event?.target?.error || event);
-        callback({});
+        callback({ __indexeddb_error: 'IndexedDB open request failed' });
     };
 }
 
