@@ -2,6 +2,14 @@ const DB_NAME = 'ifecaro';
 const DB_VERSION = 6;
 const STORES = ['settings', 'choices', 'disabled_choices', 'random_choices', 'choice_impacts', 'character_states'];
 
+function logIndexedDbError(stage, error) {
+    console.error(`[IndexedDB] ${stage} failed`, {
+        dbName: DB_NAME,
+        dbVersion: DB_VERSION,
+        error,
+    });
+}
+
 function openDB() {
     return new Promise((resolve, reject) => {
         const request = indexedDB.open(DB_NAME, DB_VERSION);
@@ -24,7 +32,19 @@ function openDB() {
 }
 
 export function setSettingToIndexedDB(key, value) {
-    const request = indexedDB.open('ifecaro', DB_VERSION);
+    if (!globalThis.indexedDB) {
+        logIndexedDbError('setSettingToIndexedDB capability check', 'indexedDB is unavailable in this runtime');
+        return;
+    }
+
+    let request;
+    try {
+        request = indexedDB.open('ifecaro', DB_VERSION);
+    } catch (error) {
+        logIndexedDbError('setSettingToIndexedDB open throw', error);
+        return;
+    }
+
     request.onupgradeneeded = function (event) {
         const db = event.target.result;
         if (!db.objectStoreNames.contains('settings')) {
@@ -48,25 +68,52 @@ export function setSettingToIndexedDB(key, value) {
     };
     request.onsuccess = function (event) {
         const db = event.target.result;
-        const tx = db.transaction('settings', 'readwrite');
-        const store = tx.objectStore('settings');
-        const putReq = store.put(String(value), key);
-        putReq.onsuccess = function () {
-        };
+        let tx;
+        let store;
+        let putReq;
+
+        try {
+            tx = db.transaction('settings', 'readwrite');
+            store = tx.objectStore('settings');
+            putReq = store.put(String(value), key);
+        } catch (error) {
+            logIndexedDbError('setSettingToIndexedDB transaction setup', error);
+            db.close();
+            return;
+        }
+
+        putReq.onsuccess = function () { };
         putReq.onerror = function (e) {
+            logIndexedDbError('setSettingToIndexedDB put', e?.target?.error || e);
         };
         tx.oncomplete = function () {
             db.close();
         };
         tx.onerror = function (e) {
+            logIndexedDbError('setSettingToIndexedDB transaction', e?.target?.error || e);
         };
     };
     request.onerror = function (event) {
+        logIndexedDbError('setSettingToIndexedDB open', event?.target?.error || event);
     };
 }
 
 export function getSettingsFromIndexedDB(callback) {
-    const request = indexedDB.open('ifecaro', DB_VERSION);
+    if (!globalThis.indexedDB) {
+        logIndexedDbError('getSettingsFromIndexedDB capability check', 'indexedDB is unavailable in this runtime');
+        callback({ __indexeddb_error: 'IndexedDB unavailable in this runtime' });
+        return;
+    }
+
+    let request;
+    try {
+        request = indexedDB.open('ifecaro', DB_VERSION);
+    } catch (error) {
+        logIndexedDbError('getSettingsFromIndexedDB open throw', error);
+        callback({ __indexeddb_error: 'IndexedDB open threw an exception' });
+        return;
+    }
+
     request.onupgradeneeded = function (event) {
         const db = event.target.result;
         if (!db.objectStoreNames.contains('settings')) {
@@ -113,22 +160,26 @@ export function getSettingsFromIndexedDB(callback) {
                     }
                 };
                 getReq.onerror = function (e) {
-                    callback({});
+                    logIndexedDbError('getSettingsFromIndexedDB get key', e?.target?.error || e);
+                    callback({ __indexeddb_error: 'Failed to read a settings key from IndexedDB' });
                     db.close();
                 };
             });
         };
         allReq.onerror = function (e) {
-            callback({});
+            logIndexedDbError('getSettingsFromIndexedDB getAllKeys', e?.target?.error || e);
+            callback({ __indexeddb_error: 'Failed to enumerate settings keys from IndexedDB' });
             db.close();
         };
         tx.oncomplete = function () {
         };
         tx.onerror = function (e) {
+            logIndexedDbError('getSettingsFromIndexedDB transaction', e?.target?.error || e);
         };
     };
     request.onerror = function (event) {
-        callback({});
+        logIndexedDbError('getSettingsFromIndexedDB open', event?.target?.error || event);
+        callback({ __indexeddb_error: 'IndexedDB open request failed' });
     };
 }
 

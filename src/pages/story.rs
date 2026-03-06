@@ -16,6 +16,7 @@ use crate::services::indexeddb::{
 use crate::utils::theme::{apply_theme_class, ThemeMode};
 use dioxus::prelude::*;
 use dioxus_core::fc_to_builder;
+use dioxus_toastr::{use_toast, ToastKind, ToastRequest};
 use futures_util::future::join_all;
 use gloo_timers::callback::Timeout;
 use js_sys;
@@ -27,6 +28,7 @@ use std::cell::RefCell;
 use std::collections::HashMap;
 use std::collections::HashSet;
 use std::rc::Rc;
+use std::time::Duration;
 use wasm_bindgen::closure::Closure;
 use wasm_bindgen::JsCast;
 use wasm_bindgen::JsValue;
@@ -316,6 +318,7 @@ pub fn Story(props: StoryProps) -> Element {
     let state = use_context::<Signal<LanguageState>>();
     let story_context = use_story_context();
     let settings_context = use_settings_context();
+    let toast = use_toast();
     let current_paragraph = use_signal(|| None::<Paragraph>);
     let current_text = use_signal(|| None::<Text>);
     let current_choices = use_signal(|| Vec::<Choice>::new());
@@ -369,13 +372,14 @@ pub fn Story(props: StoryProps) -> Element {
         let mut _expanded_paragraphs = _expanded_paragraphs.clone();
         let mut story_context = story_context.clone();
         let mut settings_context = settings_context.clone();
-        let mut paragraphs_load_state = paragraphs_load_state.clone();
+        let toast = toast.clone();
         let mut fetch_initialized = use_signal(|| false);
         use_effect(move || {
             if *fetch_initialized.peek() {
                 return;
             }
             fetch_initialized.set(true);
+            let toast = toast.clone();
             spawn_local(async move {
                 // 1. First read settings (indexedDB)
                 let settings = wasm_bindgen_futures::JsFuture::from(js_sys::Promise::new(
@@ -393,7 +397,47 @@ pub fn Story(props: StoryProps) -> Element {
                         cb.forget();
                     },
                 ));
-                let (map, settings_loaded) = resolve_settings_for_initial_load(settings.await);
+                let mut map = std::collections::HashMap::new();
+                match settings.await {
+                    Ok(js_value) => {
+                        if let Some(obj) = js_sys::Object::try_from(&js_value) {
+                            let keys = js_sys::Object::keys(&obj);
+                            for i in 0..keys.length() {
+                                let key = keys.get(i);
+                                let value = js_sys::Reflect::get(&obj, &key)
+                                    .unwrap_or(js_sys::JsString::from("").into());
+                                map.insert(
+                                    key.as_string().unwrap_or_default(),
+                                    value.as_string().unwrap_or_default(),
+                                );
+                            }
+                        }
+                    }
+                    Err(e) => {
+                        tracing::error!(
+                            "Failed to read settings from IndexedDB; fallback to empty settings: {:?}",
+                            e
+                        );
+                        toast.push(
+                            ToastRequest::new(
+                                ToastKind::Error,
+                                "IndexedDB 讀取失敗，已改用預設設定並繼續載入故事資料",
+                            )
+                            .with_timeout(Duration::from_millis(4500)),
+                        );
+                    }
+                }
+                let indexeddb_error = map.remove("__indexeddb_error");
+                if let Some(error_message) = indexeddb_error {
+                    toast.push(
+                        ToastRequest::new(
+                            ToastKind::Error,
+                            format!("IndexedDB 讀取失敗：{error_message}，已改用預設設定"),
+                        )
+                        .with_timeout(Duration::from_millis(4500)),
+                    );
+                }
+
                 let theme_mode = map
                     .get("theme_mode")
                     .cloned()
