@@ -178,19 +178,43 @@ pub fn ParagraphProvider(props: ParagraphProviderProps) -> Element {
 
                 match client.get(&paragraphs_url).send().await {
                     Ok(response) => {
-                        if response.status().is_success() {
+                        let status = response.status();
+                        if status.is_success() {
                             match response.json::<ParagraphData>().await {
                                 Ok(data) => {
                                     state.write().set_paragraphs(data.items);
                                 }
-                                Err(_) => {
-                                    // Ignore errors
+                                Err(error) => {
+                                    tracing::error!(
+                                        base_api_url = %base_api_url(),
+                                        endpoint = %PARAGRAPHS,
+                                        url = %paragraphs_url,
+                                        status = %status,
+                                        error = %error,
+                                        "Failed to parse paragraphs json"
+                                    );
                                 }
                             }
+                        } else {
+                            tracing::error!(
+                                base_api_url = %base_api_url(),
+                                endpoint = %PARAGRAPHS,
+                                url = %paragraphs_url,
+                                status = %status,
+                                error = "non-success status",
+                                "Paragraphs request returned non-success status"
+                            );
                         }
                     }
-                    Err(_) => {
-                        // Ignore errors
+                    Err(error) => {
+                        tracing::error!(
+                            base_api_url = %base_api_url(),
+                            endpoint = %PARAGRAPHS,
+                            url = %paragraphs_url,
+                            status = "request_send_failed",
+                            error = %error,
+                            "Paragraphs request failed"
+                        );
                     }
                 }
             }
