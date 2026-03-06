@@ -362,11 +362,15 @@ pub fn Story(props: StoryProps) -> Element {
                     },
                 ));
 
-                let Ok(js_value) = settings.await else {
-                    return;
+                let mut map = std::collections::HashMap::new();
+                let js_value = match settings.await {
+                    Ok(value) => value,
+                    Err(e) => {
+                        tracing::warn!("Failed to load settings from IndexedDB, falling back to defaults: {:?}", e);
+                        JsValue::NULL
+                    }
                 };
 
-                let mut map = std::collections::HashMap::new();
                 if let Some(obj) = js_sys::Object::try_from(&js_value) {
                     let keys = js_sys::Object::keys(&obj);
                     for i in 0..keys.length() {
