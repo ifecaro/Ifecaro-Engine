@@ -32,7 +32,19 @@ function openDB() {
 }
 
 export function setSettingToIndexedDB(key, value) {
-    const request = indexedDB.open('ifecaro', DB_VERSION);
+    if (!globalThis.indexedDB) {
+        logIndexedDbError('setSettingToIndexedDB capability check', 'indexedDB is unavailable in this runtime');
+        return;
+    }
+
+    let request;
+    try {
+        request = indexedDB.open('ifecaro', DB_VERSION);
+    } catch (error) {
+        logIndexedDbError('setSettingToIndexedDB open throw', error);
+        return;
+    }
+
     request.onupgradeneeded = function (event) {
         const db = event.target.result;
         if (!db.objectStoreNames.contains('settings')) {
@@ -56,9 +68,20 @@ export function setSettingToIndexedDB(key, value) {
     };
     request.onsuccess = function (event) {
         const db = event.target.result;
-        const tx = db.transaction('settings', 'readwrite');
-        const store = tx.objectStore('settings');
-        const putReq = store.put(String(value), key);
+        let tx;
+        let store;
+        let putReq;
+
+        try {
+            tx = db.transaction('settings', 'readwrite');
+            store = tx.objectStore('settings');
+            putReq = store.put(String(value), key);
+        } catch (error) {
+            logIndexedDbError('setSettingToIndexedDB transaction setup', error);
+            db.close();
+            return;
+        }
+
         putReq.onsuccess = function () { };
         putReq.onerror = function (e) {
             logIndexedDbError('setSettingToIndexedDB put', e?.target?.error || e);
