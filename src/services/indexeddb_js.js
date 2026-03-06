@@ -2,6 +2,14 @@ const DB_NAME = 'ifecaro';
 const DB_VERSION = 6;
 const STORES = ['settings', 'choices', 'disabled_choices', 'random_choices', 'choice_impacts', 'character_states'];
 
+function logIndexedDbError(stage, error) {
+    console.error(`[IndexedDB] ${stage} failed`, {
+        dbName: DB_NAME,
+        dbVersion: DB_VERSION,
+        error,
+    });
+}
+
 function openDB() {
     return new Promise((resolve, reject) => {
         const request = indexedDB.open(DB_NAME, DB_VERSION);
@@ -51,22 +59,38 @@ export function setSettingToIndexedDB(key, value) {
         const tx = db.transaction('settings', 'readwrite');
         const store = tx.objectStore('settings');
         const putReq = store.put(String(value), key);
-        putReq.onsuccess = function () {
-        };
+        putReq.onsuccess = function () { };
         putReq.onerror = function (e) {
+            logIndexedDbError('setSettingToIndexedDB put', e?.target?.error || e);
         };
         tx.oncomplete = function () {
             db.close();
         };
         tx.onerror = function (e) {
+            logIndexedDbError('setSettingToIndexedDB transaction', e?.target?.error || e);
         };
     };
     request.onerror = function (event) {
+        logIndexedDbError('setSettingToIndexedDB open', event?.target?.error || event);
     };
 }
 
 export function getSettingsFromIndexedDB(callback) {
-    const request = indexedDB.open('ifecaro', DB_VERSION);
+    if (!globalThis.indexedDB) {
+        logIndexedDbError('getSettingsFromIndexedDB capability check', 'indexedDB is unavailable in this runtime');
+        callback({});
+        return;
+    }
+
+    let request;
+    try {
+        request = indexedDB.open('ifecaro', DB_VERSION);
+    } catch (error) {
+        logIndexedDbError('getSettingsFromIndexedDB open throw', error);
+        callback({});
+        return;
+    }
+
     request.onupgradeneeded = function (event) {
         const db = event.target.result;
         if (!db.objectStoreNames.contains('settings')) {
@@ -113,21 +137,25 @@ export function getSettingsFromIndexedDB(callback) {
                     }
                 };
                 getReq.onerror = function (e) {
+                    logIndexedDbError('getSettingsFromIndexedDB get key', e?.target?.error || e);
                     callback({});
                     db.close();
                 };
             });
         };
         allReq.onerror = function (e) {
+            logIndexedDbError('getSettingsFromIndexedDB getAllKeys', e?.target?.error || e);
             callback({});
             db.close();
         };
         tx.oncomplete = function () {
         };
         tx.onerror = function (e) {
+            logIndexedDbError('getSettingsFromIndexedDB transaction', e?.target?.error || e);
         };
     };
     request.onerror = function (event) {
+        logIndexedDbError('getSettingsFromIndexedDB open', event?.target?.error || event);
         callback({});
     };
 }

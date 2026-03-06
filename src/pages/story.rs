@@ -358,23 +358,26 @@ pub fn Story(props: StoryProps) -> Element {
                         cb.forget();
                     },
                 ));
-                let js_value = match settings.await {
-                    Ok(val) => val,
-                    Err(_e) => {
-                        // Logs cleared
-                        return;
-                    }
-                };
                 let mut map = std::collections::HashMap::new();
-                if let Some(obj) = js_sys::Object::try_from(&js_value) {
-                    let keys = js_sys::Object::keys(&obj);
-                    for i in 0..keys.length() {
-                        let key = keys.get(i);
-                        let value = js_sys::Reflect::get(&obj, &key)
-                            .unwrap_or(js_sys::JsString::from("").into());
-                        map.insert(
-                            key.as_string().unwrap_or_default(),
-                            value.as_string().unwrap_or_default(),
+                match settings.await {
+                    Ok(js_value) => {
+                        if let Some(obj) = js_sys::Object::try_from(&js_value) {
+                            let keys = js_sys::Object::keys(&obj);
+                            for i in 0..keys.length() {
+                                let key = keys.get(i);
+                                let value = js_sys::Reflect::get(&obj, &key)
+                                    .unwrap_or(js_sys::JsString::from("").into());
+                                map.insert(
+                                    key.as_string().unwrap_or_default(),
+                                    value.as_string().unwrap_or_default(),
+                                );
+                            }
+                        }
+                    }
+                    Err(e) => {
+                        tracing::error!(
+                            "Failed to read settings from IndexedDB; fallback to empty settings: {:?}",
+                            e
                         );
                     }
                 }
