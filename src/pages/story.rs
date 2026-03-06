@@ -197,6 +197,14 @@ pub struct Chapter {
     order: i32,
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum LoadState {
+    NotRequested,
+    Loaded,
+    RequestFailed,
+    ParseFailed,
+}
+
 /// Merge multiple paragraphs' paragraphs field according to language and reader_mode rules
 #[allow(dead_code)]
 pub fn merge_paragraphs_for_lang(
@@ -263,8 +271,8 @@ fn resolve_settings_for_initial_load(
             let keys = js_sys::Object::keys(&obj);
             for i in 0..keys.length() {
                 let key = keys.get(i);
-                let value = js_sys::Reflect::get(&obj, &key)
-                    .unwrap_or(js_sys::JsString::from("").into());
+                let value =
+                    js_sys::Reflect::get(&obj, &key).unwrap_or(js_sys::JsString::from("").into());
                 map.insert(
                     key.as_string().unwrap_or_default(),
                     value.as_string().unwrap_or_default(),
@@ -352,6 +360,8 @@ pub fn Story(props: StoryProps) -> Element {
     let disabled_by_countdown = use_signal(|| vec![]);
     let auto_restored = use_signal(|| false);
     let show_chapter_title = use_signal(|| true);
+    let mut paragraphs_load_state = use_signal(|| LoadState::NotRequested);
+    let mut chapters_load_state = use_signal(|| LoadState::NotRequested);
     let _settings_context = settings_context.clone();
     let _selected_targets: Vec<String> = Vec::new();
     let story_context = story_context.clone(); // 不需要 mut
@@ -443,68 +453,102 @@ pub fn Story(props: StoryProps) -> Element {
                 let client = reqwest::Client::new();
                 match client.get(&paragraphs_url).send().await {
                     Ok(response) => {
-                        if response.status().is_success() {
+                        let status = response.status();
+                        if status.is_success() {
                             match response.text().await {
-                                Ok(text) => {
-                                    match serde_json::from_str::<Data>(&text) {
-                                        Ok(data) => {
-                                            let target_id = "storystartpoint";
-                                            let skip_setting = settings_context
-                                                .read()
-                                                .settings
-                                                .get("settings_done")
-                                                .map(|v| v == "true")
-                                                .unwrap_or(false);
-                                            let first_paragraph = if skip_setting {
-                                                data.items
-                                                    .iter()
-                                                    .find(|p| p.id.trim() == target_id)
-                                                    .or_else(|| data.items.first())
-                                            } else {
-                                                data.items.first()
-                                            };
-                                            if let Some(first_paragraph) = first_paragraph {
-                                                // Only reset the expanded path when we don't already have a
-                                                // reconstructed history (i.e. no stored choice_ids).
-                                                let has_history = !story_context
-                                                    .read()
-                                                    .choice_ids
-                                                    .read()
-                                                    .is_empty();
-                                                if !has_history {
-                                                    if let Ok(mut ctx) = story_context.try_write() {
-                                                        ctx.target_paragraph_id =
-                                                            Some(first_paragraph.id.clone());
-                                                    }
-                                                    if let Ok(mut expanded) =
-                                                        _expanded_paragraphs.try_write()
-                                                    {
-                                                        *expanded = vec![first_paragraph.clone()];
-                                                    }
+                                Ok(text) => match serde_json::from_str::<Data>(&text) {
+                                    Ok(data) => {
+                                        let target_id = "storystartpoint";
+                                        let skip_setting = settings_context
+                                            .read()
+                                            .settings
+                                            .get("settings_done")
+                                            .map(|v| v == "true")
+                                            .unwrap_or(false);
+                                        let first_paragraph = if skip_setting {
+                                            data.items
+                                                .iter()
+                                                .find(|p| p.id.trim() == target_id)
+                                                .or_else(|| data.items.first())
+                                        } else {
+                                            data.items.first()
+                                        };
+                                        if let Some(first_paragraph) = first_paragraph {
+                                            // Only reset the expanded path when we don't already have a
+                                            // reconstructed history (i.e. no stored choice_ids).
+                                            let has_history =
+                                                !story_context.read().choice_ids.read().is_empty();
+                                            if !has_history {
+                                                if let Ok(mut ctx) = story_context.try_write() {
+                                                    ctx.target_paragraph_id =
+                                                        Some(first_paragraph.id.clone());
                                                 }
-                                            }
-                                            // Here first set to paragraph_data (signal), then set to context
-                                            if let Ok(mut paragraph_guard) =
-                                                _paragraph_data.try_write()
-                                            {
-                                                *paragraph_guard = data.items.clone();
-                                            }
-                                            if let Ok(mut ctx) = story_context.try_write() {
-                                                if let Ok(mut paragraphs) =
-                                                    ctx.paragraphs.try_write()
+                                                if let Ok(mut expanded) =
+                                                    _expanded_paragraphs.try_write()
                                                 {
-                                                    *paragraphs = data.items.clone();
+                                                    *expanded = vec![first_paragraph.clone()];
                                                 }
                                             }
                                         }
-                                        Err(_e) => {}
+                                        // Here first set to paragraph_data (signal), then set to context
+                                        if let Ok(mut paragraph_guard) = _paragraph_data.try_write()
+                                        {
+                                            *paragraph_guard = data.items.clone();
+                                        }
+                                        if let Ok(mut ctx) = story_context.try_write() {
+                                            if let Ok(mut paragraphs) = ctx.paragraphs.try_write() {
+                                                *paragraphs = data.items.clone();
+                                            }
+                                        }
+                                        paragraphs_load_state.set(LoadState::Loaded);
                                     }
+                                    Err(error) => {
+                                        tracing::error!(
+                                            base_api_url = %base_api_url(),
+                                            endpoint = %PARAGRAPHS,
+                                            url = %paragraphs_url,
+                                            status = %status,
+                                            error = %error,
+                                            "Failed to parse paragraphs response"
+                                        );
+                                        paragraphs_load_state.set(LoadState::ParseFailed);
+                                    }
+                                },
+                                Err(error) => {
+                                    tracing::error!(
+                                        base_api_url = %base_api_url(),
+                                        endpoint = %PARAGRAPHS,
+                                        url = %paragraphs_url,
+                                        status = %status,
+                                        error = %error,
+                                        "Failed to read paragraphs response body"
+                                    );
+                                    paragraphs_load_state.set(LoadState::ParseFailed);
                                 }
-                                Err(_e) => {}
                             }
+                        } else {
+                            tracing::error!(
+                                base_api_url = %base_api_url(),
+                                endpoint = %PARAGRAPHS,
+                                url = %paragraphs_url,
+                                status = %status,
+                                error = "non-success status",
+                                "Paragraphs request returned non-success status"
+                            );
+                            paragraphs_load_state.set(LoadState::RequestFailed);
                         }
                     }
-                    Err(_e) => {}
+                    Err(error) => {
+                        tracing::error!(
+                            base_api_url = %base_api_url(),
+                            endpoint = %PARAGRAPHS,
+                            url = %paragraphs_url,
+                            status = "request_send_failed",
+                            error = %error,
+                            "Paragraphs request failed"
+                        );
+                        paragraphs_load_state.set(LoadState::RequestFailed);
+                    }
                 }
             });
             ()
@@ -514,6 +558,7 @@ pub fn Story(props: StoryProps) -> Element {
     // Load chapter list
     {
         let mut story_context = story_context.clone();
+        let mut chapters_load_state = chapters_load_state.clone();
         let mut chapters_loaded = use_signal(|| false);
         use_effect(move || {
             if *chapters_loaded.peek() {
@@ -522,59 +567,122 @@ pub fn Story(props: StoryProps) -> Element {
             spawn_local(async move {
                 let chapters_url = format!("{}{}", base_api_url(), CHAPTERS);
                 let client = reqwest::Client::new();
-                if let Ok(response) = client.get(&chapters_url).send().await {
-                    if response.status().is_success() {
-                        if let Ok(text) = response.text().await {
-                            if let Ok(json) = serde_json::from_str::<serde_json::Value>(&text) {
-                                if let Some(items) = json.get("items").and_then(|i| i.as_array()) {
-                                    let mut result = Vec::new();
-                                    for item in items {
-                                        let id = item
-                                            .get("id")
-                                            .and_then(|v| v.as_str())
-                                            .unwrap_or("")
-                                            .to_string();
-                                        let order =
-                                            item.get("order").and_then(|v| v.as_i64()).unwrap_or(0)
-                                                as i32;
-                                        let titles = item
-                                            .get("titles")
-                                            .and_then(|v| v.as_array())
-                                            .map(|arr| {
-                                                arr.iter()
-                                                    .filter_map(|title_obj| {
-                                                        let lang = title_obj
-                                                            .get("lang")
-                                                            .and_then(|v| v.as_str())
-                                                            .unwrap_or("")
-                                                            .to_string();
-                                                        let title = title_obj
-                                                            .get("title")
-                                                            .and_then(|v| v.as_str())
-                                                            .unwrap_or("")
-                                                            .to_string();
-                                                        if !lang.is_empty() && !title.is_empty() {
-                                                            Some(ChapterTitle { lang, title })
-                                                        } else {
-                                                            None
-                                                        }
-                                                    })
-                                                    .collect::<Vec<_>>()
-                                            })
-                                            .unwrap_or_default();
-                                        result.push(Chapter { id, titles, order });
-                                    }
-                                    if let Ok(mut ctx) = story_context.try_write() {
-                                        if let Ok(mut chapters) = ctx.chapters.try_write() {
-                                            *chapters = result;
+                match client.get(&chapters_url).send().await {
+                    Ok(response) => {
+                        let status = response.status();
+                        if status.is_success() {
+                            match response.text().await {
+                                Ok(text) => {
+                                    match serde_json::from_str::<serde_json::Value>(&text) {
+                                        Ok(json) => {
+                                            if let Some(items) =
+                                                json.get("items").and_then(|i| i.as_array())
+                                            {
+                                                let mut result = Vec::new();
+                                                for item in items {
+                                                    let id = item
+                                                        .get("id")
+                                                        .and_then(|v| v.as_str())
+                                                        .unwrap_or("")
+                                                        .to_string();
+                                                    let order = item
+                                                        .get("order")
+                                                        .and_then(|v| v.as_i64())
+                                                        .unwrap_or(0)
+                                                        as i32;
+                                                    let titles = item
+                                                        .get("titles")
+                                                        .and_then(|v| v.as_array())
+                                                        .map(|arr| {
+                                                            arr.iter()
+                                                                .filter_map(|title_obj| {
+                                                                    let lang = title_obj
+                                                                        .get("lang")
+                                                                        .and_then(|v| v.as_str())
+                                                                        .unwrap_or("")
+                                                                        .to_string();
+                                                                    let title = title_obj
+                                                                        .get("title")
+                                                                        .and_then(|v| v.as_str())
+                                                                        .unwrap_or("")
+                                                                        .to_string();
+                                                                    if !lang.is_empty()
+                                                                        && !title.is_empty()
+                                                                    {
+                                                                        Some(ChapterTitle {
+                                                                            lang,
+                                                                            title,
+                                                                        })
+                                                                    } else {
+                                                                        None
+                                                                    }
+                                                                })
+                                                                .collect::<Vec<_>>()
+                                                        })
+                                                        .unwrap_or_default();
+                                                    result.push(Chapter { id, titles, order });
+                                                }
+                                                if let Ok(mut ctx) = story_context.try_write() {
+                                                    if let Ok(mut chapters) =
+                                                        ctx.chapters.try_write()
+                                                    {
+                                                        *chapters = result;
+                                                    }
+                                                }
+                                                if let Ok(mut loaded) = chapters_loaded.try_write()
+                                                {
+                                                    *loaded = true;
+                                                }
+                                                chapters_load_state.set(LoadState::Loaded);
+                                            }
+                                        }
+                                        Err(error) => {
+                                            tracing::error!(
+                                                base_api_url = %base_api_url(),
+                                                endpoint = %CHAPTERS,
+                                                url = %chapters_url,
+                                                status = %status,
+                                                error = %error,
+                                                "Failed to parse chapters response"
+                                            );
+                                            chapters_load_state.set(LoadState::ParseFailed);
                                         }
                                     }
-                                    if let Ok(mut loaded) = chapters_loaded.try_write() {
-                                        *loaded = true;
-                                    }
+                                }
+                                Err(error) => {
+                                    tracing::error!(
+                                        base_api_url = %base_api_url(),
+                                        endpoint = %CHAPTERS,
+                                        url = %chapters_url,
+                                        status = %status,
+                                        error = %error,
+                                        "Failed to read chapters response body"
+                                    );
+                                    chapters_load_state.set(LoadState::ParseFailed);
                                 }
                             }
+                        } else {
+                            tracing::error!(
+                                base_api_url = %base_api_url(),
+                                endpoint = %CHAPTERS,
+                                url = %chapters_url,
+                                status = %status,
+                                error = "non-success status",
+                                "Chapters request returned non-success status"
+                            );
+                            chapters_load_state.set(LoadState::RequestFailed);
                         }
+                    }
+                    Err(error) => {
+                        tracing::error!(
+                            base_api_url = %base_api_url(),
+                            endpoint = %CHAPTERS,
+                            url = %chapters_url,
+                            status = "request_send_failed",
+                            error = %error,
+                            "Chapters request failed"
+                        );
+                        chapters_load_state.set(LoadState::RequestFailed);
                     }
                 }
             });
@@ -1706,6 +1814,18 @@ pub fn Story(props: StoryProps) -> Element {
     };
     let current_paragraph_id = use_signal(|| String::new());
 
+    let show_load_error = {
+        let paragraph_state = *paragraphs_load_state.read();
+        let chapter_state = *chapters_load_state.read();
+        matches!(
+            paragraph_state,
+            LoadState::RequestFailed | LoadState::ParseFailed
+        ) || matches!(
+            chapter_state,
+            LoadState::RequestFailed | LoadState::ParseFailed
+        )
+    };
+
     // Listen for _expanded_paragraphs changes and update current_paragraph_id
     {
         let mut current_paragraph_id = current_paragraph_id.clone();
@@ -1718,6 +1838,12 @@ pub fn Story(props: StoryProps) -> Element {
     }
 
     rsx! {
+        if show_load_error {
+            div {
+                class: "story-load-error",
+                "資料載入失敗，請重試"
+            }
+        }
         StoryContent {
             paragraph: story_merged_context.read().merged_paragraph.clone(),
             choices: current_choices.read().clone(),

@@ -55,7 +55,8 @@ pub fn ChapterProvider(props: ChapterProviderProps) -> Element {
 
                 match client.get(&chapters_url).send().await {
                     Ok(response) => {
-                        if response.status().is_success() {
+                        let status = response.status();
+                        if status.is_success() {
                             match response.json::<serde_json::Value>().await {
                                 Ok(chapters_data) => {
                                     if let Some(items) =
@@ -94,14 +95,37 @@ pub fn ChapterProvider(props: ChapterProviderProps) -> Element {
                                         state.write().set_chapters(sorted_chapters);
                                     }
                                 }
-                                Err(_) => {
-                                    // Ignore errors
+                                Err(error) => {
+                                    tracing::error!(
+                                        base_api_url = %base_api_url(),
+                                        endpoint = %CHAPTERS,
+                                        url = %chapters_url,
+                                        status = %status,
+                                        error = %error,
+                                        "Failed to parse chapters json"
+                                    );
                                 }
                             }
+                        } else {
+                            tracing::error!(
+                                base_api_url = %base_api_url(),
+                                endpoint = %CHAPTERS,
+                                url = %chapters_url,
+                                status = %status,
+                                error = "non-success status",
+                                "Chapters request returned non-success status"
+                            );
                         }
                     }
-                    Err(_) => {
-                        // Ignore errors
+                    Err(error) => {
+                        tracing::error!(
+                            base_api_url = %base_api_url(),
+                            endpoint = %CHAPTERS,
+                            url = %chapters_url,
+                            status = "request_send_failed",
+                            error = %error,
+                            "Chapters request failed"
+                        );
                     }
                 }
             }
