@@ -214,6 +214,76 @@ pub fn Dashboard(_props: DashboardProps) -> Element {
     let mut relationship_options = use_signal(|| Vec::<RelationshipOption>::new());
 
     {
+        let mut paragraph_state = paragraph_state.clone();
+        let mut chapter_state = chapter_state.clone();
+
+        use_effect(move || {
+            let paragraph_loaded = paragraph_state.read().loaded;
+            let chapter_loaded = chapter_state.read().loaded;
+
+            if paragraph_loaded && chapter_loaded {
+                return;
+            }
+
+            spawn_local(async move {
+                let client = reqwest::Client::new();
+
+                if !paragraph_loaded {
+                    let paragraphs_url = format!("{}{}", base_api_url(), PARAGRAPHS);
+                    if let Ok(response) = client.get(&paragraphs_url).send().await {
+                        if response.status().is_success() {
+                            if let Ok(data) = response.json::<Data>().await {
+                                paragraph_state.write().set_paragraphs(data.items);
+                            }
+                        }
+                    }
+                }
+
+                if !chapter_loaded {
+                    let chapters_url = format!("{}{}", base_api_url(), CHAPTERS);
+                    if let Ok(response) = client.get(&chapters_url).send().await {
+                        if response.status().is_success() {
+                            if let Ok(chapters_data) = response.json::<serde_json::Value>().await {
+                                if let Some(items) =
+                                    chapters_data.get("items").and_then(|i| i.as_array())
+                                {
+                                    let mut chapters: Vec<Chapter> = items
+                                        .iter()
+                                        .filter_map(|item| {
+                                            let id = item.get("id")?.as_str()?.to_string();
+                                            let titles = item
+                                                .get("titles")?
+                                                .as_array()?
+                                                .iter()
+                                                .filter_map(|title_obj| {
+                                                    let lang =
+                                                        title_obj.get("lang")?.as_str()?.to_string();
+                                                    let title = title_obj
+                                                        .get("title")?
+                                                        .as_str()?
+                                                        .to_string();
+                                                    Some(ChapterTitle { lang, title })
+                                                })
+                                                .collect();
+                                            let order =
+                                                item.get("order")?.as_i64().unwrap_or(0) as i32;
+                                            Some(Chapter { id, titles, order })
+                                        })
+                                        .collect();
+                                    chapters.sort_by(|a, b| a.order.cmp(&b.order));
+                                    chapter_state.write().set_chapters(chapters);
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+
+            (|| {})()
+        });
+    }
+
+    {
         let mut character_options = character_options.clone();
         let mut relationship_options = relationship_options.clone();
 

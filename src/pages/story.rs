@@ -341,8 +341,11 @@ pub fn Story(props: StoryProps) -> Element {
                 return;
             }
             fetch_initialized.set(true);
+
+            // Settings load can occasionally be delayed by IndexedDB initialization,
+            // but paragraph/chapter requests should not be blocked by it.
+            let mut settings_context_for_settings = settings_context.clone();
             spawn_local(async move {
-                // 1. First read settings (indexedDB)
                 let settings = wasm_bindgen_futures::JsFuture::from(js_sys::Promise::new(
                     &mut |resolve, _reject| {
                         let cb = Closure::wrap(Box::new(move |js_value: wasm_bindgen::JsValue| {
@@ -358,13 +361,11 @@ pub fn Story(props: StoryProps) -> Element {
                         cb.forget();
                     },
                 ));
-                let js_value = match settings.await {
-                    Ok(val) => val,
-                    Err(_e) => {
-                        // Logs cleared
-                        return;
-                    }
+
+                let Ok(js_value) = settings.await else {
+                    return;
                 };
+
                 let mut map = std::collections::HashMap::new();
                 if let Some(obj) = js_sys::Object::try_from(&js_value) {
                     let keys = js_sys::Object::keys(&obj);
@@ -378,17 +379,22 @@ pub fn Story(props: StoryProps) -> Element {
                         );
                     }
                 }
+
                 let theme_mode = map
                     .get("theme_mode")
                     .cloned()
                     .unwrap_or_else(|| "auto".to_string());
                 {
-                    let mut ctx = settings_context.write();
+                    let mut ctx = settings_context_for_settings.write();
                     ctx.settings = map;
                     ctx.loaded = true;
                 }
                 apply_theme_class(ThemeMode::from_value(&theme_mode));
-                // 2. Then load paragraph data
+            });
+
+            let settings_context_for_paragraphs = settings_context.clone();
+            spawn_local(async move {
+                // Load paragraph data independently from settings initialization.
                 let paragraphs_url = format!("{}{}", base_api_url(), PARAGRAPHS);
                 let client = reqwest::Client::new();
                 match client.get(&paragraphs_url).send().await {
@@ -399,7 +405,7 @@ pub fn Story(props: StoryProps) -> Element {
                                     match serde_json::from_str::<Data>(&text) {
                                         Ok(data) => {
                                             let target_id = "storystartpoint";
-                                            let skip_setting = settings_context
+                                            let skip_setting = settings_context_for_paragraphs
                                                 .read()
                                                 .settings
                                                 .get("settings_done")
