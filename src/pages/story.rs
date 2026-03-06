@@ -24,6 +24,7 @@ use serde::Deserialize;
 use serde_json;
 use std::borrow::Cow;
 use std::cell::RefCell;
+use std::collections::HashMap;
 use std::collections::HashSet;
 use std::rc::Rc;
 use wasm_bindgen::closure::Closure;
@@ -250,6 +251,29 @@ pub fn update_choice_history(
     current_history
 }
 
+fn resolve_settings_for_initial_load(
+    settings_result: Result<JsValue, JsValue>,
+) -> (HashMap<String, String>, bool) {
+    let mut map = HashMap::new();
+
+    if let Ok(js_value) = settings_result {
+        if let Some(obj) = js_sys::Object::try_from(&js_value) {
+            let keys = js_sys::Object::keys(&obj);
+            for i in 0..keys.length() {
+                let key = keys.get(i);
+                let value = js_sys::Reflect::get(&obj, &key)
+                    .unwrap_or(js_sys::JsString::from("").into());
+                map.insert(
+                    key.as_string().unwrap_or_default(),
+                    value.as_string().unwrap_or_default(),
+                );
+            }
+        }
+    }
+
+    (map, true)
+}
+
 /// Compute the list of *enabled* target paragraph IDs for the given choices.
 ///
 /// A choice is considered enabled **as long as it has a non-empty target id** –
@@ -358,26 +382,7 @@ pub fn Story(props: StoryProps) -> Element {
                         cb.forget();
                     },
                 ));
-                let js_value = match settings.await {
-                    Ok(val) => val,
-                    Err(_e) => {
-                        // Logs cleared
-                        return;
-                    }
-                };
-                let mut map = std::collections::HashMap::new();
-                if let Some(obj) = js_sys::Object::try_from(&js_value) {
-                    let keys = js_sys::Object::keys(&obj);
-                    for i in 0..keys.length() {
-                        let key = keys.get(i);
-                        let value = js_sys::Reflect::get(&obj, &key)
-                            .unwrap_or(js_sys::JsString::from("").into());
-                        map.insert(
-                            key.as_string().unwrap_or_default(),
-                            value.as_string().unwrap_or_default(),
-                        );
-                    }
-                }
+                let (map, settings_loaded) = resolve_settings_for_initial_load(settings.await);
                 let theme_mode = map
                     .get("theme_mode")
                     .cloned()
@@ -385,7 +390,7 @@ pub fn Story(props: StoryProps) -> Element {
                 {
                     let mut ctx = settings_context.write();
                     ctx.settings = map;
-                    ctx.loaded = true;
+                    ctx.loaded = settings_loaded;
                 }
                 apply_theme_class(ThemeMode::from_value(&theme_mode));
                 // 2. Then load paragraph data
@@ -1682,5 +1687,20 @@ pub fn Story(props: StoryProps) -> Element {
             chapter_title: chapter_title,
             current_paragraph_id: current_paragraph_id,
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::resolve_settings_for_initial_load;
+    use wasm_bindgen::JsValue;
+
+    #[test]
+    fn settings_indexeddb_failure_still_marks_loaded_and_continues() {
+        let (map, should_continue_paragraphs_fetch) =
+            resolve_settings_for_initial_load(Err(JsValue::NULL));
+
+        assert!(map.is_empty());
+        assert!(should_continue_paragraphs_fetch);
     }
 }
