@@ -200,9 +200,42 @@ pub struct Chapter {
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum LoadState {
     NotRequested,
+    Loading,
     Loaded,
     RequestFailed,
     ParseFailed,
+}
+
+fn load_state_label(state: LoadState) -> &'static str {
+    match state {
+        LoadState::NotRequested => "尚未開始",
+        LoadState::Loading => "載入中",
+        LoadState::Loaded => "成功",
+        LoadState::RequestFailed => "請求失敗",
+        LoadState::ParseFailed => "解析失敗",
+    }
+}
+
+
+#[derive(Clone, Debug)]
+struct ApiRequestDebugState {
+    settings: LoadState,
+    paragraphs: LoadState,
+    chapters: LoadState,
+    last_step: String,
+    last_error: Option<String>,
+}
+
+impl Default for ApiRequestDebugState {
+    fn default() -> Self {
+        Self {
+            settings: LoadState::NotRequested,
+            paragraphs: LoadState::NotRequested,
+            chapters: LoadState::NotRequested,
+            last_step: "初始化".to_string(),
+            last_error: None,
+        }
+    }
 }
 
 /// Merge multiple paragraphs' paragraphs field according to language and reader_mode rules
@@ -362,6 +395,7 @@ pub fn Story(props: StoryProps) -> Element {
     let show_chapter_title = use_signal(|| true);
     let mut paragraphs_load_state = use_signal(|| LoadState::NotRequested);
     let mut chapters_load_state = use_signal(|| LoadState::NotRequested);
+    let mut api_debug_state = use_signal(ApiRequestDebugState::default);
     let _settings_context = settings_context.clone();
     let _selected_targets: Vec<String> = Vec::new();
     let story_context = story_context.clone(); // 不需要 mut
@@ -373,6 +407,7 @@ pub fn Story(props: StoryProps) -> Element {
         let mut story_context = story_context.clone();
         let mut settings_context = settings_context.clone();
         let toast = toast.clone();
+        let mut api_debug_state = api_debug_state.clone();
         let mut fetch_initialized = use_signal(|| false);
         use_effect(move || {
             if *fetch_initialized.peek() {
@@ -381,6 +416,12 @@ pub fn Story(props: StoryProps) -> Element {
             fetch_initialized.set(true);
             let toast = toast.clone();
             spawn_local(async move {
+                if let Ok(mut debug) = api_debug_state.try_write() {
+                    debug.settings = LoadState::Loading;
+                    debug.last_step = "讀取 IndexedDB 設定".to_string();
+                    debug.last_error = None;
+                }
+
                 // 1. First read settings (indexedDB)
                 let settings = wasm_bindgen_futures::JsFuture::from(js_sys::Promise::new(
                     &mut |resolve, _reject| {
@@ -412,12 +453,21 @@ pub fn Story(props: StoryProps) -> Element {
                                 );
                             }
                         }
+                        if let Ok(mut debug) = api_debug_state.try_write() {
+                            debug.settings = LoadState::Loaded;
+                            debug.last_step = "IndexedDB 設定讀取完成".to_string();
+                        }
                     }
                     Err(e) => {
                         tracing::error!(
                             "Failed to read settings from IndexedDB; fallback to empty settings: {:?}",
                             e
                         );
+                        if let Ok(mut debug) = api_debug_state.try_write() {
+                            debug.settings = LoadState::RequestFailed;
+                            debug.last_step = "IndexedDB 設定讀取失敗".to_string();
+                            debug.last_error = Some(format!("{e:?}"));
+                        }
                         toast.push(
                             ToastRequest::new(
                                 ToastKind::Error,
@@ -448,7 +498,14 @@ pub fn Story(props: StoryProps) -> Element {
                     ctx.loaded = true;
                 }
                 apply_theme_class(ThemeMode::from_value(&theme_mode));
+
                 // 2. Then load paragraph data
+                if let Ok(mut debug) = api_debug_state.try_write() {
+                    debug.paragraphs = LoadState::Loading;
+                    debug.last_step = "請求段落資料".to_string();
+                    debug.last_error = None;
+                }
+                paragraphs_load_state.set(LoadState::Loading);
                 let paragraphs_url = format!("{}{}", base_api_url(), PARAGRAPHS);
                 let client = reqwest::Client::new();
                 match client.get(&paragraphs_url).send().await {
@@ -474,8 +531,6 @@ pub fn Story(props: StoryProps) -> Element {
                                             data.items.first()
                                         };
                                         if let Some(first_paragraph) = first_paragraph {
-                                            // Only reset the expanded path when we don't already have a
-                                            // reconstructed history (i.e. no stored choice_ids).
                                             let has_history =
                                                 !story_context.read().choice_ids.read().is_empty();
                                             if !has_history {
@@ -490,7 +545,6 @@ pub fn Story(props: StoryProps) -> Element {
                                                 }
                                             }
                                         }
-                                        // Here first set to paragraph_data (signal), then set to context
                                         if let Ok(mut paragraph_guard) = _paragraph_data.try_write()
                                         {
                                             *paragraph_guard = data.items.clone();
@@ -501,6 +555,10 @@ pub fn Story(props: StoryProps) -> Element {
                                             }
                                         }
                                         paragraphs_load_state.set(LoadState::Loaded);
+                                        if let Ok(mut debug) = api_debug_state.try_write() {
+                                            debug.paragraphs = LoadState::Loaded;
+                                            debug.last_step = "段落資料請求成功".to_string();
+                                        }
                                     }
                                     Err(error) => {
                                         tracing::error!(
@@ -512,6 +570,11 @@ pub fn Story(props: StoryProps) -> Element {
                                             "Failed to parse paragraphs response"
                                         );
                                         paragraphs_load_state.set(LoadState::ParseFailed);
+                                        if let Ok(mut debug) = api_debug_state.try_write() {
+                                            debug.paragraphs = LoadState::ParseFailed;
+                                            debug.last_step = "段落資料解析失敗".to_string();
+                                            debug.last_error = Some(error.to_string());
+                                        }
                                     }
                                 },
                                 Err(error) => {
@@ -524,6 +587,11 @@ pub fn Story(props: StoryProps) -> Element {
                                         "Failed to read paragraphs response body"
                                     );
                                     paragraphs_load_state.set(LoadState::ParseFailed);
+                                    if let Ok(mut debug) = api_debug_state.try_write() {
+                                        debug.paragraphs = LoadState::ParseFailed;
+                                        debug.last_step = "段落回應讀取失敗".to_string();
+                                        debug.last_error = Some(error.to_string());
+                                    }
                                 }
                             }
                         } else {
@@ -536,6 +604,11 @@ pub fn Story(props: StoryProps) -> Element {
                                 "Paragraphs request returned non-success status"
                             );
                             paragraphs_load_state.set(LoadState::RequestFailed);
+                            if let Ok(mut debug) = api_debug_state.try_write() {
+                                debug.paragraphs = LoadState::RequestFailed;
+                                debug.last_step = "段落請求回傳非成功狀態".to_string();
+                                debug.last_error = Some(format!("HTTP {}", status));
+                            }
                         }
                     }
                     Err(error) => {
@@ -548,6 +621,11 @@ pub fn Story(props: StoryProps) -> Element {
                             "Paragraphs request failed"
                         );
                         paragraphs_load_state.set(LoadState::RequestFailed);
+                        if let Ok(mut debug) = api_debug_state.try_write() {
+                            debug.paragraphs = LoadState::RequestFailed;
+                            debug.last_step = "段落請求發送失敗".to_string();
+                            debug.last_error = Some(error.to_string());
+                        }
                     }
                 }
             });
@@ -559,12 +637,20 @@ pub fn Story(props: StoryProps) -> Element {
     {
         let mut story_context = story_context.clone();
         let mut chapters_load_state = chapters_load_state.clone();
+        let mut api_debug_state = api_debug_state.clone();
         let mut chapters_loaded = use_signal(|| false);
         use_effect(move || {
             if *chapters_loaded.peek() {
                 return;
             }
             spawn_local(async move {
+                if let Ok(mut debug) = api_debug_state.try_write() {
+                    debug.chapters = LoadState::Loading;
+                    debug.last_step = "請求章節資料".to_string();
+                    debug.last_error = None;
+                }
+                chapters_load_state.set(LoadState::Loading);
+
                 let chapters_url = format!("{}{}", base_api_url(), CHAPTERS);
                 let client = reqwest::Client::new();
                 match client.get(&chapters_url).send().await {
@@ -572,83 +658,80 @@ pub fn Story(props: StoryProps) -> Element {
                         let status = response.status();
                         if status.is_success() {
                             match response.text().await {
-                                Ok(text) => {
-                                    match serde_json::from_str::<serde_json::Value>(&text) {
-                                        Ok(json) => {
-                                            if let Some(items) =
-                                                json.get("items").and_then(|i| i.as_array())
-                                            {
-                                                let mut result = Vec::new();
-                                                for item in items {
-                                                    let id = item
-                                                        .get("id")
-                                                        .and_then(|v| v.as_str())
-                                                        .unwrap_or("")
-                                                        .to_string();
-                                                    let order = item
-                                                        .get("order")
-                                                        .and_then(|v| v.as_i64())
-                                                        .unwrap_or(0)
-                                                        as i32;
-                                                    let titles = item
-                                                        .get("titles")
-                                                        .and_then(|v| v.as_array())
-                                                        .map(|arr| {
-                                                            arr.iter()
-                                                                .filter_map(|title_obj| {
-                                                                    let lang = title_obj
-                                                                        .get("lang")
-                                                                        .and_then(|v| v.as_str())
-                                                                        .unwrap_or("")
-                                                                        .to_string();
-                                                                    let title = title_obj
-                                                                        .get("title")
-                                                                        .and_then(|v| v.as_str())
-                                                                        .unwrap_or("")
-                                                                        .to_string();
-                                                                    if !lang.is_empty()
-                                                                        && !title.is_empty()
-                                                                    {
-                                                                        Some(ChapterTitle {
-                                                                            lang,
-                                                                            title,
-                                                                        })
-                                                                    } else {
-                                                                        None
-                                                                    }
-                                                                })
-                                                                .collect::<Vec<_>>()
-                                                        })
-                                                        .unwrap_or_default();
-                                                    result.push(Chapter { id, titles, order });
+                                Ok(text) => match serde_json::from_str::<serde_json::Value>(&text) {
+                                    Ok(json) => {
+                                        if let Some(items) = json.get("items").and_then(|i| i.as_array()) {
+                                            let mut result = Vec::new();
+                                            for item in items {
+                                                let id = item
+                                                    .get("id")
+                                                    .and_then(|v| v.as_str())
+                                                    .unwrap_or("")
+                                                    .to_string();
+                                                let order = item
+                                                    .get("order")
+                                                    .and_then(|v| v.as_i64())
+                                                    .unwrap_or(0) as i32;
+                                                let titles = item
+                                                    .get("titles")
+                                                    .and_then(|v| v.as_array())
+                                                    .map(|arr| {
+                                                        arr.iter()
+                                                            .filter_map(|title_obj| {
+                                                                let lang = title_obj
+                                                                    .get("lang")
+                                                                    .and_then(|v| v.as_str())
+                                                                    .unwrap_or("")
+                                                                    .to_string();
+                                                                let title = title_obj
+                                                                    .get("title")
+                                                                    .and_then(|v| v.as_str())
+                                                                    .unwrap_or("")
+                                                                    .to_string();
+                                                                if !lang.is_empty() && !title.is_empty() {
+                                                                    Some(ChapterTitle { lang, title })
+                                                                } else {
+                                                                    None
+                                                                }
+                                                            })
+                                                            .collect::<Vec<_>>()
+                                                    })
+                                                    .unwrap_or_default();
+                                                result.push(Chapter { id, titles, order });
+                                            }
+
+                                            if let Ok(mut ctx) = story_context.try_write() {
+                                                if let Ok(mut chapters) = ctx.chapters.try_write() {
+                                                    *chapters = result;
                                                 }
-                                                if let Ok(mut ctx) = story_context.try_write() {
-                                                    if let Ok(mut chapters) =
-                                                        ctx.chapters.try_write()
-                                                    {
-                                                        *chapters = result;
-                                                    }
-                                                }
-                                                if let Ok(mut loaded) = chapters_loaded.try_write()
-                                                {
-                                                    *loaded = true;
-                                                }
-                                                chapters_load_state.set(LoadState::Loaded);
+                                            }
+                                            if let Ok(mut loaded) = chapters_loaded.try_write() {
+                                                *loaded = true;
+                                            }
+                                            chapters_load_state.set(LoadState::Loaded);
+                                            if let Ok(mut debug) = api_debug_state.try_write() {
+                                                debug.chapters = LoadState::Loaded;
+                                                debug.last_step = "章節資料請求成功".to_string();
                                             }
                                         }
-                                        Err(error) => {
-                                            tracing::error!(
-                                                base_api_url = %base_api_url(),
-                                                endpoint = %CHAPTERS,
-                                                url = %chapters_url,
-                                                status = %status,
-                                                error = %error,
-                                                "Failed to parse chapters response"
-                                            );
-                                            chapters_load_state.set(LoadState::ParseFailed);
+                                    }
+                                    Err(error) => {
+                                        tracing::error!(
+                                            base_api_url = %base_api_url(),
+                                            endpoint = %CHAPTERS,
+                                            url = %chapters_url,
+                                            status = %status,
+                                            error = %error,
+                                            "Failed to parse chapters response"
+                                        );
+                                        chapters_load_state.set(LoadState::ParseFailed);
+                                        if let Ok(mut debug) = api_debug_state.try_write() {
+                                            debug.chapters = LoadState::ParseFailed;
+                                            debug.last_step = "章節資料解析失敗".to_string();
+                                            debug.last_error = Some(error.to_string());
                                         }
                                     }
-                                }
+                                },
                                 Err(error) => {
                                     tracing::error!(
                                         base_api_url = %base_api_url(),
@@ -659,6 +742,11 @@ pub fn Story(props: StoryProps) -> Element {
                                         "Failed to read chapters response body"
                                     );
                                     chapters_load_state.set(LoadState::ParseFailed);
+                                    if let Ok(mut debug) = api_debug_state.try_write() {
+                                        debug.chapters = LoadState::ParseFailed;
+                                        debug.last_step = "章節回應讀取失敗".to_string();
+                                        debug.last_error = Some(error.to_string());
+                                    }
                                 }
                             }
                         } else {
@@ -671,6 +759,11 @@ pub fn Story(props: StoryProps) -> Element {
                                 "Chapters request returned non-success status"
                             );
                             chapters_load_state.set(LoadState::RequestFailed);
+                            if let Ok(mut debug) = api_debug_state.try_write() {
+                                debug.chapters = LoadState::RequestFailed;
+                                debug.last_step = "章節請求回傳非成功狀態".to_string();
+                                debug.last_error = Some(format!("HTTP {}", status));
+                            }
                         }
                     }
                     Err(error) => {
@@ -683,6 +776,11 @@ pub fn Story(props: StoryProps) -> Element {
                             "Chapters request failed"
                         );
                         chapters_load_state.set(LoadState::RequestFailed);
+                        if let Ok(mut debug) = api_debug_state.try_write() {
+                            debug.chapters = LoadState::RequestFailed;
+                            debug.last_step = "章節請求發送失敗".to_string();
+                            debug.last_error = Some(error.to_string());
+                        }
                     }
                 }
             });
@@ -1813,6 +1911,17 @@ pub fn Story(props: StoryProps) -> Element {
         }
     };
     let current_paragraph_id = use_signal(|| String::new());
+    let api_debug_snapshot = api_debug_state.read().clone();
+    let show_api_debug = !matches!(
+        api_debug_snapshot.settings,
+        LoadState::NotRequested | LoadState::Loaded
+    ) || !matches!(
+        api_debug_snapshot.paragraphs,
+        LoadState::NotRequested | LoadState::Loaded
+    ) || !matches!(
+        api_debug_snapshot.chapters,
+        LoadState::NotRequested | LoadState::Loaded
+    ) || api_debug_snapshot.last_error.is_some();
 
     let show_load_error = {
         let paragraph_state = *paragraphs_load_state.read();
@@ -1838,6 +1947,21 @@ pub fn Story(props: StoryProps) -> Element {
     }
 
     rsx! {
+        if show_api_debug {
+            div {
+                class: "story-api-debug mx-auto mt-4 mb-3 max-w-3xl rounded border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-700 dark:bg-amber-950/40 dark:text-amber-100",
+                h3 { class: "font-bold mb-2", "API Debug 狀態" }
+                ul { class: "space-y-1",
+                    li { "IndexedDB 設定：{load_state_label(api_debug_snapshot.settings)}" }
+                    li { "段落 API：{load_state_label(api_debug_snapshot.paragraphs)}" }
+                    li { "章節 API：{load_state_label(api_debug_snapshot.chapters)}" }
+                    li { "目前步驟：{api_debug_snapshot.last_step}" }
+                    if let Some(err) = &api_debug_snapshot.last_error {
+                        li { class: "text-red-700 dark:text-red-300", "錯誤：{err}" }
+                    }
+                }
+            }
+        }
         if show_load_error {
             div {
                 class: "story-load-error",
