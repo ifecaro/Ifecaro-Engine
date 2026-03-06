@@ -226,10 +226,6 @@ fn join_url(base: &str, path: &str) -> String {
     )
 }
 
-fn is_localhost_origin(origin: &str) -> bool {
-    origin.contains("://localhost") || origin.contains("://127.0.0.1")
-}
-
 fn resolve_api_url(path: &str) -> String {
     let base = base_api_url();
 
@@ -237,23 +233,6 @@ fn resolve_api_url(path: &str) -> String {
     {
         if let Some(window) = web_sys::window() {
             if let Ok(origin) = window.location().origin() {
-                if is_localhost_origin(&origin) {
-                    let staging_api_base = option_env!("VITE_STAGING_API_URL")
-                        .or(option_env!("STAGING_API_URL"))
-                        .unwrap_or("https://ifecaro.com/staging/db/api");
-
-                    let should_force_staging = base.is_empty()
-                        || base.starts_with('/')
-                        || base.starts_with("./")
-                        || base.starts_with("../")
-                        || base.contains("localhost")
-                        || base.contains("127.0.0.1");
-
-                    if should_force_staging {
-                        return join_url(staging_api_base, path);
-                    }
-                }
-
                 if base.starts_with("http://") || base.starts_with("https://") {
                     return join_url(base, path);
                 }
