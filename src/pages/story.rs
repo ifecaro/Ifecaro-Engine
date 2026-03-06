@@ -217,6 +217,38 @@ fn load_state_label(state: LoadState) -> &'static str {
 }
 
 
+
+fn join_url(base: &str, path: &str) -> String {
+    format!(
+        "{}/{}",
+        base.trim_end_matches('/'),
+        path.trim_start_matches('/')
+    )
+}
+
+fn resolve_api_url(path: &str) -> String {
+    let base = base_api_url();
+    if base.starts_with("http://") || base.starts_with("https://") {
+        return join_url(base, path);
+    }
+
+    #[cfg(target_arch = "wasm32")]
+    {
+        if let Some(window) = web_sys::window() {
+            if let Ok(origin) = window.location().origin() {
+                let with_base = if base.is_empty() {
+                    origin
+                } else {
+                    join_url(&origin, base)
+                };
+                return join_url(&with_base, path);
+            }
+        }
+    }
+
+    join_url(base, path)
+}
+
 #[derive(Clone, Debug)]
 struct ApiRequestDebugState {
     settings: LoadState,
@@ -506,7 +538,7 @@ pub fn Story(props: StoryProps) -> Element {
                     debug.last_error = None;
                 }
                 paragraphs_load_state.set(LoadState::Loading);
-                let paragraphs_url = format!("{}{}", base_api_url(), PARAGRAPHS);
+                let paragraphs_url = resolve_api_url(PARAGRAPHS);
                 let client = reqwest::Client::new();
                 match client.get(&paragraphs_url).send().await {
                     Ok(response) => {
@@ -607,7 +639,7 @@ pub fn Story(props: StoryProps) -> Element {
                             if let Ok(mut debug) = api_debug_state.try_write() {
                                 debug.paragraphs = LoadState::RequestFailed;
                                 debug.last_step = "段落請求回傳非成功狀態".to_string();
-                                debug.last_error = Some(format!("HTTP {}", status));
+                                debug.last_error = Some(format!("HTTP {} | url={}", status, paragraphs_url));
                             }
                         }
                     }
@@ -624,7 +656,7 @@ pub fn Story(props: StoryProps) -> Element {
                         if let Ok(mut debug) = api_debug_state.try_write() {
                             debug.paragraphs = LoadState::RequestFailed;
                             debug.last_step = "段落請求發送失敗".to_string();
-                            debug.last_error = Some(error.to_string());
+                            debug.last_error = Some(format!("{} | url={}", error, paragraphs_url));
                         }
                     }
                 }
@@ -651,7 +683,7 @@ pub fn Story(props: StoryProps) -> Element {
                 }
                 chapters_load_state.set(LoadState::Loading);
 
-                let chapters_url = format!("{}{}", base_api_url(), CHAPTERS);
+                let chapters_url = resolve_api_url(CHAPTERS);
                 let client = reqwest::Client::new();
                 match client.get(&chapters_url).send().await {
                     Ok(response) => {
@@ -762,7 +794,7 @@ pub fn Story(props: StoryProps) -> Element {
                             if let Ok(mut debug) = api_debug_state.try_write() {
                                 debug.chapters = LoadState::RequestFailed;
                                 debug.last_step = "章節請求回傳非成功狀態".to_string();
-                                debug.last_error = Some(format!("HTTP {}", status));
+                                debug.last_error = Some(format!("HTTP {} | url={}", status, chapters_url));
                             }
                         }
                     }
@@ -779,7 +811,7 @@ pub fn Story(props: StoryProps) -> Element {
                         if let Ok(mut debug) = api_debug_state.try_write() {
                             debug.chapters = LoadState::RequestFailed;
                             debug.last_step = "章節請求發送失敗".to_string();
-                            debug.last_error = Some(error.to_string());
+                            debug.last_error = Some(format!("{} | url={}", error, chapters_url));
                         }
                     }
                 }
@@ -1383,13 +1415,7 @@ pub fn Story(props: StoryProps) -> Element {
                                 let mut story_ctx_clone = story_context.clone();
 
                                 spawn_local(async move {
-                                    let fetch_url = format!(
-                                        "{}{}{}{}",
-                                        base_api_url(),
-                                        PARAGRAPHS,
-                                        "/",
-                                        timeout_id_clone
-                                    );
+                                    let fetch_url = resolve_api_url(&format!("{}/{}", PARAGRAPHS.trim_start_matches('/'), timeout_id_clone));
                                     let client = reqwest::Client::new();
                                     if let Ok(resp) = client.get(&fetch_url).send().await {
                                         if resp.status().is_success() {
@@ -1724,8 +1750,7 @@ pub fn Story(props: StoryProps) -> Element {
                     let mut show_chapter_title = show_chapter_title.clone();
                     wasm_bindgen_futures::spawn_local(async move {
                         // Construct the record URL: /collections/paragraphs/records/{id}
-                        let fetch_url =
-                            format!("{}{}{}{}", base_api_url(), PARAGRAPHS, "/", goto_id);
+                        let fetch_url = resolve_api_url(&format!("{}/{}", PARAGRAPHS.trim_start_matches('/'), goto_id));
                         let client = reqwest::Client::new();
                         if let Ok(response) = client.get(&fetch_url).send().await {
                             if response.status().is_success() {
