@@ -445,7 +445,7 @@ pub fn Story(props: StoryProps) -> Element {
                 {
                     let mut ctx = settings_context.write();
                     ctx.settings = map;
-                    ctx.loaded = settings_loaded;
+                    ctx.loaded = true;
                 }
                 apply_theme_class(ThemeMode::from_value(&theme_mode));
                 // 2. Then load paragraph data
