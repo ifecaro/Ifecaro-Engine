@@ -392,7 +392,6 @@ pub fn Story(props: StoryProps) -> Element {
                 apply_theme_class(ThemeMode::from_value(&theme_mode));
             });
 
-            let settings_context_for_paragraphs = settings_context.clone();
             spawn_local(async move {
                 // Load paragraph data independently from settings initialization.
                 let paragraphs_url = format!("{}{}", base_api_url(), PARAGRAPHS);
@@ -404,41 +403,6 @@ pub fn Story(props: StoryProps) -> Element {
                                 Ok(text) => {
                                     match serde_json::from_str::<Data>(&text) {
                                         Ok(data) => {
-                                            let target_id = "storystartpoint";
-                                            let skip_setting = settings_context_for_paragraphs
-                                                .read()
-                                                .settings
-                                                .get("settings_done")
-                                                .map(|v| v == "true")
-                                                .unwrap_or(false);
-                                            let first_paragraph = if skip_setting {
-                                                data.items
-                                                    .iter()
-                                                    .find(|p| p.id.trim() == target_id)
-                                                    .or_else(|| data.items.first())
-                                            } else {
-                                                data.items.first()
-                                            };
-                                            if let Some(first_paragraph) = first_paragraph {
-                                                // Only reset the expanded path when we don't already have a
-                                                // reconstructed history (i.e. no stored choice_ids).
-                                                let has_history = !story_context
-                                                    .read()
-                                                    .choice_ids
-                                                    .read()
-                                                    .is_empty();
-                                                if !has_history {
-                                                    if let Ok(mut ctx) = story_context.try_write() {
-                                                        ctx.target_paragraph_id =
-                                                            Some(first_paragraph.id.clone());
-                                                    }
-                                                    if let Ok(mut expanded) =
-                                                        _expanded_paragraphs.try_write()
-                                                    {
-                                                        *expanded = vec![first_paragraph.clone()];
-                                                    }
-                                                }
-                                            }
                                             // Here first set to paragraph_data (signal), then set to context
                                             if let Ok(mut paragraph_guard) =
                                                 _paragraph_data.try_write()
@@ -464,6 +428,55 @@ pub fn Story(props: StoryProps) -> Element {
                 }
             });
             ()
+        });
+    }
+
+    // Initialize starting paragraph only after settings are loaded so settings_done
+    // can reliably decide whether to jump directly to storystartpoint.
+    {
+        let _paragraph_data = paragraph_data.clone();
+        let mut _expanded_paragraphs = _expanded_paragraphs.clone();
+        let mut story_context = story_context.clone();
+        let settings_context = settings_context.clone();
+        use_effect(move || {
+            if !settings_context.read().loaded {
+                return;
+            }
+
+            let has_history = !story_context.read().choice_ids.read().is_empty();
+            let has_target = story_context.read().target_paragraph_id.is_some();
+            if has_history || has_target {
+                return;
+            }
+
+            let paragraphs = _paragraph_data.read().clone();
+            if paragraphs.is_empty() {
+                return;
+            }
+
+            let settings_done = settings_context
+                .read()
+                .settings
+                .get("settings_done")
+                .map(|v| v == "true")
+                .unwrap_or(false);
+            let first_paragraph = if settings_done {
+                paragraphs
+                    .iter()
+                    .find(|p| p.id.trim() == "storystartpoint")
+                    .or_else(|| paragraphs.first())
+            } else {
+                paragraphs.first()
+            };
+
+            if let Some(first_paragraph) = first_paragraph {
+                if let Ok(mut ctx) = story_context.try_write() {
+                    ctx.target_paragraph_id = Some(first_paragraph.id.clone());
+                }
+                if let Ok(mut expanded) = _expanded_paragraphs.try_write() {
+                    *expanded = vec![first_paragraph.clone()];
+                }
+            }
         });
     }
 
