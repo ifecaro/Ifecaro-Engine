@@ -11,10 +11,23 @@ pub fn base_api_url() -> &'static str {
         return base;
     }
 
+    let staging_api_url = option_env!("VITE_STAGING_API_URL")
+        .or(option_env!("STAGING_API_URL"))
+        .unwrap_or("https://ifecaro.com/staging/db/api");
+
+    #[cfg(target_arch = "wasm32")]
+    {
+        if let Some(window) = web_sys::window() {
+            if let Ok(hostname) = window.location().hostname() {
+                if hostname == "localhost" || hostname == "127.0.0.1" {
+                    return staging_api_url;
+                }
+            }
+        }
+    }
+
     match app_env_label() {
-        "staging" => option_env!("VITE_STAGING_API_URL")
-            .or(option_env!("STAGING_API_URL"))
-            .unwrap_or("https://ifecaro.com/staging/db/api"),
+        "staging" => staging_api_url,
         "production" => option_env!("VITE_PRODUCTION_API_URL")
             .or(option_env!("PRODUCTION_API_URL"))
             .unwrap_or("https://ifecaro.com/db/api"),
