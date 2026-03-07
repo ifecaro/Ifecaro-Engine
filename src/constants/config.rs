@@ -7,22 +7,19 @@ pub struct Language<'a> {
 }
 
 pub fn base_api_url() -> &'static str {
-    option_env!("VITE_BASE_API_URL")
-        .or(option_env!("IFECARO_BASE_API_URL"))
-        .unwrap_or({
-            #[cfg(target_arch = "wasm32")]
-            {
-                if let Some(window) = web_sys::window() {
-                    if let Ok(pathname) = window.location().pathname() {
-                        if pathname.starts_with("/staging") {
-                            return "/staging/db/api";
-                        }
-                    }
-                }
-            }
+    if let Some(base) = option_env!("VITE_BASE_API_URL").or(option_env!("IFECARO_BASE_API_URL")) {
+        return base;
+    }
 
-            "/db/api"
-        })
+    match app_env_label() {
+        "staging" => option_env!("VITE_STAGING_API_URL")
+            .or(option_env!("STAGING_API_URL"))
+            .unwrap_or("https://ifecaro.com/staging/db/api"),
+        "production" => option_env!("VITE_PRODUCTION_API_URL")
+            .or(option_env!("PRODUCTION_API_URL"))
+            .unwrap_or("https://ifecaro.com/db/api"),
+        _ => "/db/api",
+    }
 }
 
 pub fn app_env_label() -> &'static str {
