@@ -9,7 +9,20 @@ pub struct Language<'a> {
 pub fn base_api_url() -> &'static str {
     option_env!("VITE_BASE_API_URL")
         .or(option_env!("IFECARO_BASE_API_URL"))
-        .unwrap_or("/db")
+        .unwrap_or({
+            #[cfg(target_arch = "wasm32")]
+            {
+                if let Some(window) = web_sys::window() {
+                    if let Ok(pathname) = window.location().pathname() {
+                        if pathname.starts_with("/staging") {
+                            return "/staging/db/api";
+                        }
+                    }
+                }
+            }
+
+            "/db/api"
+        })
 }
 
 pub fn app_env_label() -> &'static str {
