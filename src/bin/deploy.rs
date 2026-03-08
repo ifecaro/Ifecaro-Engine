@@ -975,11 +975,6 @@ fn upload_nginx_configs_to_remote(ssh_target: &str, path: &str, ssh_key_file: &s
         anyhow::bail!("❌ Missing local nginx directory");
     }
 
-    let local_nginx_conf = "nginx.conf";
-    if !std::path::Path::new(local_nginx_conf).exists() {
-        anyhow::bail!("❌ Missing local nginx.conf");
-    }
-
     let remote_prepare = format!("mkdir -p {} {}/nginx {}/nginx/conf.d", path, path, path);
 
     let prepare_status = Command::new("ssh")
@@ -1033,32 +1028,6 @@ fn upload_nginx_configs_to_remote(ssh_target: &str, path: &str, ssh_key_file: &s
 
     if !scp_nginx_result.success() {
         anyhow::bail!("❌ Failed to upload nginx directory");
-    }
-
-    let scp_nginx_conf_result = Command::new("scp")
-        .args([
-            "-i",
-            ssh_key_file,
-            "-o",
-            "UserKnownHostsFile=/root/.ssh/known_hosts",
-            "-o",
-            "StrictHostKeyChecking=yes",
-            "-o",
-            "PasswordAuthentication=no",
-            "-o",
-            "PubkeyAuthentication=yes",
-            "-o",
-            "ConnectTimeout=30",
-            local_nginx_conf,
-            &format!("{}:{}/", ssh_target, path),
-        ])
-        .stdout(Stdio::inherit())
-        .stderr(Stdio::inherit())
-        .status()
-        .context("Failed to upload nginx.conf")?;
-
-    if !scp_nginx_conf_result.success() {
-        anyhow::bail!("❌ Failed to upload nginx.conf");
     }
 
     println!("{}", "✅ Uploaded nginx configuration files".green().bold());
