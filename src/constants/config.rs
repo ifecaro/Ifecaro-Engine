@@ -20,7 +20,7 @@ pub fn base_api_url() -> &'static str {
         if let Some(window) = web_sys::window() {
             if let Ok(hostname) = window.location().hostname() {
                 if hostname == "localhost" || hostname == "127.0.0.1" {
-                    return staging_api_url;
+                    return "/db/api";
                 }
             }
         }
