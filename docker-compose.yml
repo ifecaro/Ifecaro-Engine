@@ -9,7 +9,7 @@ services:
       # - RUST_LOG=error
     tty: true
     ports:
-      - "9999:9999"
+      - "${APP_WEB_HOST_PORT:-8080}:9999"
     env_file:
       - .env
     command: bash -c "mkdir -p /root/.ssh && ssh-keyscan 38.242.233.231 >> /root/.ssh/known_hosts; tailwindcss -i ./src/input.css -o ./public/tailwind.css -w & while true; do sleep 30; done"
