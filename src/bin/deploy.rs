@@ -913,6 +913,10 @@ fn upload_to_remote(target_name: &str) -> Result<()> {
         println!("⚠️  Remote directory creation failed, continuing to try upload");
     }
 
+    if target_name == "staging" {
+        upload_nginx_configs_to_remote(&deploy_target.ssh_target, &deploy_target.path, &ssh_key_file)?;
+    }
+
     // Upload deployment package
     let scp_args = &[
         "-i",
@@ -960,6 +964,104 @@ fn upload_to_remote(target_name: &str) -> Result<()> {
     )?;
 
     println!("{}", "✅ Staging deployment completed".green().bold());
+    Ok(())
+}
+
+fn upload_nginx_configs_to_remote(ssh_target: &str, path: &str, ssh_key_file: &str) -> Result<()> {
+    println!("Uploading nginx configuration files for staging...");
+
+    let local_nginx_dir = "nginx";
+    if !std::path::Path::new(local_nginx_dir).exists() {
+        anyhow::bail!("❌ Missing local nginx directory");
+    }
+
+    let local_nginx_conf = "nginx.conf";
+    if !std::path::Path::new(local_nginx_conf).exists() {
+        anyhow::bail!("❌ Missing local nginx.conf");
+    }
+
+    let remote_prepare = format!("mkdir -p {} {}/nginx {}/nginx/conf.d {}/nginx/conf.d/staging", path, path, path, path);
+
+    let prepare_status = Command::new("ssh")
+        .args([
+            "-i",
+            ssh_key_file,
+            "-o",
+            "UserKnownHostsFile=/root/.ssh/known_hosts",
+            "-o",
+            "StrictHostKeyChecking=yes",
+            "-o",
+            "PasswordAuthentication=no",
+            "-o",
+            "PubkeyAuthentication=yes",
+            "-o",
+            "ConnectTimeout=30",
+            ssh_target,
+            &remote_prepare,
+        ])
+        .stdout(Stdio::inherit())
+        .stderr(Stdio::inherit())
+        .status()
+        .context("Failed to create remote nginx directories")?;
+
+    if !prepare_status.success() {
+        anyhow::bail!("❌ Failed to create remote nginx directories");
+    }
+
+    let scp_nginx_result = Command::new("scp")
+        .args([
+            "-i",
+            ssh_key_file,
+            "-o",
+            "UserKnownHostsFile=/root/.ssh/known_hosts",
+            "-o",
+            "StrictHostKeyChecking=yes",
+            "-o",
+            "PasswordAuthentication=no",
+            "-o",
+            "PubkeyAuthentication=yes",
+            "-o",
+            "ConnectTimeout=30",
+            "-r",
+            local_nginx_dir,
+            &format!("{}:{}/", ssh_target, path),
+        ])
+        .stdout(Stdio::inherit())
+        .stderr(Stdio::inherit())
+        .status()
+        .context("Failed to upload nginx directory")?;
+
+    if !scp_nginx_result.success() {
+        anyhow::bail!("❌ Failed to upload nginx directory");
+    }
+
+    let scp_nginx_conf_result = Command::new("scp")
+        .args([
+            "-i",
+            ssh_key_file,
+            "-o",
+            "UserKnownHostsFile=/root/.ssh/known_hosts",
+            "-o",
+            "StrictHostKeyChecking=yes",
+            "-o",
+            "PasswordAuthentication=no",
+            "-o",
+            "PubkeyAuthentication=yes",
+            "-o",
+            "ConnectTimeout=30",
+            local_nginx_conf,
+            &format!("{}:{}/", ssh_target, path),
+        ])
+        .stdout(Stdio::inherit())
+        .stderr(Stdio::inherit())
+        .status()
+        .context("Failed to upload nginx.conf")?;
+
+    if !scp_nginx_conf_result.success() {
+        anyhow::bail!("❌ Failed to upload nginx.conf");
+    }
+
+    println!("{}", "✅ Uploaded nginx configuration files".green().bold());
     Ok(())
 }
 
