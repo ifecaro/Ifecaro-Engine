@@ -464,7 +464,7 @@ services:
 Set `PB_ENCRYPTION_KEY` in the server-side `.env` file, and optionally set `NGINX_CONF_PATH` / `FRONTEND_IMAGE` to control the nginx config directory and the prebuilt frontend image tag.
 The frontend image is meant to be built in CI and pushed to GHCR, so VPS nodes only need to pull the image and start the containers (no local frontend build or dist mount required).
 The remote deploy binary now defaults to staging container names (`nginx-staging` / `pocketbase-staging`). Set `DEPLOY_TO_PRODUCTION=true` to deploy directly to production container names (`nginx` / `pocketbase`).
-For path-based ingress deployments, remote staging deploys now default `NGINX_CONF_PATH` to `./nginx/conf.d/staging`, while production keeps `./nginx/conf.d`, so staging nginx does not recursively proxy `/staging/*` back to itself.
+Remote staging deploys now default `NGINX_CONF_PATH` to `./nginx/conf.d` (same as production), and staging/prod differences are handled by the selected compose config and container ports.
 To avoid port collisions when staging and production run on the same host, `docker-compose.deploy.yml` now defaults to staging host ports (`18080`, `18443`, `18090`).
 For production deployment, set `NGINX_HTTP_HOST_PORT=80`, `NGINX_HTTPS_HOST_PORT=443`, and `POCKETBASE_HOST_PORT=8090` in the server `.env`.
 When keeping a single public domain (`https://ifecaro.com`) with a path-based staging URL (`/staging`), the production nginx acts as ingress and reverse-proxies `/staging/*` to staging frontend (`18080`) and `/staging/db/*` to staging PocketBase (`18090`).

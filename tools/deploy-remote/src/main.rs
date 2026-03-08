@@ -464,7 +464,7 @@ fn resolve_nginx_conf_path(deploy_environment: &str) -> String {
     if deploy_environment == "production" {
         "./nginx/conf.d".to_string()
     } else {
-        "./nginx/conf.d/staging".to_string()
+        "./nginx/conf.d".to_string()
     }
 }
 
@@ -662,7 +662,7 @@ mod tests {
 
         assert_eq!(
             resolve_nginx_conf_path("staging"),
-            "./nginx/conf.d/staging".to_string()
+            "./nginx/conf.d".to_string()
         );
         assert_eq!(
             resolve_nginx_conf_path("production"),

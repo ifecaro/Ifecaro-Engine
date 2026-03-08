@@ -980,7 +980,7 @@ fn upload_nginx_configs_to_remote(ssh_target: &str, path: &str, ssh_key_file: &s
         anyhow::bail!("❌ Missing local nginx.conf");
     }
 
-    let remote_prepare = format!("mkdir -p {} {}/nginx {}/nginx/conf.d {}/nginx/conf.d/staging", path, path, path, path);
+    let remote_prepare = format!("mkdir -p {} {}/nginx {}/nginx/conf.d", path, path, path);
 
     let prepare_status = Command::new("ssh")
         .args([

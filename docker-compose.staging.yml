@@ -48,7 +48,7 @@ services:
     volumes:
       - ./certs:/etc/nginx/certs:ro
       - ./nginx/mime.types:/etc/nginx/mime.types:ro
-      - ${NGINX_CONF_PATH:-./nginx/conf.d/staging}:/etc/nginx/conf.d:ro
+      - ${NGINX_CONF_PATH:-./nginx/conf.d}:/etc/nginx/conf.d:ro
       - frontend_assets_staging:/usr/share/nginx/html:ro
     depends_on:
       frontend:
