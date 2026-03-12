@@ -1,6 +1,6 @@
 use crate::{
     components::{navbar::Navbar, story_content::Choice},
-    constants::config::app_env_label,
+    constants::config::{app_env_label, app_version_label, should_show_version_label},
     contexts::{
         language_context::LanguageState,
         settings_context::use_settings_context,
@@ -42,7 +42,7 @@ pub fn Layout() -> Element {
     let mut story_context = use_story_context();
     let settings_context = use_settings_context();
     let closure_signal = use_signal(|| None::<Closure<dyn FnMut(WebEvent)>>);
-    let app_version = env!("CARGO_PKG_VERSION");
+    let app_version = app_version_label();
     let app_env = app_env_label();
 
     use_effect(move || {
@@ -157,9 +157,11 @@ pub fn Layout() -> Element {
                 class: "container mx-auto px-4 py-8",
                 Outlet::<Route> {}
             }
-            div {
-                class: "fixed bottom-2 left-2 text-xs text-gray-600 dark:text-gray-300 bg-white/80 dark:bg-gray-900/80 px-2 py-1 rounded shadow pointer-events-none z-[10000]",
-                "v{app_version} · ENV={app_env}"
+            if should_show_version_label() {
+                div {
+                    class: "fixed bottom-2 left-2 text-xs text-gray-600 dark:text-gray-300 bg-white/80 dark:bg-gray-900/80 px-2 py-1 rounded shadow pointer-events-none z-[10000]",
+                    "v{app_version} · ENV={app_env}"
+                }
             }
         }
     }

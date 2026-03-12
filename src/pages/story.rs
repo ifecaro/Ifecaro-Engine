@@ -1,6 +1,6 @@
 #![allow(unused_mut)]
 use crate::components::story_content::{Action, Choice, StoryContent};
-use crate::constants::config::{base_api_url, CHAPTERS, PARAGRAPHS};
+use crate::constants::config::{base_api_url, should_show_story_debug_info, CHAPTERS, PARAGRAPHS};
 use crate::contexts::language_context::LanguageState;
 use crate::contexts::settings_context::use_settings_context;
 use crate::contexts::story_context::use_story_context;
@@ -216,8 +216,6 @@ fn load_state_label(state: LoadState) -> &'static str {
     }
 }
 
-
-
 fn join_url(base: &str, path: &str) -> String {
     format!(
         "{}/{}",
@@ -284,7 +282,6 @@ fn build_parse_error_message(
         url,
     )
 }
-
 
 #[derive(Clone, Debug)]
 struct ApiRequestDebugState {
@@ -590,77 +587,83 @@ pub fn Story(props: StoryProps) -> Element {
                                 Ok(text) => {
                                     let cleaned_text = strip_utf8_bom(&text);
                                     match serde_json::from_str::<Data>(cleaned_text) {
-                                    Ok(data) => {
-                                        let target_id = "storystartpoint";
-                                        let skip_setting = settings_context
-                                            .read()
-                                            .settings
-                                            .get("settings_done")
-                                            .map(|v| v == "true")
-                                            .unwrap_or(false);
-                                        let first_paragraph = if skip_setting {
-                                            data.items
-                                                .iter()
-                                                .find(|p| p.id.trim() == target_id)
-                                                .or_else(|| data.items.first())
-                                        } else {
-                                            data.items.first()
-                                        };
-                                        if let Some(first_paragraph) = first_paragraph {
-                                            let has_history =
-                                                !story_context.read().choice_ids.read().is_empty();
-                                            if !has_history {
-                                                if let Ok(mut ctx) = story_context.try_write() {
-                                                    ctx.target_paragraph_id =
-                                                        Some(first_paragraph.id.clone());
+                                        Ok(data) => {
+                                            let target_id = "storystartpoint";
+                                            let skip_setting = settings_context
+                                                .read()
+                                                .settings
+                                                .get("settings_done")
+                                                .map(|v| v == "true")
+                                                .unwrap_or(false);
+                                            let first_paragraph = if skip_setting {
+                                                data.items
+                                                    .iter()
+                                                    .find(|p| p.id.trim() == target_id)
+                                                    .or_else(|| data.items.first())
+                                            } else {
+                                                data.items.first()
+                                            };
+                                            if let Some(first_paragraph) = first_paragraph {
+                                                let has_history = !story_context
+                                                    .read()
+                                                    .choice_ids
+                                                    .read()
+                                                    .is_empty();
+                                                if !has_history {
+                                                    if let Ok(mut ctx) = story_context.try_write() {
+                                                        ctx.target_paragraph_id =
+                                                            Some(first_paragraph.id.clone());
+                                                    }
+                                                    if let Ok(mut expanded) =
+                                                        _expanded_paragraphs.try_write()
+                                                    {
+                                                        *expanded = vec![first_paragraph.clone()];
+                                                    }
                                                 }
-                                                if let Ok(mut expanded) =
-                                                    _expanded_paragraphs.try_write()
+                                            }
+                                            if let Ok(mut paragraph_guard) =
+                                                _paragraph_data.try_write()
+                                            {
+                                                *paragraph_guard = data.items.clone();
+                                            }
+                                            if let Ok(mut ctx) = story_context.try_write() {
+                                                if let Ok(mut paragraphs) =
+                                                    ctx.paragraphs.try_write()
                                                 {
-                                                    *expanded = vec![first_paragraph.clone()];
+                                                    *paragraphs = data.items.clone();
                                                 }
                                             }
-                                        }
-                                        if let Ok(mut paragraph_guard) = _paragraph_data.try_write()
-                                        {
-                                            *paragraph_guard = data.items.clone();
-                                        }
-                                        if let Ok(mut ctx) = story_context.try_write() {
-                                            if let Ok(mut paragraphs) = ctx.paragraphs.try_write() {
-                                                *paragraphs = data.items.clone();
+                                            paragraphs_load_state.set(LoadState::Loaded);
+                                            if let Ok(mut debug) = api_debug_state.try_write() {
+                                                debug.paragraphs = LoadState::Loaded;
+                                                debug.last_step = "段落資料請求成功".to_string();
                                             }
                                         }
-                                        paragraphs_load_state.set(LoadState::Loaded);
-                                        if let Ok(mut debug) = api_debug_state.try_write() {
-                                            debug.paragraphs = LoadState::Loaded;
-                                            debug.last_step = "段落資料請求成功".to_string();
-                                        }
-                                    }
-                                    Err(error) => {
-                                        tracing::error!(
-                                            base_api_url = %base_api_url(),
-                                            endpoint = %PARAGRAPHS,
-                                            url = %paragraphs_url,
-                                            status = %status,
-                                            error = %error,
-                                            "Failed to parse paragraphs response"
-                                        );
-                                        paragraphs_load_state.set(LoadState::ParseFailed);
-                                        let parse_error = build_parse_error_message(
-                                            &error,
-                                            status,
-                                            content_type.as_deref(),
-                                            cleaned_text,
-                                            &paragraphs_url,
-                                        );
-                                        if let Ok(mut debug) = api_debug_state.try_write() {
-                                            debug.paragraphs = LoadState::ParseFailed;
-                                            debug.last_step = "段落資料解析失敗".to_string();
-                                            debug.last_error = Some(parse_error);
+                                        Err(error) => {
+                                            tracing::error!(
+                                                base_api_url = %base_api_url(),
+                                                endpoint = %PARAGRAPHS,
+                                                url = %paragraphs_url,
+                                                status = %status,
+                                                error = %error,
+                                                "Failed to parse paragraphs response"
+                                            );
+                                            paragraphs_load_state.set(LoadState::ParseFailed);
+                                            let parse_error = build_parse_error_message(
+                                                &error,
+                                                status,
+                                                content_type.as_deref(),
+                                                cleaned_text,
+                                                &paragraphs_url,
+                                            );
+                                            if let Ok(mut debug) = api_debug_state.try_write() {
+                                                debug.paragraphs = LoadState::ParseFailed;
+                                                debug.last_step = "段落資料解析失敗".to_string();
+                                                debug.last_error = Some(parse_error);
+                                            }
                                         }
                                     }
                                 }
-                                },
                                 Err(error) => {
                                     tracing::error!(
                                         base_api_url = %base_api_url(),
@@ -691,7 +694,8 @@ pub fn Story(props: StoryProps) -> Element {
                             if let Ok(mut debug) = api_debug_state.try_write() {
                                 debug.paragraphs = LoadState::RequestFailed;
                                 debug.last_step = "段落請求回傳非成功狀態".to_string();
-                                debug.last_error = Some(format!("HTTP {} | url={}", status, paragraphs_url));
+                                debug.last_error =
+                                    Some(format!("HTTP {} | url={}", status, paragraphs_url));
                             }
                         }
                     }
@@ -750,87 +754,99 @@ pub fn Story(props: StoryProps) -> Element {
                                 Ok(text) => {
                                     let cleaned_text = strip_utf8_bom(&text);
                                     match serde_json::from_str::<serde_json::Value>(cleaned_text) {
-                                    Ok(json) => {
-                                        if let Some(items) = json.get("items").and_then(|i| i.as_array()) {
-                                            let mut result = Vec::new();
-                                            for item in items {
-                                                let id = item
-                                                    .get("id")
-                                                    .and_then(|v| v.as_str())
-                                                    .unwrap_or("")
-                                                    .to_string();
-                                                let order = item
-                                                    .get("order")
-                                                    .and_then(|v| v.as_i64())
-                                                    .unwrap_or(0) as i32;
-                                                let titles = item
-                                                    .get("titles")
-                                                    .and_then(|v| v.as_array())
-                                                    .map(|arr| {
-                                                        arr.iter()
-                                                            .filter_map(|title_obj| {
-                                                                let lang = title_obj
-                                                                    .get("lang")
-                                                                    .and_then(|v| v.as_str())
-                                                                    .unwrap_or("")
-                                                                    .to_string();
-                                                                let title = title_obj
-                                                                    .get("title")
-                                                                    .and_then(|v| v.as_str())
-                                                                    .unwrap_or("")
-                                                                    .to_string();
-                                                                if !lang.is_empty() && !title.is_empty() {
-                                                                    Some(ChapterTitle { lang, title })
-                                                                } else {
-                                                                    None
-                                                                }
-                                                            })
-                                                            .collect::<Vec<_>>()
-                                                    })
-                                                    .unwrap_or_default();
-                                                result.push(Chapter { id, titles, order });
-                                            }
+                                        Ok(json) => {
+                                            if let Some(items) =
+                                                json.get("items").and_then(|i| i.as_array())
+                                            {
+                                                let mut result = Vec::new();
+                                                for item in items {
+                                                    let id = item
+                                                        .get("id")
+                                                        .and_then(|v| v.as_str())
+                                                        .unwrap_or("")
+                                                        .to_string();
+                                                    let order = item
+                                                        .get("order")
+                                                        .and_then(|v| v.as_i64())
+                                                        .unwrap_or(0)
+                                                        as i32;
+                                                    let titles = item
+                                                        .get("titles")
+                                                        .and_then(|v| v.as_array())
+                                                        .map(|arr| {
+                                                            arr.iter()
+                                                                .filter_map(|title_obj| {
+                                                                    let lang = title_obj
+                                                                        .get("lang")
+                                                                        .and_then(|v| v.as_str())
+                                                                        .unwrap_or("")
+                                                                        .to_string();
+                                                                    let title = title_obj
+                                                                        .get("title")
+                                                                        .and_then(|v| v.as_str())
+                                                                        .unwrap_or("")
+                                                                        .to_string();
+                                                                    if !lang.is_empty()
+                                                                        && !title.is_empty()
+                                                                    {
+                                                                        Some(ChapterTitle {
+                                                                            lang,
+                                                                            title,
+                                                                        })
+                                                                    } else {
+                                                                        None
+                                                                    }
+                                                                })
+                                                                .collect::<Vec<_>>()
+                                                        })
+                                                        .unwrap_or_default();
+                                                    result.push(Chapter { id, titles, order });
+                                                }
 
-                                            if let Ok(mut ctx) = story_context.try_write() {
-                                                if let Ok(mut chapters) = ctx.chapters.try_write() {
-                                                    *chapters = result;
+                                                if let Ok(mut ctx) = story_context.try_write() {
+                                                    if let Ok(mut chapters) =
+                                                        ctx.chapters.try_write()
+                                                    {
+                                                        *chapters = result;
+                                                    }
+                                                }
+                                                if let Ok(mut loaded) = chapters_loaded.try_write()
+                                                {
+                                                    *loaded = true;
+                                                }
+                                                chapters_load_state.set(LoadState::Loaded);
+                                                if let Ok(mut debug) = api_debug_state.try_write() {
+                                                    debug.chapters = LoadState::Loaded;
+                                                    debug.last_step =
+                                                        "章節資料請求成功".to_string();
                                                 }
                                             }
-                                            if let Ok(mut loaded) = chapters_loaded.try_write() {
-                                                *loaded = true;
-                                            }
-                                            chapters_load_state.set(LoadState::Loaded);
-                                            if let Ok(mut debug) = api_debug_state.try_write() {
-                                                debug.chapters = LoadState::Loaded;
-                                                debug.last_step = "章節資料請求成功".to_string();
-                                            }
                                         }
-                                    }
-                                    Err(error) => {
-                                        tracing::error!(
-                                            base_api_url = %base_api_url(),
-                                            endpoint = %CHAPTERS,
-                                            url = %chapters_url,
-                                            status = %status,
-                                            error = %error,
-                                            "Failed to parse chapters response"
-                                        );
-                                        chapters_load_state.set(LoadState::ParseFailed);
-                                        let parse_error = build_parse_error_message(
-                                            &error,
-                                            status,
-                                            content_type.as_deref(),
-                                            cleaned_text,
-                                            &chapters_url,
-                                        );
-                                        if let Ok(mut debug) = api_debug_state.try_write() {
-                                            debug.chapters = LoadState::ParseFailed;
-                                            debug.last_step = "章節資料解析失敗".to_string();
-                                            debug.last_error = Some(parse_error);
+                                        Err(error) => {
+                                            tracing::error!(
+                                                base_api_url = %base_api_url(),
+                                                endpoint = %CHAPTERS,
+                                                url = %chapters_url,
+                                                status = %status,
+                                                error = %error,
+                                                "Failed to parse chapters response"
+                                            );
+                                            chapters_load_state.set(LoadState::ParseFailed);
+                                            let parse_error = build_parse_error_message(
+                                                &error,
+                                                status,
+                                                content_type.as_deref(),
+                                                cleaned_text,
+                                                &chapters_url,
+                                            );
+                                            if let Ok(mut debug) = api_debug_state.try_write() {
+                                                debug.chapters = LoadState::ParseFailed;
+                                                debug.last_step = "章節資料解析失敗".to_string();
+                                                debug.last_error = Some(parse_error);
+                                            }
                                         }
                                     }
                                 }
-                                },
                                 Err(error) => {
                                     tracing::error!(
                                         base_api_url = %base_api_url(),
@@ -861,7 +877,8 @@ pub fn Story(props: StoryProps) -> Element {
                             if let Ok(mut debug) = api_debug_state.try_write() {
                                 debug.chapters = LoadState::RequestFailed;
                                 debug.last_step = "章節請求回傳非成功狀態".to_string();
-                                debug.last_error = Some(format!("HTTP {} | url={}", status, chapters_url));
+                                debug.last_error =
+                                    Some(format!("HTTP {} | url={}", status, chapters_url));
                             }
                         }
                     }
@@ -1482,7 +1499,11 @@ pub fn Story(props: StoryProps) -> Element {
                                 let mut story_ctx_clone = story_context.clone();
 
                                 spawn_local(async move {
-                                    let fetch_url = resolve_api_url(&format!("{}/{}", PARAGRAPHS.trim_start_matches('/'), timeout_id_clone));
+                                    let fetch_url = resolve_api_url(&format!(
+                                        "{}/{}",
+                                        PARAGRAPHS.trim_start_matches('/'),
+                                        timeout_id_clone
+                                    ));
                                     let client = reqwest::Client::new();
                                     if let Ok(resp) = client.get(&fetch_url).send().await {
                                         if resp.status().is_success() {
@@ -1817,7 +1838,11 @@ pub fn Story(props: StoryProps) -> Element {
                     let mut show_chapter_title = show_chapter_title.clone();
                     wasm_bindgen_futures::spawn_local(async move {
                         // Construct the record URL: /collections/paragraphs/records/{id}
-                        let fetch_url = resolve_api_url(&format!("{}/{}", PARAGRAPHS.trim_start_matches('/'), goto_id));
+                        let fetch_url = resolve_api_url(&format!(
+                            "{}/{}",
+                            PARAGRAPHS.trim_start_matches('/'),
+                            goto_id
+                        ));
                         let client = reqwest::Client::new();
                         if let Ok(response) = client.get(&fetch_url).send().await {
                             if response.status().is_success() {
@@ -2004,16 +2029,17 @@ pub fn Story(props: StoryProps) -> Element {
     };
     let current_paragraph_id = use_signal(|| String::new());
     let api_debug_snapshot = api_debug_state.read().clone();
-    let show_api_debug = !matches!(
-        api_debug_snapshot.settings,
-        LoadState::NotRequested | LoadState::Loaded
-    ) || !matches!(
-        api_debug_snapshot.paragraphs,
-        LoadState::NotRequested | LoadState::Loaded
-    ) || !matches!(
-        api_debug_snapshot.chapters,
-        LoadState::NotRequested | LoadState::Loaded
-    ) || api_debug_snapshot.last_error.is_some();
+    let show_api_debug = should_show_story_debug_info()
+        && (!matches!(
+            api_debug_snapshot.settings,
+            LoadState::NotRequested | LoadState::Loaded
+        ) || !matches!(
+            api_debug_snapshot.paragraphs,
+            LoadState::NotRequested | LoadState::Loaded
+        ) || !matches!(
+            api_debug_snapshot.chapters,
+            LoadState::NotRequested | LoadState::Loaded
+        ) || api_debug_snapshot.last_error.is_some());
 
     let show_load_error = {
         let paragraph_state = *paragraphs_load_state.read();

@@ -51,6 +51,45 @@ fn resolve_base_api_url(
     }
 }
 
+#[cfg(target_arch = "wasm32")]
+fn debugmode_enabled_from_url() -> bool {
+    use web_sys::window;
+
+    let Some(win) = window() else { return false };
+    let raw = win.location().search().unwrap_or_default();
+
+    raw.trim_start_matches('?').split('&').any(|pair| {
+        let mut iter = pair.split('=');
+        iter.next() == Some("debugmode") && iter.next() == Some("true")
+    })
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+fn debugmode_enabled_from_url() -> bool {
+    false
+}
+
+pub fn should_show_story_debug_info() -> bool {
+    if cfg!(debug_assertions) {
+        return true;
+    }
+
+    matches!(app_env_label(), "staging" | "production") && debugmode_enabled_from_url()
+}
+
+pub fn should_show_version_label() -> bool {
+    if app_env_label() == "development" {
+        return false;
+    }
+
+    matches!(app_env_label(), "staging" | "production") && debugmode_enabled_from_url()
+}
+
+pub fn app_version_label() -> &'static str {
+    option_env!("GHCR_TAG")
+        .or(option_env!("IFECARO_APP_VERSION"))
+        .unwrap_or(env!("CARGO_PKG_VERSION"))
+}
 pub fn app_env_label() -> &'static str {
     option_env!("VITE_APP_ENV")
         .or(option_env!("IFECARO_APP_ENV"))
