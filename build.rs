@@ -14,6 +14,8 @@ fn main() {
         "PRODUCTION_API_URL",
         "VITE_APP_ENV",
         "IFECARO_APP_ENV",
+        "IFECARO_APP_VERSION",
+        "GHCR_TAG",
     ] {
         if let Ok(value) = std::env::var(key) {
             println!("cargo:rustc-env={key}={value}");
