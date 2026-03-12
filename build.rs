@@ -1,6 +1,25 @@
 use std::process::Command;
 
 fn main() {
+    println!("cargo:rerun-if-changed=.env");
+
+    // Load optional local .env for build-time API/domain overrides used via option_env!.
+    dotenv::dotenv().ok();
+    for key in [
+        "VITE_BASE_API_URL",
+        "IFECARO_BASE_API_URL",
+        "VITE_STAGING_API_URL",
+        "STAGING_API_URL",
+        "VITE_PRODUCTION_API_URL",
+        "PRODUCTION_API_URL",
+        "VITE_APP_ENV",
+        "IFECARO_APP_ENV",
+    ] {
+        if let Ok(value) = std::env::var(key) {
+            println!("cargo:rustc-env={key}={value}");
+        }
+    }
+
     // Allow skipping Tailwind compilation via environment variable
     if std::env::var("SKIP_TAILWIND").is_ok() {
         println!("cargo:warning=Tailwind CSS compilation skipped (SKIP_TAILWIND set)");
@@ -13,8 +32,6 @@ fn main() {
     // Only watch specific directories that might contain Tailwind classes
     println!("cargo:rerun-if-changed=src/components/");
     println!("cargo:rerun-if-changed=src/pages/");
-
-    dotenv::dotenv().ok();
 
     // Check if tailwind.css already exists and is newer than input files
     let tailwind_exists = std::path::Path::new("./public/tailwind.css").exists();
