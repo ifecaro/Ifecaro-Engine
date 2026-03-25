@@ -15,8 +15,8 @@ Each bundle contains:
 
 Both bundles expect these files in `/etc/nginx/certs` inside the container:
 
-- `/etc/nginx/certs/fullchain.pem`
-- `/etc/nginx/certs/privkey.pem`
+- `/etc/nginx/certs/cert.pem`
+- `/etc/nginx/certs/key.pem`
 
 ## Quick copy example
 
