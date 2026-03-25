@@ -74,6 +74,8 @@ jobs:
   build-frontend:
     name: Build ifecaro-engine (${{ matrix.deploy_env }})
     runs-on: ubuntu-latest
+    environment:
+      name: ${{ matrix.deploy_env }}
     permissions:
       contents: read
       packages: write
@@ -82,19 +84,16 @@ jobs:
         include:
           - deploy_env: staging
             app_env: staging
-            api_url: https://ifecaro.com/staging/db/api
             latest_tag: latest-staging
             version_tag_suffix: staging
           - deploy_env: production
             app_env: production
-            api_url: https://ifecaro.com/db/api
             latest_tag: latest
             version_tag_suffix: production
     env:
       CARGO_TERM_COLOR: always
       SKIP_TAILWIND: "1"
       VITE_APP_ENV: ${{ matrix.app_env }}
-      VITE_BASE_API_URL: ${{ matrix.api_url }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -131,6 +130,21 @@ jobs:
         run: |
           echo "build_time=$(date -u +'%Y-%m-%dT%H:%M:%SZ')" >> "${GITHUB_OUTPUT}"
 
+      - name: Set API URL by environment
+        run: |
+          if [ "${{ matrix.deploy_env }}" = "production" ]; then
+            echo "API_URL=${{ vars.PRODUCTION_API_URL }}" >> "${GITHUB_ENV}"
+          else
+            echo "API_URL=${{ vars.STAGING_API_URL }}" >> "${GITHUB_ENV}"
+          fi
+
+      - name: Validate API URL variable is configured
+        run: |
+          if [ -z "${API_URL}" ]; then
+            echo "API_URL is empty. Please set STAGING_API_URL / PRODUCTION_API_URL in GitHub Variables." >&2
+            exit 1
+          fi
+
       - name: Set image name
         run: |
           repo_owner="${GITHUB_REPOSITORY_OWNER,,}"
@@ -159,7 +173,7 @@ jobs:
             BUILD_VERSION=${{ steps.version.outputs.version }}
             BUILD_TIME=${{ steps.build_meta.outputs.build_time }}
             VITE_APP_ENV=${{ matrix.app_env }}
-            VITE_BASE_API_URL=${{ matrix.api_url }}
+            VITE_BASE_API_URL=${{ env.API_URL }}
           cache-from: type=gha,scope=ifecaro-frontend-buildx-${{ matrix.deploy_env }}
           cache-to: type=gha,mode=max,scope=ifecaro-frontend-buildx-${{ matrix.deploy_env }}
           labels: |
