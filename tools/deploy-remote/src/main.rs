@@ -5,16 +5,17 @@ use std::process::{Command, Stdio};
 use serde::Deserialize;
 
 fn main() -> Result<(), String> {
-    load_env_file();
+    let deploy_target = parse_deploy_target_from_args()?;
+    load_env_file(&deploy_target);
 
     let app_version = resolve_app_version();
     let ghcr_tag = resolve_base_ghcr_tag(app_version);
-    let container_suffix = resolve_container_suffix();
+    let container_suffix = deploy_target.container_suffix();
     let compose_project_name = resolve_compose_project_name(&container_suffix);
     let frontend_container_name = resolve_frontend_container_name(&container_suffix);
     let nginx_container_name = resolve_nginx_container_name(&container_suffix);
     let pocketbase_container_name = resolve_pocketbase_container_name(&container_suffix);
-    let deploy_environment = resolve_deploy_environment(&container_suffix);
+    let deploy_environment = deploy_target.deploy_environment();
     let api_url = resolve_api_url(&deploy_environment);
     let nginx_conf_path = resolve_nginx_conf_path(&deploy_environment);
     let expected_git_sha = required_expected_git_sha()?;
@@ -126,6 +127,56 @@ fn main() -> Result<(), String> {
         "✅ Remote VPS deployment completed (GHCR pull + image SHA verify + docker compose up)"
     );
     Ok(())
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum DeployTarget {
+    Staging,
+    Production,
+}
+
+impl DeployTarget {
+    fn deploy_environment(self) -> String {
+        match self {
+            DeployTarget::Staging => "staging".to_string(),
+            DeployTarget::Production => "production".to_string(),
+        }
+    }
+
+    fn container_suffix(self) -> String {
+        match self {
+            DeployTarget::Staging => "-staging".to_string(),
+            DeployTarget::Production => String::new(),
+        }
+    }
+
+    fn default_env_file(self) -> &'static str {
+        match self {
+            DeployTarget::Staging => ".env.staging",
+            DeployTarget::Production => ".env.production",
+        }
+    }
+}
+
+fn parse_deploy_target_from_args() -> Result<DeployTarget, String> {
+    let mut args = env::args();
+    let _program = args.next();
+    let Some(raw_target) = args.next() else {
+        return Err("❌ Missing deploy target. Usage: deploy-remote <staging|production>".to_string());
+    };
+
+    if args.next().is_some() {
+        return Err("❌ Too many arguments. Usage: deploy-remote <staging|production>".to_string());
+    }
+
+    match raw_target.trim().to_ascii_lowercase().as_str() {
+        "staging" => Ok(DeployTarget::Staging),
+        "production" => Ok(DeployTarget::Production),
+        _ => Err(format!(
+            "❌ Invalid deploy target: {}. Usage: deploy-remote <staging|production>",
+            raw_target
+        )),
+    }
 }
 
 fn run_ssh_command_with_output(
@@ -410,14 +461,6 @@ fn resolve_deploy_compose_file(deploy_environment: &str) -> String {
     }
 }
 
-fn resolve_deploy_environment(container_suffix: &str) -> String {
-    if container_suffix.is_empty() {
-        "production".to_string()
-    } else {
-        "staging".to_string()
-    }
-}
-
 fn resolve_frontend_image(deploy_environment: &str) -> String {
     if let Ok(frontend_image) = env::var("FRONTEND_IMAGE") {
         if !frontend_image.trim().is_empty() {
@@ -468,14 +511,6 @@ fn resolve_nginx_conf_path(deploy_environment: &str) -> String {
     }
 }
 
-fn resolve_container_suffix() -> String {
-    if is_production_enabled() {
-        String::new()
-    } else {
-        "-staging".to_string()
-    }
-}
-
 fn resolve_frontend_container_name(container_suffix: &str) -> String {
     format!("frontend{}", container_suffix)
 }
@@ -502,21 +537,6 @@ fn resolve_compose_project_name(container_suffix: &str) -> String {
     }
 }
 
-fn is_production_enabled() -> bool {
-    let Ok(value) = env::var("DEPLOY_TO_PRODUCTION") else {
-        return false;
-    };
-
-    is_truthy_production_value(&value)
-}
-
-fn is_truthy_production_value(value: &str) -> bool {
-    matches!(
-        value.trim().to_ascii_lowercase().as_str(),
-        "true" | "1" | "yes" | "on"
-    )
-}
-
 fn resolve_app_version() -> &'static str {
     option_env!("IFECARO_APP_VERSION").unwrap_or(env!("CARGO_PKG_VERSION"))
 }
@@ -538,9 +558,18 @@ fn shell_escape(value: &str) -> String {
     format!("'{}'", escaped)
 }
 
-fn load_env_file() {
-    let path = Path::new(".env");
+fn load_env_file(deploy_target: &DeployTarget) {
+    let env_file = env::var("DEPLOY_ENV_FILE")
+        .ok()
+        .map(|value| value.trim().to_string())
+        .filter(|value| !value.is_empty())
+        .unwrap_or_else(|| deploy_target.default_env_file().to_string());
+    let path = Path::new(&env_file);
     if !path.exists() {
+        eprintln!(
+            "⚠️  Env file {} not found, continuing with current process environment only",
+            env_file
+        );
         return;
     }
 
@@ -564,7 +593,7 @@ fn load_env_file() {
         }
 
         let parsed = parse_env_value(value.trim());
-        // SAFETY: This binary is single-threaded when loading .env and does not
+        // SAFETY: This binary is single-threaded when loading env file and does not
         // concurrently access environment variables from other threads.
         unsafe { env::set_var(key, parsed) };
     }
@@ -588,51 +617,11 @@ mod tests {
     use std::env;
 
     #[test]
-    fn truthy_production_values_enable_production() {
-        for truthy in ["true", "TRUE", "1", "yes", "on", " On "] {
-            assert!(
-                is_truthy_production_value(truthy),
-                "expected truthy value: {}",
-                truthy
-            );
-        }
-    }
-
-    #[test]
-    fn non_truthy_production_values_use_staging() {
-        for non_truthy in ["false", "0", "staging", "", "prod", "enabled"] {
-            assert!(
-                !is_truthy_production_value(non_truthy),
-                "expected non-truthy value: {}",
-                non_truthy
-            );
-        }
-    }
-
-    #[test]
-    fn resolve_deploy_environment_matches_suffix() {
-        assert_eq!(resolve_deploy_environment(""), "production".to_string());
-        assert_eq!(
-            resolve_deploy_environment("-staging"),
-            "staging".to_string()
-        );
-    }
-
-    #[test]
-    fn production_toggle_defaults_to_staging() {
-        // SAFETY: test-only cleanup to ensure deterministic default behavior.
-        unsafe { env::remove_var("DEPLOY_TO_PRODUCTION") };
-        assert_eq!(resolve_container_suffix(), "-staging");
-    }
-
-    #[test]
-    fn production_toggle_uses_production_when_enabled() {
-        // SAFETY: test-only scoped environment mutation.
-        unsafe { env::set_var("DEPLOY_TO_PRODUCTION", "true") };
-        assert_eq!(resolve_container_suffix(), "");
-
-        // SAFETY: test-only cleanup of environment variable.
-        unsafe { env::remove_var("DEPLOY_TO_PRODUCTION") };
+    fn deploy_target_argument_parsing() {
+        assert_eq!(DeployTarget::Staging.deploy_environment(), "staging");
+        assert_eq!(DeployTarget::Production.deploy_environment(), "production");
+        assert_eq!(DeployTarget::Staging.container_suffix(), "-staging");
+        assert_eq!(DeployTarget::Production.container_suffix(), "");
     }
 
     #[test]

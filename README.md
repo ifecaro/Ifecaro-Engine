@@ -115,8 +115,10 @@ cargo run --bin deploy build      # Build project
 cargo run --bin deploy deploy     # Full deployment pipeline
 cargo run --bin deploy dev        # Development mode (check + quick test)
 cargo run --bin deploy prod       # Production mode (full test + build + deploy)
-cargo run --manifest-path tools/deploy-remote/Cargo.toml --release  # Standalone remote deploy (minimal deps)
-cargo run --bin deploy remote     # Wrapper: delegates to standalone remote deploy
+cargo run --manifest-path tools/deploy-remote/Cargo.toml --release -- staging     # Standalone remote deploy (staging)
+cargo run --manifest-path tools/deploy-remote/Cargo.toml --release -- production  # Standalone remote deploy (production)
+cargo run --bin deploy remote staging     # Wrapper: delegates to standalone remote deploy (staging)
+cargo run --bin deploy remote production  # Wrapper: delegates to standalone remote deploy (production)
 ```
 
 ## 🛠️ Development Tools
@@ -143,7 +145,8 @@ docker compose exec app cargo run --bin deploy <command>
 | `clean` | Clean build artifacts | Remove target/ and dx/ directories | Cleanup, fresh start | ~5s |
 | `dev` | Development mode | check + quick test | **Daily development** | ~20s |
 | `prod` | Production mode | full test + build + deploy + remote | **Production deployment** | ~90s |
-| `remote` | Remote VPS deploy (wrapper) | run standalone `tools/deploy-remote` binary | **Deploy GHCR images** | ~10-30s |
+| `remote staging` | Remote VPS staging deploy (wrapper) | run standalone `tools/deploy-remote` binary for staging | **Deploy GHCR staging image** | ~10-30s |
+| `remote production` | Remote VPS production deploy (wrapper) | run standalone `tools/deploy-remote` binary for production | **Deploy GHCR production image** | ~10-30s |
 
 #### Menu Options Detailed Comparison
 
@@ -155,7 +158,8 @@ docker compose exec app cargo run --bin deploy <command>
 | **4** | 🧹 Clean Build Files | `clean()` | 1. Remove target/<br>2. Remove dx/ | ✅ Clean workspace | Fresh start, disk space |
 | **5** | ⚡ Development Mode | `check() + test(quick)` | 1. Cargo check<br>2. Quick test suite | ✅ Development ready | **Daily development** |
 | **6** | 🎯 Production Mode | `deploy()` | 1. Full test suite<br>2. Rust + Dioxus build<br>3. PWA bundling<br>4. Deploy package<br>5. Remote upload<br>6. Service restart | ✅ Production deployed | **Production deployment** |
-| **7** | 🌐 Remote VPS Deploy | `run_remote_deploy_binary()` | 1. Run standalone deploy binary<br>2. GHCR image pull<br>3. docker compose up -d | ✅ Remote services running | **Fast remote refresh** |
+| **7** | 🌐 Remote Deploy Staging | `run_remote_deploy_binary(staging)` | 1. Run standalone deploy binary (staging)<br>2. GHCR image pull<br>3. docker compose up -d | ✅ Staging services running | **Fast staging refresh** |
+| **8** | 🌐 Remote Deploy Production | `run_remote_deploy_binary(production)` | 1. Run standalone deploy binary (production)<br>2. GHCR image pull<br>3. docker compose up -d | ✅ Production services running | **Fast production refresh** |
 
 #### Performance Comparison
 
@@ -434,7 +438,7 @@ docker logs <staging-container> --tail=100
 ### Remote Compose File (GHCR Deploy)
 
 The standalone remote deploy program (`tools/deploy-remote`) runs `docker compose -f <file> pull` and `up -d` on the server.
-`cargo run --bin deploy remote` now acts as a wrapper that forwards execution to this standalone program, reducing dependency loading and startup overhead for remote-only deployment.
+`cargo run --bin deploy remote staging` and `cargo run --bin deploy remote production` now act as wrappers that forward execution to this standalone program, reducing dependency loading and startup overhead for remote-only deployment.
 Create a deployment-specific compose file at `DEPLOY_PATH`, for example:
 
 ```yaml
@@ -461,9 +465,9 @@ services:
       - ${NGINX_CONF_PATH:-./nginx/conf.d}:/etc/nginx/conf.d:ro
 ```
 
-Set `PB_ENCRYPTION_KEY` in the server-side `.env` file, and optionally set `NGINX_CONF_PATH` / `FRONTEND_IMAGE` to control the nginx config directory and the prebuilt frontend image tag.
+Set `PB_ENCRYPTION_KEY` in the server-side env file (`.env.staging` or `.env.production`), and optionally set `NGINX_CONF_PATH` / `FRONTEND_IMAGE` to control the nginx config directory and the prebuilt frontend image tag.
 The frontend image is meant to be built in CI and pushed to GHCR, so VPS nodes only need to pull the image and start the containers (no local frontend build or dist mount required).
-The remote deploy binary now defaults to staging container names (`nginx-staging` / `pocketbase-staging`). Set `DEPLOY_TO_PRODUCTION=true` to deploy directly to production container names (`nginx` / `pocketbase`).
+The remote deploy binary now requires an explicit target argument (`staging` or `production`). Staging deploys use staging container names (`nginx-staging` / `pocketbase-staging`), production deploys use production container names (`nginx` / `pocketbase`).
 For path-based ingress deployments, remote staging deploys now default `NGINX_CONF_PATH` to `./nginx/conf.d/staging`, while production keeps `./nginx/conf.d`, so staging nginx does not recursively proxy `/staging/*` back to itself.
 To avoid port collisions when staging and production run on the same host, `docker-compose.deploy.yml` now defaults to staging host ports (`18080`, `18443`, `18090`).
 For production deployment, set `NGINX_HTTP_HOST_PORT=80`, `NGINX_HTTPS_HOST_PORT=443`, and `POCKETBASE_HOST_PORT=8090` in the server `.env`.
@@ -517,12 +521,15 @@ ssh <DEPLOY_USER>@<DEPLOY_HOST> "docker exec nginx sh -lc 'nginx -T | sed -n \"1
 For fastest startup and minimal dependency loading, use the dedicated binary:
 
 ```bash
-cargo run --manifest-path tools/deploy-remote/Cargo.toml --release
+cargo run --manifest-path tools/deploy-remote/Cargo.toml --release -- staging
+# or
+cargo run --manifest-path tools/deploy-remote/Cargo.toml --release -- production
 ```
 
 It intentionally uses only Rust standard library (no clap/anyhow/dotenv/colored), and supports the same environment variables:
-`DEPLOY_USER`, `DEPLOY_HOST`, `DEPLOY_PATH`, `STAGING_DEPLOY_USER`, `STAGING_DEPLOY_HOST`, `STAGING_DEPLOY_PATH`, `SSH_PROFILE`, `STAGING_SSH_PROFILE`, optional `DEPLOY_COMPOSE_FILE`, `SSH_KEY_FILE`, `SSH_KEY_PATH`, `SSH_KEY_NAME`, `GHCR_TAG`, `GHCR_TAG_FORMAT`, `DEPLOY_TO_PRODUCTION`,
+`DEPLOY_USER`, `DEPLOY_HOST`, `DEPLOY_PATH`, `SSH_KEY_FILE`, `SSH_KEY_PATH`, `SSH_KEY_NAME`, optional `DEPLOY_COMPOSE_FILE`, `DEPLOY_ENV_FILE`, `GHCR_TAG`, `GHCR_TAG_FORMAT`,
 `STAGING_API_URL`, `PRODUCTION_API_URL`, `FRONTEND_IMAGE`, `NGINX_CONTAINER_NAME`, `POCKETBASE_CONTAINER_NAME`.
+By default it loads `.env.staging` for `staging` and `.env.production` for `production`, so the two environments remain isolated.
 
 ### Staging vs Production Boundary Definition
 
