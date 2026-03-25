@@ -33,7 +33,18 @@ enum Commands {
     /// Fast staging mode (optimized quick deployment process)
     Prod,
     /// Remote VPS deployment via GHCR (pull image + docker compose up)
-    Remote,
+    Remote {
+        #[command(subcommand)]
+        target: RemoteTarget,
+    },
+}
+
+#[derive(Subcommand, Clone, Debug)]
+enum RemoteTarget {
+    /// Deploy GHCR image to staging
+    Staging,
+    /// Deploy GHCR image to production
+    Production,
 }
 
 #[derive(clap::ValueEnum, Clone, Debug)]
@@ -67,8 +78,8 @@ fn main() -> Result<()> {
             deploy_staging()?;
             println!("{}", "🎉 Staging deployment completed".green().bold());
         }
-        Some(Commands::Remote) => {
-            run_remote_deploy_binary()?;
+        Some(Commands::Remote { target }) => {
+            run_remote_deploy_binary(target.clone())?;
         }
         None => {
             show_interactive_menu()?;
@@ -106,14 +117,12 @@ fn show_interactive_menu() -> Result<()> {
             "  {}  🎯 Staging mode (fast one-click deployment)",
             "6.".cyan().bold()
         );
-        println!(
-            "  {}  🌐 Remote VPS deploy (GHCR pull + docker compose up)",
-            "7.".cyan().bold()
-        );
+        println!("  {}  🌐 Remote deploy staging", "7.".cyan().bold());
+        println!("  {}  🌐 Remote deploy production", "8.".cyan().bold());
         println!("  {}  ❌ Exit", "0.".red().bold());
         println!();
 
-        print!("{}", "Please enter option (0-7): ".green().bold());
+        print!("{}", "Please enter option (0-8): ".green().bold());
         io::stdout().flush()?;
 
         let mut input = String::new();
@@ -158,11 +167,13 @@ fn show_interactive_menu() -> Result<()> {
                 wait_for_enter();
             }
             "7" => {
-                println!(
-                    "{}",
-                    "Starting remote VPS deployment (GHCR pull + docker compose up)...".yellow()
-                );
-                run_remote_deploy_binary()?;
+                println!("{}", "Starting remote staging deployment...".yellow());
+                run_remote_deploy_binary(RemoteTarget::Staging)?;
+                wait_for_enter();
+            }
+            "8" => {
+                println!("{}", "Starting remote production deployment...".yellow());
+                run_remote_deploy_binary(RemoteTarget::Production)?;
                 wait_for_enter();
             }
             "0" => {
@@ -177,7 +188,7 @@ fn show_interactive_menu() -> Result<()> {
             _ => {
                 println!(
                     "{}",
-                    "Invalid option, please enter again (0-7)".red().bold()
+                    "Invalid option, please enter again (0-8)".red().bold()
                 );
                 wait_for_enter();
             }
@@ -963,7 +974,7 @@ fn upload_to_remote(target_name: &str) -> Result<()> {
     Ok(())
 }
 
-fn run_remote_deploy_binary() -> Result<()> {
+fn run_remote_deploy_binary(target: RemoteTarget) -> Result<()> {
     println!(
         "\n{}",
         "🌐 Running remote VPS deployment (minimal standalone binary)..."
@@ -971,12 +982,19 @@ fn run_remote_deploy_binary() -> Result<()> {
             .bold()
     );
 
+    let target_arg = match target {
+        RemoteTarget::Staging => "staging",
+        RemoteTarget::Production => "production",
+    };
+
     let status = Command::new("cargo")
         .args([
             "run",
             "--manifest-path",
             "tools/deploy-remote/Cargo.toml",
             "--release",
+            "--",
+            target_arg,
         ])
         .stdout(Stdio::inherit())
         .stderr(Stdio::inherit())
