@@ -129,12 +129,15 @@ jobs:
           echo "build_time=$(date -u +'%Y-%m-%dT%H:%M:%SZ')" >> "${GITHUB_OUTPUT}"
 
       - name: Set API URL by environment
+        id: set_api_url
         run: |
           if [ "${{ matrix.deploy_env }}" = "production" ]; then
-            echo "API_URL=${{ vars.PRODUCTION_API_URL }}" >> "${GITHUB_ENV}"
+            api_url="${{ vars.PRODUCTION_API_URL }}"
           else
-            echo "API_URL=${{ vars.STAGING_API_URL }}" >> "${GITHUB_ENV}"
+            api_url="${{ vars.STAGING_API_URL }}"
           fi
+          echo "API_URL=${api_url}" >> "${GITHUB_ENV}"
+          echo "api_url=${api_url}" >> "${GITHUB_OUTPUT}"
 
       - name: Set image name
         run: |
@@ -164,7 +167,7 @@ jobs:
             BUILD_VERSION=${{ steps.version.outputs.version }}
             BUILD_TIME=${{ steps.build_meta.outputs.build_time }}
             VITE_APP_ENV=${{ matrix.app_env }}
-            VITE_BASE_API_URL=${{ env.API_URL }}
+            VITE_BASE_API_URL=${{ steps.set_api_url.outputs.api_url }}
           cache-from: type=gha,scope=ifecaro-frontend-buildx-${{ matrix.deploy_env }}
           cache-to: type=gha,mode=max,scope=ifecaro-frontend-buildx-${{ matrix.deploy_env }}
           labels: |
