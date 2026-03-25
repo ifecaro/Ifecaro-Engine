@@ -74,6 +74,8 @@ jobs:
   build-frontend:
     name: Build ifecaro-engine (${{ matrix.deploy_env }})
     runs-on: ubuntu-latest
+    environment:
+      name: ${{ matrix.deploy_env }}
     permissions:
       contents: read
       packages: write
@@ -129,15 +131,19 @@ jobs:
           echo "build_time=$(date -u +'%Y-%m-%dT%H:%M:%SZ')" >> "${GITHUB_OUTPUT}"
 
       - name: Set API URL by environment
-        id: set_api_url
         run: |
           if [ "${{ matrix.deploy_env }}" = "production" ]; then
-            api_url="${{ vars.PRODUCTION_API_URL }}"
+            echo "API_URL=${{ vars.PRODUCTION_API_URL }}" >> "${GITHUB_ENV}"
           else
-            api_url="${{ vars.STAGING_API_URL }}"
+            echo "API_URL=${{ vars.STAGING_API_URL }}" >> "${GITHUB_ENV}"
           fi
-          echo "API_URL=${api_url}" >> "${GITHUB_ENV}"
-          echo "api_url=${api_url}" >> "${GITHUB_OUTPUT}"
+
+      - name: Validate API URL variable is configured
+        run: |
+          if [ -z "${API_URL}" ]; then
+            echo "API_URL is empty. Please set STAGING_API_URL / PRODUCTION_API_URL in GitHub Variables." >&2
+            exit 1
+          fi
 
       - name: Set image name
         run: |
@@ -167,7 +173,7 @@ jobs:
             BUILD_VERSION=${{ steps.version.outputs.version }}
             BUILD_TIME=${{ steps.build_meta.outputs.build_time }}
             VITE_APP_ENV=${{ matrix.app_env }}
-            VITE_BASE_API_URL=${{ steps.set_api_url.outputs.api_url }}
+            VITE_BASE_API_URL=${{ env.API_URL }}
           cache-from: type=gha,scope=ifecaro-frontend-buildx-${{ matrix.deploy_env }}
           cache-to: type=gha,mode=max,scope=ifecaro-frontend-buildx-${{ matrix.deploy_env }}
           labels: |
