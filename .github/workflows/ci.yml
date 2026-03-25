@@ -82,19 +82,16 @@ jobs:
         include:
           - deploy_env: staging
             app_env: staging
-            api_url: https://ifecaro.com/staging/db/api
             latest_tag: latest-staging
             version_tag_suffix: staging
           - deploy_env: production
             app_env: production
-            api_url: https://ifecaro.com/db/api
             latest_tag: latest
             version_tag_suffix: production
     env:
       CARGO_TERM_COLOR: always
       SKIP_TAILWIND: "1"
       VITE_APP_ENV: ${{ matrix.app_env }}
-      VITE_BASE_API_URL: ${{ matrix.api_url }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -131,6 +128,17 @@ jobs:
         run: |
           echo "build_time=$(date -u +'%Y-%m-%dT%H:%M:%SZ')" >> "${GITHUB_OUTPUT}"
 
+      - name: Set API URL by environment
+        id: set_api_url
+        run: |
+          if [ "${{ matrix.deploy_env }}" = "production" ]; then
+            api_url="${{ vars.PRODUCTION_API_URL }}"
+          else
+            api_url="${{ vars.STAGING_API_URL }}"
+          fi
+          echo "API_URL=${api_url}" >> "${GITHUB_ENV}"
+          echo "api_url=${api_url}" >> "${GITHUB_OUTPUT}"
+
       - name: Set image name
         run: |
           repo_owner="${GITHUB_REPOSITORY_OWNER,,}"
@@ -159,7 +167,7 @@ jobs:
             BUILD_VERSION=${{ steps.version.outputs.version }}
             BUILD_TIME=${{ steps.build_meta.outputs.build_time }}
             VITE_APP_ENV=${{ matrix.app_env }}
-            VITE_BASE_API_URL=${{ matrix.api_url }}
+            VITE_BASE_API_URL=${{ steps.set_api_url.outputs.api_url }}
           cache-from: type=gha,scope=ifecaro-frontend-buildx-${{ matrix.deploy_env }}
           cache-to: type=gha,mode=max,scope=ifecaro-frontend-buildx-${{ matrix.deploy_env }}
           labels: |
