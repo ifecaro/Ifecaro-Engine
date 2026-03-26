@@ -130,23 +130,23 @@ jobs:
         run: |
           echo "build_time=$(date -u +'%Y-%m-%dT%H:%M:%SZ')" >> "${GITHUB_OUTPUT}"
 
-      - name: Set API URL by environment
+      - name: Set VITE_BASE_API_URL by environment
         run: |
           if [ "${{ matrix.deploy_env }}" = "production" ]; then
-            echo "API_URL=${{ vars.PRODUCTION_API_URL }}" >> "${GITHUB_ENV}"
+            echo "VITE_BASE_API_URL=${{ vars.PRODUCTION_API_URL }}" >> "${GITHUB_ENV}"
           else
-            echo "API_URL=${{ vars.STAGING_API_URL }}" >> "${GITHUB_ENV}"
+            echo "VITE_BASE_API_URL=${{ vars.STAGING_API_URL }}" >> "${GITHUB_ENV}"
           fi
 
       - name: Log masked build-time API URL
         run: |
-          echo "::add-mask::${API_URL}"
-          echo "Resolved build-time API_URL=${API_URL}"
+          echo "::add-mask::${VITE_BASE_API_URL}"
+          echo "Resolved build-time VITE_BASE_API_URL=${VITE_BASE_API_URL}"
 
-      - name: Validate API URL variable is configured
+      - name: Validate VITE_BASE_API_URL variable is configured
         run: |
-          if [ -z "${API_URL}" ]; then
-            echo "API_URL is empty. Please set STAGING_API_URL / PRODUCTION_API_URL in GitHub Variables." >&2
+          if [ -z "${VITE_BASE_API_URL}" ]; then
+            echo "VITE_BASE_API_URL is empty. Please set STAGING_API_URL / PRODUCTION_API_URL in GitHub Variables." >&2
             exit 1
           fi
 
@@ -178,7 +178,7 @@ jobs:
             BUILD_VERSION=${{ steps.version.outputs.version }}
             BUILD_TIME=${{ steps.build_meta.outputs.build_time }}
             VITE_APP_ENV=${{ matrix.app_env }}
-            VITE_BASE_API_URL=${{ env.API_URL }}
+            VITE_BASE_API_URL=${{ env.VITE_BASE_API_URL }}
           cache-from: type=gha,scope=ifecaro-frontend-buildx-${{ matrix.deploy_env }}
           cache-to: type=gha,mode=max,scope=ifecaro-frontend-buildx-${{ matrix.deploy_env }}
           labels: |
@@ -188,3 +188,27 @@ jobs:
           tags: |
             ${{ env.FRONTEND_IMAGE }}:${{ matrix.latest_tag }}
             ${{ env.FRONTEND_IMAGE }}:${{ steps.version.outputs.version }}-${{ matrix.version_tag_suffix }}
+
+      - name: Verify VITE_BASE_API_URL value in compiled image artifacts
+        run: |
+          image_ref="${FRONTEND_IMAGE}:${{ matrix.latest_tag }}"
+          temp_dir="$(mktemp -d)"
+          container_id=""
+          cleanup() {
+            if [ -n "${container_id}" ]; then
+              docker rm -f "${container_id}" >/dev/null 2>&1 || true
+            fi
+            rm -rf "${temp_dir}"
+          }
+          trap cleanup EXIT
+
+          docker pull "${image_ref}"
+          container_id="$(docker create "${image_ref}")"
+          docker cp "${container_id}:/dist" "${temp_dir}/dist"
+
+          if ! grep -R -a -F -- "${VITE_BASE_API_URL}" "${temp_dir}/dist" >/dev/null; then
+            echo "Expected VITE_BASE_API_URL value '${VITE_BASE_API_URL}' was not found in compiled artifacts inside ${image_ref}." >&2
+            exit 1
+          fi
+
+          echo "Verified VITE_BASE_API_URL value is present in compiled artifacts inside ${image_ref}."
