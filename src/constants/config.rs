@@ -7,7 +7,9 @@ pub struct Language<'a> {
 }
 
 pub fn base_api_url() -> &'static str {
-    let explicit_base = option_env!("VITE_BASE_API_URL").or(option_env!("IFECARO_BASE_API_URL"));
+    let explicit_base = option_env!("VITE_BASE_API_URL")
+        .or(option_env!("IFECARO_BASE_API_URL"))
+        .filter(|value| !value.trim().is_empty());
 
     let staging_api_url = option_env!("VITE_STAGING_API_URL")
         .or(option_env!("STAGING_API_URL"))
@@ -179,5 +181,18 @@ mod tests {
         );
 
         assert_eq!(actual, "https://example.com/custom/api");
+    }
+
+    #[test]
+    fn empty_explicit_base_url_falls_back_to_production_default() {
+        let explicit_base = Some("").filter(|value| !value.trim().is_empty());
+        let actual = resolve_base_api_url(
+            explicit_base,
+            "https://ifecaro.com/staging/db/api",
+            "production",
+            false,
+        );
+
+        assert_eq!(actual, "https://ifecaro.com/db/api");
     }
 }
