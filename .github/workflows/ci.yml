@@ -138,6 +138,11 @@ jobs:
             echo "API_URL=${{ vars.STAGING_API_URL }}" >> "${GITHUB_ENV}"
           fi
 
+      - name: Log masked build-time API URL
+        run: |
+          echo "::add-mask::${API_URL}"
+          echo "Resolved build-time API_URL=${API_URL}"
+
       - name: Validate API URL variable is configured
         run: |
           if [ -z "${API_URL}" ]; then
