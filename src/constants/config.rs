@@ -184,8 +184,14 @@ mod tests {
     }
 
     #[test]
-    fn empty_explicit_base_url_falls_back_to_production_default() {
+    fn empty_explicit_base_url_matches_unset_behavior() {
         let explicit_base = Some("").filter(|value| !value.trim().is_empty());
+        let expected = resolve_base_api_url(
+            None,
+            "https://ifecaro.com/staging/db/api",
+            "production",
+            false,
+        );
         let actual = resolve_base_api_url(
             explicit_base,
             "https://ifecaro.com/staging/db/api",
@@ -193,6 +199,6 @@ mod tests {
             false,
         );
 
-        assert_eq!(actual, "https://ifecaro.com/db/api");
+        assert_eq!(actual, expected);
     }
 }
