@@ -168,6 +168,7 @@ jobs:
           buildkit-image: public.ecr.aws/docker/library/buildkit:buildx-stable-1
 
       - name: Build and push ifecaro-engine image
+        id: build_frontend_image
         uses: docker/build-push-action@v6
         with:
           context: .
@@ -191,7 +192,13 @@ jobs:
 
       - name: Verify VITE_BASE_API_URL value in compiled image artifacts
         run: |
-          image_ref="${FRONTEND_IMAGE}:${{ matrix.latest_tag }}"
+          image_digest="${{ steps.build_frontend_image.outputs.digest }}"
+          if [ -z "${image_digest}" ]; then
+            echo "docker/build-push-action digest output is empty; cannot verify exact built artifact." >&2
+            exit 1
+          fi
+
+          image_ref="${FRONTEND_IMAGE}@${image_digest}"
           temp_dir="$(mktemp -d)"
           container_id=""
           cleanup() {
