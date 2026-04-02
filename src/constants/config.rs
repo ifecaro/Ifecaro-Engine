@@ -210,8 +210,11 @@ mod tests {
             "production",
             false,
         );
+        let expected = option_env!("VITE_PRODUCTION_API_URL")
+            .or(option_env!("PRODUCTION_API_URL"))
+            .unwrap_or("https://ifecaro.com/db/api");
 
-        assert_eq!(actual, "https://ifecaro.com/db/api");
+        assert_eq!(actual, expected);
         assert!(!actual.is_empty());
     }
 
