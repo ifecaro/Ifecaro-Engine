@@ -201,4 +201,28 @@ mod tests {
 
         assert_eq!(actual, expected);
     }
+
+    #[test]
+    fn production_without_explicit_base_url_uses_production_default() {
+        let actual = resolve_base_api_url(
+            None,
+            "https://ifecaro.com/staging/db/api",
+            "production",
+            false,
+        );
+        let expected = option_env!("VITE_PRODUCTION_API_URL")
+            .or(option_env!("PRODUCTION_API_URL"))
+            .unwrap_or("https://ifecaro.com/db/api");
+
+        assert_eq!(actual, expected);
+        assert!(!actual.is_empty());
+    }
+
+    #[test]
+    fn non_production_without_explicit_base_url_uses_staging_default() {
+        let actual = resolve_base_api_url(None, "https://ifecaro.com/staging/db/api", "staging", false);
+
+        assert_eq!(actual, "https://ifecaro.com/staging/db/api");
+        assert!(!actual.is_empty());
+    }
 }
