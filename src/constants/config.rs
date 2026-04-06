@@ -7,13 +7,9 @@ pub struct Language<'a> {
 }
 
 pub fn base_api_url() -> &'static str {
-    let explicit_base = option_env!("VITE_BASE_API_URL")
-        .or(option_env!("IFECARO_BASE_API_URL"))
-        .filter(|value| !value.trim().is_empty());
+    let explicit_base = option_env!("VITE_BASE_API_URL").filter(|value| !value.trim().is_empty());
 
-    let staging_api_url = option_env!("VITE_STAGING_API_URL")
-        .or(option_env!("STAGING_API_URL"))
-        .unwrap_or("https://ifecaro.com/staging/db/api");
+    let staging_api_url = "https://ifecaro.com/staging/db/api";
 
     let app_env = app_env_label();
 
@@ -46,9 +42,7 @@ fn resolve_base_api_url(
     }
 
     match app_env {
-        "production" => option_env!("VITE_PRODUCTION_API_URL")
-            .or(option_env!("PRODUCTION_API_URL"))
-            .unwrap_or("https://ifecaro.com/db/api"),
+        "production" => "https://ifecaro.com/db/api",
         _ => staging_api_url,
     }
 }
@@ -210,9 +204,7 @@ mod tests {
             "production",
             false,
         );
-        let expected = option_env!("VITE_PRODUCTION_API_URL")
-            .or(option_env!("PRODUCTION_API_URL"))
-            .unwrap_or("https://ifecaro.com/db/api");
+        let expected = "https://ifecaro.com/db/api";
 
         assert_eq!(actual, expected);
         assert!(!actual.is_empty());
