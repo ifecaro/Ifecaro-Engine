@@ -36,8 +36,8 @@ RUN ln -s /usr/bin/chromium /usr/bin/chromium-browser || true
 # Setup Rust
 RUN rustup default nightly && \
     rustup target add wasm32-unknown-unknown && \
-    cargo install wasm-pack && \
-    cargo install dioxus-cli
+    cargo install wasm-pack --locked && \
+    cargo install dioxus-cli --locked
 
 # Set working directory (will be overridden in docker-compose)
 WORKDIR /app
