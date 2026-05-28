@@ -8,25 +8,24 @@ use wasm_bindgen::JsValue;
 #[cfg(target_arch = "wasm32")]
 use web_sys::window;
 
-
 #[cfg(target_arch = "wasm32")]
 fn preferred_language(default_lang: String) -> String {
     if let Some(win) = window() {
         if let Ok(Some(storage)) = win.session_storage() {
             if let Ok(Some(lang)) = storage.get_item("ifecaro_language") {
                 if !lang.is_empty() {
-                    return lang;
+                    return crate::i18n::canonical_language(lang);
                 }
             }
         }
     }
 
-    default_lang
+    crate::i18n::canonical_language(default_lang)
 }
 
 #[cfg(not(target_arch = "wasm32"))]
 fn preferred_language(default_lang: String) -> String {
-    default_lang
+    crate::i18n::canonical_language(default_lang)
 }
 
 #[component]

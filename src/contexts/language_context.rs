@@ -17,10 +17,13 @@ impl LanguageState {
     }
 
     pub fn set_language(&mut self, lang: &str) {
+        let lang = crate::i18n::canonical_language_code(lang);
         self.current_language = lang.to_string();
 
         // Set i18n based on language code
-        let parsed_lang = lang.parse::<LanguageIdentifier>().unwrap_or(langid!("en-US"));
+        let parsed_lang = lang
+            .parse::<LanguageIdentifier>()
+            .unwrap_or(langid!("en-US"));
         self.i18n.set_language(parsed_lang);
     }
 }

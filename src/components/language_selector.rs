@@ -94,10 +94,6 @@ pub const AVAILABLE_LANGUAGES: &[Language] = &[
         name: "Ελληνικά (Ελλάδα)",
     },
     Language {
-        code: "en",
-        name: "English",
-    },
-    Language {
         code: "en-AU",
         name: "English (Australia)",
     },
@@ -140,10 +136,6 @@ pub const AVAILABLE_LANGUAGES: &[Language] = &[
     Language {
         code: "en-ZA",
         name: "English (South Africa)",
-    },
-    Language {
-        code: "es",
-        name: "Español",
     },
     Language {
         code: "es-419",
@@ -402,7 +394,6 @@ pub const AVAILABLE_LANGUAGES: &[Language] = &[
         name: "中文（台灣）",
     },
 ];
-
 
 #[allow(dead_code)]
 pub fn display_language(lang: &&Language) -> String {

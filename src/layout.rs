@@ -37,6 +37,7 @@ impl Default for KeyboardState {
 #[component]
 pub fn Layout() -> Element {
     let route = use_route::<Route>();
+    let navigator = use_navigator();
     let mut state = use_context::<Signal<LanguageState>>();
     let mut keyboard_state = use_context_provider(|| Signal::new(KeyboardState::default()));
     let mut story_context = use_story_context();
@@ -46,6 +47,11 @@ pub fn Layout() -> Element {
     let app_env = app_env_label();
 
     use_effect(move || {
+        if let Some(canonical_route) = route.with_canonical_language() {
+            let _ = navigator.replace(canonical_route);
+            return;
+        }
+
         let lang = match &route {
             Route::Home {} => "zh-TW",
             Route::Story { lang }

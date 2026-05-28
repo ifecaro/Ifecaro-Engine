@@ -26,6 +26,19 @@ pub fn create_i18n_store() -> I18nConfig {
     config
 }
 
+/// Map broad language aliases to the concrete locales that have story content.
+pub fn canonical_language_code(lang: &str) -> &str {
+    match lang {
+        "en" => "en-US",
+        "es" => "es-ES",
+        _ => lang,
+    }
+}
+
+pub fn canonical_language(lang: String) -> String {
+    canonical_language_code(&lang).to_string()
+}
+
 // Get list of all available languages
 #[allow(dead_code)]
 pub fn get_available_languages() -> Vec<String> {
