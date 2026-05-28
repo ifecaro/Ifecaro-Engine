@@ -439,6 +439,14 @@ docker logs <staging-container> --tail=100
 
 The standalone remote deploy program (`tools/deploy-remote`) runs `docker compose -f <file> pull` and `up -d` on the server.
 `cargo run --bin deploy remote staging` and `cargo run --bin deploy remote production` now act as wrappers that forward execution to this standalone program, reducing dependency loading and startup overhead for remote-only deployment.
+
+> ✅ **Production is GHCR `/dist` flow only**  
+> Production remote deploy must use `docker-compose.production.yml` (or `DEPLOY_COMPOSE_FILE` pointing to an equivalent file) with frontend command:  
+> `rm -rf /shared/* && cp -r /dist/. /shared`  
+> and **must not** mount `./frontend:/frontend:ro`.
+
+> ✅ **Staging/local may keep legacy `./frontend` flow**  
+> `docker-compose.staging.yml` is the only place that should keep the legacy `./frontend` copy flow for staging/local convenience.
 Create a deployment-specific compose file at `DEPLOY_PATH`, for example:
 
 ```yaml
@@ -469,7 +477,12 @@ Set `PB_ENCRYPTION_KEY` in the server-side env file (`.env.staging` or `.env.pro
 The frontend image is meant to be built in CI and pushed to GHCR, so VPS nodes only need to pull the image and start the containers (no local frontend build or dist mount required).
 The remote deploy binary now requires an explicit target argument (`staging` or `production`). Staging deploys use staging container names (`nginx-staging` / `pocketbase-staging`), production deploys use production container names (`nginx` / `pocketbase`).
 For path-based ingress deployments, remote staging deploys now default `NGINX_CONF_PATH` to `./nginx/conf.d/staging`, while production keeps `./nginx/conf.d`, so staging nginx does not recursively proxy `/staging/*` back to itself.
-To avoid port collisions when staging and production run on the same host, `docker-compose.deploy.yml` now defaults to staging host ports (`18080`, `18443`, `18090`).
+To avoid port collisions when staging and production run on the same host, staging and production should use different compose project names (`-p`) and different frontend volumes:
+- Production: `ifecaro-production` + `frontend_assets_production`
+- Staging: `ifecaro-staging` + `frontend_assets_staging`
+
+> ❌ **禁止混搭（Do not mix）**  
+> GHCR frontend image + `/frontend` copy command is an invalid combination and now blocked by deploy preflight.
 For production deployment, set `NGINX_HTTP_HOST_PORT=80`, `NGINX_HTTPS_HOST_PORT=443`, and `POCKETBASE_HOST_PORT=8090` in the server `.env`.
 When keeping a single public domain (`https://ifecaro.com`) with a path-based staging URL (`/staging`), the production nginx acts as ingress and reverse-proxies `/staging/*` to staging frontend (`18080`) and `/staging/db/*` to staging PocketBase (`18090`).
 The nginx service includes `host.docker.internal:host-gateway` so this forwarding works even when production and staging are started as different compose projects.
@@ -556,6 +569,24 @@ curl -fsSL https://ifecaro.com/version.json
 
 # Staging
 curl -fsSL https://ifecaro.com/staging/version.json
+```
+
+### 部署後三層驗證（Production）
+
+每次 production 部署後，請依序確認：
+
+```bash
+# 1) Image 層：確認 image 內含 /dist/version.json
+docker run --rm --entrypoint cat ghcr.io/<owner>/ifecaro-engine:<tag> /dist/version.json
+
+# 2) Shared volume 層：確認 compose volume 已寫入 version.json
+docker run --rm -v ifecaro-production_frontend_assets_production:/shared --entrypoint cat alpine:3.20 /shared/version.json
+
+# 3) Nginx 層：確認 nginx 服務目錄可讀到 version.json
+docker compose -p ifecaro-production -f docker-compose.production.yml exec -T nginx cat /usr/share/nginx/html/version.json
+
+# 4) 外網層：確認正式站 version endpoint
+curl -fsSL https://ifecaro.com/version.json
 ```
 
 回傳 JSON 至少包含：
