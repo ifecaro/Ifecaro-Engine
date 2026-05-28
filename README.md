@@ -445,8 +445,8 @@ The standalone remote deploy program (`tools/deploy-remote`) runs `docker compos
 > `rm -rf /shared/* && cp -r /dist/. /shared`  
 > and **must not** mount `./frontend:/frontend:ro`.
 
-> ✅ **Staging/local may keep legacy `./frontend` flow**  
-> `docker-compose.staging.yml` is the only place that should keep the legacy `./frontend` copy flow for staging/local convenience.
+> ✅ **Staging also uses GHCR `/dist` flow**  
+> `docker-compose.staging.yml` now follows the same GHCR image + `/dist` copy pattern as production (with staging tag/defaults).
 Create a deployment-specific compose file at `DEPLOY_PATH`, for example:
 
 ```yaml
