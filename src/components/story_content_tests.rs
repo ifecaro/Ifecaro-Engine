@@ -145,7 +145,7 @@ mod basic_ui_tests {
             "Title should have letter spacing"
         );
         assert!(
-            html.contains("min-h-[calc(100vh-56px)]"),
+            html.contains("min-h-[calc(100dvh-56px)]"),
             "Title container should have minimum height"
         );
     }
@@ -607,7 +607,7 @@ mod integration_style_tests {
 
         // Verify style structure
         assert!(
-            html.contains("min-h-[calc(100vh-56px)]"),
+            html.contains("min-h-[calc(100dvh-56px)]"),
             "應有正確的標題容器高度"
         );
         assert!(

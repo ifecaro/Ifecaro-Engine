@@ -130,7 +130,7 @@ pub struct StoryContentUIProps {
 pub fn StoryContentUI(props: StoryContentUIProps) -> Element {
     rsx! {
         div {
-            class: "w-full flex items-center justify-center min-h-[calc(100vh-56px)]",
+            class: "w-full flex items-center justify-center min-h-[calc(100dvh-56px)]",
             div {
                 class: "text-3xl md:text-4xl text-gray-900 dark:text-white paper:text-[#1f2937] text-center w-full select-none flex items-center justify-center",
                 style: "letter-spacing: 0.1em;",
@@ -1061,7 +1061,7 @@ pub fn StoryContent(props: StoryContentProps) -> Element {
             }
             if !is_settings_chapter && !props.chapter_title.is_empty() {
                 div {
-                    class: "w-full flex items-center justify-center min-h-[calc(100vh_-_56px)]",
+                    class: "w-full flex items-center justify-center min-h-[calc(100dvh_-_56px)]",
                 div {
                     class: "relative text-3xl md:text-4xl text-gray-900 dark:text-white paper:text-[#1f2937] text-center w-full select-none flex items-center justify-center pen-texture-text",
                         style: "letter-spacing: 0.1em;",
