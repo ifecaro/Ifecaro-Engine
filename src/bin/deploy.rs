@@ -414,8 +414,15 @@ fn deploy_staging() -> Result<()> {
     }
     println!("{}", "✅ Cargo check passed".green().bold());
 
-    // Continue with full staging build/package/upload steps after quick validation.
-    run_deploy_pipeline("staging")
+    // Compose-based staging now serves the frontend from the GHCR image `/dist`,
+    // so local frontend archive upload is no longer part of the fast staging path.
+    println!(
+        "\n{}",
+        "🌐 Triggering remote staging deploy (GHCR image pull + compose up)..."
+            .yellow()
+            .bold()
+    );
+    run_remote_deploy_binary(RemoteTarget::Staging)
 }
 
 fn run_deploy_pipeline(target_name: &str) -> Result<()> {
