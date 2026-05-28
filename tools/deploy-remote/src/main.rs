@@ -20,9 +20,9 @@ fn main() -> Result<(), String> {
     let nginx_conf_path = resolve_nginx_conf_path(&deploy_environment);
     let expected_git_sha = required_expected_git_sha()?;
 
-    let deploy_user = required_env("DEPLOY_USER")?;
-    let deploy_host = required_env("DEPLOY_HOST")?;
-    let deploy_path = required_env("DEPLOY_PATH")?;
+    let deploy_user = required_deploy_env(&deploy_target, "DEPLOY_USER")?;
+    let deploy_host = required_deploy_env(&deploy_target, "DEPLOY_HOST")?;
+    let deploy_path = required_deploy_env(&deploy_target, "DEPLOY_PATH")?;
     let deploy_compose_file = resolve_deploy_compose_file(&deploy_environment);
     let ssh_key_file = resolve_ssh_key_file();
     let known_hosts_file = resolve_known_hosts_file();
@@ -309,6 +309,15 @@ fn resolve_known_hosts_file() -> String {
 
 fn required_env(name: &str) -> Result<String, String> {
     env::var(name).map_err(|_| format!("❌ Missing {} environment variable", name))
+}
+
+fn required_deploy_env(deploy_target: &DeployTarget, base_name: &str) -> Result<String, String> {
+    if *deploy_target == DeployTarget::Staging {
+        let staging_name = format!("STAGING_{}", base_name);
+        return required_env(&staging_name);
+    }
+
+    required_env(base_name)
 }
 
 fn required_expected_git_sha() -> Result<String, String> {
@@ -890,6 +899,41 @@ mod tests {
             resolve_deploy_compose_file("staging"),
             "docker-compose.staging.yml"
         );
+    }
+
+    #[test]
+    fn required_deploy_env_prefers_staging_specific_variables() {
+        unsafe {
+            env::set_var("STAGING_DEPLOY_USER", "staging-user");
+            env::set_var("DEPLOY_USER", "prod-user");
+        }
+
+        assert_eq!(
+            required_deploy_env(&DeployTarget::Staging, "DEPLOY_USER").unwrap(),
+            "staging-user"
+        );
+
+        unsafe {
+            env::remove_var("STAGING_DEPLOY_USER");
+            env::remove_var("DEPLOY_USER");
+        }
+    }
+
+    #[test]
+    fn required_deploy_env_rejects_base_variable_for_staging() {
+        unsafe {
+            env::remove_var("STAGING_DEPLOY_HOST");
+            env::set_var("DEPLOY_HOST", "prod-host");
+        }
+
+        let err = required_deploy_env(&DeployTarget::Staging, "DEPLOY_HOST")
+            .expect_err("staging deploy must not fall back to DEPLOY_HOST");
+
+        assert_eq!(err, "❌ Missing STAGING_DEPLOY_HOST environment variable");
+
+        unsafe {
+            env::remove_var("DEPLOY_HOST");
+        }
     }
 
 }
