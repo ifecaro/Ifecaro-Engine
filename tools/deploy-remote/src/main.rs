@@ -314,11 +314,7 @@ fn required_env(name: &str) -> Result<String, String> {
 fn required_deploy_env(deploy_target: &DeployTarget, base_name: &str) -> Result<String, String> {
     if *deploy_target == DeployTarget::Staging {
         let staging_name = format!("STAGING_{}", base_name);
-        if let Ok(value) = env::var(&staging_name) {
-            return Ok(value);
-        }
-
-        return required_env(base_name);
+        return required_env(&staging_name);
     }
 
     required_env(base_name)
@@ -924,16 +920,16 @@ mod tests {
     }
 
     #[test]
-    fn required_deploy_env_falls_back_to_base_variable_for_staging() {
+    fn required_deploy_env_rejects_base_variable_for_staging() {
         unsafe {
             env::remove_var("STAGING_DEPLOY_HOST");
-            env::set_var("DEPLOY_HOST", "shared-host");
+            env::set_var("DEPLOY_HOST", "prod-host");
         }
 
-        assert_eq!(
-            required_deploy_env(&DeployTarget::Staging, "DEPLOY_HOST").unwrap(),
-            "shared-host"
-        );
+        let err = required_deploy_env(&DeployTarget::Staging, "DEPLOY_HOST")
+            .expect_err("staging deploy must not fall back to DEPLOY_HOST");
+
+        assert_eq!(err, "❌ Missing STAGING_DEPLOY_HOST environment variable");
 
         unsafe {
             env::remove_var("DEPLOY_HOST");
