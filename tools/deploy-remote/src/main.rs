@@ -28,7 +28,11 @@ fn main() -> Result<(), String> {
     let known_hosts_file = resolve_known_hosts_file();
 
     let frontend_image = resolve_frontend_image(&deploy_environment);
-    preflight_guard_compose_frontend_flow(&deploy_compose_file, &frontend_image)?;
+    preflight_guard_compose_frontend_flow(
+        &deploy_environment,
+        &deploy_compose_file,
+        &frontend_image,
+    )?;
 
     let remote_pull_command = format!(
         "cd {} && GHCR_TAG={} FRONTEND_IMAGE={} VITE_APP_ENV={} VITE_BASE_API_URL={} NGINX_CONF_PATH={} FRONTEND_CONTAINER_NAME={} NGINX_CONTAINER_NAME={} POCKETBASE_CONTAINER_NAME={} docker compose -p {} -f {} pull",
@@ -491,9 +495,14 @@ fn resolve_frontend_image(deploy_environment: &str) -> String {
 }
 
 fn preflight_guard_compose_frontend_flow(
+    deploy_environment: &str,
     deploy_compose_file: &str,
     frontend_image: &str,
 ) -> Result<(), String> {
+    if deploy_environment != "production" {
+        return Ok(());
+    }
+
     let compose_content = std::fs::read_to_string(deploy_compose_file).map_err(|e| {
         format!(
             "❌ Failed to read compose file {} for preflight check: {}",
