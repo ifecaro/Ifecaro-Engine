@@ -20,8 +20,7 @@ fn main() -> Result<(), String> {
     let nginx_conf_path = resolve_nginx_conf_path(&deploy_environment);
     let expected_git_sha = required_expected_git_sha()?;
 
-    let deploy_user = required_deploy_env(&deploy_target, "DEPLOY_USER")?;
-    let deploy_host = required_deploy_env(&deploy_target, "DEPLOY_HOST")?;
+    let deploy_ssh_target = required_deploy_ssh_target(&deploy_target)?;
     let deploy_path = required_deploy_env(&deploy_target, "DEPLOY_PATH")?;
     let deploy_compose_file = resolve_deploy_compose_file(&deploy_environment);
     let ssh_key_file = resolve_ssh_key_file();
@@ -48,8 +47,7 @@ fn main() -> Result<(), String> {
     let pull_status = run_ssh_command(
         &ssh_key_file,
         &known_hosts_file,
-        &deploy_user,
-        &deploy_host,
+        &deploy_ssh_target,
         &remote_pull_command,
     )?;
 
@@ -57,21 +55,18 @@ fn main() -> Result<(), String> {
         return Err("❌ Remote VPS image pull failed".to_string());
     }
 
-    let remote_frontend_pull_command = format!(
-        "docker pull {}",
-        shell_escape(&frontend_image)
-    );
+    let remote_frontend_pull_command = format!("docker pull {}", shell_escape(&frontend_image));
 
     let frontend_pull_output = run_ssh_command_with_output(
         &ssh_key_file,
         &known_hosts_file,
-        &deploy_user,
-        &deploy_host,
+        &deploy_ssh_target,
         &remote_frontend_pull_command,
     )?;
 
     if !frontend_pull_output.status.success() {
-        let stderr_preview = safe_response_preview(&String::from_utf8_lossy(&frontend_pull_output.stderr));
+        let stderr_preview =
+            safe_response_preview(&String::from_utf8_lossy(&frontend_pull_output.stderr));
         return Err(format!(
             "❌ Remote frontend image pull failed for {} (status: {}). stderr: {}",
             frontend_image, frontend_pull_output.status, stderr_preview
@@ -81,8 +76,7 @@ fn main() -> Result<(), String> {
     verify_remote_image_git_sha(
         &ssh_key_file,
         &known_hosts_file,
-        &deploy_user,
-        &deploy_host,
+        &deploy_ssh_target,
         &frontend_image,
         &expected_git_sha,
     )?;
@@ -105,8 +99,7 @@ fn main() -> Result<(), String> {
     let up_status = run_ssh_command(
         &ssh_key_file,
         &known_hosts_file,
-        &deploy_user,
-        &deploy_host,
+        &deploy_ssh_target,
         &remote_up_command,
     )?;
 
@@ -117,8 +110,7 @@ fn main() -> Result<(), String> {
     run_remote_three_layer_verification(
         &ssh_key_file,
         &known_hosts_file,
-        &deploy_user,
-        &deploy_host,
+        &deploy_ssh_target,
         &deploy_path,
         &compose_project_name,
         &deploy_compose_file,
@@ -130,8 +122,7 @@ fn main() -> Result<(), String> {
         rewrite_staging_base_url_on_remote(
             &ssh_key_file,
             &known_hosts_file,
-            &deploy_user,
-            &deploy_host,
+            &deploy_ssh_target,
             &compose_project_name,
         )?;
     }
@@ -175,7 +166,9 @@ fn parse_deploy_target_from_args() -> Result<DeployTarget, String> {
     let mut args = env::args();
     let _program = args.next();
     let Some(raw_target) = args.next() else {
-        return Err("❌ Missing deploy target. Usage: deploy-remote <staging|production>".to_string());
+        return Err(
+            "❌ Missing deploy target. Usage: deploy-remote <staging|production>".to_string(),
+        );
     };
 
     if args.next().is_some() {
@@ -195,8 +188,7 @@ fn parse_deploy_target_from_args() -> Result<DeployTarget, String> {
 fn run_ssh_command_with_output(
     ssh_key_file: &str,
     known_hosts_file: &str,
-    deploy_user: &str,
-    deploy_host: &str,
+    ssh_target: &str,
     remote_command: &str,
 ) -> Result<std::process::Output, String> {
     Command::new("ssh")
@@ -213,7 +205,7 @@ fn run_ssh_command_with_output(
             "PubkeyAuthentication=yes",
             "-o",
             "ConnectTimeout=30",
-            &format!("{}@{}", deploy_user, deploy_host),
+            ssh_target,
             remote_command,
         ])
         .output()
@@ -223,21 +215,16 @@ fn run_ssh_command_with_output(
 fn rewrite_staging_base_url_on_remote(
     ssh_key_file: &str,
     known_hosts_file: &str,
-    deploy_user: &str,
-    deploy_host: &str,
+    ssh_target: &str,
     compose_project_name: &str,
 ) -> Result<(), String> {
     let remote_command = build_staging_base_url_rewrite_command(compose_project_name);
-    let status = run_ssh_command(
-        ssh_key_file,
-        known_hosts_file,
-        deploy_user,
-        deploy_host,
-        &remote_command,
-    )?;
+    let status = run_ssh_command(ssh_key_file, known_hosts_file, ssh_target, &remote_command)?;
 
     if !status.success() {
-        return Err("❌ Failed to rewrite staging API base URL in remote frontend container".to_string());
+        return Err(
+            "❌ Failed to rewrite staging API base URL in remote frontend container".to_string(),
+        );
     }
 
     println!(
@@ -264,8 +251,7 @@ fn resolve_staging_frontend_assets_volume_name(compose_project_name: &str) -> St
 fn run_ssh_command(
     ssh_key_file: &str,
     known_hosts_file: &str,
-    deploy_user: &str,
-    deploy_host: &str,
+    ssh_target: &str,
     remote_command: &str,
 ) -> Result<std::process::ExitStatus, String> {
     Command::new("ssh")
@@ -282,7 +268,7 @@ fn run_ssh_command(
             "PubkeyAuthentication=yes",
             "-o",
             "ConnectTimeout=30",
-            &format!("{}@{}", deploy_user, deploy_host),
+            ssh_target,
             remote_command,
         ])
         .stdout(Stdio::inherit())
@@ -320,6 +306,25 @@ fn required_deploy_env(deploy_target: &DeployTarget, base_name: &str) -> Result<
     required_env(base_name)
 }
 
+fn required_deploy_ssh_target(deploy_target: &DeployTarget) -> Result<String, String> {
+    let profile_name = match deploy_target {
+        DeployTarget::Staging => "STAGING_SSH_PROFILE",
+        DeployTarget::Production => "SSH_PROFILE",
+    };
+
+    if let Ok(profile) = env::var(profile_name) {
+        let trimmed = profile.trim();
+        if !trimmed.is_empty() {
+            return Ok(trimmed.to_string());
+        }
+    }
+
+    let user = required_deploy_env(deploy_target, "DEPLOY_USER")?;
+    let host = required_deploy_env(deploy_target, "DEPLOY_HOST")?;
+
+    Ok(format!("{}@{}", user, host))
+}
+
 fn required_expected_git_sha() -> Result<String, String> {
     if let Ok(value) = env::var("DEPLOY_EXPECTED_GIT_SHA") {
         let trimmed = value.trim();
@@ -344,8 +349,7 @@ fn required_expected_git_sha() -> Result<String, String> {
 fn verify_remote_image_git_sha(
     ssh_key_file: &str,
     known_hosts_file: &str,
-    deploy_user: &str,
-    deploy_host: &str,
+    ssh_target: &str,
     frontend_image: &str,
     expected_git_sha: &str,
 ) -> Result<(), String> {
@@ -368,7 +372,7 @@ fn verify_remote_image_git_sha(
             "PubkeyAuthentication=yes",
             "-o",
             "ConnectTimeout=30",
-            &format!("{}@{}", deploy_user, deploy_host),
+            ssh_target,
             &remote_command,
         ])
         .output()
@@ -467,7 +471,6 @@ fn resolve_base_ghcr_tag(cargo_version: &str) -> String {
     cargo_version.to_string()
 }
 
-
 fn resolve_deploy_compose_file(deploy_environment: &str) -> String {
     if let Ok(value) = env::var("DEPLOY_COMPOSE_FILE") {
         let trimmed = value.trim();
@@ -525,8 +528,7 @@ fn preflight_guard_compose_frontend_flow(
 fn run_remote_three_layer_verification(
     ssh_key_file: &str,
     known_hosts_file: &str,
-    deploy_user: &str,
-    deploy_host: &str,
+    ssh_target: &str,
     deploy_path: &str,
     compose_project_name: &str,
     deploy_compose_file: &str,
@@ -537,13 +539,7 @@ fn run_remote_three_layer_verification(
         "docker run --rm --entrypoint cat {} /dist/version.json",
         shell_escape(frontend_image)
     );
-    let image_status = run_ssh_command(
-        ssh_key_file,
-        known_hosts_file,
-        deploy_user,
-        deploy_host,
-        &image_check,
-    )?;
+    let image_status = run_ssh_command(ssh_key_file, known_hosts_file, ssh_target, &image_check)?;
     if !image_status.success() {
         return Err("❌ Three-layer verify failed at image layer (/dist/version.json)".to_string());
     }
@@ -557,15 +553,12 @@ fn run_remote_three_layer_verification(
         "docker run --rm -v {}:/shared --entrypoint cat alpine:3.20 /shared/version.json",
         shell_escape(&frontend_volume_name)
     );
-    let volume_status = run_ssh_command(
-        ssh_key_file,
-        known_hosts_file,
-        deploy_user,
-        deploy_host,
-        &volume_check,
-    )?;
+    let volume_status = run_ssh_command(ssh_key_file, known_hosts_file, ssh_target, &volume_check)?;
     if !volume_status.success() {
-        return Err("❌ Three-layer verify failed at shared volume layer (/shared/version.json)".to_string());
+        return Err(
+            "❌ Three-layer verify failed at shared volume layer (/shared/version.json)"
+                .to_string(),
+        );
     }
 
     let nginx_check = format!(
@@ -574,15 +567,12 @@ fn run_remote_three_layer_verification(
         shell_escape(compose_project_name),
         deploy_compose_file
     );
-    let nginx_status = run_ssh_command(
-        ssh_key_file,
-        known_hosts_file,
-        deploy_user,
-        deploy_host,
-        &nginx_check,
-    )?;
+    let nginx_status = run_ssh_command(ssh_key_file, known_hosts_file, ssh_target, &nginx_check)?;
     if !nginx_status.success() {
-        return Err("❌ Three-layer verify failed at nginx layer (/usr/share/nginx/html/version.json)".to_string());
+        return Err(
+            "❌ Three-layer verify failed at nginx layer (/usr/share/nginx/html/version.json)"
+                .to_string(),
+        );
     }
 
     if deploy_environment == "production" {
@@ -936,4 +926,44 @@ mod tests {
         }
     }
 
+    #[test]
+    fn required_deploy_ssh_target_uses_staging_profile_without_user_or_host() {
+        unsafe {
+            env::set_var("STAGING_SSH_PROFILE", "ifecaro-staging");
+            env::remove_var("STAGING_DEPLOY_USER");
+            env::remove_var("STAGING_DEPLOY_HOST");
+            env::set_var("DEPLOY_USER", "prod-user");
+            env::set_var("DEPLOY_HOST", "prod-host");
+        }
+
+        assert_eq!(
+            required_deploy_ssh_target(&DeployTarget::Staging).unwrap(),
+            "ifecaro-staging"
+        );
+
+        unsafe {
+            env::remove_var("STAGING_SSH_PROFILE");
+            env::remove_var("DEPLOY_USER");
+            env::remove_var("DEPLOY_HOST");
+        }
+    }
+
+    #[test]
+    fn required_deploy_ssh_target_builds_staging_user_host_target() {
+        unsafe {
+            env::remove_var("STAGING_SSH_PROFILE");
+            env::set_var("STAGING_DEPLOY_USER", "staging-user");
+            env::set_var("STAGING_DEPLOY_HOST", "staging-host");
+        }
+
+        assert_eq!(
+            required_deploy_ssh_target(&DeployTarget::Staging).unwrap(),
+            "staging-user@staging-host"
+        );
+
+        unsafe {
+            env::remove_var("STAGING_DEPLOY_USER");
+            env::remove_var("STAGING_DEPLOY_HOST");
+        }
+    }
 }
