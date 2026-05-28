@@ -28,6 +28,7 @@ fn main() -> Result<(), String> {
     let known_hosts_file = resolve_known_hosts_file();
 
     let frontend_image = resolve_frontend_image(&deploy_environment);
+    preflight_guard_compose_frontend_flow(&deploy_compose_file, &frontend_image)?;
 
     let remote_pull_command = format!(
         "cd {} && GHCR_TAG={} FRONTEND_IMAGE={} VITE_APP_ENV={} VITE_BASE_API_URL={} NGINX_CONF_PATH={} FRONTEND_CONTAINER_NAME={} NGINX_CONTAINER_NAME={} POCKETBASE_CONTAINER_NAME={} docker compose -p {} -f {} pull",
@@ -112,6 +113,18 @@ fn main() -> Result<(), String> {
     if !up_status.success() {
         return Err("❌ Remote VPS deployment failed".to_string());
     }
+
+    run_remote_three_layer_verification(
+        &ssh_key_file,
+        &known_hosts_file,
+        &deploy_user,
+        &deploy_host,
+        &deploy_path,
+        &compose_project_name,
+        &deploy_compose_file,
+        &frontend_image,
+        &deploy_environment,
+    )?;
 
     if deploy_environment == "staging" {
         rewrite_staging_base_url_on_remote(
@@ -475,6 +488,107 @@ fn resolve_frontend_image(deploy_environment: &str) -> String {
     };
 
     format!("ghcr.io/muchobien/ifecaro-engine:{}", default_tag)
+}
+
+fn preflight_guard_compose_frontend_flow(
+    deploy_compose_file: &str,
+    frontend_image: &str,
+) -> Result<(), String> {
+    let compose_content = std::fs::read_to_string(deploy_compose_file).map_err(|e| {
+        format!(
+            "❌ Failed to read compose file {} for preflight check: {}",
+            deploy_compose_file, e
+        )
+    })?;
+
+    let uses_ghcr_frontend = frontend_image.contains("ghcr.io/");
+    let contains_legacy_frontend_command = compose_content.contains("/frontend");
+    if uses_ghcr_frontend && contains_legacy_frontend_command {
+        return Err(format!(
+            "❌ Preflight failed: compose file {} contains legacy /frontend flow while FRONTEND_IMAGE points to GHCR ({}). Use /dist copy flow only.",
+            deploy_compose_file, frontend_image
+        ));
+    }
+
+    Ok(())
+}
+
+fn run_remote_three_layer_verification(
+    ssh_key_file: &str,
+    known_hosts_file: &str,
+    deploy_user: &str,
+    deploy_host: &str,
+    deploy_path: &str,
+    compose_project_name: &str,
+    deploy_compose_file: &str,
+    frontend_image: &str,
+    deploy_environment: &str,
+) -> Result<(), String> {
+    let image_check = format!(
+        "docker run --rm --entrypoint cat {} /dist/version.json",
+        shell_escape(frontend_image)
+    );
+    let image_status = run_ssh_command(
+        ssh_key_file,
+        known_hosts_file,
+        deploy_user,
+        deploy_host,
+        &image_check,
+    )?;
+    if !image_status.success() {
+        return Err("❌ Three-layer verify failed at image layer (/dist/version.json)".to_string());
+    }
+
+    let frontend_volume_name = if deploy_environment == "production" {
+        format!("{}_frontend_assets_production", compose_project_name)
+    } else {
+        resolve_staging_frontend_assets_volume_name(compose_project_name)
+    };
+    let volume_check = format!(
+        "docker run --rm -v {}:/shared --entrypoint cat alpine:3.20 /shared/version.json",
+        shell_escape(&frontend_volume_name)
+    );
+    let volume_status = run_ssh_command(
+        ssh_key_file,
+        known_hosts_file,
+        deploy_user,
+        deploy_host,
+        &volume_check,
+    )?;
+    if !volume_status.success() {
+        return Err("❌ Three-layer verify failed at shared volume layer (/shared/version.json)".to_string());
+    }
+
+    let nginx_check = format!(
+        "cd {} && docker compose -p {} -f {} exec -T nginx cat /usr/share/nginx/html/version.json",
+        deploy_path,
+        shell_escape(compose_project_name),
+        deploy_compose_file
+    );
+    let nginx_status = run_ssh_command(
+        ssh_key_file,
+        known_hosts_file,
+        deploy_user,
+        deploy_host,
+        &nginx_check,
+    )?;
+    if !nginx_status.success() {
+        return Err("❌ Three-layer verify failed at nginx layer (/usr/share/nginx/html/version.json)".to_string());
+    }
+
+    if deploy_environment == "production" {
+        let external_check = Command::new("curl")
+            .args(["-fsSL", "https://ifecaro.com/version.json"])
+            .stdout(Stdio::inherit())
+            .stderr(Stdio::inherit())
+            .status()
+            .map_err(|e| format!("❌ Failed to run external production version check: {}", e))?;
+        if !external_check.success() {
+            return Err("❌ Three-layer verify failed at external endpoint https://ifecaro.com/version.json".to_string());
+        }
+    }
+
+    Ok(())
 }
 
 fn resolve_api_url(deploy_environment: &str) -> String {

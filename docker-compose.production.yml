@@ -1,14 +1,13 @@
 services:
   frontend:
-    image: alpine:3.20
+    image: ${FRONTEND_IMAGE:-ghcr.io/muchobien/ifecaro-engine:${GHCR_TAG:-latest}}
     container_name: ${FRONTEND_CONTAINER_NAME:-frontend}
     restart: "no"
     command:
       - sh
       - -c
-      - rm -rf /shared/* && cp -r /frontend/. /shared
+      - rm -rf /shared/* && cp -r /dist/. /shared
     volumes:
-      - ./frontend:/frontend:ro
       - frontend_assets_production:/shared
     networks:
       - web
