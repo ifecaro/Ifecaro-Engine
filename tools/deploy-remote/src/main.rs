@@ -314,11 +314,7 @@ fn required_env(name: &str) -> Result<String, String> {
 fn required_deploy_env(deploy_target: &DeployTarget, base_name: &str) -> Result<String, String> {
     if *deploy_target == DeployTarget::Staging {
         let staging_name = format!("STAGING_{}", base_name);
-        if let Ok(value) = env::var(&staging_name) {
-            if !value.trim().is_empty() {
-                return Ok(value);
-            }
-        }
+        return required_env(&staging_name);
     }
 
     required_env(base_name)
