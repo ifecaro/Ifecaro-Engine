@@ -46,11 +46,15 @@ fn resolve_base_api_url(
     is_local_hostname: bool,
     is_staging_path: bool,
 ) -> &'static str {
+    if is_staging_path {
+        return staging_api_url;
+    }
+
     if let Some(base) = explicit_base {
         return base;
     }
 
-    if is_local_hostname || is_staging_path {
+    if is_local_hostname {
         return staging_api_url;
     }
 
@@ -181,13 +185,13 @@ mod tests {
     }
 
     #[test]
-    fn explicit_base_url_has_highest_priority() {
+    fn explicit_base_url_overrides_local_hostname() {
         let actual = resolve_base_api_url(
             Some("https://example.com/custom/api"),
             "https://ifecaro.com/staging/db/api",
             "production",
             true,
-            true,
+            false,
         );
 
         assert_eq!(actual, "https://example.com/custom/api");
@@ -217,7 +221,7 @@ mod tests {
     #[test]
     fn staging_path_uses_staging_api_even_in_production_build() {
         let actual = resolve_base_api_url(
-            None,
+            Some("https://ifecaro.com/db/api"),
             "https://ifecaro.com/staging/db/api",
             "production",
             false,
