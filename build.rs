@@ -1,4 +1,4 @@
-use std::process::Command;
+use std::{fs, path::Path, process::Command, time::SystemTime};
 
 fn main() {
     println!("cargo:rerun-if-changed=.env");
@@ -28,29 +28,13 @@ fn main() {
         return;
     }
 
-    // Tell Cargo to re-run build script only when CSS-related files change
-    println!("cargo:rerun-if-changed=src/input.css");
+    // Tell Cargo to re-run build script when Tailwind inputs or class content change.
+    println!("cargo:rerun-if-changed=src");
     println!("cargo:rerun-if-changed=tailwind.config.js");
-    // Only watch specific directories that might contain Tailwind classes
-    println!("cargo:rerun-if-changed=src/components/");
-    println!("cargo:rerun-if-changed=src/pages/");
 
-    // Check if tailwind.css already exists and is newer than input files
-    let tailwind_exists = std::path::Path::new("./public/tailwind.css").exists();
-    let should_compile = if tailwind_exists {
-        // Check if input.css is newer than output
-        let input_modified = std::fs::metadata("./src/input.css")
-            .and_then(|m| m.modified())
-            .unwrap_or(std::time::SystemTime::UNIX_EPOCH);
-
-        let output_modified = std::fs::metadata("./public/tailwind.css")
-            .and_then(|m| m.modified())
-            .unwrap_or(std::time::SystemTime::UNIX_EPOCH);
-
-        input_modified > output_modified
-    } else {
-        true
-    };
+    let tailwind_sources = [Path::new("./src"), Path::new("./tailwind.config.js")];
+    let output_path = Path::new("./public/tailwind.css");
+    let should_compile = should_compile_tailwind(&tailwind_sources, output_path);
 
     if should_compile {
         // Make sure Tailwind is available before attempting to compile.
@@ -82,4 +66,37 @@ fn main() {
     } else {
         println!("cargo:warning=Tailwind CSS is up to date, skipping compilation");
     }
+}
+
+fn should_compile_tailwind(sources: &[&Path], output_path: &Path) -> bool {
+    let output_modified = match modified_time(output_path) {
+        Some(modified) => modified,
+        None => return true,
+    };
+
+    sources
+        .iter()
+        .filter_map(|source| newest_modified_time(source))
+        .any(|source_modified| source_modified > output_modified)
+}
+
+fn newest_modified_time(path: &Path) -> Option<SystemTime> {
+    let metadata = fs::metadata(path).ok()?;
+    let mut newest = metadata.modified().ok();
+
+    if metadata.is_dir() {
+        for entry in fs::read_dir(path).ok()?.flatten() {
+            if let Some(modified) = newest_modified_time(&entry.path()) {
+                newest = Some(newest.map_or(modified, |current| current.max(modified)));
+            }
+        }
+    }
+
+    newest
+}
+
+fn modified_time(path: &Path) -> Option<SystemTime> {
+    fs::metadata(path)
+        .and_then(|metadata| metadata.modified())
+        .ok()
 }
