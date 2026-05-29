@@ -16,6 +16,7 @@ fn dioxus_head_uses_root_relative_assets_for_deep_link_refreshes() {
         "href=\"/assets/dioxus/Ifecaro-Engine.js\"",
         "href=\"/assets/dioxus/Ifecaro-Engine_bg.wasm\"",
         "href=\"/assets/fonts/NotoSansTC-Regular.woff2\"",
+        "href=\"/assets/tailwind.css\"",
         "href=\"/manifest.json\"",
     ] {
         assert!(
@@ -28,6 +29,8 @@ fn dioxus_head_uses_root_relative_assets_for_deep_link_refreshes() {
         "href=\"assets/dioxus/Ifecaro-Engine.js\"",
         "href=\"assets/dioxus/Ifecaro-Engine_bg.wasm\"",
         "href=\"assets/fonts/NotoSansTC-Regular.woff2\"",
+        "href=\"assets/tailwind.css\"",
+        "href=\"tailwind.css\"",
         "href=\"manifest.json\"",
     ] {
         assert!(
