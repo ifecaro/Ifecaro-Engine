@@ -19,6 +19,7 @@ pub enum Route {
     Home {},
 
     #[route("/:lang")]
+    #[route("/staging/:lang")]
     Story { lang: String },
 
     #[route("/:lang/dashboard")]

@@ -52,8 +52,6 @@ services:
     depends_on:
       frontend:
         condition: service_completed_successfully
-      pocketbase:
-        condition: service_healthy
     networks:
       - web
 

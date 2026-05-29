@@ -16,15 +16,27 @@ pub fn base_api_url() -> &'static str {
     #[cfg(target_arch = "wasm32")]
     {
         if let Some(window) = web_sys::window() {
-            if let Ok(hostname) = window.location().hostname() {
-                if hostname == "localhost" || hostname == "127.0.0.1" {
-                    return resolve_base_api_url(explicit_base, staging_api_url, app_env, true);
-                }
-            }
+            let location = window.location();
+            let is_local_hostname = location
+                .hostname()
+                .ok()
+                .is_some_and(|hostname| hostname == "localhost" || hostname == "127.0.0.1");
+            let is_staging_path = location
+                .pathname()
+                .ok()
+                .is_some_and(|path| path == "/staging" || path.starts_with("/staging/"));
+
+            return resolve_base_api_url(
+                explicit_base,
+                staging_api_url,
+                app_env,
+                is_local_hostname,
+                is_staging_path,
+            );
         }
     }
 
-    resolve_base_api_url(explicit_base, staging_api_url, app_env, false)
+    resolve_base_api_url(explicit_base, staging_api_url, app_env, false, false)
 }
 
 fn resolve_base_api_url(
@@ -32,12 +44,13 @@ fn resolve_base_api_url(
     staging_api_url: &'static str,
     app_env: &'static str,
     is_local_hostname: bool,
+    is_staging_path: bool,
 ) -> &'static str {
     if let Some(base) = explicit_base {
         return base;
     }
 
-    if is_local_hostname {
+    if is_local_hostname || is_staging_path {
         return staging_api_url;
     }
 
@@ -148,6 +161,7 @@ mod tests {
             "https://ifecaro.com/staging/db/api",
             "development",
             false,
+            false,
         );
 
         assert_eq!(actual, "https://ifecaro.com/staging/db/api");
@@ -160,6 +174,7 @@ mod tests {
             "https://ifecaro.com/staging/db/api",
             "development",
             true,
+            false,
         );
 
         assert_eq!(actual, "https://ifecaro.com/staging/db/api");
@@ -171,6 +186,7 @@ mod tests {
             Some("https://example.com/custom/api"),
             "https://ifecaro.com/staging/db/api",
             "production",
+            true,
             true,
         );
 
@@ -185,15 +201,30 @@ mod tests {
             "https://ifecaro.com/staging/db/api",
             "production",
             false,
+            false,
         );
         let actual = resolve_base_api_url(
             explicit_base,
             "https://ifecaro.com/staging/db/api",
             "production",
             false,
+            false,
         );
 
         assert_eq!(actual, expected);
+    }
+
+    #[test]
+    fn staging_path_uses_staging_api_even_in_production_build() {
+        let actual = resolve_base_api_url(
+            None,
+            "https://ifecaro.com/staging/db/api",
+            "production",
+            false,
+            true,
+        );
+
+        assert_eq!(actual, "https://ifecaro.com/staging/db/api");
     }
 
     #[test]
@@ -202,6 +233,7 @@ mod tests {
             None,
             "https://ifecaro.com/staging/db/api",
             "production",
+            false,
             false,
         );
         let expected = "https://ifecaro.com/db/api";
@@ -212,7 +244,13 @@ mod tests {
 
     #[test]
     fn non_production_without_explicit_base_url_uses_staging_default() {
-        let actual = resolve_base_api_url(None, "https://ifecaro.com/staging/db/api", "staging", false);
+        let actual = resolve_base_api_url(
+            None,
+            "https://ifecaro.com/staging/db/api",
+            "staging",
+            false,
+            false,
+        );
 
         assert_eq!(actual, "https://ifecaro.com/staging/db/api");
         assert!(!actual.is_empty());
