@@ -28,26 +28,34 @@ scp -r nginx/vps/production/* <DEPLOY_USER>@<DEPLOY_HOST>:<DEPLOY_PATH>/nginx/
 scp -r nginx/vps/staging/* <DEPLOY_USER>@<DEPLOY_HOST>:<STAGING_DEPLOY_PATH>/nginx/
 ```
 
-After copy, validate and reload the runtime that owns the edge nginx config. For a
-host-level VPS nginx service, use:
+After copy, validate and reload the runtime that owns the edge nginx config. The
+production bundle proxies `/staging/*` through `host.docker.internal` so the same
+`conf.d` works in the documented containerized nginx runtime (where Compose maps
+that name to the Docker host gateway) and in host-level nginx deployments.
+
+For a host-level VPS nginx service, make sure the host can resolve that name to
+its own loopback address before validating/reloading nginx:
 
 ```bash
+grep -q '^127\.0\.0\.1[[:space:]]\+host\.docker\.internal$' /etc/hosts || \
+  printf '127.0.0.1 host.docker.internal\n' | sudo tee -a /etc/hosts
 sudo nginx -t
 sudo systemctl reload nginx
 ```
 
-For a containerized nginx runtime, use:
+For a containerized nginx runtime, use the compose file's existing
+`host.docker.internal:host-gateway` mapping and reload the containerized nginx:
 
 ```bash
 docker exec nginx nginx -t
 docker exec nginx nginx -s reload
 ```
 
-The production VPS bundle assumes the edge nginx process runs on the VPS host and
-proxies staging traffic to the staging compose ports via the host loopback address:
+The production VPS bundle expects staging services to be reachable through the
+Docker host gateway on the staging compose ports:
 
 ```bash
-curl -I http://127.0.0.1:18080/
-curl -I http://127.0.0.1:18080/staging/
-curl -I http://127.0.0.1:18090/api/health
+curl -I http://host.docker.internal:18080/
+curl -I http://host.docker.internal:18080/staging/
+curl -I http://host.docker.internal:18090/api/health
 ```
