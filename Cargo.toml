@@ -17,13 +17,13 @@ path = "src/main.rs"
 [dependencies]
 reqwest = { version = "0.11.27", features = ["json"] }
 serde = { version = "1.0.228", features = ["derive"] }
-serde_json = "1.0.149"
+serde_json = "1.0.150"
 smallvec = { version = "1.15", features = ["serde"] }
 serde-wasm-bindgen = "0.6.5"
 async-trait = "0.1.89"
-dioxus = { version = "0.7.3", features = ["web", "router"] }
+dioxus = { version = "0.7.9", features = ["web", "router"] }
 dioxus-toastr = { git = "https://github.com/togekk39/dioxus-toastr.git" }
-web-sys = { version = "0.3.85", features = [
+web-sys = { version = "0.3.99", features = [
     "Window",
     "MediaQueryList",
     "Storage",
@@ -44,17 +44,17 @@ web-sys = { version = "0.3.85", features = [
     "Navigator",
     "UrlSearchParams",
 ] }
-wasm-bindgen = "0.2.108"
-regex = "1.12.2"
-js-sys = "0.3.85"
-wasm-bindgen-futures = "0.4.58"
+wasm-bindgen = "0.2.122"
+regex = "1.12.3"
+js-sys = "0.3.99"
+wasm-bindgen-futures = "0.4.72"
 dioxus-i18n = "0.5.1"
 unic-langid = { version = "0.9.6", features = ["unic-langid-macros"] }
-rand = "0.8.5"
+rand = "0.8.6"
 getrandom = { version = "0.2.17", features = ["js"] }
-futures = "0.3.31"
-futures-channel = "0.3.31"
-futures-util = "0.3.31"
+futures = "0.3.32"
+futures-channel = "0.3.32"
+futures-util = "0.3.32"
 include_dir = "0.7"
 
 # Debug
@@ -62,19 +62,19 @@ tracing = { version = "0.1.44", features = [
     "max_level_debug",
     "release_max_level_info",
 ] }
-tracing-subscriber = "0.3.22"
-dioxus-core = "0.7.3"
+tracing-subscriber = "0.3.23"
+dioxus-core = "0.7.9"
 gloo-timers = { version = "0.3", features = ["futures"] }
 dotenv = "0.15"
 
 # Deployment tool dependencies
-clap = { version = "4.5.56", features = ["derive"] }
-anyhow = "1.0.100"
+clap = { version = "4.6.1", features = ["derive"] }
+anyhow = "1.0.102"
 colored = "2.2.0"
-chrono = { version = "0.4.43", features = ["serde"] }
+chrono = { version = "0.4.44", features = ["serde"] }
 console_error_panic_hook = "0.1.7"
 tracing-wasm = "0.2.1"
-log = "0.4.29"
+log = "0.4.30"
 wasm-logger = "0.2.0"
 
 [features]
@@ -109,22 +109,22 @@ lto = true
 codegen-units = 1
 
 [dev-dependencies]
-dioxus-ssr = "0.7.3"
+dioxus-ssr = "0.7.9"
 pretty_assertions = "1.4.1"
-wasm-bindgen-test = "0.3.58"
+wasm-bindgen-test = "0.3.72"
 
 [target.'cfg(not(target_arch = "wasm32"))'.dev-dependencies]
-tokio = { version = "1.49.0", features = ["macros", "rt-multi-thread"] }
+tokio = { version = "1.52.3", features = ["macros", "rt-multi-thread"] }
 
 [target.'cfg(target_arch = "wasm32")'.dev-dependencies]
-tokio = { version = "1.49.0", features = [
+tokio = { version = "1.52.3", features = [
     "sync",
     "macros",
     "io-util",
     "rt",
     "time",
 ] }
-wasm-bindgen-test = "0.3.58"
+wasm-bindgen-test = "0.3.72"
 
 [build-dependencies]
 dotenv = "0.15"
