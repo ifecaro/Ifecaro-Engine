@@ -7,3 +7,7 @@ pocketbase/.env
 .env
 node_modules
 vendor
+.env.production
+.env.staging
+tools/deploy-remote/Cargo.lock
+tools/deploy-remote/target/
