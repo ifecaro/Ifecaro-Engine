@@ -6,13 +6,13 @@ const STATIC_RESOURCES = [
     '/',
     '/assets/ifecaro.js',
     '/assets/ifecaro_bg.wasm',
-    '/assets/tailwind.css',
+    '/tailwind.css',
     '/assets/fonts/NotoSansTC-Regular.woff2',
     '/assets/icons/favicon.ico',
     '/assets/icons/apple-touch-icon.png',
     '/assets/icons/android-chrome-192x192.png',
     '/assets/icons/android-chrome-512x512.png',
-    '/assets/manifest.json'
+    '/manifest.json'
 ];
 
 // API paths that need Network First strategy

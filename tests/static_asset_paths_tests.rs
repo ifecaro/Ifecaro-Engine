@@ -46,8 +46,12 @@ fn checked_in_index_uses_root_relative_shell_assets() {
         "index.html should load the web manifest from the site root"
     );
     assert!(
-        index.contains("href=\"/assets/tailwind.css\""),
-        "index.html should load Tailwind from the site root"
+        index.contains("href=\"/tailwind.css\""),
+        "index.html should load the copied Tailwind stylesheet from the site root"
+    );
+    assert!(
+        !index.contains("href=\"/assets/tailwind.css\""),
+        "Dioxus copies public/tailwind.css to /tailwind.css, not /assets/tailwind.css"
     );
     assert!(
         !index.contains("href=\"manifest.json\""),
@@ -57,4 +61,23 @@ fn checked_in_index_uses_root_relative_shell_assets() {
         !index.contains("href=\"tailwind.css\""),
         "relative stylesheet links break on direct nested-route refreshes"
     );
+}
+
+#[test]
+fn service_worker_precaches_copied_root_assets() {
+    let service_worker = read_repo_file("public/sw.js");
+
+    for required_path in ["'/tailwind.css'", "'/manifest.json'"] {
+        assert!(
+            service_worker.contains(required_path),
+            "service worker should pre-cache {required_path} from the path emitted by Dioxus public asset copying"
+        );
+    }
+
+    for broken_path in ["'/assets/tailwind.css'", "'/assets/manifest.json'"] {
+        assert!(
+            !service_worker.contains(broken_path),
+            "service worker should not pre-cache missing root public files under /assets"
+        );
+    }
 }

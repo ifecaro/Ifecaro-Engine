@@ -527,6 +527,9 @@ fn rewrite_staging_html_content(html: &str) -> String {
         ("\"/assets/", "\"/staging/assets/"),
         ("'/assets/", "'/staging/assets/"),
         ("=/assets/", "=/staging/assets/"),
+        ("\"/tailwind.css\"", "\"/staging/tailwind.css\""),
+        ("'/tailwind.css'", "'/staging/tailwind.css'"),
+        ("=/tailwind.css", "=/staging/tailwind.css"),
         ("\"/manifest.json\"", "\"/staging/manifest.json\""),
         ("'/manifest.json'", "'/staging/manifest.json'"),
         ("=/manifest.json", "=/staging/manifest.json"),
@@ -555,16 +558,19 @@ mod deploy_path_rewrite_tests {
 
     #[test]
     fn rewrites_asset_paths_for_staging_boundary() {
-        let input = r#"<script src="/assets/ifecaro.js"></script><script>import('/assets/chunk.js')</script><link rel="manifest" href="/manifest.json">"#;
+        let input = r#"<script src="/assets/ifecaro.js"></script><script>import('/assets/chunk.js')</script><link rel="stylesheet" href="/tailwind.css"><link rel="manifest" href="/manifest.json">"#;
         let output = rewrite_staging_html_content(input);
 
         assert!(output.contains("\"/staging/assets/ifecaro.js\""));
         assert!(output.contains("'/staging/assets/chunk.js'"));
+        assert!(output.contains("href=\"/staging/tailwind.css\""));
         assert!(output.contains("href=\"/staging/manifest.json\""));
 
-        let unquoted = r#"<script src=/assets/noquote.js></script>"#;
+        let unquoted =
+            r#"<script src=/assets/noquote.js></script><link rel=stylesheet href=/tailwind.css>"#;
         let unquoted_output = rewrite_staging_html_content(unquoted);
         assert!(unquoted_output.contains("src=/staging/assets/noquote.js"));
+        assert!(unquoted_output.contains("href=/staging/tailwind.css"));
     }
 }
 
