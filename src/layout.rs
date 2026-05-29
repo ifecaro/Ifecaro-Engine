@@ -10,9 +10,13 @@ use crate::{
     utils::theme::{apply_theme_class, ThemeMode},
 };
 use dioxus::prelude::*;
+#[cfg(target_arch = "wasm32")]
+use gloo_timers::callback::Timeout;
 use std::collections::HashSet;
 use std::{rc::Rc, sync::Arc};
 use wasm_bindgen::closure::Closure;
+#[cfg(target_arch = "wasm32")]
+use wasm_bindgen::JsValue;
 use web_sys::Event as WebEvent;
 
 #[derive(Debug, Clone)]
@@ -34,6 +38,30 @@ impl Default for KeyboardState {
     }
 }
 
+#[cfg(target_arch = "wasm32")]
+fn preserve_url_suffix_after_replace(search: String, hash: String) {
+    Timeout::new(0, move || {
+        let Some(win) = web_sys::window() else {
+            return;
+        };
+
+        let location = win.location();
+        let path = location.pathname().unwrap_or_default();
+        let search = if search.is_empty() {
+            String::new()
+        } else {
+            format!("?{}", search.trim_start_matches('?'))
+        };
+        let new_url = format!("{path}{search}{hash}");
+
+        let _ = win
+            .history()
+            .unwrap()
+            .replace_state_with_url(&JsValue::NULL, "", Some(&new_url));
+    })
+    .forget();
+}
+
 #[component]
 pub fn Layout() -> Element {
     let route = use_route::<Route>();
@@ -48,7 +76,24 @@ pub fn Layout() -> Element {
 
     use_effect(move || {
         if let Some(canonical_route) = route.with_canonical_language() {
+            #[cfg(target_arch = "wasm32")]
+            let (current_search, current_hash) = web_sys::window()
+                .map(|win| {
+                    let location = win.location();
+                    (
+                        location.search().unwrap_or_default(),
+                        location.hash().unwrap_or_default(),
+                    )
+                })
+                .unwrap_or_default();
+
             let _ = navigator.replace(canonical_route);
+
+            #[cfg(target_arch = "wasm32")]
+            if !current_search.is_empty() || !current_hash.is_empty() {
+                preserve_url_suffix_after_replace(current_search, current_hash);
+            }
+
             return;
         }
 
