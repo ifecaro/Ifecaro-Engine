@@ -235,7 +235,7 @@ fn rewrite_staging_base_url_on_remote(
 }
 
 fn build_staging_base_url_rewrite_command(compose_project_name: &str) -> String {
-    let inner_script = r#"index=/shared/index.html && [ -f "$index" ] && sed -i -e "s|https://ifecaro.com/db/api|https://ifecaro.com/staging/db/api|g" -e "s|\"/db/api\"|\"/staging/db/api\"|g" -e "s|'/db/api'|'/staging/db/api'|g" -e "s|\"/assets/|\"/staging/assets/|g" -e "s|'/assets/|'/staging/assets/|g" -e "s|=/assets/|=/staging/assets/|g" "$index""#;
+    let inner_script = r#"index=/shared/index.html && [ -f "$index" ] && sed -i -e "s|https://ifecaro.com/db/api|https://ifecaro.com/staging/db/api|g" -e "s|\"/db/api\"|\"/staging/db/api\"|g" -e "s|'/db/api'|'/staging/db/api'|g" -e "s|\"/assets/|\"/staging/assets/|g" -e "s|'/assets/|'/staging/assets/|g" -e "s|=/assets/|=/staging/assets/|g" -e "s|\"/manifest.json\"|\"/staging/manifest.json\"|g" -e "s|'/manifest.json'|'/staging/manifest.json'|g" -e "s|=/manifest.json|=/staging/manifest.json|g" "$index""#;
     let volume_name = resolve_staging_frontend_assets_volume_name(compose_project_name);
 
     format!(
@@ -854,6 +854,9 @@ mod tests {
         assert!(command.contains("https://ifecaro.com/staging/db/api"));
         assert!(command.contains("/staging/db/api"));
         assert!(command.contains("/staging/assets/"));
+        assert!(command.contains(r#"\"/manifest.json\"|\"/staging/manifest.json\""#));
+        assert!(command.contains("/staging/manifest.json"));
+        assert!(command.contains("s|=/manifest.json|=/staging/manifest.json|g"));
         assert!(!command.contains("\\\n"));
     }
 
