@@ -612,15 +612,19 @@ fn resolve_api_url(deploy_environment: &str) -> String {
 
 fn resolve_nginx_conf_path(deploy_environment: &str) -> String {
     if let Ok(nginx_conf_path) = env::var("NGINX_CONF_PATH") {
-        if !nginx_conf_path.trim().is_empty() {
-            return nginx_conf_path;
+        let trimmed = nginx_conf_path.trim();
+        if !trimmed.is_empty() {
+            if deploy_environment == "staging" && !trimmed.ends_with(".conf") {
+                return format!("{}/default.conf", trimmed.trim_end_matches('/'));
+            }
+            return trimmed.to_string();
         }
     }
 
     if deploy_environment == "production" {
         "./nginx/conf.d".to_string()
     } else {
-        "./nginx/conf.d/staging".to_string()
+        "./nginx/conf.d/staging/default.conf".to_string()
     }
 }
 
@@ -764,12 +768,30 @@ mod tests {
 
         assert_eq!(
             resolve_nginx_conf_path("staging"),
-            "./nginx/conf.d/staging".to_string()
+            "./nginx/conf.d/staging/default.conf".to_string()
         );
         assert_eq!(
             resolve_nginx_conf_path("production"),
             "./nginx/conf.d".to_string()
         );
+    }
+
+    #[test]
+    fn resolve_nginx_conf_path_normalizes_staging_directory_override() {
+        // SAFETY: tests are single-threaded in this binary and this mutation is scoped to test process.
+        unsafe {
+            env::set_var("NGINX_CONF_PATH", "./nginx/conf.d/staging/");
+        }
+
+        assert_eq!(
+            resolve_nginx_conf_path("staging"),
+            "./nginx/conf.d/staging/default.conf".to_string()
+        );
+
+        // SAFETY: test-only cleanup to ensure deterministic behavior for other tests.
+        unsafe {
+            env::remove_var("NGINX_CONF_PATH");
+        }
     }
 
     #[test]
