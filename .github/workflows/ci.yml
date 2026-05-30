@@ -148,16 +148,22 @@ jobs:
       - name: Validate frontend API URL variables are configured
         run: |
           if [ -z "${VITE_BASE_API_URL}" ]; then
-            echo "VITE_BASE_API_URL is empty. Please set STAGING_API_URL / PRODUCTION_API_URL in GitHub Variables." >&2
+            echo "VITE_BASE_API_URL is empty. Please set the API URL for the ${{ matrix.deploy_env }} GitHub Environment." >&2
             exit 1
           fi
-          if [ -z "${VITE_STAGING_API_URL}" ]; then
-            echo "VITE_STAGING_API_URL is empty. Please set STAGING_API_URL in GitHub Variables." >&2
-            exit 1
-          fi
-          if [ -z "${VITE_PRODUCTION_API_URL}" ]; then
-            echo "VITE_PRODUCTION_API_URL is empty. Please set PRODUCTION_API_URL in GitHub Variables." >&2
-            exit 1
+
+          if [ "${{ matrix.deploy_env }}" = "production" ]; then
+            if [ -z "${VITE_PRODUCTION_API_URL}" ]; then
+              echo "VITE_PRODUCTION_API_URL is empty. Please set PRODUCTION_API_URL in the production GitHub Environment." >&2
+              exit 1
+            fi
+            echo "STAGING_API_URL is optional for production builds; the app falls back to its built-in staging API URL when it is unavailable."
+          else
+            if [ -z "${VITE_STAGING_API_URL}" ]; then
+              echo "VITE_STAGING_API_URL is empty. Please set STAGING_API_URL in the staging GitHub Environment." >&2
+              exit 1
+            fi
+            echo "PRODUCTION_API_URL is optional for staging builds."
           fi
 
       - name: Set image name
