@@ -130,8 +130,10 @@ jobs:
         run: |
           echo "build_time=$(date -u +'%Y-%m-%dT%H:%M:%SZ')" >> "${GITHUB_OUTPUT}"
 
-      - name: Set VITE_BASE_API_URL by environment
+      - name: Set frontend API URLs by environment
         run: |
+          echo "VITE_STAGING_API_URL=${{ vars.STAGING_API_URL }}" >> "${GITHUB_ENV}"
+          echo "VITE_PRODUCTION_API_URL=${{ vars.PRODUCTION_API_URL }}" >> "${GITHUB_ENV}"
           if [ "${{ matrix.deploy_env }}" = "production" ]; then
             echo "VITE_BASE_API_URL=${{ vars.PRODUCTION_API_URL }}" >> "${GITHUB_ENV}"
           else
@@ -143,10 +145,18 @@ jobs:
           echo "::add-mask::${VITE_BASE_API_URL}"
           echo "Resolved build-time VITE_BASE_API_URL=${VITE_BASE_API_URL}"
 
-      - name: Validate VITE_BASE_API_URL variable is configured
+      - name: Validate frontend API URL variables are configured
         run: |
           if [ -z "${VITE_BASE_API_URL}" ]; then
             echo "VITE_BASE_API_URL is empty. Please set STAGING_API_URL / PRODUCTION_API_URL in GitHub Variables." >&2
+            exit 1
+          fi
+          if [ -z "${VITE_STAGING_API_URL}" ]; then
+            echo "VITE_STAGING_API_URL is empty. Please set STAGING_API_URL in GitHub Variables." >&2
+            exit 1
+          fi
+          if [ -z "${VITE_PRODUCTION_API_URL}" ]; then
+            echo "VITE_PRODUCTION_API_URL is empty. Please set PRODUCTION_API_URL in GitHub Variables." >&2
             exit 1
           fi
 
@@ -180,6 +190,8 @@ jobs:
             BUILD_TIME=${{ steps.build_meta.outputs.build_time }}
             VITE_APP_ENV=${{ matrix.app_env }}
             VITE_BASE_API_URL=${{ env.VITE_BASE_API_URL }}
+            VITE_STAGING_API_URL=${{ env.VITE_STAGING_API_URL }}
+            VITE_PRODUCTION_API_URL=${{ env.VITE_PRODUCTION_API_URL }}
           cache-from: type=gha,scope=ifecaro-frontend-buildx-${{ matrix.deploy_env }}
           cache-to: type=gha,mode=max,scope=ifecaro-frontend-buildx-${{ matrix.deploy_env }}
           labels: |
