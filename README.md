@@ -324,8 +324,9 @@ Create a `.env` file with deployment configuration:
 DEPLOY_USER=your-username        # Your SSH username on the server
 DEPLOY_HOST=your-server-ip       # Server IP address or domain name
 DEPLOY_PATH=/home/your-username/ifecaro  # Deployment directory on server
-SSH_KEY_PATH=/home/your-local-username/.ssh  # SSH key directory (optional when SSH_KEY_FILE is set)
-SSH_KEY_NAME=id_ed25519                    # SSH key filename in SSH_KEY_PATH (default: id_rsa)
+# Optional: omit SSH_KEY_* to use your SSH config, default identities, or ssh-agent
+# SSH_KEY_PATH=/home/your-local-username/.ssh  # SSH key directory (used with SSH_KEY_NAME)
+# SSH_KEY_NAME=id_ed25519                    # SSH key filename in SSH_KEY_PATH (defaults to id_rsa if SSH_KEY_PATH is set)
 # SSH_KEY_FILE=/home/your-local-username/.ssh/id_ed25519  # Full key path (overrides path + name)
 
 # Example:
@@ -344,7 +345,7 @@ Note: Make sure to:
 1. Replace `your-username` with your actual server username
 2. Replace `your-server-ip` with your server's IP address
 3. Replace `your-local-username` with your local machine username
-4. If needed, set `SSH_KEY_NAME` (for example `id_ed25519`) or `SSH_KEY_FILE` (full path)
+4. If needed, set `SSH_KEY_NAME` (for example `id_ed25519`) or `SSH_KEY_FILE` (full path); otherwise the remote deploy tool omits `ssh -i` and lets OpenSSH use your `~/.ssh/config`, default identity files, or active `ssh-agent`
 5. Ensure the deployment path exists on the server
 6. Verify SSH key permissions (600 for private key, 644 for public key)
 7. Place `docker-compose.deploy.yml` in `DEPLOY_PATH` (or set `DEPLOY_COMPOSE_FILE` to match)
@@ -374,6 +375,7 @@ STAGING_DEPLOY_PATH=/home/staging-user/ifecaro-staging
 ```
 
 > 使用 `STAGING_SSH_PROFILE` 時，`STAGING_DEPLOY_USER` / `STAGING_DEPLOY_HOST` 可省略。
+> 如果該 profile 已透過 `IdentityFile` 或 `ssh-agent` 設定金鑰，通常也不需要設定 `SSH_KEY_FILE` / `SSH_KEY_PATH` / `SSH_KEY_NAME`；deploy-remote 只有在這些變數明確設定時才會加入 `ssh -i`。
 
 建議同時保留 production 目標（供 production / dev 流程使用）：
 
