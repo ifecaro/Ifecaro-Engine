@@ -473,10 +473,10 @@ services:
       - ${NGINX_CONF_PATH:-./nginx/conf.d}:/etc/nginx/conf.d:ro
 ```
 
-Set `PB_ENCRYPTION_KEY` in the server-side env file (`.env.staging` or `.env.production`), and optionally set `NGINX_CONF_PATH` / `FRONTEND_IMAGE` to control the nginx config directory and the prebuilt frontend image tag.
+Set `PB_ENCRYPTION_KEY` in the server-side env file (`.env.staging` or `.env.production`), and optionally set `NGINX_CONF_PATH` / `FRONTEND_IMAGE` to control the nginx config mount and the prebuilt frontend image tag. For staging, `NGINX_CONF_PATH` must point to the server-block file (default `./nginx/conf.d/staging/default.conf`); for production, it points to the config directory (default `./nginx/conf.d`).
 The frontend image is meant to be built in CI and pushed to GHCR, so VPS nodes only need to pull the image and start the containers (no local frontend build or dist mount required).
 The remote deploy binary now requires an explicit target argument (`staging` or `production`). Staging deploys use staging container names (`nginx-staging` / `pocketbase-staging`), production deploys use production container names (`nginx` / `pocketbase`).
-For path-based ingress deployments, remote staging deploys now default `NGINX_CONF_PATH` to `./nginx/conf.d/staging`, while production keeps `./nginx/conf.d`, so staging nginx does not recursively proxy `/staging/*` back to itself.
+For path-based ingress deployments, remote staging deploys now default `NGINX_CONF_PATH` to the single file `./nginx/conf.d/staging/default.conf`, while production keeps the directory `./nginx/conf.d`. Mounting the staging server block as a file makes Docker fail fast if the file is missing instead of starting `nginx-staging` with an empty `/etc/nginx/conf.d` directory and no port-80 listener.
 To avoid port collisions when staging and production run on the same host, staging and production should use different compose project names (`-p`) and different frontend volumes:
 - Production: `ifecaro-production` + `frontend_assets_production`
 - Staging: `ifecaro-staging` + `frontend_assets_staging`

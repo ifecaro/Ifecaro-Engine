@@ -47,7 +47,12 @@ services:
     volumes:
       - ./certs:/etc/nginx/certs:ro
       - ./nginx/mime.types:/etc/nginx/mime.types:ro
-      - ${NGINX_CONF_PATH:-./nginx/conf.d/staging}:/etc/nginx/conf.d:ro
+      - type: bind
+        source: ${NGINX_CONF_PATH:-./nginx/conf.d/staging/default.conf}
+        target: /etc/nginx/conf.d/default.conf
+        read_only: true
+        bind:
+          create_host_path: false
       - frontend_assets_staging:/usr/share/nginx/html:ro
     depends_on:
       frontend:

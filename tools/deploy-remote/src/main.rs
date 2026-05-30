@@ -612,15 +612,19 @@ fn resolve_api_url(deploy_environment: &str) -> String {
 
 fn resolve_nginx_conf_path(deploy_environment: &str) -> String {
     if let Ok(nginx_conf_path) = env::var("NGINX_CONF_PATH") {
-        if !nginx_conf_path.trim().is_empty() {
-            return nginx_conf_path;
+        let trimmed = nginx_conf_path.trim();
+        if !trimmed.is_empty() {
+            if deploy_environment == "staging" && !trimmed.ends_with(".conf") {
+                return format!("{}/default.conf", trimmed.trim_end_matches('/'));
+            }
+            return trimmed.to_string();
         }
     }
 
     if deploy_environment == "production" {
         "./nginx/conf.d".to_string()
     } else {
-        "./nginx/conf.d/staging".to_string()
+        "./nginx/conf.d/staging/default.conf".to_string()
     }
 }
 
@@ -728,6 +732,13 @@ fn parse_env_value(raw: &str) -> String {
 mod tests {
     use super::*;
     use std::env;
+    use std::sync::{Mutex, MutexGuard};
+
+    static ENV_MUTEX: Mutex<()> = Mutex::new(());
+
+    fn env_guard() -> MutexGuard<'static, ()> {
+        ENV_MUTEX.lock().unwrap_or_else(|err| err.into_inner())
+    }
 
     #[test]
     fn deploy_target_argument_parsing() {
@@ -739,7 +750,9 @@ mod tests {
 
     #[test]
     fn resolve_api_url_defaults_by_environment() {
-        // SAFETY: tests are single-threaded in this binary and this mutation is scoped to test process.
+        let _env_guard = env_guard();
+
+        // SAFETY: process environment mutations in this module are serialized by ENV_MUTEX.
         unsafe {
             env::remove_var("STAGING_API_URL");
             env::remove_var("PRODUCTION_API_URL");
@@ -757,14 +770,16 @@ mod tests {
 
     #[test]
     fn resolve_nginx_conf_path_defaults_by_environment() {
-        // SAFETY: tests are single-threaded in this binary and this mutation is scoped to test process.
+        let _env_guard = env_guard();
+
+        // SAFETY: process environment mutations in this module are serialized by ENV_MUTEX.
         unsafe {
             env::remove_var("NGINX_CONF_PATH");
         }
 
         assert_eq!(
             resolve_nginx_conf_path("staging"),
-            "./nginx/conf.d/staging".to_string()
+            "./nginx/conf.d/staging/default.conf".to_string()
         );
         assert_eq!(
             resolve_nginx_conf_path("production"),
@@ -773,8 +788,30 @@ mod tests {
     }
 
     #[test]
+    fn resolve_nginx_conf_path_normalizes_staging_directory_override() {
+        let _env_guard = env_guard();
+
+        // SAFETY: process environment mutations in this module are serialized by ENV_MUTEX.
+        unsafe {
+            env::set_var("NGINX_CONF_PATH", "./nginx/conf.d/staging/");
+        }
+
+        assert_eq!(
+            resolve_nginx_conf_path("staging"),
+            "./nginx/conf.d/staging/default.conf".to_string()
+        );
+
+        // SAFETY: process environment mutations in this module are serialized by ENV_MUTEX.
+        unsafe {
+            env::remove_var("NGINX_CONF_PATH");
+        }
+    }
+
+    #[test]
     fn compose_project_name_defaults_to_staging_project() {
-        // SAFETY: test-only cleanup to ensure deterministic default behavior.
+        let _env_guard = env_guard();
+
+        // SAFETY: process environment mutations in this module are serialized by ENV_MUTEX.
         unsafe { env::remove_var("DEPLOY_COMPOSE_PROJECT_NAME") };
 
         assert_eq!(
@@ -785,7 +822,9 @@ mod tests {
 
     #[test]
     fn compose_project_name_defaults_to_production_project() {
-        // SAFETY: test-only cleanup to ensure deterministic default behavior.
+        let _env_guard = env_guard();
+
+        // SAFETY: process environment mutations in this module are serialized by ENV_MUTEX.
         unsafe { env::remove_var("DEPLOY_COMPOSE_PROJECT_NAME") };
 
         assert_eq!(
@@ -796,7 +835,9 @@ mod tests {
 
     #[test]
     fn compose_project_name_supports_override() {
-        // SAFETY: test-only scoped environment mutation.
+        let _env_guard = env_guard();
+
+        // SAFETY: process environment mutations in this module are serialized by ENV_MUTEX.
         unsafe { env::set_var("DEPLOY_COMPOSE_PROJECT_NAME", "custom-ifecaro") };
 
         assert_eq!(
@@ -804,7 +845,7 @@ mod tests {
             "custom-ifecaro".to_string()
         );
 
-        // SAFETY: test-only cleanup of environment variable.
+        // SAFETY: process environment mutations in this module are serialized by ENV_MUTEX.
         unsafe { env::remove_var("DEPLOY_COMPOSE_PROJECT_NAME") };
     }
 
@@ -883,6 +924,9 @@ mod tests {
 
     #[test]
     fn resolve_deploy_compose_file_defaults_by_environment() {
+        let _env_guard = env_guard();
+
+        // SAFETY: process environment mutations in this module are serialized by ENV_MUTEX.
         unsafe {
             env::remove_var("DEPLOY_COMPOSE_FILE");
         }
@@ -899,6 +943,9 @@ mod tests {
 
     #[test]
     fn required_deploy_env_prefers_staging_specific_variables() {
+        let _env_guard = env_guard();
+
+        // SAFETY: process environment mutations in this module are serialized by ENV_MUTEX.
         unsafe {
             env::set_var("STAGING_DEPLOY_USER", "staging-user");
             env::set_var("DEPLOY_USER", "prod-user");
@@ -909,6 +956,7 @@ mod tests {
             "staging-user"
         );
 
+        // SAFETY: process environment mutations in this module are serialized by ENV_MUTEX.
         unsafe {
             env::remove_var("STAGING_DEPLOY_USER");
             env::remove_var("DEPLOY_USER");
@@ -917,6 +965,9 @@ mod tests {
 
     #[test]
     fn required_deploy_env_rejects_base_variable_for_staging() {
+        let _env_guard = env_guard();
+
+        // SAFETY: process environment mutations in this module are serialized by ENV_MUTEX.
         unsafe {
             env::remove_var("STAGING_DEPLOY_HOST");
             env::set_var("DEPLOY_HOST", "prod-host");
@@ -927,6 +978,7 @@ mod tests {
 
         assert_eq!(err, "❌ Missing STAGING_DEPLOY_HOST environment variable");
 
+        // SAFETY: process environment mutations in this module are serialized by ENV_MUTEX.
         unsafe {
             env::remove_var("DEPLOY_HOST");
         }
@@ -934,6 +986,9 @@ mod tests {
 
     #[test]
     fn required_deploy_ssh_target_uses_staging_profile_without_user_or_host() {
+        let _env_guard = env_guard();
+
+        // SAFETY: process environment mutations in this module are serialized by ENV_MUTEX.
         unsafe {
             env::set_var("STAGING_SSH_PROFILE", "ifecaro-staging");
             env::remove_var("STAGING_DEPLOY_USER");
@@ -947,6 +1002,7 @@ mod tests {
             "ifecaro-staging"
         );
 
+        // SAFETY: process environment mutations in this module are serialized by ENV_MUTEX.
         unsafe {
             env::remove_var("STAGING_SSH_PROFILE");
             env::remove_var("DEPLOY_USER");
@@ -956,6 +1012,9 @@ mod tests {
 
     #[test]
     fn required_deploy_ssh_target_builds_staging_user_host_target() {
+        let _env_guard = env_guard();
+
+        // SAFETY: process environment mutations in this module are serialized by ENV_MUTEX.
         unsafe {
             env::remove_var("STAGING_SSH_PROFILE");
             env::set_var("STAGING_DEPLOY_USER", "staging-user");
@@ -967,6 +1026,7 @@ mod tests {
             "staging-user@staging-host"
         );
 
+        // SAFETY: process environment mutations in this module are serialized by ENV_MUTEX.
         unsafe {
             env::remove_var("STAGING_DEPLOY_USER");
             env::remove_var("STAGING_DEPLOY_HOST");
