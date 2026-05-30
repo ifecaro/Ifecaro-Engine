@@ -23,7 +23,7 @@ fn main() -> Result<(), String> {
     let deploy_ssh_target = required_deploy_ssh_target(&deploy_target)?;
     let deploy_path = required_deploy_env(&deploy_target, "DEPLOY_PATH")?;
     let deploy_compose_file = resolve_deploy_compose_file(&deploy_environment);
-    let ssh_key_file = resolve_ssh_key_file();
+    let ssh_identity_file = resolve_ssh_identity_file();
     let known_hosts_file = resolve_known_hosts_file();
 
     let frontend_image = resolve_frontend_image(&deploy_environment);
@@ -45,7 +45,7 @@ fn main() -> Result<(), String> {
     );
 
     let pull_status = run_ssh_command(
-        &ssh_key_file,
+        &ssh_identity_file,
         &known_hosts_file,
         &deploy_ssh_target,
         &remote_pull_command,
@@ -58,7 +58,7 @@ fn main() -> Result<(), String> {
     let remote_frontend_pull_command = format!("docker pull {}", shell_escape(&frontend_image));
 
     let frontend_pull_output = run_ssh_command_with_output(
-        &ssh_key_file,
+        &ssh_identity_file,
         &known_hosts_file,
         &deploy_ssh_target,
         &remote_frontend_pull_command,
@@ -74,7 +74,7 @@ fn main() -> Result<(), String> {
     }
 
     verify_remote_image_git_sha(
-        &ssh_key_file,
+        &ssh_identity_file,
         &known_hosts_file,
         &deploy_ssh_target,
         &frontend_image,
@@ -97,7 +97,7 @@ fn main() -> Result<(), String> {
     );
 
     let up_status = run_ssh_command(
-        &ssh_key_file,
+        &ssh_identity_file,
         &known_hosts_file,
         &deploy_ssh_target,
         &remote_up_command,
@@ -108,7 +108,7 @@ fn main() -> Result<(), String> {
     }
 
     run_remote_three_layer_verification(
-        &ssh_key_file,
+        &ssh_identity_file,
         &known_hosts_file,
         &deploy_ssh_target,
         &deploy_path,
@@ -120,7 +120,7 @@ fn main() -> Result<(), String> {
 
     if deploy_environment == "staging" {
         rewrite_staging_base_url_on_remote(
-            &ssh_key_file,
+            &ssh_identity_file,
             &known_hosts_file,
             &deploy_ssh_target,
             &compose_project_name,
@@ -186,40 +186,34 @@ fn parse_deploy_target_from_args() -> Result<DeployTarget, String> {
 }
 
 fn run_ssh_command_with_output(
-    ssh_key_file: &str,
+    ssh_identity_file: &Option<String>,
     known_hosts_file: &str,
     ssh_target: &str,
     remote_command: &str,
 ) -> Result<std::process::Output, String> {
-    Command::new("ssh")
-        .args([
-            "-i",
-            ssh_key_file,
-            "-o",
-            &format!("UserKnownHostsFile={}", known_hosts_file),
-            "-o",
-            "StrictHostKeyChecking=yes",
-            "-o",
-            "PasswordAuthentication=no",
-            "-o",
-            "PubkeyAuthentication=yes",
-            "-o",
-            "ConnectTimeout=30",
-            ssh_target,
-            remote_command,
-        ])
-        .output()
-        .map_err(|e| format!("failed to run ssh: {}", e))
+    build_ssh_command(
+        ssh_identity_file,
+        known_hosts_file,
+        ssh_target,
+        remote_command,
+    )
+    .output()
+    .map_err(|e| format!("failed to run ssh: {}", e))
 }
 
 fn rewrite_staging_base_url_on_remote(
-    ssh_key_file: &str,
+    ssh_identity_file: &Option<String>,
     known_hosts_file: &str,
     ssh_target: &str,
     compose_project_name: &str,
 ) -> Result<(), String> {
     let remote_command = build_staging_base_url_rewrite_command(compose_project_name);
-    let status = run_ssh_command(ssh_key_file, known_hosts_file, ssh_target, &remote_command)?;
+    let status = run_ssh_command(
+        ssh_identity_file,
+        known_hosts_file,
+        ssh_target,
+        &remote_command,
+    )?;
 
     if !status.success() {
         return Err(
@@ -249,32 +243,21 @@ fn resolve_staging_frontend_assets_volume_name(compose_project_name: &str) -> St
     format!("{}_frontend_assets_staging", compose_project_name)
 }
 fn run_ssh_command(
-    ssh_key_file: &str,
+    ssh_identity_file: &Option<String>,
     known_hosts_file: &str,
     ssh_target: &str,
     remote_command: &str,
 ) -> Result<std::process::ExitStatus, String> {
-    Command::new("ssh")
-        .args([
-            "-i",
-            ssh_key_file,
-            "-o",
-            &format!("UserKnownHostsFile={}", known_hosts_file),
-            "-o",
-            "StrictHostKeyChecking=yes",
-            "-o",
-            "PasswordAuthentication=no",
-            "-o",
-            "PubkeyAuthentication=yes",
-            "-o",
-            "ConnectTimeout=30",
-            ssh_target,
-            remote_command,
-        ])
-        .stdout(Stdio::inherit())
-        .stderr(Stdio::inherit())
-        .status()
-        .map_err(|e| format!("failed to run ssh: {}", e))
+    build_ssh_command(
+        ssh_identity_file,
+        known_hosts_file,
+        ssh_target,
+        remote_command,
+    )
+    .stdout(Stdio::inherit())
+    .stderr(Stdio::inherit())
+    .status()
+    .map_err(|e| format!("failed to run ssh: {}", e))
 }
 
 fn resolve_known_hosts_file() -> String {
@@ -347,7 +330,7 @@ fn required_expected_git_sha() -> Result<String, String> {
 }
 
 fn verify_remote_image_git_sha(
-    ssh_key_file: &str,
+    ssh_identity_file: &Option<String>,
     known_hosts_file: &str,
     ssh_target: &str,
     frontend_image: &str,
@@ -358,25 +341,14 @@ fn verify_remote_image_git_sha(
         shell_escape(frontend_image)
     );
 
-    let output = Command::new("ssh")
-        .args([
-            "-i",
-            ssh_key_file,
-            "-o",
-            &format!("UserKnownHostsFile={}", known_hosts_file),
-            "-o",
-            "StrictHostKeyChecking=yes",
-            "-o",
-            "PasswordAuthentication=no",
-            "-o",
-            "PubkeyAuthentication=yes",
-            "-o",
-            "ConnectTimeout=30",
-            ssh_target,
-            &remote_command,
-        ])
-        .output()
-        .map_err(|e| format!("❌ Failed to inspect remote frontend image: {}", e))?;
+    let output = build_ssh_command(
+        ssh_identity_file,
+        known_hosts_file,
+        ssh_target,
+        &remote_command,
+    )
+    .output()
+    .map_err(|e| format!("❌ Failed to inspect remote frontend image: {}", e))?;
 
     if !output.status.success() {
         let stderr_preview = safe_response_preview(&String::from_utf8_lossy(&output.stderr));
@@ -526,7 +498,7 @@ fn preflight_guard_compose_frontend_flow(
 }
 
 fn run_remote_three_layer_verification(
-    ssh_key_file: &str,
+    ssh_identity_file: &Option<String>,
     known_hosts_file: &str,
     ssh_target: &str,
     deploy_path: &str,
@@ -539,7 +511,12 @@ fn run_remote_three_layer_verification(
         "docker run --rm --entrypoint cat {} /dist/version.json",
         shell_escape(frontend_image)
     );
-    let image_status = run_ssh_command(ssh_key_file, known_hosts_file, ssh_target, &image_check)?;
+    let image_status = run_ssh_command(
+        ssh_identity_file,
+        known_hosts_file,
+        ssh_target,
+        &image_check,
+    )?;
     if !image_status.success() {
         return Err("❌ Three-layer verify failed at image layer (/dist/version.json)".to_string());
     }
@@ -553,7 +530,12 @@ fn run_remote_three_layer_verification(
         "docker run --rm -v {}:/shared --entrypoint cat alpine:3.20 /shared/version.json",
         shell_escape(&frontend_volume_name)
     );
-    let volume_status = run_ssh_command(ssh_key_file, known_hosts_file, ssh_target, &volume_check)?;
+    let volume_status = run_ssh_command(
+        ssh_identity_file,
+        known_hosts_file,
+        ssh_target,
+        &volume_check,
+    )?;
     if !volume_status.success() {
         return Err(
             "❌ Three-layer verify failed at shared volume layer (/shared/version.json)"
@@ -567,7 +549,12 @@ fn run_remote_three_layer_verification(
         shell_escape(compose_project_name),
         deploy_compose_file
     );
-    let nginx_status = run_ssh_command(ssh_key_file, known_hosts_file, ssh_target, &nginx_check)?;
+    let nginx_status = run_ssh_command(
+        ssh_identity_file,
+        known_hosts_file,
+        ssh_target,
+        &nginx_check,
+    )?;
     if !nginx_status.success() {
         return Err(
             "❌ Three-layer verify failed at nginx layer (/usr/share/nginx/html/version.json)"
@@ -658,16 +645,69 @@ fn resolve_app_version() -> &'static str {
     option_env!("IFECARO_APP_VERSION").unwrap_or(env!("CARGO_PKG_VERSION"))
 }
 
-fn resolve_ssh_key_file() -> String {
+fn build_ssh_command(
+    ssh_identity_file: &Option<String>,
+    known_hosts_file: &str,
+    ssh_target: &str,
+    remote_command: &str,
+) -> Command {
+    let mut command = Command::new("ssh");
+
+    if let Some(identity_file) = ssh_identity_file {
+        command.args(["-i", identity_file]);
+    }
+
+    command.args([
+        "-o",
+        &format!("UserKnownHostsFile={}", known_hosts_file),
+        "-o",
+        "StrictHostKeyChecking=yes",
+        "-o",
+        "PasswordAuthentication=no",
+        "-o",
+        "PubkeyAuthentication=yes",
+        "-o",
+        "ConnectTimeout=30",
+        ssh_target,
+        remote_command,
+    ]);
+
+    command
+}
+
+fn resolve_ssh_identity_file() -> Option<String> {
     if let Ok(ssh_key_file) = env::var("SSH_KEY_FILE") {
-        if !ssh_key_file.trim().is_empty() {
-            return ssh_key_file;
+        let trimmed = ssh_key_file.trim();
+        if !trimmed.is_empty() {
+            return Some(trimmed.to_string());
         }
     }
 
-    let ssh_key_path = env::var("SSH_KEY_PATH").unwrap_or_else(|_| "/root/.ssh".to_string());
-    let ssh_key_name = env::var("SSH_KEY_NAME").unwrap_or_else(|_| "id_rsa".to_string());
-    format!("{}/{}", ssh_key_path, ssh_key_name)
+    let ssh_key_path = env::var("SSH_KEY_PATH")
+        .ok()
+        .map(|value| value.trim().to_string())
+        .filter(|value| !value.is_empty());
+    let ssh_key_name = env::var("SSH_KEY_NAME")
+        .ok()
+        .map(|value| value.trim().to_string())
+        .filter(|value| !value.is_empty());
+
+    if ssh_key_path.is_none() && ssh_key_name.is_none() {
+        return None;
+    }
+
+    let key_path = ssh_key_path.unwrap_or_else(default_ssh_key_path);
+    let key_name = ssh_key_name.unwrap_or_else(|| "id_rsa".to_string());
+    Some(format!("{}/{}", key_path.trim_end_matches('/'), key_name))
+}
+
+fn default_ssh_key_path() -> String {
+    env::var("HOME")
+        .ok()
+        .map(|value| value.trim().to_string())
+        .filter(|value| !value.is_empty())
+        .map(|home| format!("{}/.ssh", home.trim_end_matches('/')))
+        .unwrap_or_else(|| "/root/.ssh".to_string())
 }
 
 fn shell_escape(value: &str) -> String {
@@ -981,6 +1021,96 @@ mod tests {
         // SAFETY: process environment mutations in this module are serialized by ENV_MUTEX.
         unsafe {
             env::remove_var("DEPLOY_HOST");
+        }
+    }
+
+    #[test]
+    fn resolve_ssh_identity_file_uses_ssh_agent_by_default() {
+        let _env_guard = env_guard();
+
+        // SAFETY: process environment mutations in this module are serialized by ENV_MUTEX.
+        unsafe {
+            env::remove_var("SSH_KEY_FILE");
+            env::remove_var("SSH_KEY_PATH");
+            env::remove_var("SSH_KEY_NAME");
+        }
+
+        assert_eq!(resolve_ssh_identity_file(), None);
+
+        let command = build_ssh_command(
+            &resolve_ssh_identity_file(),
+            "/tmp/known_hosts",
+            "deploy@example.com",
+            "true",
+        );
+        let args = command
+            .get_args()
+            .map(|arg| arg.to_string_lossy().into_owned())
+            .collect::<Vec<_>>();
+
+        assert!(!args.iter().any(|arg| arg == "-i"));
+        assert!(args.contains(&"deploy@example.com".to_string()));
+    }
+
+    #[test]
+    fn resolve_ssh_identity_file_prefers_explicit_file() {
+        let _env_guard = env_guard();
+
+        // SAFETY: process environment mutations in this module are serialized by ENV_MUTEX.
+        unsafe {
+            env::set_var("SSH_KEY_FILE", " /run/secrets/deploy_key ");
+            env::set_var("SSH_KEY_PATH", "/ignored");
+            env::set_var("SSH_KEY_NAME", "ignored");
+        }
+
+        assert_eq!(
+            resolve_ssh_identity_file(),
+            Some("/run/secrets/deploy_key".to_string())
+        );
+
+        // SAFETY: process environment mutations in this module are serialized by ENV_MUTEX.
+        unsafe {
+            env::remove_var("SSH_KEY_FILE");
+            env::remove_var("SSH_KEY_PATH");
+            env::remove_var("SSH_KEY_NAME");
+        }
+    }
+
+    #[test]
+    fn resolve_ssh_identity_file_builds_explicit_path_and_name() {
+        let _env_guard = env_guard();
+
+        // SAFETY: process environment mutations in this module are serialized by ENV_MUTEX.
+        unsafe {
+            env::remove_var("SSH_KEY_FILE");
+            env::set_var("SSH_KEY_PATH", "/keys/");
+            env::set_var("SSH_KEY_NAME", "id_ed25519");
+        }
+
+        assert_eq!(
+            resolve_ssh_identity_file(),
+            Some("/keys/id_ed25519".to_string())
+        );
+
+        let command = build_ssh_command(
+            &resolve_ssh_identity_file(),
+            "/tmp/known_hosts",
+            "deploy@example.com",
+            "true",
+        );
+        let args = command
+            .get_args()
+            .map(|arg| arg.to_string_lossy().into_owned())
+            .collect::<Vec<_>>();
+
+        assert!(args
+            .windows(2)
+            .any(|window| window == ["-i", "/keys/id_ed25519"]));
+
+        // SAFETY: process environment mutations in this module are serialized by ENV_MUTEX.
+        unsafe {
+            env::remove_var("SSH_KEY_PATH");
+            env::remove_var("SSH_KEY_NAME");
         }
     }
 
