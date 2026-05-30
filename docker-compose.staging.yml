@@ -53,7 +53,7 @@ services:
       frontend:
         condition: service_completed_successfully
       pocketbase:
-        condition: service_started
+        condition: service_healthy
     networks:
       - web
 
