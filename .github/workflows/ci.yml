@@ -117,7 +117,12 @@ jobs:
         run: cargo install dioxus-cli --locked
 
       - name: Dioxus web build (release)
-        run: dx build --release --platform web
+        run: |
+          if [ "${{ matrix.deploy_env }}" = "staging" ]; then
+            dx build --release --platform web --base-path staging
+          else
+            dx build --release --platform web
+          fi
 
       - name: Determine version
         id: version

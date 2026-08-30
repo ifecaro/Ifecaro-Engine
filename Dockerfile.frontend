@@ -41,7 +41,11 @@ COPY i18n ./i18n
 COPY src ./src
 
 RUN rm -rf /app/dist /app/target/dx \
-    && dx build --release --platform web \
+    && if [ "$VITE_APP_ENV" = "staging" ]; then \
+         dx build --release --platform web --base-path staging; \
+       else \
+         dx build --release --platform web; \
+       fi \
     && if [ ! -d /app/dist ]; then \
         DIST_DIR=$(find /app/target/dx -type d -path "*/release/web" -print -quit); \
         if [ -z "$DIST_DIR" ]; then \
